@@ -3,13 +3,17 @@ using UnityEngine;
 
 public class ChunkManager : MonoBehaviour
 {
+    
     private const int TilesPerChunk = 15;
     private const int TileSize = 2;
     private const int ChunkWorldSize = TilesPerChunk * TileSize;
-
+    private bool hasLoggedFirstDrawSummary = false;
     [Header("Required References")]
     [SerializeField] private Transform playerTransform;
     [SerializeField] private TileLibrary tileLibrary;
+
+    [Header("Build Safety")]
+    [SerializeField] private Material overrideDrawMaterial;
 
     [Header("Debug")]
     [SerializeField] private bool debugMode = true;
@@ -37,6 +41,7 @@ public class ChunkManager : MonoBehaviour
         if (tileLibrary != null)
         {
             Debug.Log("[ChunkManager] Tile Library assigned: " + tileLibrary.name);
+        
         }
 
         hasLoggedStartup = true;
@@ -44,6 +49,7 @@ public class ChunkManager : MonoBehaviour
 
     private void Update()
     {
+        Debug.Log("[ChunkManager] UPDATE IS RUNNING");
         if (!ValidateReferences())
         {
             return;
@@ -180,7 +186,15 @@ public class ChunkManager : MonoBehaviour
                 }
 
                 Mesh mesh = def.MeshGetter();
-                Material material = def.MaterialGetter();
+                Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
+                if (debugMode && !hasLoggedFirstDrawSummary)
+                {
+                    Debug.Log("[ChunkManager] Using material: " + material.name + " | Override assigned: " + (overrideDrawMaterial != null));
+                }
+                if (material != null)
+                {
+                    material.enableInstancing = true;
+                }
 
                 if (mesh == null)
                 {
@@ -237,7 +251,7 @@ public class ChunkManager : MonoBehaviour
             }
         }
 
-        if (debugMode && logEveryFrame)
+        if (debugMode && (logEveryFrame || !hasLoggedFirstDrawSummary))
         {
             Debug.Log(
                 "[ChunkManager] Draw summary | Draw calls: " + drawCalls +
@@ -246,6 +260,8 @@ public class ChunkManager : MonoBehaviour
                 " | Missing meshes: " + skippedMissingMesh +
                 " | Missing materials: " + skippedMissingMaterial
             );
+
+            hasLoggedFirstDrawSummary = true;
         }
     }
 

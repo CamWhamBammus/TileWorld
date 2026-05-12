@@ -1,94 +1,139 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Linq;
 using UnityEngine.Rendering;
-
 
 [CreateAssetMenu(menuName = "Tiles/Tile Definition")]
 public class TileDefinition : ScriptableObject
 {
-	public int blockID;
-	public GameObject prefab;
+    public int blockID;
+    public GameObject prefab;
 
-	[HideInInspector] [SerializeField] private Mesh mesh;
-	[HideInInspector] [SerializeField] private Material material;
+    [SerializeField] private Mesh mesh;
+    [SerializeField] private Material material;
 
-	
-	private void OnValidate()
-	{
-		 
-		if (prefab == null)
-		{
-			mesh = null;
-			material = null;
-			return;
-		}
-		var meshFilters = prefab.GetComponentsInChildren<MeshFilter>(true);
-		var renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
-		var uniqueMats = new HashSet<Material>();
-		
-		
-		foreach (var r in renderers)
-		{
-			if (r.sharedMaterials != null && r.sharedMaterials.Length > 0)
-			{
-				uniqueMats.Add(r.sharedMaterials[0]);
-			}
-		}
-		
-		if (uniqueMats.Count == 0)
-		{
-			Debug.LogWarning($"[TileDefinition:{name}] No materials found in prefab '{prefab.name}'.");
-			mesh = null; material = null; return;
-		}
-		
-		var chosenMat = uniqueMats.First();
-		
-		Matrix4x4 rootInv = prefab.transform.worldToLocalMatrix;
-		
-		var combines = new List<CombineInstance>();
-		
-		foreach (var v in meshFilters)
-		{
-			if (v == null || v.sharedMesh == null) continue;
+    private void OnValidate()
+    {
+        BuildFromPrefab();
+    }
 
-			var ci = new CombineInstance
-			{
-				mesh = v.sharedMesh,
-				subMeshIndex = 0,
-				transform = rootInv * v.transform.localToWorldMatrix
-			};
-			combines.Add(ci);	
-		}
+    public Mesh MeshGetter()
+    {
+        if (mesh == null)
+        {
+            BuildFromPrefab();
+        }
 
-		if (combines.Count == 0) { mesh = null; material = null; return; }
-		var combined = new Mesh();
+        return mesh;
+    }
 
-		int verts = 0;
-		foreach (var c in combines)
-		{
-			verts += c.mesh.vertexCount;
-		}
-		if (verts > 65535)
-		{
-			combined.indexFormat = IndexFormat.UInt32;
-		}
+    public Material MaterialGetter()
+    {
+        if (material == null)
+        {
+            BuildFromPrefab();
+        }
 
-		combined.CombineMeshes(combines.ToArray(), true, true);
-		combined.RecalculateBounds();
+        if (material != null)
+        {
+            material.enableInstancing = true;
+        }
 
-		mesh = combined;
-		material = chosenMat;
-		if (material && !material.enableInstancing) material.enableInstancing = true;
-	}
+        return material;
+    }
 
-	public Mesh MeshGetter()
-	{
-		return mesh;
-	}
-	public Material MaterialGetter()
-	{
-		return material;
-	}
+    public void BuildFromPrefab()
+    {
+        if (prefab == null)
+        {
+            mesh = null;
+            material = null;
+            return;
+        }
+
+        MeshFilter[] meshFilters = prefab.GetComponentsInChildren<MeshFilter>(true);
+        MeshRenderer[] renderers = prefab.GetComponentsInChildren<MeshRenderer>(true);
+
+        if (meshFilters.Length == 0)
+        {
+            Debug.LogWarning("[TileDefinition] No MeshFilters found on prefab: " + prefab.name);
+            mesh = null;
+            return;
+        }
+
+        if (renderers.Length == 0)
+        {
+            Debug.LogWarning("[TileDefinition] No MeshRenderers found on prefab: " + prefab.name);
+            material = null;
+            return;
+        }
+
+        Material chosenMaterial = null;
+
+        foreach (MeshRenderer renderer in renderers)
+        {
+            if (renderer.sharedMaterial != null)
+            {
+                chosenMaterial = renderer.sharedMaterial;
+                break;
+            }
+        }
+
+        if (chosenMaterial == null)
+        {
+            Debug.LogWarning("[TileDefinition] No valid material found on prefab: " + prefab.name);
+            material = null;
+            return;
+        }
+
+        Matrix4x4 rootInverse = prefab.transform.worldToLocalMatrix;
+        List<CombineInstance> combines = new List<CombineInstance>();
+
+        foreach (MeshFilter meshFilter in meshFilters)
+        {
+            if (meshFilter == null || meshFilter.sharedMesh == null)
+            {
+                continue;
+            }
+
+            CombineInstance combine = new CombineInstance
+            {
+                mesh = meshFilter.sharedMesh,
+                subMeshIndex = 0,
+
+                // IMPORTANT:
+                // This makes child meshes relative to the prefab root,
+                // instead of baking in the prefab's world position.
+                transform = rootInverse * meshFilter.transform.localToWorldMatrix
+            };
+
+            combines.Add(combine);
+        }
+
+        if (combines.Count == 0)
+        {
+            Debug.LogWarning("[TileDefinition] No valid meshes found on prefab: " + prefab.name);
+            mesh = null;
+            return;
+        }
+
+        Mesh combinedMesh = new Mesh();
+
+        int totalVertices = 0;
+        foreach (CombineInstance combine in combines)
+        {
+            totalVertices += combine.mesh.vertexCount;
+        }
+
+        if (totalVertices > 65535)
+        {
+            combinedMesh.indexFormat = IndexFormat.UInt32;
+        }
+
+        combinedMesh.CombineMeshes(combines.ToArray(), true, true);
+        combinedMesh.RecalculateBounds();
+
+        mesh = combinedMesh;
+        material = chosenMaterial;
+        material.enableInstancing = true;
+    }
 }

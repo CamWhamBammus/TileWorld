@@ -1576,7 +1576,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerTransform: {fileID: 469700068}
   tileLibrary: {fileID: 11400000, guid: 8698af5debd9ecb49bf62860e91c5f64, type: 2}
-  debugMode: 0
+  overrideDrawMaterial: {fileID: 0}
+  debugMode: 1
   logEveryFrame: 0
   drawDebugGizmos: 0
 --- !u!4 &1031579478425024800
