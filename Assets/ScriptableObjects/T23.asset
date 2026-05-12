@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94208a5864b6bdc49abc2cee55771079, type: 3}
+  m_Name: T23
+  m_EditorClassIdentifier: 
+  blockID: 23
+  prefab: {fileID: 1455012347670720, guid: 9a876ab496138bc4c919d2c1dda8b38b, type: 3}
+  mesh: {fileID: 0}
+  material: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
