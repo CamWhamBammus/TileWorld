@@ -13,12 +13,16 @@ public class QuestManager : MonoBehaviour
     [SerializeField] private int chunksNeededForDeepSurvey = 15;
     [SerializeField] private int chunkDistanceGoal = 3;
 
+    [Tooltip("Landmarks to find for the survey quest.")]
+    [SerializeField] private int landmarksNeeded = 3;
+
     private Vector2Int currentChunk;
 
     private bool completedMainQuest;
     private bool completedDistanceQuest;
     private bool completedFourDirectionsQuest;
     private bool completedDeepSurveyQuest;
+    private bool completedLandmarkQuest;
 
     private void Start()
     {
@@ -84,6 +88,12 @@ public class QuestManager : MonoBehaviour
         {
             completedDistanceQuest = true;
             Debug.Log("[QuestManager] Completed quest: Walk Beyond the Origin");
+        }
+
+        if (!completedLandmarkQuest && LandmarkLog.Count >= landmarksNeeded)
+        {
+            completedLandmarkQuest = true;
+            Debug.Log("[QuestManager] Completed quest: Marks on the Land");
         }
 
         if (!completedFourDirectionsQuest && HasVisitedAllFourDirections())
@@ -176,6 +186,11 @@ public class QuestManager : MonoBehaviour
         log += Quest(completedFourDirectionsQuest, "Compass Survey",
             "Discover chunks east, west, north and south of spawn.",
             Compass());
+
+        log += Quest(completedLandmarkQuest, "Marks on the Land",
+            "Find " + landmarksNeeded + " landmarks left by those who came before.",
+            Bar(LandmarkLog.Count, landmarksNeeded) + "  <color=" + Open + ">" +
+            Mathf.Min(LandmarkLog.Count, landmarksNeeded) + " / " + landmarksNeeded + "</color>");
 
         log += Quest(completedDeepSurveyQuest, "Deep Forest Survey",
             "Discover " + chunksNeededForDeepSurvey + " total chunks.",

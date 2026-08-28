@@ -27,6 +27,7 @@ public class WorldMap : MonoBehaviour
     private static readonly Color Ink = new Color(0.286f, 0.227f, 0.169f);
     private static readonly Color InkFaint = new Color(0.545f, 0.470f, 0.373f);
     private static readonly Color Player = new Color(0.706f, 0.208f, 0.153f);
+    private static readonly Color Mark = new Color(0.361f, 0.267f, 0.176f);
     private static readonly Color Origin = new Color(0.298f, 0.353f, 0.259f);
 
     private ChunkManager world;
@@ -223,6 +224,8 @@ public class WorldMap : MonoBehaviour
         DrawFrame();
         DrawCompass();
 
+        DrawLandmarks();
+
         if (ExplorationLog.HasVisited(Vector2Int.zero))
         {
             DrawSpawn(WorldGrid.ChunkCenter(Vector2Int.zero));
@@ -252,8 +255,11 @@ public class WorldMap : MonoBehaviour
             "<color=#D8CDB4>grid " + chunk.x + ", " + chunk.y + "</color>" +
             "   <color=#8A7E68>|</color>   " +
             "<color=#D8CDB4>elevation " + here.ToString("F1") + "m</color>" +
+            "   <color=#8A7E68>|</color>   " +
+            "<color=#D8CDB4>" + LandmarkLog.Count + " landmarks</color>" +
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
-            "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>     " +
+            "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
+            "landmark <color=#5C442D>\u25C6</color>     " +
             toggleKey + " to close</color></size>";
     }
 
@@ -343,6 +349,33 @@ public class WorldMap : MonoBehaviour
             Plot(cx + 4, cy + 20 + y, ink);
             int diag = Mathf.RoundToInt(Mathf.Lerp(-4f, 4f, y / 8f));
             Plot(cx + diag, cy + 28 - y, ink);
+        }
+    }
+
+    /// <summary>Anything found gets inked onto the chart, the way a surveyor would.</summary>
+    private void DrawLandmarks()
+    {
+        foreach (var pair in LandmarkLog.Found)
+        {
+            var placement = Landmarks.In(pair.Key, world.WorldSeed);
+
+            if (!placement.Exists)
+            {
+                continue;
+            }
+
+            Vector2 p = ToPixel(placement.Position);
+            int r = Mathf.Max(3, cell / 3);
+
+            // a small diamond, so it reads differently from the round markers
+            for (int y = -r; y <= r; y++)
+            for (int x = -r; x <= r; x++)
+            {
+                if (Mathf.Abs(x) + Mathf.Abs(y) <= r)
+                {
+                    Plot(Mathf.RoundToInt(p.x) + x, Mathf.RoundToInt(p.y) + y, Mark);
+                }
+            }
         }
     }
 
