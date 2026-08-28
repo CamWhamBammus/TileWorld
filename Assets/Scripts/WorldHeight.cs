@@ -20,8 +20,13 @@ public static class WorldHeight
     /// <summary>Vertical quantum. Terrain is terraced to this so tiles stay level.</summary>
     public const float StepHeight = 0.25f;
 
-    /// <summary>Peak height above the valley floor, in world units.</summary>
-    public const float MaxRelief = 90f;
+    /// <summary>
+    /// Peak height above the valley floor. Lower than it could be on purpose:
+    /// relief and feature size are tied together by the slope limit, and a
+    /// taller world means wider, rarer ranges. Tuned for what is visible inside
+    /// the ~270 unit view distance rather than for a big number on the map.
+    /// </summary>
+    public const float MaxRelief = 40f;
 
     /// <summary>
     /// Ceiling on the rise between neighbouring tiles, and the reason the
@@ -33,15 +38,17 @@ public static class WorldHeight
     /// </summary>
     public const float MaxRisePerTile = 1.5f;
 
-    // Where mountains are allowed to exist at all — huge, slow regions.
-    private const float ContinentScale = 0.0016f;
+    // Where mountains are allowed to exist at all. Sized so ranges recur
+    // within a few minutes of walking instead of every kilometre — measured
+    // over 24 seeds, no spawn now lands in featureless ground.
+    private const float ContinentScale = 0.0034f;
 
     // The ranges themselves. Ridged noise gives sharp crests instead of blobs.
-    private const float RidgeScale = 0.0022f;
+    private const float RidgeScale = 0.0046f;
 
     // Rolling ground that shapes the lowlands.
     private const float HillScale = 0.011f;
-    private const float HillAmplitude = 6.0f;
+    private const float HillAmplitude = 10.0f;
 
     /// <summary>Terrain height above the base plane, in world units.</summary>
     public static float HeightAt(int tileX, int tileZ, int worldSeed)
@@ -51,7 +58,7 @@ public static class WorldHeight
         // Which parts of the world are mountainous. Squared so that most of the
         // map stays low and ranges feel like a feature, not the default.
         float continent = Fbm(tileX * ContinentScale, tileZ * ContinentScale, o, 3);
-        float mountainMask = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.30f, 0.62f, continent));
+        float mountainMask = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.28f, 0.60f, continent));
         mountainMask *= mountainMask;
 
         float ridges = RidgedFbm(tileX * RidgeScale, tileZ * RidgeScale, o + 91f, 4);
