@@ -15,8 +15,8 @@ public class ChunkManager : MonoBehaviour
     [SerializeField] private Material overrideDrawMaterial;
 
     [Header("World")]
-    [Tooltip("Chunks drawn in every direction around the player. 2 = a 5x5 block.")]
-    [SerializeField, Range(1, 6)] private int viewRadius = 2;
+    [Tooltip("Chunks drawn in every direction around the player. 4 = a 9x9 block, about 270 units to the horizon.")]
+    [SerializeField, Range(1, 8)] private int viewRadius = 4;
 
     [Tooltip("Chunks are discarded once they are this far outside the view radius.")]
     [SerializeField, Range(1, 8)] private int keepRadiusPadding = 2;
@@ -47,6 +47,19 @@ public class ChunkManager : MonoBehaviour
     private bool hasPlayerChunk;
 
     private readonly List<Chunk> visibleChunks = new List<Chunk>();
+
+    // Every visible chunk's tiles, merged into one array per tile type. Drawing
+    // per chunk meant chunks x tile types calls per frame — at view radius 4
+    // that is around two thousand. Merged, it is one call per tile type
+    // regardless of how far you can see.
+    private readonly Dictionary<int, List<Matrix4x4>> batchScratch = new Dictionary<int, List<Matrix4x4>>();
+
+    // Buffers are reused across rebuilds and only grow — rebuilding happens on
+    // every chunk border crossing, and reallocating a megabyte of matrices each
+    // time would hand the GC a steady drip of garbage.
+    private readonly Dictionary<int, Matrix4x4[]> batches = new Dictionary<int, Matrix4x4[]>();
+    private readonly Dictionary<int, int> batchCounts = new Dictionary<int, int>();
+    private Bounds visibleBounds;
     private readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
     private readonly List<Vector2Int> evictionScratch = new List<Vector2Int>();
 
@@ -136,6 +149,7 @@ public class ChunkManager : MonoBehaviour
             visibleChunks.Add(GetOrCreateChunk(new Vector2Int(playerChunk.x + dx, playerChunk.y + dz)));
         }
 
+        RebuildBatches();
         EvictDistantChunks();
 
         if (terrainCollision)
@@ -155,6 +169,61 @@ public class ChunkManager : MonoBehaviour
                 " | Resident: " + chunks.Count
             );
         }
+    }
+
+    /// <summary>
+    /// Merges the visible chunks into one instance array per tile type. Only
+    /// runs when the player crosses a chunk border, so the per-frame draw does
+    /// no work beyond issuing the calls.
+    /// </summary>
+    private void RebuildBatches()
+    {
+        foreach (var pair in batchScratch)
+        {
+            pair.Value.Clear();
+        }
+
+        for (int c = 0; c < visibleChunks.Count; c++)
+        {
+            foreach (var pair in visibleChunks[c].idToTransforms)
+            {
+                if (!batchScratch.TryGetValue(pair.Key, out var list))
+                {
+                    list = new List<Matrix4x4>(pair.Value.Length * 16);
+                    batchScratch[pair.Key] = list;
+                }
+
+                list.AddRange(pair.Value);
+            }
+        }
+
+        batchCounts.Clear();
+
+        foreach (var pair in batchScratch)
+        {
+            int count = pair.Value.Count;
+
+            if (count == 0)
+            {
+                continue;
+            }
+
+            if (!batches.TryGetValue(pair.Key, out var buffer) || buffer.Length < count)
+            {
+                buffer = new Matrix4x4[Mathf.NextPowerOfTwo(count)];
+                batches[pair.Key] = buffer;
+            }
+
+            pair.Value.CopyTo(buffer);
+            batchCounts[pair.Key] = count;
+        }
+
+        float span = (viewRadius * 2 + 1) * WorldGrid.ChunkWorldSize;
+
+        visibleBounds = new Bounds(
+            WorldGrid.ChunkCenter(playerChunk) + Vector3.up * (WorldHeight.MaxRelief * 0.5f),
+            new Vector3(span, WorldHeight.MaxRelief + 24f, span)
+        );
     }
 
     private Chunk GetOrCreateChunk(Vector2Int index)
@@ -205,48 +274,39 @@ public class ChunkManager : MonoBehaviour
         int drawCalls = 0;
         int totalInstances = 0;
 
-        for (int c = 0; c < visibleChunks.Count; c++)
+        foreach (var pair in batchCounts)
         {
-            Chunk chunk = visibleChunks[c];
-
-            foreach (var pair in chunk.idToTransforms)
+            if (!tileLibrary.TryGet(pair.Key, out var def) || def == null)
             {
-                if (!tileLibrary.TryGet(pair.Key, out var def) || def == null)
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                Mesh mesh = def.MeshGetter();
-                Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
+            Mesh mesh = def.MeshGetter();
+            Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
 
-                if (mesh == null || material == null)
-                {
-                    continue;
-                }
+            if (mesh == null || material == null)
+            {
+                continue;
+            }
 
-                Matrix4x4[] transforms = pair.Value;
+            Matrix4x4[] transforms = batches[pair.Key];
+            int instanceCount = pair.Value;
 
-                if (transforms.Length == 0)
-                {
-                    continue;
-                }
+            RenderParams rp = GetRenderParams(material);
+            rp.worldBounds = visibleBounds;
 
-                RenderParams rp = GetRenderParams(material);
-                rp.worldBounds = chunk.Bounds;
+            // Instanced draws cap out at 1023 per call; startInstance walks the
+            // array in place, so no per-frame copies are made.
+            const int Max = 1023;
 
-                // Instanced draws cap out at 1023 per call; startInstance walks
-                // the array in place, so no per-frame copies are made.
-                const int Max = 1023;
+            for (int i = 0; i < instanceCount; i += Max)
+            {
+                int count = Mathf.Min(Max, instanceCount - i);
 
-                for (int i = 0; i < transforms.Length; i += Max)
-                {
-                    int count = Mathf.Min(Max, transforms.Length - i);
+                Graphics.RenderMeshInstanced(rp, mesh, 0, transforms, count, i);
 
-                    Graphics.RenderMeshInstanced(rp, mesh, 0, transforms, count, i);
-
-                    drawCalls++;
-                    totalInstances += count;
-                }
+                drawCalls++;
+                totalInstances += count;
             }
         }
 
@@ -255,6 +315,7 @@ public class ChunkManager : MonoBehaviour
             Debug.Log(
                 "[ChunkManager] Draw summary | Draw calls: " + drawCalls +
                 " | Instances: " + totalInstances +
+                " | Visible chunks: " + visibleChunks.Count +
                 " | Resident chunks: " + chunks.Count
             );
 
