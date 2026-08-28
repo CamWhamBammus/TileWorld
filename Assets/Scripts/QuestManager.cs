@@ -116,32 +116,100 @@ public class QuestManager : MonoBehaviour
         return east && west && north && south;
     }
 
-    private string Checkmark(bool complete)
+    // Palette shared with the map, so the two screens look like one game.
+    private const string Done = "#7FA05A";
+    private const string Open = "#C9BEA4";
+    private const string Dim = "#8A7E68";
+    private const string Head = "#F0E6D2";
+
+    private static string Bullet(bool complete)
     {
-        return complete ? "✓" : "○";
+        return complete
+            ? "<color=" + Done + ">\u25CF</color>"
+            : "<color=" + Dim + ">\u25CB</color>";
+    }
+
+    /// <summary>A filled bar in text, so progress reads at a glance.</summary>
+    private static string Bar(int have, int need, int width = 14)
+    {
+        have = Mathf.Clamp(have, 0, need);
+        int filled = need <= 0 ? width : Mathf.RoundToInt(width * (have / (float)need));
+
+        return "<color=" + Done + ">" + new string('\u2588', filled) + "</color>" +
+               "<color=" + Dim + ">" + new string('\u2591', width - filled) + "</color>";
+    }
+
+    private static string Quest(bool complete, string title, string detail, string progress)
+    {
+        string body =
+            "<line-height=115%>" + Bullet(complete) + "  <b><color=" +
+            (complete ? Done : Head) + ">" + title + "</color></b>\n" +
+            "<indent=22px><size=17><color=" + Dim + ">" + detail + "</color></size>\n";
+
+        if (!string.IsNullOrEmpty(progress))
+        {
+            body += "<size=17>" + progress + "</size>\n";
+        }
+
+        return body + "</indent></line-height>\n";
     }
 
     private void UpdateQuestUI()
     {
-        questText.text =
-            "QUEST LOG\n\n" +
+        int discovered = ExplorationLog.Count;
+        int distance = GetChunkDistanceFromOrigin(currentChunk);
 
-            Checkmark(completedMainQuest) + " Map the Unknown\n" +
-            "Explore " + chunksNeededForMainQuest + " unique chunks.\n" +
-            "Progress: " + Mathf.Min(ExplorationLog.Count, chunksNeededForMainQuest) + " / " + chunksNeededForMainQuest + "\n\n" +
+        string log =
+            "<size=26><b><color=" + Head + ">QUEST LOG</color></b></size>\n" +
+            "<color=" + Dim + ">\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</color>\n\n";
 
-            Checkmark(completedDistanceQuest) + " Walk Beyond the Origin\n" +
-            "Reach chunk distance " + chunkDistanceGoal + " from spawn.\n" +
-            "Current Distance: " + GetChunkDistanceFromOrigin(currentChunk) + " / " + chunkDistanceGoal + "\n\n" +
+        log += Quest(completedMainQuest, "Map the Unknown",
+            "Explore " + chunksNeededForMainQuest + " unique chunks.",
+            Bar(discovered, chunksNeededForMainQuest) + "  <color=" + Open + ">" +
+            Mathf.Min(discovered, chunksNeededForMainQuest) + " / " + chunksNeededForMainQuest + "</color>");
 
-            Checkmark(completedFourDirectionsQuest) + " Compass Survey\n" +
-            "Discover chunks east, west, north, and south of spawn.\n\n" +
+        log += Quest(completedDistanceQuest, "Walk Beyond the Origin",
+            "Reach chunk distance " + chunkDistanceGoal + " from spawn.",
+            Bar(distance, chunkDistanceGoal) + "  <color=" + Open + ">" +
+            Mathf.Min(distance, chunkDistanceGoal) + " / " + chunkDistanceGoal + "</color>");
 
-            Checkmark(completedDeepSurveyQuest) + " Deep Forest Survey\n" +
-            "Discover " + chunksNeededForDeepSurvey + " total chunks.\n" +
-            "Progress: " + Mathf.Min(ExplorationLog.Count, chunksNeededForDeepSurvey) + " / " + chunksNeededForDeepSurvey + "\n\n" +
+        log += Quest(completedFourDirectionsQuest, "Compass Survey",
+            "Discover chunks east, west, north and south of spawn.",
+            Compass());
 
-            "Current Chunk: " + currentChunk + "\n" +
-            "Total Chunks Discovered: " + ExplorationLog.Count;
+        log += Quest(completedDeepSurveyQuest, "Deep Forest Survey",
+            "Discover " + chunksNeededForDeepSurvey + " total chunks.",
+            Bar(discovered, chunksNeededForDeepSurvey) + "  <color=" + Open + ">" +
+            Mathf.Min(discovered, chunksNeededForDeepSurvey) + " / " + chunksNeededForDeepSurvey + "</color>");
+
+        log +=
+            "<color=" + Dim + ">\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</color>\n" +
+            "<size=17><color=" + Dim + ">grid</color> <color=" + Open + ">" +
+            currentChunk.x + ", " + currentChunk.y + "</color>" +
+            "    <color=" + Dim + ">charted</color> <color=" + Open + ">" + discovered + "</color>" +
+            "    <color=" + Dim + ">M for the map</color></size>";
+
+        questText.text = log;
+    }
+
+    /// <summary>The four headings, lit as each is reached.</summary>
+    private string Compass()
+    {
+        bool east = false, west = false, north = false, south = false;
+
+        foreach (Vector2Int chunk in ExplorationLog.Visited)
+        {
+            if (chunk.x > 0) east = true;
+            if (chunk.x < 0) west = true;
+            if (chunk.y > 0) north = true;
+            if (chunk.y < 0) south = true;
+        }
+
+        return Tick("N", north) + "  " + Tick("E", east) + "  " + Tick("S", south) + "  " + Tick("W", west);
+    }
+
+    private static string Tick(string label, bool reached)
+    {
+        return "<color=" + (reached ? Done : Dim) + ">" + (reached ? "\u25CF" : "\u25CB") + " " + label + "</color>";
     }
 }

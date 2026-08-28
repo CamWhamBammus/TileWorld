@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,10 +20,14 @@ public class WorldMap : MonoBehaviour
     [SerializeField, Range(2, 24)] private int maxCellPixels = 14;
     [SerializeField] private int marginChunks = 2;
 
-    private static readonly Color Unexplored = new Color(0.09f, 0.10f, 0.09f);
-    private static readonly Color Grid = new Color(1f, 1f, 1f, 0.10f);
-    private static readonly Color Player = new Color(1f, 0.86f, 0.35f);
-    private static readonly Color Origin = new Color(0.85f, 0.45f, 0.30f);
+    // Unexplored ground is blank paper, not a black void — the map reads as a
+    // chart being filled in rather than a grid floating in space.
+    private static readonly Color Paper = new Color(0.902f, 0.855f, 0.749f);
+    private static readonly Color PaperDark = new Color(0.847f, 0.788f, 0.671f);
+    private static readonly Color Ink = new Color(0.286f, 0.227f, 0.169f);
+    private static readonly Color InkFaint = new Color(0.545f, 0.470f, 0.373f);
+    private static readonly Color Player = new Color(0.706f, 0.208f, 0.153f);
+    private static readonly Color Origin = new Color(0.298f, 0.353f, 0.259f);
 
     private ChunkManager world;
     private Transform player;
@@ -30,6 +35,8 @@ public class WorldMap : MonoBehaviour
     private Canvas canvas;
     private GameObject panel;
     private RawImage image;
+    private TMP_Text titleText;
+    private TMP_Text statsText;
     private Texture2D texture;
     private Color32[] pixels;
 
@@ -157,15 +164,48 @@ public class WorldMap : MonoBehaviour
         imageRect.anchorMin = new Vector2(0.5f, 0.5f);
         imageRect.anchorMax = new Vector2(0.5f, 0.5f);
         imageRect.pivot = new Vector2(0.5f, 0.5f);
-        imageRect.sizeDelta = new Vector2(880f, 880f);
+        imageRect.sizeDelta = new Vector2(820f, 820f);
+        imageRect.anchoredPosition = new Vector2(0f, -18f);
+
+        titleText = MakeLabel("Title", panel.transform, 34f, FontStyles.Bold,
+            new Vector2(0f, 468f), new Vector2(820f, 48f), TextAlignmentOptions.Center);
+        titleText.characterSpacing = 12f;
+        titleText.text = "<color=#F0E6D2>THE SURVEY</color>";
+
+        statsText = MakeLabel("Stats", panel.transform, 20f, FontStyles.Normal,
+            new Vector2(0f, -458f), new Vector2(880f, 64f), TextAlignmentOptions.Center);
 
         panel.SetActive(false);
+    }
+
+    private TMP_Text MakeLabel(string name, Transform parent, float size, FontStyles style,
+        Vector2 position, Vector2 area, TextAlignmentOptions align)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+
+        var text = go.AddComponent<TextMeshProUGUI>();
+        text.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        text.fontSize = size;
+        text.fontStyle = style;
+        text.alignment = align;
+        text.color = new Color(0.94f, 0.90f, 0.82f);
+        text.raycastTarget = false;
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = area;
+        rect.anchoredPosition = position;
+
+        return text;
     }
 
     private void Redraw()
     {
         ComputeBounds();
-        Fill(Unexplored);
+        DrawPaper();
 
         int seed = world.WorldSeed;
 
@@ -179,21 +219,196 @@ public class WorldMap : MonoBehaviour
             DrawCell(chunk, HeightColour(height));
         }
 
-        DrawGrid();
+        DrawSurveyLines();
+        DrawFrame();
+        DrawCompass();
 
         if (ExplorationLog.HasVisited(Vector2Int.zero))
         {
-            DrawMarker(WorldGrid.ChunkCenter(Vector2Int.zero), Origin, 2);
+            DrawSpawn(WorldGrid.ChunkCenter(Vector2Int.zero));
         }
 
         if (player != null)
         {
-            DrawMarker(player.position, Player, 3);
-            DrawFacing(player);
+            DrawHeading(player);
         }
 
         texture.SetPixels32(pixels);
         texture.Apply(false);
+        UpdateStats();
+    }
+
+    private void UpdateStats()
+    {
+        Vector2Int chunk = player != null ? WorldGrid.WorldToChunk(player.position) : Vector2Int.zero;
+        int seed = world.WorldSeed;
+        float here = WorldHeight.SurfaceY(
+            Mathf.RoundToInt(player.position.x / WorldGrid.TileSize),
+            Mathf.RoundToInt(player.position.z / WorldGrid.TileSize), seed) - WorldHeight.BaseSurfaceY;
+
+        statsText.text =
+            "<color=#D8CDB4>" + ExplorationLog.Count + " chunks charted</color>" +
+            "   <color=#8A7E68>|</color>   " +
+            "<color=#D8CDB4>grid " + chunk.x + ", " + chunk.y + "</color>" +
+            "   <color=#8A7E68>|</color>   " +
+            "<color=#D8CDB4>elevation " + here.ToString("F1") + "m</color>" +
+            "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
+            "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>     " +
+            toggleKey + " to close</color></size>";
+    }
+
+    /// <summary>Blank chart paper, with enough grain that it does not read as flat fill.</summary>
+    private void DrawPaper()
+    {
+        for (int y = 0; y < textureSize; y++)
+        for (int x = 0; x < textureSize; x++)
+        {
+            // cheap deterministic speckle
+            int h = (x * 73856093) ^ (y * 19349663);
+            float n = ((h >> 8) & 0xFF) / 255f;
+
+            Color c = Color.Lerp(Paper, PaperDark, n * 0.16f);
+            pixels[y * textureSize + x] = c;
+        }
+    }
+
+    /// <summary>Faint ruled grid, drawn only across the charted region.</summary>
+    private void DrawSurveyLines()
+    {
+        Color32 c = Color.Lerp(PaperDark, InkFaint, 0.35f);
+
+        int spanX = (max.x - min.x + 1) * cell;
+        int spanY = (max.y - min.y + 1) * cell;
+
+        for (int gx = 0; gx <= spanX; gx += cell)
+            for (int y = 0; y < spanY; y++) Plot(drawOffset.x + gx, drawOffset.y + y, c);
+
+        for (int gy = 0; gy <= spanY; gy += cell)
+            for (int x = 0; x < spanX; x++) Plot(drawOffset.x + x, drawOffset.y + gy, c);
+    }
+
+    /// <summary>A double rule inset from the edge, like a printed chart.</summary>
+    private void DrawFrame()
+    {
+        Color32 ink = Ink;
+        Color32 faint = InkFaint;
+
+        Rule(6, ink, 2);
+        Rule(13, faint, 1);
+    }
+
+    private void Rule(int inset, Color32 c, int thickness)
+    {
+        for (int t = 0; t < thickness; t++)
+        {
+            int a = inset + t;
+            int b = textureSize - 1 - a;
+
+            for (int x = a; x <= b; x++)
+            {
+                Plot(x, a, c);
+                Plot(x, b, c);
+            }
+
+            for (int y = a; y <= b; y++)
+            {
+                Plot(a, y, c);
+                Plot(b, y, c);
+            }
+        }
+    }
+
+    /// <summary>North arrow in the top-right, so the chart has an orientation.</summary>
+    private void DrawCompass()
+    {
+        int cx = textureSize - 42;
+        int cy = textureSize - 42;
+
+        Color32 ink = Ink;
+
+        for (int y = -16; y <= 16; y++)
+        for (int x = -16; x <= 16; x++)
+        {
+            int d = x * x + y * y;
+            if (d <= 256 && d >= 225) Plot(cx + x, cy + y, ink);
+        }
+
+        // needle
+        FillTriangle(new Vector2(cx, cy + 14), new Vector2(cx - 6, cy - 6), new Vector2(cx + 6, cy - 6), ink);
+
+        // 'N' above the ring
+        for (int y = 0; y < 9; y++)
+        {
+            Plot(cx - 4, cy + 20 + y, ink);
+            Plot(cx + 4, cy + 20 + y, ink);
+            int diag = Mathf.RoundToInt(Mathf.Lerp(-4f, 4f, y / 8f));
+            Plot(cx + diag, cy + 28 - y, ink);
+        }
+    }
+
+    private void DrawSpawn(Vector3 world)
+    {
+        Vector2 p = ToPixel(world);
+        Color32 c = Origin;
+
+        for (int i = -5; i <= 5; i++)
+        {
+            Plot(Mathf.RoundToInt(p.x) + i, Mathf.RoundToInt(p.y), c);
+            Plot(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y) + i, c);
+        }
+    }
+
+    /// <summary>The player as an arrowhead pointing where they are looking.</summary>
+    private void DrawHeading(Transform target)
+    {
+        Vector2 p = ToPixel(target.position);
+        Vector3 forward = target.forward;
+        Vector2 dir = new Vector2(forward.x, forward.z);
+
+        if (dir.sqrMagnitude < 0.0001f)
+        {
+            dir = Vector2.up;
+        }
+
+        dir.Normalize();
+        Vector2 side = new Vector2(-dir.y, dir.x);
+
+        float len = Mathf.Max(11f, cell * 0.9f);
+        float wide = len * 0.5f;
+
+        Vector2 tip = p + dir * len;
+        Vector2 left = p - dir * (len * 0.35f) + side * wide;
+        Vector2 right = p - dir * (len * 0.35f) - side * wide;
+
+        FillTriangle(tip, left, right, Player);
+        FillTriangle(tip, left, right, Player);
+    }
+
+    private void FillTriangle(Vector2 a, Vector2 b, Vector2 c, Color32 colour)
+    {
+        int minX = Mathf.FloorToInt(Mathf.Min(a.x, Mathf.Min(b.x, c.x)));
+        int maxX = Mathf.CeilToInt(Mathf.Max(a.x, Mathf.Max(b.x, c.x)));
+        int minY = Mathf.FloorToInt(Mathf.Min(a.y, Mathf.Min(b.y, c.y)));
+        int maxY = Mathf.CeilToInt(Mathf.Max(a.y, Mathf.Max(b.y, c.y)));
+
+        float area = Edge(a, b, c);
+        if (Mathf.Abs(area) < 0.0001f) return;
+
+        for (int y = minY; y <= maxY; y++)
+        for (int x = minX; x <= maxX; x++)
+        {
+            var p = new Vector2(x + 0.5f, y + 0.5f);
+            float w0 = Edge(b, c, p) / area;
+            float w1 = Edge(c, a, p) / area;
+            float w2 = Edge(a, b, p) / area;
+
+            if (w0 >= 0f && w1 >= 0f && w2 >= 0f) Plot(x, y, colour);
+        }
+    }
+
+    private static float Edge(Vector2 a, Vector2 b, Vector2 p)
+    {
+        return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
     }
 
     /// <summary>Frames everything discovered, with a margin, and never zooms in past the cell cap.</summary>
@@ -231,20 +446,14 @@ public class WorldMap : MonoBehaviour
     {
         float t = Mathf.Clamp01(height / WorldHeight.MaxRelief);
 
-        Color low = new Color(0.24f, 0.36f, 0.22f);
-        Color mid = new Color(0.47f, 0.50f, 0.30f);
-        Color high = new Color(0.62f, 0.60f, 0.56f);
-        Color peak = new Color(0.92f, 0.94f, 0.96f);
+        Color low = new Color(0.361f, 0.478f, 0.271f);
+        Color mid = new Color(0.541f, 0.510f, 0.314f);
+        Color high = new Color(0.604f, 0.565f, 0.498f);
+        Color peak = new Color(0.910f, 0.894f, 0.863f);
 
         if (t < 0.35f) return Color.Lerp(low, mid, t / 0.35f);
         if (t < 0.70f) return Color.Lerp(mid, high, (t - 0.35f) / 0.35f);
         return Color.Lerp(high, peak, (t - 0.70f) / 0.30f);
-    }
-
-    private void Fill(Color c)
-    {
-        Color32 c32 = c;
-        for (int i = 0; i < pixels.Length; i++) pixels[i] = c32;
     }
 
     /// <summary>Chunk coordinates to the pixel of that chunk's lower-left corner.</summary>
@@ -268,19 +477,6 @@ public class WorldMap : MonoBehaviour
         }
     }
 
-    private void DrawGrid()
-    {
-        Color32 c = Grid;
-        int spanX = (max.x - min.x + 1) * cell;
-        int spanY = (max.y - min.y + 1) * cell;
-
-        for (int gx = 0; gx <= spanX; gx += cell)
-            for (int y = 0; y < spanY; y++) Plot(drawOffset.x + gx, drawOffset.y + y, c);
-
-        for (int gy = 0; gy <= spanY; gy += cell)
-            for (int x = 0; x < spanX; x++) Plot(drawOffset.x + x, drawOffset.y + gy, c);
-    }
-
     /// <summary>World position to map pixel, at sub-chunk precision.</summary>
     private Vector2 ToPixel(Vector3 world)
     {
@@ -291,43 +487,6 @@ public class WorldMap : MonoBehaviour
             drawOffset.x + (chunkX - min.x) * cell,
             drawOffset.y + (chunkZ - min.y) * cell
         );
-    }
-
-    private void DrawMarker(Vector3 world, Color colour, int radius)
-    {
-        Vector2 p = ToPixel(world);
-        Color32 c = colour;
-
-        for (int y = -radius; y <= radius; y++)
-        for (int x = -radius; x <= radius; x++)
-        {
-            if (x * x + y * y > radius * radius) continue;
-            Plot(Mathf.RoundToInt(p.x) + x, Mathf.RoundToInt(p.y) + y, c);
-        }
-    }
-
-    /// <summary>A stub in the direction the player is looking, so the map has an orientation.</summary>
-    private void DrawFacing(Transform target)
-    {
-        Vector2 from = ToPixel(target.position);
-        Vector3 forward = target.forward;
-        Vector2 dir = new Vector2(forward.x, forward.z);
-
-        if (dir.sqrMagnitude < 0.0001f)
-        {
-            return;   // looking straight up or down; no heading to draw
-        }
-
-        dir.Normalize();
-
-        Color32 c = Player;
-        int length = Mathf.Max(6, cell);
-
-        for (int i = 0; i < length; i++)
-        {
-            Vector2 p = from + dir * i;
-            Plot(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y), c);
-        }
     }
 
     private void Plot(int x, int y, Color32 c)
