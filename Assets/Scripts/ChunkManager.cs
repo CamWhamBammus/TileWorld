@@ -43,6 +43,12 @@ public class ChunkManager : MonoBehaviour
     [SerializeField] private bool logEveryFrame = false;
     [SerializeField] private bool drawDebugGizmos = true;
 
+    /// <summary>The player the world is streaming around. Read by the map.</summary>
+    public Transform PlayerTransform => playerTransform;
+
+    /// <summary>The seed this world was generated from. Read by the map.</summary>
+    public int WorldSeed => worldSeed;
+
     private Vector2Int playerChunk;
     private bool hasPlayerChunk;
 
@@ -140,6 +146,8 @@ public class ChunkManager : MonoBehaviour
 
         playerChunk = current;
         hasPlayerChunk = true;
+
+        ExplorationLog.Visit(playerChunk);
 
         visibleChunks.Clear();
 
