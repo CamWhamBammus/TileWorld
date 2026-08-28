@@ -2,9 +2,10 @@ using UnityEngine;
 
 public enum LandmarkKind
 {
-    Cairn,          // a stack of stones left by someone who came before
-    StandingStones, // a ring, half-fallen
-    Obelisk         // one tall marker, visible from a distance
+    AbandonedHouse, // roof half gone, chimney still standing
+    RuinedTower,    // a broken stair of stone, tall enough to see over the trees
+    StoneCircle,    // a ring around an altar, older than the forest
+    Watchtower      // timber legs and a platform someone kept watch from
 }
 
 /// <summary>
@@ -16,16 +17,23 @@ public enum LandmarkKind
 public static class Landmarks
 {
     /// <summary>
-    /// About one chunk in thirty. At 8% they averaged 53 units apart, which is
-    /// ten seconds of sprinting — close enough that they stopped being a find.
+    /// Most rolls are rejected by the flatness test below, so this is a ceiling
+    /// rather than the real rate: 12 here yields about 3.2% of chunks, which
+    /// measured out at 106 units apart — roughly twenty seconds of running, so
+    /// you usually have one in view without the horizon being cluttered.
     /// </summary>
-    private const int ChanceInHundred = 3;
+    private const int ChanceInHundred = 12;
 
     /// <summary>Kept away from chunk edges so a landmark is never cut in half by a seam.</summary>
-    private const int EdgeMargin = 3;
+    private const int EdgeMargin = 4;
 
-    /// <summary>Ground steeper than this is skipped — a ruin on a cliff looks like a bug.</summary>
-    private const float MaxLocalRise = 0.6f;
+    /// <summary>
+    /// How flat the ground has to be across the whole footprint. These are
+    /// buildings, not markers: a house is five tiles wide, so checking only the
+    /// tile under its centre would leave corners hanging in the air or buried.
+    /// </summary>
+    private const int FootprintTiles = 3;
+    private const float MaxFootprintVariation = 0.8f;
 
     public struct Placement
     {
@@ -54,13 +62,13 @@ public static class Landmarks
         int tileX = chunk.x * WorldGrid.TilesPerChunk + localX;
         int tileZ = chunk.y * WorldGrid.TilesPerChunk + localZ;
 
-        if (LocalRise(tileX, tileZ, worldSeed) > MaxLocalRise)
+        if (FootprintVariation(tileX, tileZ, worldSeed) > MaxFootprintVariation)
         {
-            return result;   // too steep here; this chunk simply has none
+            return result;   // ground is not flat enough to build on here
         }
 
         result.Exists = true;
-        result.Kind = (LandmarkKind)(Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % 3);
+        result.Kind = (LandmarkKind)(Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % 4);
         result.Yaw = Hash(chunk.x, chunk.y, worldSeed ^ 0xBEEF) % 360;
         result.Position = new Vector3(
             tileX * WorldGrid.TileSize,
@@ -71,27 +79,31 @@ public static class Landmarks
         return result;
     }
 
-    /// <summary>Steepest step to a neighbouring tile.</summary>
-    private static float LocalRise(int tileX, int tileZ, int seed)
+    /// <summary>Height range across the footprint the structure will stand on.</summary>
+    private static float FootprintVariation(int tileX, int tileZ, int seed)
     {
-        float h = WorldHeight.SurfaceY(tileX, tileZ, seed);
+        float lo = float.MaxValue;
+        float hi = float.MinValue;
 
-        float rise = 0f;
-        rise = Mathf.Max(rise, Mathf.Abs(WorldHeight.SurfaceY(tileX + 1, tileZ, seed) - h));
-        rise = Mathf.Max(rise, Mathf.Abs(WorldHeight.SurfaceY(tileX - 1, tileZ, seed) - h));
-        rise = Mathf.Max(rise, Mathf.Abs(WorldHeight.SurfaceY(tileX, tileZ + 1, seed) - h));
-        rise = Mathf.Max(rise, Mathf.Abs(WorldHeight.SurfaceY(tileX, tileZ - 1, seed) - h));
+        for (int dx = -FootprintTiles; dx <= FootprintTiles; dx++)
+        for (int dz = -FootprintTiles; dz <= FootprintTiles; dz++)
+        {
+            float h = WorldHeight.SurfaceY(tileX + dx, tileZ + dz, seed);
+            lo = Mathf.Min(lo, h);
+            hi = Mathf.Max(hi, h);
+        }
 
-        return rise;
+        return hi - lo;
     }
 
     public static string NameOf(LandmarkKind kind)
     {
         switch (kind)
         {
-            case LandmarkKind.Cairn: return "Cairn";
-            case LandmarkKind.StandingStones: return "Standing Stones";
-            default: return "Obelisk";
+            case LandmarkKind.AbandonedHouse: return "Abandoned House";
+            case LandmarkKind.RuinedTower: return "Ruined Tower";
+            case LandmarkKind.StoneCircle: return "Stone Circle";
+            default: return "Watchtower";
         }
     }
 
