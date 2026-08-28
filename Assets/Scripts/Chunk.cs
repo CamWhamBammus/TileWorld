@@ -32,8 +32,10 @@ public class Chunk
 
         // Tall enough to contain the terraces plus the trees some tiles carry,
         // or the renderer culls chunks that are still partly on screen.
-        float span = WorldHeight.MaxLevel * WorldHeight.StepHeight + 8f;
+        float span = WorldHeight.MaxRelief + 12f;
 
+        // Generous vertically: a chunk on a mountainside spans a lot of height,
+        // and bounds that are too tight cull chunks that are still on screen.
         Bounds = new Bounds(
             WorldGrid.ChunkCenter(chunkIndex) + Vector3.up * (span * 0.25f),
             new Vector3(WorldGrid.ChunkWorldSize, span, WorldGrid.ChunkWorldSize)
