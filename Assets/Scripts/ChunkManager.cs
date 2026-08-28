@@ -90,6 +90,11 @@ public class ChunkManager : MonoBehaviour
 
         RefreshVisibleChunks(force: true);
 
+        if (terrainCollision)
+        {
+            PlacePlayerOnSurface();
+        }
+
         if (debugMode)
         {
             Debug.Log("[ChunkManager] World seed: " + worldSeed + " | View radius: " + viewRadius);
@@ -304,6 +309,48 @@ public class ChunkManager : MonoBehaviour
         // exactly with the scene's ground box instead of leaving a lip to trip on.
         Vector3 centre = WorldGrid.ChunkCenter(playerChunk);
         groundCollider.position = new Vector3(centre.x, groundSurfaceY - GroundThickness * 0.5f, centre.z);
+    }
+
+    /// <summary>
+    /// The scene spawns the player at a fixed height that assumed flat ground.
+    /// With terrain, the hill under spawn can be higher than that — which would
+    /// start the player inside the collision mesh. Lift them clear.
+    /// </summary>
+    private void PlacePlayerOnSurface()
+    {
+        Vector3 p = playerTransform.position;
+
+        int tileX = Mathf.RoundToInt(p.x / WorldGrid.TileSize);
+        int tileZ = Mathf.RoundToInt(p.z / WorldGrid.TileSize);
+
+        float surface = WorldHeight.SurfaceY(tileX, tileZ, worldSeed);
+
+        if (p.y >= surface + 0.1f)
+        {
+            return;
+        }
+
+        // A CharacterController overrides direct transform writes, so it has to
+        // be off while the position changes.
+        var controller = playerTransform.GetComponent<CharacterController>();
+        bool wasEnabled = controller != null && controller.enabled;
+
+        if (wasEnabled)
+        {
+            controller.enabled = false;
+        }
+
+        playerTransform.position = new Vector3(p.x, surface + 0.5f, p.z);
+
+        if (wasEnabled)
+        {
+            controller.enabled = true;
+        }
+
+        if (debugMode)
+        {
+            Debug.Log("[ChunkManager] Placed player on the surface at y=" + (surface + 0.5f));
+        }
     }
 
     /// <summary>
