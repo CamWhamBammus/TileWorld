@@ -8,10 +8,6 @@ public class ChunkExplorationObjective : MonoBehaviour
     [SerializeField] private Transform playerTransform;
     [SerializeField] private TMP_Text chunkCounterText;
 
-    [Header("Chunk Settings")]
-    [SerializeField] private int tilesPerChunk = 15;
-    [SerializeField] private int tileSize = 2;
-
     [Header("Objective")]
     [SerializeField] private int chunksNeededToWin = 9;
 
@@ -19,11 +15,6 @@ public class ChunkExplorationObjective : MonoBehaviour
 
     private Vector2Int currentChunk;
     private bool objectiveComplete = false;
-
-    private int ChunkWorldSize
-    {
-        get { return tilesPerChunk * tileSize; }
-    }
 
     private void Start()
     {
@@ -81,10 +72,7 @@ public class ChunkExplorationObjective : MonoBehaviour
 
     private Vector2Int GetChunkFromPosition(Vector3 position)
     {
-        return new Vector2Int(
-            Mathf.FloorToInt(position.x / ChunkWorldSize),
-            Mathf.FloorToInt(position.z / ChunkWorldSize)
-        );
+        return WorldGrid.WorldToChunk(position);
     }
 
     private void UpdateUI()

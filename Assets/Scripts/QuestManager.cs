@@ -8,10 +8,6 @@ public class QuestManager : MonoBehaviour
     [SerializeField] private Transform playerTransform;
     [SerializeField] private TMP_Text questText;
 
-    [Header("Chunk Settings")]
-    [SerializeField] private int tilesPerChunk = 15;
-    [SerializeField] private int tileSize = 2;
-
     [Header("Quest Goals")]
     [SerializeField] private int chunksNeededForMainQuest = 9;
     [SerializeField] private int chunksNeededForDeepSurvey = 15;
@@ -25,11 +21,6 @@ public class QuestManager : MonoBehaviour
     private bool completedDistanceQuest;
     private bool completedFourDirectionsQuest;
     private bool completedDeepSurveyQuest;
-
-    private int ChunkWorldSize
-    {
-        get { return tilesPerChunk * tileSize; }
-    }
 
     private void Start()
     {
@@ -75,10 +66,7 @@ public class QuestManager : MonoBehaviour
 
     private Vector2Int GetChunkFromPosition(Vector3 position)
     {
-        return new Vector2Int(
-            Mathf.FloorToInt(position.x / ChunkWorldSize),
-            Mathf.FloorToInt(position.z / ChunkWorldSize)
-        );
+        return WorldGrid.WorldToChunk(position);
     }
 
     private void UpdateQuests()
@@ -110,7 +98,7 @@ public class QuestManager : MonoBehaviour
 
     private int GetChunkDistanceFromOrigin(Vector2Int chunk)
     {
-        return Mathf.Max(Mathf.Abs(chunk.x), Mathf.Abs(chunk.y));
+        return WorldGrid.RingDistanceFromOrigin(chunk);
     }
 
     private bool HasVisitedAllFourDirections()

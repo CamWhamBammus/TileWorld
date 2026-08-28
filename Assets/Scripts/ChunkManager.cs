@@ -1,13 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Streams the world around the player: creates chunks as they come into range,
+/// draws them with GPU instancing, and drops the ones left far behind.
+/// </summary>
 public class ChunkManager : MonoBehaviour
 {
-    
-    private const int TilesPerChunk = 15;
-    private const int TileSize = 2;
-    private const int ChunkWorldSize = TilesPerChunk * TileSize;
-    private bool hasLoggedFirstDrawSummary = false;
     [Header("Required References")]
     [SerializeField] private Transform playerTransform;
     [SerializeField] private TileLibrary tileLibrary;
@@ -15,70 +14,354 @@ public class ChunkManager : MonoBehaviour
     [Header("Build Safety")]
     [SerializeField] private Material overrideDrawMaterial;
 
+    [Header("World")]
+    [Tooltip("Chunks drawn in every direction around the player. 2 = a 5x5 block.")]
+    [SerializeField, Range(1, 6)] private int viewRadius = 2;
+
+    [Tooltip("Chunks are discarded once they are this far outside the view radius.")]
+    [SerializeField, Range(1, 8)] private int keepRadiusPadding = 2;
+
+    [Tooltip("Same seed, same world. Leave at 0 for a different world each run.")]
+    [SerializeField] private int worldSeed = 0;
+
+    [Header("Terrain")]
+    [Tooltip("Raises tiles onto terraces and builds a walkable collision surface under them.")]
+    [SerializeField] private bool terrainCollision = true;
+
+    [Tooltip("Chunks around the player that get a physics collider. Terrain only needs to be solid where you can reach it.")]
+    [SerializeField, Range(1, 4)] private int collisionRadius = 1;
+
+    [Header("Flat Ground Fallback")]
+    [Tooltip("Used only when terrain collision is off: keeps flat floor under the player past the scene's ground plane.")]
+    [SerializeField] private bool maintainGroundCollider = true;
+
+    [Tooltip("Height of the walkable surface. Must match the scene's ground collider, or you get a step where they meet.")]
+    [SerializeField] private float groundSurfaceY = 1.05f;
+
     [Header("Debug")]
     [SerializeField] private bool debugMode = true;
     [SerializeField] private bool logEveryFrame = false;
     [SerializeField] private bool drawDebugGizmos = true;
 
     private Vector2Int playerChunk;
-    private readonly HashSet<Chunk> loadedChunks = new HashSet<Chunk>();
-    private readonly ChunkMap chunkMap = new ChunkMap();
+    private bool hasPlayerChunk;
 
-    private bool hasLoggedStartup;
+    private readonly List<Chunk> visibleChunks = new List<Chunk>();
+    private readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
+    private readonly List<Vector2Int> evictionScratch = new List<Vector2Int>();
+
+    // RenderParams per material, built once — creating them per draw would
+    // allocate every frame for no benefit.
+    private readonly Dictionary<Material, RenderParams> renderParamsCache =
+        new Dictionary<Material, RenderParams>();
+
+    private const float GroundThickness = 0.1f;
+
+    private Transform groundCollider;
+
+    private readonly Dictionary<Vector2Int, GameObject> chunkColliders = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> colliderScratch = new List<Vector2Int>();
+    private Transform terrainRoot;
+
     private bool hasLoggedMissingReferences;
+    private bool hasLoggedFirstDrawSummary;
 
     private void Start()
     {
-        Debug.Log("[ChunkManager] Start() called. ChunkManager is active.");
-
-        ValidateReferences();
-
-        if (playerTransform != null)
-        {
-            Debug.Log("[ChunkManager] Player Transform assigned: " + playerTransform.name);
-        }
-
-        if (tileLibrary != null)
-        {
-            Debug.Log("[ChunkManager] Tile Library assigned: " + tileLibrary.name);
-        
-        }
-
-        hasLoggedStartup = true;
-    }
-
-    private void Update()
-    {
-        Debug.Log("[ChunkManager] UPDATE IS RUNNING");
         if (!ValidateReferences())
         {
             return;
         }
 
-        UpdatePlayerChunk();
-
-        loadedChunks.Clear();
-
-        for (int dx = -1; dx <= 1; dx++)
+        if (worldSeed == 0)
         {
-            for (int dz = -1; dz <= 1; dz++)
-            {
-                var idx = new Vector2Int(playerChunk.x + dx, playerChunk.y + dz);
-                loadedChunks.Add(GetOrCreateChunk(idx));
-            }
+            worldSeed = Random.Range(1, int.MaxValue);
+        }
+
+        if (terrainCollision)
+        {
+            terrainRoot = new GameObject("Terrain Collision (runtime)").transform;
+            terrainRoot.SetParent(transform, worldPositionStays: true);
+        }
+        else if (maintainGroundCollider)
+        {
+            CreateGroundCollider();
+        }
+
+        RefreshVisibleChunks(force: true);
+
+        if (debugMode)
+        {
+            Debug.Log("[ChunkManager] World seed: " + worldSeed + " | View radius: " + viewRadius);
+        }
+    }
+
+    private void Update()
+    {
+        if (!ValidateReferences())
+        {
+            return;
+        }
+
+        RefreshVisibleChunks(force: false);
+        DrawChunks();
+    }
+
+    /// <summary>
+    /// Rebuilds the visible set only when the player actually crosses a chunk
+    /// border. The old version rebuilt it — and logged — every single frame.
+    /// </summary>
+    private void RefreshVisibleChunks(bool force)
+    {
+        Vector2Int current = WorldGrid.WorldToChunk(playerTransform.position);
+
+        if (!force && hasPlayerChunk && current == playerChunk)
+        {
+            return;
+        }
+
+        playerChunk = current;
+        hasPlayerChunk = true;
+
+        visibleChunks.Clear();
+
+        for (int dx = -viewRadius; dx <= viewRadius; dx++)
+        for (int dz = -viewRadius; dz <= viewRadius; dz++)
+        {
+            visibleChunks.Add(GetOrCreateChunk(new Vector2Int(playerChunk.x + dx, playerChunk.y + dz)));
+        }
+
+        EvictDistantChunks();
+
+        if (terrainCollision)
+        {
+            RefreshChunkColliders();
+        }
+        else
+        {
+            UpdateGroundCollider();
         }
 
         if (debugMode && logEveryFrame)
         {
             Debug.Log(
-                "[ChunkManager] Player position: " + playerTransform.position +
-                " | Player chunk: " + playerChunk +
-                " | Loaded chunks: " + loadedChunks.Count +
-                " | Total created chunks: " + chunkMap.ChunkMapGetter().Count
+                "[ChunkManager] Player chunk: " + playerChunk +
+                " | Visible: " + visibleChunks.Count +
+                " | Resident: " + chunks.Count
             );
         }
+    }
 
-        DrawChunks();
+    private Chunk GetOrCreateChunk(Vector2Int index)
+    {
+        if (!chunks.TryGetValue(index, out var chunk))
+        {
+            chunk = new Chunk(index, worldSeed);
+            chunks.Add(index, chunk);
+        }
+
+        return chunk;
+    }
+
+    /// <summary>
+    /// Chunks are cheap to regenerate and identical every time (the seed makes
+    /// generation deterministic), so holding every chunk ever visited just grows
+    /// memory forever. Anything well outside view goes.
+    /// </summary>
+    private void EvictDistantChunks()
+    {
+        int keepRadius = viewRadius + keepRadiusPadding;
+
+        evictionScratch.Clear();
+
+        foreach (var pair in chunks)
+        {
+            Vector2Int offset = pair.Key - playerChunk;
+
+            if (Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y)) > keepRadius)
+            {
+                evictionScratch.Add(pair.Key);
+            }
+        }
+
+        foreach (var index in evictionScratch)
+        {
+            chunks.Remove(index);
+        }
+
+        if (debugMode && evictionScratch.Count > 0 && logEveryFrame)
+        {
+            Debug.Log("[ChunkManager] Evicted " + evictionScratch.Count + " distant chunks.");
+        }
+    }
+
+    private void DrawChunks()
+    {
+        int drawCalls = 0;
+        int totalInstances = 0;
+
+        for (int c = 0; c < visibleChunks.Count; c++)
+        {
+            Chunk chunk = visibleChunks[c];
+
+            foreach (var pair in chunk.idToTransforms)
+            {
+                if (!tileLibrary.TryGet(pair.Key, out var def) || def == null)
+                {
+                    continue;
+                }
+
+                Mesh mesh = def.MeshGetter();
+                Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
+
+                if (mesh == null || material == null)
+                {
+                    continue;
+                }
+
+                Matrix4x4[] transforms = pair.Value;
+
+                if (transforms.Length == 0)
+                {
+                    continue;
+                }
+
+                RenderParams rp = GetRenderParams(material);
+                rp.worldBounds = chunk.Bounds;
+
+                // Instanced draws cap out at 1023 per call; startInstance walks
+                // the array in place, so no per-frame copies are made.
+                const int Max = 1023;
+
+                for (int i = 0; i < transforms.Length; i += Max)
+                {
+                    int count = Mathf.Min(Max, transforms.Length - i);
+
+                    Graphics.RenderMeshInstanced(rp, mesh, 0, transforms, count, i);
+
+                    drawCalls++;
+                    totalInstances += count;
+                }
+            }
+        }
+
+        if (debugMode && (logEveryFrame || !hasLoggedFirstDrawSummary))
+        {
+            Debug.Log(
+                "[ChunkManager] Draw summary | Draw calls: " + drawCalls +
+                " | Instances: " + totalInstances +
+                " | Resident chunks: " + chunks.Count
+            );
+
+            hasLoggedFirstDrawSummary = true;
+        }
+    }
+
+    private RenderParams GetRenderParams(Material material)
+    {
+        if (!renderParamsCache.TryGetValue(material, out var rp))
+        {
+            material.enableInstancing = true;
+
+            rp = new RenderParams(material)
+            {
+                layer = gameObject.layer,
+                receiveShadows = true,
+                shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On
+            };
+
+            renderParamsCache[material] = rp;
+        }
+
+        return rp;
+    }
+
+    /// <summary>
+    /// The scene ships with a fixed 500x500 ground box, so an "infinite" world
+    /// ran out of floor about eight chunks from spawn and dropped the player
+    /// through it. This keeps a collider centred under them instead.
+    /// </summary>
+    private void CreateGroundCollider()
+    {
+        var go = new GameObject("Infinite Ground (runtime)");
+        go.transform.SetParent(transform, worldPositionStays: true);
+
+        var box = go.AddComponent<BoxCollider>();
+        float span = (viewRadius * 2 + 1 + keepRadiusPadding) * WorldGrid.ChunkWorldSize;
+        box.size = new Vector3(span, GroundThickness, span);
+
+        groundCollider = go.transform;
+    }
+
+    private void UpdateGroundCollider()
+    {
+        if (groundCollider == null)
+        {
+            return;
+        }
+
+        // Positioned by its top face, not its centre, so this surface lines up
+        // exactly with the scene's ground box instead of leaving a lip to trip on.
+        Vector3 centre = WorldGrid.ChunkCenter(playerChunk);
+        groundCollider.position = new Vector3(centre.x, groundSurfaceY - GroundThickness * 0.5f, centre.z);
+    }
+
+    /// <summary>
+    /// Colliders are the expensive part of terrain, so only the chunks the
+    /// player can physically reach get one; the rest are drawn but not solid.
+    /// </summary>
+    private void RefreshChunkColliders()
+    {
+        for (int dx = -collisionRadius; dx <= collisionRadius; dx++)
+        for (int dz = -collisionRadius; dz <= collisionRadius; dz++)
+        {
+            var index = new Vector2Int(playerChunk.x + dx, playerChunk.y + dz);
+
+            if (chunkColliders.ContainsKey(index))
+            {
+                continue;
+            }
+
+            var go = new GameObject("ChunkCollision " + index);
+            go.transform.SetParent(terrainRoot, worldPositionStays: true);
+            go.transform.position = new Vector3(
+                index.x * WorldGrid.ChunkWorldSize,
+                0f,
+                index.y * WorldGrid.ChunkWorldSize
+            );
+
+            var collider = go.AddComponent<MeshCollider>();
+            collider.sharedMesh = TerrainCollision.BuildMesh(index, worldSeed);
+
+            chunkColliders.Add(index, go);
+        }
+
+        colliderScratch.Clear();
+
+        foreach (var pair in chunkColliders)
+        {
+            Vector2Int offset = pair.Key - playerChunk;
+
+            if (Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y)) > collisionRadius)
+            {
+                colliderScratch.Add(pair.Key);
+            }
+        }
+
+        foreach (var index in colliderScratch)
+        {
+            var go = chunkColliders[index];
+            chunkColliders.Remove(index);
+
+            var mc = go.GetComponent<MeshCollider>();
+
+            if (mc != null && mc.sharedMesh != null)
+            {
+                Destroy(mc.sharedMesh);
+            }
+
+            Destroy(go);
+        }
     }
 
     private bool ValidateReferences()
@@ -113,158 +396,6 @@ public class ChunkManager : MonoBehaviour
         return valid;
     }
 
-    private void UpdatePlayerChunk()
-    {
-        var p = playerTransform.position;
-
-        playerChunk = new Vector2Int(
-            Mathf.FloorToInt(p.x / ChunkWorldSize),
-            Mathf.FloorToInt(p.z / ChunkWorldSize)
-        );
-    }
-
-    private Chunk GetOrCreateChunk(Vector2Int index)
-    {
-        if (!chunkMap.ChunkMapGetter().TryGetValue(index, out var chunk))
-        {
-            chunk = new Chunk(index);
-            chunkMap.ChunkMapGetter().Add(index, chunk);
-
-            if (debugMode)
-            {
-                Debug.Log("[ChunkManager] Created new chunk at index: " + index);
-            }
-        }
-
-        return chunk;
-    }
-
-    private void DrawChunks()
-    {
-        if (loadedChunks.Count == 0)
-        {
-            if (debugMode)
-            {
-                Debug.LogWarning("[ChunkManager] No loaded chunks to draw.");
-            }
-
-            return;
-        }
-
-        int drawCalls = 0;
-        int skippedMissingTileDefinitions = 0;
-        int skippedMissingMesh = 0;
-        int skippedMissingMaterial = 0;
-        int totalInstances = 0;
-
-        foreach (var chunk in loadedChunks)
-        {
-            foreach (int id in chunk.idToListOfTransforms.Keys)
-            {
-                if (!tileLibrary.TryGet(id, out var def))
-                {
-                    skippedMissingTileDefinitions++;
-
-                    if (debugMode)
-                    {
-                        Debug.LogWarning("[ChunkManager] TileLibrary does not contain a TileDefinition for block ID: " + id);
-                    }
-
-                    continue;
-                }
-
-                if (def == null)
-                {
-                    skippedMissingTileDefinitions++;
-
-                    if (debugMode)
-                    {
-                        Debug.LogWarning("[ChunkManager] TileDefinition is null for block ID: " + id);
-                    }
-
-                    continue;
-                }
-
-                Mesh mesh = def.MeshGetter();
-                Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
-                if (debugMode && !hasLoggedFirstDrawSummary)
-                {
-                    Debug.Log("[ChunkManager] Using material: " + material.name + " | Override assigned: " + (overrideDrawMaterial != null));
-                }
-                if (material != null)
-                {
-                    material.enableInstancing = true;
-                }
-
-                if (mesh == null)
-                {
-                    skippedMissingMesh++;
-
-                    if (debugMode)
-                    {
-                        Debug.LogWarning("[ChunkManager] Missing mesh for block ID: " + id + ". Check this TileDefinition's prefab.");
-                    }
-
-                    continue;
-                }
-
-                if (material == null)
-                {
-                    skippedMissingMaterial++;
-
-                    if (debugMode)
-                    {
-                        Debug.LogWarning("[ChunkManager] Missing material for block ID: " + id + ". Check this TileDefinition's prefab/material.");
-                    }
-
-                    continue;
-                }
-
-                var matrices = chunk.idToListOfTransforms[id];
-
-                if (matrices == null || matrices.Count == 0)
-                {
-                    if (debugMode)
-                    {
-                        Debug.LogWarning("[ChunkManager] No matrices/transforms for block ID: " + id);
-                    }
-
-                    continue;
-                }
-
-                const int Max = 1023;
-
-                for (int i = 0; i < matrices.Count; i += Max)
-                {
-                    int count = Mathf.Min(Max, matrices.Count - i);
-
-                    Graphics.DrawMeshInstanced(
-                        mesh,
-                        0,
-                        material,
-                        matrices.GetRange(i, count)
-                    );
-
-                    drawCalls++;
-                    totalInstances += count;
-                }
-            }
-        }
-
-        if (debugMode && (logEveryFrame || !hasLoggedFirstDrawSummary))
-        {
-            Debug.Log(
-                "[ChunkManager] Draw summary | Draw calls: " + drawCalls +
-                " | Instances: " + totalInstances +
-                " | Missing tile defs: " + skippedMissingTileDefinitions +
-                " | Missing meshes: " + skippedMissingMesh +
-                " | Missing materials: " + skippedMissingMaterial
-            );
-
-            hasLoggedFirstDrawSummary = true;
-        }
-    }
-
     private void OnDrawGizmos()
     {
         if (!drawDebugGizmos || playerTransform == null)
@@ -272,12 +403,13 @@ public class ChunkManager : MonoBehaviour
             return;
         }
 
-        Vector3 center = new Vector3(
-            playerChunk.x * ChunkWorldSize + ChunkWorldSize / 2f,
-            0f,
-            playerChunk.y * ChunkWorldSize + ChunkWorldSize / 2f
+        Gizmos.DrawWireCube(
+            WorldGrid.ChunkCenter(playerChunk),
+            new Vector3(WorldGrid.ChunkWorldSize, 0.1f, WorldGrid.ChunkWorldSize)
         );
 
-        Gizmos.DrawWireCube(center, new Vector3(ChunkWorldSize, 0.1f, ChunkWorldSize));
+        Gizmos.color = new Color(1f, 1f, 1f, 0.25f);
+        float span = (viewRadius * 2 + 1) * WorldGrid.ChunkWorldSize;
+        Gizmos.DrawWireCube(WorldGrid.ChunkCenter(playerChunk), new Vector3(span, 0.1f, span));
     }
 }
