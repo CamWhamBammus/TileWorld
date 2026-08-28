@@ -24,6 +24,13 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("Same seed, same world. Leave at 0 for a different world each run.")]
     [SerializeField] private int worldSeed = 0;
 
+    [Header("Performance")]
+    [Tooltip("Skip chunks outside the camera. These tiles average ~3,900 vertices each, so this is the difference between drawing 70 million and 20 million per frame.")]
+    [SerializeField] private bool frustumCulling = true;
+
+    [Tooltip("Tiles casting shadows means running all that geometry a second time for the shadow map. Off by default; tiles still receive shadows.")]
+    [SerializeField] private bool tilesCastShadows = false;
+
     [Header("Terrain")]
     [Tooltip("Raises tiles onto terraces and builds a walkable collision surface under them.")]
     [SerializeField] private bool terrainCollision = true;
@@ -58,13 +65,15 @@ public class ChunkManager : MonoBehaviour
     // per chunk meant chunks x tile types calls per frame — at view radius 4
     // that is around two thousand. Merged, it is one call per tile type
     // regardless of how far you can see.
-    private readonly Dictionary<int, List<Matrix4x4>> batchScratch = new Dictionary<int, List<Matrix4x4>>();
-
-    // Buffers are reused across rebuilds and only grow — rebuilding happens on
-    // every chunk border crossing, and reallocating a megabyte of matrices each
-    // time would hand the GC a steady drip of garbage.
+    // One buffer per tile type, sized for the worst case (every visible chunk)
+    // and reused. Each frame the on-screen chunks are copied in, so the draw
+    // keeps one call per tile type while still culling what is behind you.
     private readonly Dictionary<int, Matrix4x4[]> batches = new Dictionary<int, Matrix4x4[]>();
     private readonly Dictionary<int, int> batchCounts = new Dictionary<int, int>();
+    private readonly List<int> batchTypes = new List<int>();
+
+    private readonly Plane[] frustum = new Plane[6];
+    private Camera view;
     private Bounds visibleBounds;
     private readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
     private readonly List<Vector2Int> evictionScratch = new List<Vector2Int>();
@@ -180,50 +189,41 @@ public class ChunkManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Merges the visible chunks into one instance array per tile type. Only
-    /// runs when the player crosses a chunk border, so the per-frame draw does
-    /// no work beyond issuing the calls.
+    /// Sizes one buffer per tile type to hold every visible chunk at once, so
+    /// the per-frame fill never allocates. Runs only when the visible set
+    /// changes, which is when the player crosses a chunk border.
     /// </summary>
     private void RebuildBatches()
     {
-        foreach (var pair in batchScratch)
+        batchTypes.Clear();
+
+        foreach (var pair in batchCounts)
         {
-            pair.Value.Clear();
+            batchTypes.Add(pair.Key);
         }
+
+        // count worst-case instances per type across the visible set
+        var needed = new Dictionary<int, int>();
 
         for (int c = 0; c < visibleChunks.Count; c++)
         {
             foreach (var pair in visibleChunks[c].idToTransforms)
             {
-                if (!batchScratch.TryGetValue(pair.Key, out var list))
-                {
-                    list = new List<Matrix4x4>(pair.Value.Length * 16);
-                    batchScratch[pair.Key] = list;
-                }
-
-                list.AddRange(pair.Value);
+                needed.TryGetValue(pair.Key, out int have);
+                needed[pair.Key] = have + pair.Value.Length;
             }
         }
 
-        batchCounts.Clear();
+        batchTypes.Clear();
 
-        foreach (var pair in batchScratch)
+        foreach (var pair in needed)
         {
-            int count = pair.Value.Count;
-
-            if (count == 0)
+            if (!batches.TryGetValue(pair.Key, out var buffer) || buffer.Length < pair.Value)
             {
-                continue;
+                batches[pair.Key] = new Matrix4x4[Mathf.NextPowerOfTwo(pair.Value)];
             }
 
-            if (!batches.TryGetValue(pair.Key, out var buffer) || buffer.Length < count)
-            {
-                buffer = new Matrix4x4[Mathf.NextPowerOfTwo(count)];
-                batches[pair.Key] = buffer;
-            }
-
-            pair.Value.CopyTo(buffer);
-            batchCounts[pair.Key] = count;
+            batchTypes.Add(pair.Key);
         }
 
         float span = (viewRadius * 2 + 1) * WorldGrid.ChunkWorldSize;
@@ -279,12 +279,58 @@ public class ChunkManager : MonoBehaviour
 
     private void DrawChunks()
     {
+        if (view == null)
+        {
+            view = Camera.main;
+        }
+
+        bool cull = frustumCulling && view != null;
+
+        if (cull)
+        {
+            GeometryUtility.CalculateFrustumPlanes(view, frustum);
+        }
+
+        batchCounts.Clear();
+
+        int culled = 0;
+
+        for (int c = 0; c < visibleChunks.Count; c++)
+        {
+            Chunk chunk = visibleChunks[c];
+
+            if (cull && !GeometryUtility.TestPlanesAABB(frustum, chunk.Bounds))
+            {
+                culled++;
+                continue;
+            }
+
+            foreach (var pair in chunk.idToTransforms)
+            {
+                if (!batches.TryGetValue(pair.Key, out var buffer))
+                {
+                    continue;
+                }
+
+                batchCounts.TryGetValue(pair.Key, out int count);
+
+                if (count + pair.Value.Length > buffer.Length)
+                {
+                    continue;
+                }
+
+                // straight memory copy — no per-frame allocation
+                System.Array.Copy(pair.Value, 0, buffer, count, pair.Value.Length);
+                batchCounts[pair.Key] = count + pair.Value.Length;
+            }
+        }
+
         int drawCalls = 0;
         int totalInstances = 0;
 
         foreach (var pair in batchCounts)
         {
-            if (!tileLibrary.TryGet(pair.Key, out var def) || def == null)
+            if (pair.Value == 0 || !tileLibrary.TryGet(pair.Key, out var def) || def == null)
             {
                 continue;
             }
@@ -303,8 +349,6 @@ public class ChunkManager : MonoBehaviour
             RenderParams rp = GetRenderParams(material);
             rp.worldBounds = visibleBounds;
 
-            // Instanced draws cap out at 1023 per call; startInstance walks the
-            // array in place, so no per-frame copies are made.
             const int Max = 1023;
 
             for (int i = 0; i < instanceCount; i += Max)
@@ -323,8 +367,8 @@ public class ChunkManager : MonoBehaviour
             Debug.Log(
                 "[ChunkManager] Draw summary | Draw calls: " + drawCalls +
                 " | Instances: " + totalInstances +
-                " | Visible chunks: " + visibleChunks.Count +
-                " | Resident chunks: " + chunks.Count
+                " | Chunks drawn: " + (visibleChunks.Count - culled) + "/" + visibleChunks.Count +
+                " | Shadows: " + (tilesCastShadows ? "on" : "off")
             );
 
             hasLoggedFirstDrawSummary = true;
@@ -341,7 +385,14 @@ public class ChunkManager : MonoBehaviour
             {
                 layer = gameObject.layer,
                 receiveShadows = true,
-                shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On
+
+                // Tens of thousands of instances, so per-instance probe work is
+                // not free. The tiles are lit flatly enough not to miss it.
+                lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off,
+                reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off,
+                shadowCastingMode = tilesCastShadows
+                    ? UnityEngine.Rendering.ShadowCastingMode.On
+                    : UnityEngine.Rendering.ShadowCastingMode.Off
             };
 
             renderParamsCache[material] = rp;
