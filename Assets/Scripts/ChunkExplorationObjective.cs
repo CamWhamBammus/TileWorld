@@ -11,8 +11,6 @@ public class ChunkExplorationObjective : MonoBehaviour
     [Header("Objective")]
     [SerializeField] private int chunksNeededToWin = 9;
 
-    private readonly HashSet<Vector2Int> visitedChunks = new HashSet<Vector2Int>();
-
     private Vector2Int currentChunk;
     private bool objectiveComplete = false;
 
@@ -33,7 +31,7 @@ public class ChunkExplorationObjective : MonoBehaviour
         }
 
         UpdateCurrentChunk();
-        visitedChunks.Add(currentChunk);
+        ExplorationLog.Visit(currentChunk);
         UpdateUI();
     }
 
@@ -50,15 +48,14 @@ public class ChunkExplorationObjective : MonoBehaviour
         {
             currentChunk = newChunk;
 
-            if (!visitedChunks.Contains(currentChunk))
+            if (ExplorationLog.Visit(currentChunk))
             {
-                visitedChunks.Add(currentChunk);
                 Debug.Log("[ChunkObjective] New chunk discovered: " + currentChunk);
             }
 
             UpdateUI();
 
-            if (visitedChunks.Count >= chunksNeededToWin)
+            if (ExplorationLog.Count >= chunksNeededToWin)
             {
                 CompleteObjective();
             }
@@ -79,7 +76,7 @@ public class ChunkExplorationObjective : MonoBehaviour
     {
         chunkCounterText.text =
             "Map the Unknown\n" +
-            "Chunks Explored: " + visitedChunks.Count + " / " + chunksNeededToWin + "\n" +
+            "Chunks Explored: " + ExplorationLog.Count + " / " + chunksNeededToWin + "\n" +
             "Current Chunk: " + currentChunk;
     }
 
@@ -89,7 +86,7 @@ public class ChunkExplorationObjective : MonoBehaviour
 
         chunkCounterText.text =
             "Survey Complete!\n" +
-            "Chunks Explored: " + visitedChunks.Count + " / " + chunksNeededToWin + "\n" +
+            "Chunks Explored: " + ExplorationLog.Count + " / " + chunksNeededToWin + "\n" +
             "The forest continues beyond your map...";
 
         Debug.Log("[ChunkObjective] Objective complete!");

@@ -13,8 +13,6 @@ public class QuestManager : MonoBehaviour
     [SerializeField] private int chunksNeededForDeepSurvey = 15;
     [SerializeField] private int chunkDistanceGoal = 3;
 
-    private readonly HashSet<Vector2Int> visitedChunks = new HashSet<Vector2Int>();
-
     private Vector2Int currentChunk;
 
     private bool completedMainQuest;
@@ -39,7 +37,7 @@ public class QuestManager : MonoBehaviour
         }
 
         currentChunk = GetChunkFromPosition(playerTransform.position);
-        visitedChunks.Add(currentChunk);
+        ExplorationLog.Visit(currentChunk);
 
         UpdateQuests();
         UpdateQuestUI();
@@ -53,9 +51,8 @@ public class QuestManager : MonoBehaviour
         {
             currentChunk = newChunk;
 
-            if (!visitedChunks.Contains(currentChunk))
+            if (ExplorationLog.Visit(currentChunk))
             {
-                visitedChunks.Add(currentChunk);
                 Debug.Log("[QuestManager] Discovered new chunk: " + currentChunk);
             }
 
@@ -71,13 +68,13 @@ public class QuestManager : MonoBehaviour
 
     private void UpdateQuests()
     {
-        if (!completedMainQuest && visitedChunks.Count >= chunksNeededForMainQuest)
+        if (!completedMainQuest && ExplorationLog.Count >= chunksNeededForMainQuest)
         {
             completedMainQuest = true;
             Debug.Log("[QuestManager] Completed quest: Map the Unknown");
         }
 
-        if (!completedDeepSurveyQuest && visitedChunks.Count >= chunksNeededForDeepSurvey)
+        if (!completedDeepSurveyQuest && ExplorationLog.Count >= chunksNeededForDeepSurvey)
         {
             completedDeepSurveyQuest = true;
             Debug.Log("[QuestManager] Completed quest: Deep Forest Survey");
@@ -108,7 +105,7 @@ public class QuestManager : MonoBehaviour
         bool north = false;
         bool south = false;
 
-        foreach (Vector2Int chunk in visitedChunks)
+        foreach (Vector2Int chunk in ExplorationLog.Visited)
         {
             if (chunk.x > 0) east = true;
             if (chunk.x < 0) west = true;
@@ -131,7 +128,7 @@ public class QuestManager : MonoBehaviour
 
             Checkmark(completedMainQuest) + " Map the Unknown\n" +
             "Explore " + chunksNeededForMainQuest + " unique chunks.\n" +
-            "Progress: " + Mathf.Min(visitedChunks.Count, chunksNeededForMainQuest) + " / " + chunksNeededForMainQuest + "\n\n" +
+            "Progress: " + Mathf.Min(ExplorationLog.Count, chunksNeededForMainQuest) + " / " + chunksNeededForMainQuest + "\n\n" +
 
             Checkmark(completedDistanceQuest) + " Walk Beyond the Origin\n" +
             "Reach chunk distance " + chunkDistanceGoal + " from spawn.\n" +
@@ -142,9 +139,9 @@ public class QuestManager : MonoBehaviour
 
             Checkmark(completedDeepSurveyQuest) + " Deep Forest Survey\n" +
             "Discover " + chunksNeededForDeepSurvey + " total chunks.\n" +
-            "Progress: " + Mathf.Min(visitedChunks.Count, chunksNeededForDeepSurvey) + " / " + chunksNeededForDeepSurvey + "\n\n" +
+            "Progress: " + Mathf.Min(ExplorationLog.Count, chunksNeededForDeepSurvey) + " / " + chunksNeededForDeepSurvey + "\n\n" +
 
             "Current Chunk: " + currentChunk + "\n" +
-            "Total Chunks Discovered: " + visitedChunks.Count;
+            "Total Chunks Discovered: " + ExplorationLog.Count;
     }
 }
