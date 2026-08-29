@@ -27,17 +27,19 @@ Some chunks have a structure in them. There are four: an abandoned house with th
 
 They are placed from the seed like everything else, so they are always in the same spot for a given world. The game checks the ground across the whole footprint first and skips anywhere too uneven to build on, and keeps them away from chunk edges so one never gets cut in half by a border.
 
-Walk up to one and it gets marked on your map.
+Walk up to one and it gets marked on your map. The two towers are worth more than that. Both have a staircase you can climb, and getting to the top charts the land around you without walking it, which fills in a big circle of your map at once. The house and the stone circle reveal a little just for reaching them.
+
+That gives you something to aim at. You spot a tower over the trees, walk to it, climb it, and the map fills in far enough to show you where to go next.
 
 ## The map
 
 ![The map screen](docs/images/map.png)
 
-Press M. Chunks you have been through are shaded by height, everything else is left blank, and landmarks you have found show up as diamonds. The arrow is you.
+Press M. Chunks you have been through are shaded by height, everything else is left blank, and landmarks you have found show up as diamonds. Ground you have only seen from the top of a tower is drawn faded, so you can tell where you have actually been. The arrow is you.
 
 ## Quests
 
-Press Q. Five of them, all based on where you have been: explore new chunks, get a certain distance from spawn, reach all four compass directions, find landmarks, and survey a larger area.
+Press Q. Six of them, all based on where you have been: explore new chunks, get a certain distance from spawn, reach all four compass directions, find landmarks, climb towers, and survey a larger area.
 
 ## Controls
 

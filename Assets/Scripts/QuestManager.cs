@@ -16,6 +16,9 @@ public class QuestManager : MonoBehaviour
     [Tooltip("Landmarks to find for the survey quest.")]
     [SerializeField] private int landmarksNeeded = 3;
 
+    [Tooltip("Towers to climb and survey from.")]
+    [SerializeField] private int surveysNeeded = 2;
+
     private Vector2Int currentChunk;
 
     private bool completedMainQuest;
@@ -23,6 +26,8 @@ public class QuestManager : MonoBehaviour
     private bool completedFourDirectionsQuest;
     private bool completedDeepSurveyQuest;
     private bool completedLandmarkQuest;
+    private bool completedHighPlaceQuest;
+    private int surveysMade;
 
     private void Start()
     {
@@ -43,6 +48,25 @@ public class QuestManager : MonoBehaviour
         currentChunk = GetChunkFromPosition(playerTransform.position);
         ExplorationLog.Visit(currentChunk);
 
+        LandmarkSpawner.Surveyed += OnSurveyed;
+
+        UpdateQuests();
+        UpdateQuestUI();
+    }
+
+    private void OnDestroy()
+    {
+        LandmarkSpawner.Surveyed -= OnSurveyed;
+    }
+
+    private void OnSurveyed(LandmarkKind kind, int charted)
+    {
+        if (Landmarks.SurveyHeight(kind) <= 0f)
+        {
+            return;   // only climbing something counts for this
+        }
+
+        surveysMade++;
         UpdateQuests();
         UpdateQuestUI();
     }
@@ -94,6 +118,12 @@ public class QuestManager : MonoBehaviour
         {
             completedLandmarkQuest = true;
             Debug.Log("[QuestManager] Completed quest: Marks on the Land");
+        }
+
+        if (!completedHighPlaceQuest && surveysMade >= surveysNeeded)
+        {
+            completedHighPlaceQuest = true;
+            Debug.Log("[QuestManager] Completed quest: The High Places");
         }
 
         if (!completedFourDirectionsQuest && HasVisitedAllFourDirections())
@@ -191,6 +221,11 @@ public class QuestManager : MonoBehaviour
             "Find " + landmarksNeeded + " landmarks left by those who came before.",
             Bar(LandmarkLog.Count, landmarksNeeded) + "  <color=" + Open + ">" +
             Mathf.Min(LandmarkLog.Count, landmarksNeeded) + " / " + landmarksNeeded + "</color>");
+
+        log += Quest(completedHighPlaceQuest, "The High Places",
+            "Climb " + surveysNeeded + " towers and chart the land from them.",
+            Bar(surveysMade, surveysNeeded) + "  <color=" + Open + ">" +
+            Mathf.Min(surveysMade, surveysNeeded) + " / " + surveysNeeded + "</color>");
 
         log += Quest(completedDeepSurveyQuest, "Deep Forest Survey",
             "Discover " + chunksNeededForDeepSurvey + " total chunks.",

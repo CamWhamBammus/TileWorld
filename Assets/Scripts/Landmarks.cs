@@ -96,6 +96,36 @@ public static class Landmarks
         return hi - lo;
     }
 
+    /// <summary>
+    /// How far a landmark charts once you have made use of it, in chunks.
+    /// Height is the point: a tower you have to climb shows you far more than
+    /// a ring of stones you can walk into.
+    /// </summary>
+    public static int SurveyRadius(LandmarkKind kind)
+    {
+        switch (kind)
+        {
+            case LandmarkKind.RuinedTower: return 6;
+            case LandmarkKind.Watchtower: return 5;
+            case LandmarkKind.AbandonedHouse: return 2;
+            default: return 2;
+        }
+    }
+
+    /// <summary>
+    /// How high above its base you have to get before it counts. Towers have to
+    /// be climbed; the house and the circle only have to be reached.
+    /// </summary>
+    public static float SurveyHeight(LandmarkKind kind)
+    {
+        switch (kind)
+        {
+            case LandmarkKind.RuinedTower: return 8f;
+            case LandmarkKind.Watchtower: return 7f;
+            default: return 0f;
+        }
+    }
+
     public static string NameOf(LandmarkKind kind)
     {
         switch (kind)

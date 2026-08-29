@@ -67,6 +67,29 @@ public static class LandmarkBuilder
         return go.transform;
     }
 
+    /// <summary>
+    /// A helix of steps. Towers are worth climbing only if they can be climbed,
+    /// and a ladder cannot be: the character controller steps up, it does not
+    /// grab rungs. Rise per step is kept under the controller's step offset.
+    /// </summary>
+    private static void SpiralStair(Transform p, float radius, float fromY, float toY,
+        float stepRise, float startAngle, Material mat)
+    {
+        int steps = Mathf.CeilToInt((toY - fromY) / stepRise);
+        float perStep = 360f / Mathf.Max(6f, 2f * Mathf.PI * radius / 1.1f);
+
+        for (int i = 0; i < steps; i++)
+        {
+            float a = (startAngle + i * perStep) * Mathf.Deg2Rad;
+            float y = fromY + i * stepRise;
+
+            var pos = new Vector3(Mathf.Cos(a) * radius, y, Mathf.Sin(a) * radius);
+
+            Box(p, pos, new Vector3(1.5f, stepRise, 1.15f),
+                new Vector3(0f, -a * Mathf.Rad2Deg, 0f), mat);
+        }
+    }
+
     /// <summary>A wall with a gap left in it for a door or window.</summary>
     private static void GappedWall(Transform p, Vector3 centre, float length, float height,
         float thickness, float yaw, float gapStart, float gapWidth, float gapBottom, float gapTop, Material mat)
@@ -195,6 +218,12 @@ public static class LandmarkBuilder
             }
         }
 
+        // A stair up the inside, so the top is somewhere you can actually get to.
+        // No floor at the head of it: a slab there would be exactly what the
+        // last steps run into.
+        float topY = 0.4f + rings * ringHeight;
+        SpiralStair(p, radius - 1.35f, 0.4f, topY - 1.0f, 0.4f, 200f, darkStone);
+
         // fallen blocks around the base
         for (int i = 0; i < 8; i++)
         {
@@ -267,18 +296,22 @@ public static class LandmarkBuilder
             Box(p, new Vector3(-legSpread * 0.5f, y, 0f), new Vector3(0.2f, 0.2f, legSpread + 0.4f), Vector3.zero, wood);
         }
 
-        // platform, rail and roof
-        Box(p, new Vector3(0f, height, 0f), new Vector3(4.6f, 0.3f, 4.6f), Vector3.zero, wood);
+        // Deck widened to 5.8 so it reaches the stair that spirals up outside
+        // the legs; a narrower one would leave a gap to fall through.
+        Box(p, new Vector3(0f, height, 0f), new Vector3(5.8f, 0.3f, 5.8f), Vector3.zero, wood);
 
         for (int i = 0; i < 4; i++)
         {
             bool alongX = i < 2;
             float s = (i % 2 == 0) ? -1f : 1f;
 
+            // the stair arrives on the -z side, so that rail is left open
+            if (alongX && s < 0f) continue;
+
             if (alongX)
-                Box(p, new Vector3(0f, height + 0.9f, s * 2.2f), new Vector3(4.6f, 0.18f, 0.18f), Vector3.zero, darkWood);
+                Box(p, new Vector3(0f, height + 0.9f, s * 2.8f), new Vector3(5.8f, 0.18f, 0.18f), Vector3.zero, darkWood);
             else
-                Box(p, new Vector3(s * 2.2f, height + 0.9f, 0f), new Vector3(0.18f, 0.18f, 4.6f), Vector3.zero, darkWood);
+                Box(p, new Vector3(s * 2.8f, height + 0.9f, 0f), new Vector3(0.18f, 0.18f, 5.8f), Vector3.zero, darkWood);
         }
 
         // corner posts, or the roof reads as floating
@@ -298,11 +331,8 @@ public static class LandmarkBuilder
             new Vector3(32f, 0f, 0f), thatch);
         Box(p, new Vector3(0f, height + 3.5f, 0f), new Vector3(5.4f, 0.18f, 0.18f), Vector3.zero, darkWood);
 
-        // ladder
-        for (int i = 0; i < 12; i++)
-        {
-            float y = 0.6f + i * (height - 0.8f) / 12f;
-            Box(p, new Vector3(0f, y, -legSpread * 0.5f - 0.35f), new Vector3(1.1f, 0.12f, 0.12f), Vector3.zero, wood);
-        }
+        // Stair around the outside, replacing a ladder nothing could climb. It
+        // ends level with the deck rather than under it.
+        SpiralStair(p, 2.9f, 0.4f, height + 0.15f, 0.4f, 180f, wood);
     }
 }

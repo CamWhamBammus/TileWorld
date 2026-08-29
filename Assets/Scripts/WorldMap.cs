@@ -210,14 +210,15 @@ public class WorldMap : MonoBehaviour
 
         int seed = world.WorldSeed;
 
+        // seen from a tower, but not walked: drawn washed out toward the paper
+        foreach (Vector2Int chunk in ExplorationLog.Surveyed)
+        {
+            DrawCell(chunk, Color.Lerp(TerrainColour(chunk, seed), Paper, 0.55f));
+        }
+
         foreach (Vector2Int chunk in ExplorationLog.Visited)
         {
-            Vector3 centre = WorldGrid.ChunkCenter(chunk);
-            int tileX = Mathf.RoundToInt(centre.x / WorldGrid.TileSize);
-            int tileZ = Mathf.RoundToInt(centre.z / WorldGrid.TileSize);
-
-            float height = WorldHeight.SurfaceY(tileX, tileZ, seed) - WorldHeight.BaseSurfaceY;
-            DrawCell(chunk, HeightColour(height));
+            DrawCell(chunk, TerrainColour(chunk, seed));
         }
 
         DrawSurveyLines();
@@ -239,6 +240,15 @@ public class WorldMap : MonoBehaviour
         texture.SetPixels32(pixels);
         texture.Apply(false);
         UpdateStats();
+    }
+
+    private Color TerrainColour(Vector2Int chunk, int seed)
+    {
+        Vector3 centre = WorldGrid.ChunkCenter(chunk);
+        int tileX = Mathf.RoundToInt(centre.x / WorldGrid.TileSize);
+        int tileZ = Mathf.RoundToInt(centre.z / WorldGrid.TileSize);
+
+        return HeightColour(WorldHeight.SurfaceY(tileX, tileZ, seed) - WorldHeight.BaseSurfaceY);
     }
 
     private void UpdateStats()
@@ -451,6 +461,12 @@ public class WorldMap : MonoBehaviour
         max = new Vector2Int(int.MinValue, int.MinValue);
 
         foreach (Vector2Int c in ExplorationLog.Visited)
+        {
+            min = Vector2Int.Min(min, c);
+            max = Vector2Int.Max(max, c);
+        }
+
+        foreach (Vector2Int c in ExplorationLog.Surveyed)
         {
             min = Vector2Int.Min(min, c);
             max = Vector2Int.Max(max, c);

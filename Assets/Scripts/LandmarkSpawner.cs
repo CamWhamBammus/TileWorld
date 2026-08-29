@@ -14,11 +14,15 @@ public class LandmarkSpawner : MonoBehaviour
     [Tooltip("How close you must get before it counts as discovered.")]
     [SerializeField] private float discoveryRange = 18f;
 
+    [Tooltip("How close you must be, horizontally, for climbing one to count as surveying from it.")]
+    [SerializeField] private float surveyRange = 14f;
+
     private ChunkManager world;
     private Transform player;
 
     private readonly Dictionary<Vector2Int, GameObject> live = new Dictionary<Vector2Int, GameObject>();
     private readonly List<Vector2Int> scratch = new List<Vector2Int>();
+    private readonly HashSet<Vector2Int> surveyedFrom = new HashSet<Vector2Int>();
 
     private Vector2Int lastChunk = new Vector2Int(int.MinValue, int.MinValue);
 
@@ -110,29 +114,75 @@ public class LandmarkSpawner : MonoBehaviour
     private void CheckDiscovery()
     {
         int seed = world.WorldSeed;
-        float sqrRange = discoveryRange * discoveryRange;
 
         foreach (var pair in live)
         {
-            if (LandmarkLog.Found.ContainsKey(pair.Key))
-            {
-                continue;
-            }
+            Vector3 basePos = pair.Value.transform.position;
 
-            Vector3 to = pair.Value.transform.position - player.position;
-            to.y = 0f;
-
-            if (to.sqrMagnitude > sqrRange)
-            {
-                continue;
-            }
+            Vector3 flat = basePos - player.position;
+            flat.y = 0f;
+            float distance = flat.magnitude;
 
             var placement = Landmarks.In(pair.Key, seed);
 
-            if (LandmarkLog.Discover(pair.Key, placement.Kind))
+            if (distance <= discoveryRange && LandmarkLog.Discover(pair.Key, placement.Kind))
             {
                 Debug.Log("[Landmarks] Found a " + Landmarks.NameOf(placement.Kind) + " at chunk " + pair.Key);
             }
+
+            if (surveyedFrom.Contains(pair.Key) || distance > surveyRange)
+            {
+                continue;
+            }
+
+            // Towers ask you to climb them; the rest only ask you to arrive.
+            float climbed = player.position.y - basePos.y;
+
+            if (climbed < Landmarks.SurveyHeight(placement.Kind))
+            {
+                continue;
+            }
+
+            surveyedFrom.Add(pair.Key);
+            SurveyFrom(pair.Key, placement.Kind);
         }
+    }
+
+    /// <summary>Charts the land around a landmark you have made use of.</summary>
+    private void SurveyFrom(Vector2Int centre, LandmarkKind kind)
+    {
+        int radius = Landmarks.SurveyRadius(kind);
+        int charted = 0;
+
+        for (int dx = -radius; dx <= radius; dx++)
+        for (int dz = -radius; dz <= radius; dz++)
+        {
+            // a circle, so the revealed area does not look like a stamped square
+            if (dx * dx + dz * dz > radius * radius)
+            {
+                continue;
+            }
+
+            if (ExplorationLog.Survey(new Vector2Int(centre.x + dx, centre.y + dz)))
+            {
+                charted++;
+            }
+        }
+
+        Surveyed?.Invoke(kind, charted);
+        Debug.Log("[Landmarks] Surveyed from the " + Landmarks.NameOf(kind) + ": charted " + charted + " new chunks");
+    }
+
+    /// <summary>Raised when a landmark is used to chart the land, with how much it revealed.</summary>
+    public static event System.Action<LandmarkKind, int> Surveyed;
+
+    /// <summary>
+    /// Statics survive between play sessions when the editor skips domain
+    /// reload, which would leave last run's QuestManager still subscribed.
+    /// </summary>
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetEvent()
+    {
+        Surveyed = null;
     }
 }
