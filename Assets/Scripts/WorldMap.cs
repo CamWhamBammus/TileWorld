@@ -267,6 +267,10 @@ public class WorldMap : MonoBehaviour
             "<color=#D8CDB4>elevation " + here.ToString("F1") + "m</color>" +
             "   <color=#8A7E68>|</color>   " +
             "<color=#D8CDB4>" + LandmarkLog.Count + " landmarks</color>" +
+            (TimeOfDay.Instance != null
+                ? "   <color=#8A7E68>|</color>   <color=#D8CDB4>" + TimeOfDay.Instance.Clock() +
+                  " <color=#8A7E68>" + TimeOfDay.Instance.Label() + "</color></color>"
+                : "") +
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
             "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
             "landmark <color=#5C442D>\u25C6</color>     " +

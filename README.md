@@ -18,6 +18,16 @@ Collision does not follow those steps. The character controller can only step up
 
 ![The height field from above](docs/images/terrain.png)
 
+## Time and weather
+
+The sun moves. A full day and night takes twenty minutes by default and you can change that on the Time of Day object. Dawn and dusk go orange and the light rakes across the forest, night is dark but still light enough to navigate by, and the sky, the ambient light and the fog all follow along.
+
+![Dusk over the forest](docs/images/dusk.png)
+
+Weather drifts on its own. It clears and clouds over on a slow noise curve, and when it closes in the sun goes flat and grey, shadows soften and fog pulls the horizon in close.
+
+![Night](docs/images/night.png)
+
 ## Landmarks
 
 Some chunks have a structure in them. There are four: an abandoned house with the roof half gone, a ruined tower, a stone circle, and a timber watchtower.
