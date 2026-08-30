@@ -18,6 +18,8 @@ Collision does not follow those steps. The character controller can only step up
 
 ![The height field from above](docs/images/terrain.png)
 
+Which tile goes where follows the height and the steepness rather than its own separate noise, so the ground gets paler as it climbs, steep faces go bare, and there is a treeline: trees thin out with altitude and stop entirely near the top. Lowlands come out about a third trees, the ground around a summit under a tenth, and above the treeline almost none.
+
 ## Time and weather
 
 The sun moves. A full day and night takes twenty minutes by default and you can change that on the Time of Day object. Dawn and dusk go orange and the light rakes across the forest, night is dark but still light enough to navigate by, and the sky, the ambient light and the fog all follow along.

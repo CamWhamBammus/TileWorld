@@ -11,11 +11,31 @@ public class Chunk
     private const int Categories = 5;           // shade bands: VeryDark → VeryLight
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
-    // Low frequency picks out broad regions; the second, faster octave breaks up
-    // the straight bands the single-octave version produced.
-    private const float BaseNoiseScale = 0.045f;
-    private const float DetailNoiseScale = 0.13f;
-    private const float DetailWeight = 0.3f;
+    // Only three of the five shade categories contain a treed tile, so height
+    // cannot simply be spread across all five: two of the bands would come out
+    // bare whatever the altitude. The gradient runs through the treed ones,
+    // and the other two are used for ground that should be bare anyway.
+    private static readonly int[] ShadeByHeight = { 2, 1, 0 };   // dark, light, pale
+
+    private const int BareSteepCategory = 3;   // Big Grass, no trees: steep faces
+    private const int MarshCategory = 4;       // Very Dark, no trees: low flat ground
+
+    // These four tiles carry a tree. Above the treeline they are swapped out,
+    // which is what makes a summit read as a summit.
+    private static readonly bool[] CarriesTree = BuildTreeTable();
+
+    private const float TreelineFraction = 0.72f;
+    private const float SteepFraction = 0.62f;
+    private const float MarshFraction = 0.10f;
+    private const float BlendNoiseScale = 0.09f;
+    private const float BlendWeight = 0.22f;
+
+    private static bool[] BuildTreeTable()
+    {
+        var table = new bool[Categories * VariantsPerCategory];
+        table[4] = table[8] = table[11] = table[13] = true;
+        return table;
+    }
 
     /// <summary>Tile transforms grouped by tile id, ready for instanced drawing.</summary>
     public readonly Dictionary<int, Matrix4x4[]> idToTransforms = new Dictionary<int, Matrix4x4[]>();
@@ -56,9 +76,37 @@ public class Chunk
             int gx = chunkIndexX() * WorldGrid.TilesPerChunk + tx;
             int gz = chunkIndexZ() * WorldGrid.TilesPerChunk + tz;
 
-            int category = CategoryAt(gx, gz, offset);
+            // Height and steepness decide the ground; noise only softens the edge.
+            float relief = Mathf.Clamp01(WorldHeight.HeightAt(gx, gz, worldSeed) / WorldHeight.MaxRelief);
+            float steep = Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / 1.2f);
+
+            float wobble = Mathf.PerlinNoise(offset + gx * BlendNoiseScale, offset + gz * BlendNoiseScale) - 0.5f;
+            float bare = Mathf.Clamp01(relief + steep * 0.30f + wobble * BlendWeight);
+
+            int band = Mathf.Clamp(Mathf.FloorToInt(bare * ShadeByHeight.Length), 0, ShadeByHeight.Length - 1);
+            int category = ShadeByHeight[band];
+
+            if (steep > SteepFraction)
+            {
+                category = BareSteepCategory;       // scree on the steep faces
+            }
+            else if (bare < MarshFraction)
+            {
+                category = MarshCategory;           // dark ground in the low flats
+            }
+
             int variant = Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
             int id = category * VariantsPerCategory + variant;
+
+            // Above the treeline, swap a treed tile for a bare one of the same shade.
+            if (CarriesTree[id] && bare > TreelineFraction)
+            {
+                for (int step = 1; step < VariantsPerCategory; step++)
+                {
+                    int candidate = category * VariantsPerCategory + (variant + step) % VariantsPerCategory;
+                    if (!CarriesTree[candidate]) { id = candidate; break; }
+                }
+            }
 
             Vector3 position = new Vector3(
                 chunkIndexX() * WorldGrid.ChunkWorldSize + tx * WorldGrid.TileSize,
@@ -89,20 +137,14 @@ public class Chunk
     private int chunkIndexX() { return Index.x; }
     private int chunkIndexZ() { return Index.y; }
 
-    /// <summary>Two octaves of noise, folded into one of the shade bands.</summary>
-    private static int CategoryAt(int gx, int gz, float offset)
+    /// <summary>Steepest rise to a neighbouring tile.</summary>
+    private static float SlopeAt(int gx, int gz, int worldSeed)
     {
-        float basis = Mathf.PerlinNoise(
-            offset + gx * BaseNoiseScale,
-            offset + gz * BaseNoiseScale);
+        float h = WorldHeight.SurfaceY(gx, gz, worldSeed);
 
-        float detail = Mathf.PerlinNoise(
-            offset + gx * DetailNoiseScale,
-            offset + gz * DetailNoiseScale);
-
-        float n = Mathf.Clamp01(basis * (1f - DetailWeight) + detail * DetailWeight);
-
-        return Mathf.Clamp(Mathf.FloorToInt(n * Categories), 0, Categories - 1);
+        return Mathf.Max(
+            Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, worldSeed) - h),
+            Mathf.Abs(WorldHeight.SurfaceY(gx, gz + 1, worldSeed) - h));
     }
 
     private static int Hash2D(int x, int y, int seed)
