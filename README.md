@@ -34,6 +34,9 @@ Some chunks have a structure in them. There are four: an abandoned house with th
 
 ![Abandoned house](docs/images/house.png)
 ![Ruined tower](docs/images/tower.png)
+![Watchtower](docs/images/watchtower.png)
+
+They are built out of primitives, but built as buildings: the cottage is timber framed with plaster panels between the beams, on a stone plinth with a chimney and a thatched roof that has partly fallen in. The tower is coursed stone with the courses knocked slightly out of true, an arched doorway, crenellations and a stair inside. Every piece is placed from a seeded random, so a structure you walk away from and come back to is the same one.
 
 They are placed from the seed like everything else, so they are always in the same spot for a given world. The game checks the ground across the whole footprint first and skips anywhere too uneven to build on, and keeps them away from chunk edges so one never gets cut in half by a border.
 
