@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class QuestManager : MonoBehaviour
 {
@@ -50,9 +51,88 @@ public class QuestManager : MonoBehaviour
 
         LandmarkSpawner.Surveyed += OnSurveyed;
 
+        StylePanel();
+
         UpdateQuests();
         UpdateQuestUI();
     }
+
+    /// <summary>
+    /// Puts the quest log on the same chart paper as the map, and gives it a
+    /// fixed card the text has to fit inside. It was a transparent rectangle
+    /// you could read the forest through, and the last two quests ran off the
+    /// bottom of it.
+    /// </summary>
+    private void StylePanel()
+    {
+        var panel = questText.rectTransform.parent as RectTransform;
+
+        if (panel == null)
+        {
+            panel = questText.rectTransform;
+        }
+
+        // a dimmed backdrop, so the log reads as a screen rather than an overlay
+        var shadeGo = new GameObject("Backdrop");
+        shadeGo.transform.SetParent(panel, false);
+        shadeGo.transform.SetAsFirstSibling();
+
+        var shade = shadeGo.AddComponent<RawImage>();
+        shade.texture = Texture2D.whiteTexture;
+        shade.color = new Color(0f, 0f, 0f, 0.45f);
+        shade.raycastTarget = false;
+
+        var shadeRect = shadeGo.GetComponent<RectTransform>();
+        shadeRect.anchorMin = new Vector2(0.5f, 0.5f);
+        shadeRect.anchorMax = new Vector2(0.5f, 0.5f);
+        shadeRect.pivot = new Vector2(0.5f, 0.5f);
+        shadeRect.sizeDelta = new Vector2(6000f, 6000f);
+        shadeRect.anchoredPosition = Vector2.zero;
+
+        // the card itself
+        var existing = panel.GetComponent<Image>();
+        if (existing != null) existing.enabled = false;
+
+        var cardGo = new GameObject("Card");
+        cardGo.transform.SetParent(panel, false);
+        cardGo.transform.SetSiblingIndex(1);
+
+        var card = cardGo.AddComponent<RawImage>();
+        card.texture = ParchmentPanel.Create(512, 640);
+        card.raycastTarget = false;
+
+        var cardRect = cardGo.GetComponent<RectTransform>();
+        cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+        cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRect.pivot = new Vector2(0.5f, 0.5f);
+        cardRect.sizeDelta = PanelSize;
+        cardRect.anchoredPosition = Vector2.zero;
+
+        panel.anchorMin = new Vector2(0.5f, 0.5f);
+        panel.anchorMax = new Vector2(0.5f, 0.5f);
+        panel.pivot = new Vector2(0.5f, 0.5f);
+        panel.anchoredPosition = Vector2.zero;
+        panel.sizeDelta = PanelSize;
+
+        // text inside the rules, and shrunk to fit rather than allowed to spill
+        var textRect = questText.rectTransform;
+        textRect.SetAsLastSibling();
+        textRect.anchorMin = new Vector2(0.5f, 0.5f);
+        textRect.anchorMax = new Vector2(0.5f, 0.5f);
+        textRect.pivot = new Vector2(0.5f, 0.5f);
+        textRect.anchoredPosition = Vector2.zero;
+        textRect.sizeDelta = PanelSize - new Vector2(96f, 96f);
+
+        questText.alignment = TextAlignmentOptions.TopLeft;
+        questText.enableWordWrapping = true;
+        questText.overflowMode = TextOverflowModes.Overflow;
+        questText.enableAutoSizing = true;
+        questText.fontSizeMin = 11f;
+        questText.fontSizeMax = 21f;
+        questText.color = Color.white;   // the markup carries the colour
+    }
+
+    private static readonly Vector2 PanelSize = new Vector2(720f, 880f);
 
     private void OnDestroy()
     {
@@ -157,10 +237,12 @@ public class QuestManager : MonoBehaviour
     }
 
     // Palette shared with the map, so the two screens look like one game.
-    private const string Done = "#7FA05A";
-    private const string Open = "#C9BEA4";
-    private const string Dim = "#8A7E68";
-    private const string Head = "#F0E6D2";
+    // Inks for a light card. The old values were for a dark panel and are
+    // close to invisible on paper.
+    private const string Done = "#4A6B33";
+    private const string Open = "#4A4032";
+    private const string Dim = "#8A7C63";
+    private const string Head = "#33291D";
 
     private static string Bullet(bool complete)
     {
@@ -184,11 +266,11 @@ public class QuestManager : MonoBehaviour
         string body =
             "<line-height=115%>" + Bullet(complete) + "  <b><color=" +
             (complete ? Done : Head) + ">" + title + "</color></b>\n" +
-            "<indent=22px><size=17><color=" + Dim + ">" + detail + "</color></size>\n";
+            "<indent=22px><size=88%><color=" + Dim + ">" + detail + "</color></size>\n";
 
         if (!string.IsNullOrEmpty(progress))
         {
-            body += "<size=17>" + progress + "</size>\n";
+            body += "<size=88%>" + progress + "</size>\n";
         }
 
         return body + "</indent></line-height>\n";
@@ -200,7 +282,7 @@ public class QuestManager : MonoBehaviour
         int distance = GetChunkDistanceFromOrigin(currentChunk);
 
         string log =
-            "<size=26><b><color=" + Head + ">QUEST LOG</color></b></size>\n" +
+            "<size=145%><b><color=" + Head + ">QUEST LOG</color></b></size>\n" +
             "<color=" + Dim + ">\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</color>\n\n";
 
         log += Quest(completedMainQuest, "Map the Unknown",
@@ -234,7 +316,7 @@ public class QuestManager : MonoBehaviour
 
         log +=
             "<color=" + Dim + ">\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</color>\n" +
-            "<size=17><color=" + Dim + ">grid</color> <color=" + Open + ">" +
+            "<size=88%><color=" + Dim + ">grid</color> <color=" + Open + ">" +
             currentChunk.x + ", " + currentChunk.y + "</color>" +
             "    <color=" + Dim + ">charted</color> <color=" + Open + ">" + discovered + "</color>" +
             "    <color=" + Dim + ">M for the map</color></size>";

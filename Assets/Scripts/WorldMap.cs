@@ -22,10 +22,11 @@ public class WorldMap : MonoBehaviour
 
     // Unexplored ground is blank paper, not a black void — the map reads as a
     // chart being filled in rather than a grid floating in space.
-    private static readonly Color Paper = new Color(0.902f, 0.855f, 0.749f);
-    private static readonly Color PaperDark = new Color(0.847f, 0.788f, 0.671f);
-    private static readonly Color Ink = new Color(0.286f, 0.227f, 0.169f);
-    private static readonly Color InkFaint = new Color(0.545f, 0.470f, 0.373f);
+    // Shared with the quest log, so the two screens are on the same stock.
+    private static readonly Color Paper = ParchmentPanel.Paper;
+    private static readonly Color PaperDark = ParchmentPanel.PaperDark;
+    private static readonly Color Ink = ParchmentPanel.Ink;
+    private static readonly Color InkFaint = ParchmentPanel.InkFaint;
     private static readonly Color Player = new Color(0.706f, 0.208f, 0.153f);
     private static readonly Color Mark = new Color(0.361f, 0.267f, 0.176f);
     private static readonly Color Origin = new Color(0.298f, 0.353f, 0.259f);
