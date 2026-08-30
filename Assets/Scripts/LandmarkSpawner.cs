@@ -8,8 +8,8 @@ using UnityEngine;
 /// </summary>
 public class LandmarkSpawner : MonoBehaviour
 {
-    [Tooltip("Chunks around the player that have their landmark built. Beyond this they still exist, they are just not loaded.")]
-    [SerializeField, Range(1, 5)] private int spawnRadius = 3;
+    [Tooltip("Chunks around the player that have their landmark built. Never less than the view radius, or you would see terrain with nothing standing on it.")]
+    [SerializeField, Range(1, 8)] private int spawnRadius = 5;
 
     [Tooltip("How close you must get before it counts as discovered.")]
     [SerializeField] private float discoveryRange = 18f;
@@ -25,6 +25,14 @@ public class LandmarkSpawner : MonoBehaviour
     private readonly HashSet<Vector2Int> surveyedFrom = new HashSet<Vector2Int>();
 
     private Vector2Int lastChunk = new Vector2Int(int.MinValue, int.MinValue);
+
+    /// <summary>
+    /// Structures have to be built at least as far out as the terrain is drawn.
+    /// Loading them closer than that means walking through country you can see
+    /// across with nothing standing in it, and buildings appearing from nowhere
+    /// as you approach.
+    /// </summary>
+    private int LoadRadius => Mathf.Max(spawnRadius, world != null ? world.ViewRadius : spawnRadius);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -72,8 +80,10 @@ public class LandmarkSpawner : MonoBehaviour
     {
         int seed = world.WorldSeed;
 
-        for (int dx = -spawnRadius; dx <= spawnRadius; dx++)
-        for (int dz = -spawnRadius; dz <= spawnRadius; dz++)
+        int radius = LoadRadius;
+
+        for (int dx = -radius; dx <= radius; dx++)
+        for (int dz = -radius; dz <= radius; dz++)
         {
             var index = new Vector2Int(centre.x + dx, centre.y + dz);
 
@@ -90,6 +100,7 @@ public class LandmarkSpawner : MonoBehaviour
             }
 
             live.Add(index, LandmarkBuilder.Build(placement, transform));
+            Debug.Log("[Landmarks] Built a " + Landmarks.NameOf(placement.Kind) + " at chunk " + index);
         }
 
         scratch.Clear();
@@ -98,7 +109,7 @@ public class LandmarkSpawner : MonoBehaviour
         {
             Vector2Int offset = pair.Key - centre;
 
-            if (Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y)) > spawnRadius)
+            if (Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y)) > radius)
             {
                 scratch.Add(pair.Key);
             }

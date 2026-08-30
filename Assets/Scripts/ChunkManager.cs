@@ -56,6 +56,9 @@ public class ChunkManager : MonoBehaviour
     /// <summary>The seed this world was generated from. Read by the map.</summary>
     public int WorldSeed => worldSeed;
 
+    /// <summary>How far chunks are drawn. Landmarks have to reach at least this far.</summary>
+    public int ViewRadius => viewRadius;
+
     private Vector2Int playerChunk;
     private bool hasPlayerChunk;
 

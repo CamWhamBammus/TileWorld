@@ -85,7 +85,14 @@ public static class LandmarkBuilder
         if (!solid)
         {
             var col = go.GetComponent<Collider>();
-            if (col != null) Object.DestroyImmediate(col);
+
+            if (col != null)
+            {
+                // DestroyImmediate is an edit mode call; using it while playing
+                // is unsupported and can fail inside a callback.
+                if (Application.isPlaying) Object.Destroy(col);
+                else Object.DestroyImmediate(col);
+            }
         }
 
         return go.transform;
