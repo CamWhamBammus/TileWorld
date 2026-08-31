@@ -59,6 +59,16 @@ public class ChunkManager : MonoBehaviour
     /// <summary>The seed this world was generated from. Read by the map.</summary>
     public int WorldSeed => worldSeed;
 
+    /// <summary>Counters for the overlay, so tuning draw distance is not guesswork.</summary>
+    public struct DrawStats
+    {
+        public int resident, visible, drawn, pending, drawCalls, instances;
+    }
+
+    public DrawStats Stats => stats;
+
+    private DrawStats stats;
+
     /// <summary>How far chunks are drawn. Landmarks have to reach at least this far.</summary>
     public int ViewRadius => viewRadius;
 
@@ -447,6 +457,13 @@ public class ChunkManager : MonoBehaviour
                 totalInstances += count;
             }
         }
+
+        stats.resident = chunks.Count;
+        stats.visible = visibleChunks.Count;
+        stats.drawn = visibleChunks.Count - culled;
+        stats.pending = pending.Count;
+        stats.drawCalls = drawCalls;
+        stats.instances = totalInstances;
 
         if (debugMode && (logEveryFrame || !hasLoggedFirstDrawSummary))
         {
