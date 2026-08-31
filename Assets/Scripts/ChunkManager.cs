@@ -91,6 +91,12 @@ public class ChunkManager : MonoBehaviour
 
     private readonly Plane[] frustum = new Plane[6];
     private Camera view;
+
+    // Mesh and material per tile type, looked up once. These were being
+    // resolved every frame for every type, and MaterialGetter writes to the
+    // material each time it is called.
+    private readonly Dictionary<int, (Mesh mesh, Material material)> resolved =
+        new Dictionary<int, (Mesh, Material)>();
     private Bounds visibleBounds;
     private readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
     private readonly List<Vector2Int> evictionScratch = new List<Vector2Int>();
@@ -407,13 +413,16 @@ public class ChunkManager : MonoBehaviour
 
         foreach (var pair in batchCounts)
         {
-            if (pair.Value == 0 || !tileLibrary.TryGet(pair.Key, out var def) || def == null)
+            if (pair.Value == 0) continue;
+
+            if (!resolved.TryGetValue(pair.Key, out var art))
             {
-                continue;
+                art = Resolve(pair.Key);
+                resolved[pair.Key] = art;
             }
 
-            Mesh mesh = def.MeshGetter();
-            Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
+            Mesh mesh = art.mesh;
+            Material material = art.material;
 
             if (mesh == null || material == null)
             {
@@ -450,6 +459,20 @@ public class ChunkManager : MonoBehaviour
 
             hasLoggedFirstDrawSummary = true;
         }
+    }
+
+    /// <summary>Finds the mesh and material for a tile type, once.</summary>
+    private (Mesh, Material) Resolve(int id)
+    {
+        if (!tileLibrary.TryGet(id, out var def) || def == null)
+        {
+            return (null, null);
+        }
+
+        Mesh mesh = def.MeshGetter();
+        Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
+
+        return (mesh, material);
     }
 
     private RenderParams GetRenderParams(Material material)
