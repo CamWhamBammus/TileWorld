@@ -27,6 +27,7 @@ public class CompassBar : MonoBehaviour
 
     private readonly List<(RectTransform rect, float angle)> marks = new List<(RectTransform, float)>();
     private readonly List<RectTransform> landmarkTicks = new List<RectTransform>();
+    private RectTransform waypointMark;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -123,6 +124,34 @@ public class CompassBar : MonoBehaviour
         }
 
         UpdateLandmarkTicks(facing);
+        UpdateWaypoint(facing);
+    }
+
+    private void UpdateWaypoint(float facing)
+    {
+        if (waypointMark == null)
+        {
+            waypointMark = MakeLabel("▲", 20f, new Color(0.85f, 0.42f, 0.28f));
+        }
+
+        if (!Waypoint.IsSet)
+        {
+            waypointMark.gameObject.SetActive(false);
+            return;
+        }
+
+        Vector3 to = Waypoint.Position - player.position;
+        to.y = 0f;
+
+        float bearing = Mathf.DeltaAngle(facing, Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg);
+        bool visible = Mathf.Abs(bearing) <= halfSpanDegrees;
+
+        waypointMark.gameObject.SetActive(visible);
+
+        if (!visible) return;
+
+        waypointMark.anchoredPosition = new Vector2(bearing / halfSpanDegrees * (width * 0.5f), -30f);
+        waypointMark.GetComponent<TMP_Text>().text = "▲ " + Mathf.RoundToInt(to.magnitude) + "m";
     }
 
     /// <summary>Position by bearing, and hide anything behind the player.</summary>

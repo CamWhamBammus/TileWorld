@@ -120,6 +120,9 @@ public class WorldMap : MonoBehaviour
             Export();
         }
 
+        if (Input.GetMouseButtonDown(0)) SetWaypointFromCursor();
+        if (Input.GetMouseButtonDown(1)) Waypoint.Clear();
+
         float wheel = Input.mouseScrollDelta.y;
         float keys = (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus) ? 1f : 0f)
                    - (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus) ? 1f : 0f);
@@ -140,6 +143,34 @@ public class WorldMap : MonoBehaviour
             lastPlayerChunk = chunk;
             dirty = false;
         }
+    }
+
+    /// <summary>Turns a click on the chart back into a chunk.</summary>
+    private void SetWaypointFromCursor()
+    {
+        var rect = image.rectTransform;
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                rect, Input.mousePosition, null, out Vector2 local))
+        {
+            return;
+        }
+
+        // local space is centred; move to 0..1 across the drawn texture
+        Vector2 unit = new Vector2(
+            local.x / rect.rect.width + 0.5f,
+            local.y / rect.rect.height + 0.5f);
+
+        if (unit.x < 0f || unit.x > 1f || unit.y < 0f || unit.y > 1f) return;
+
+        int px = Mathf.RoundToInt(unit.x * textureSize);
+        int py = Mathf.RoundToInt(unit.y * textureSize);
+
+        Waypoint.Set(new Vector2Int(
+            Mathf.FloorToInt((px - drawOffset.x) / (float)cell) + min.x,
+            Mathf.FloorToInt((py - drawOffset.y) / (float)cell) + min.y));
+
+        dirty = true;
     }
 
     /// <summary>Writes the chart out as an image, for a game about making one.</summary>
@@ -273,6 +304,11 @@ public class WorldMap : MonoBehaviour
             DrawSpawn(WorldGrid.ChunkCenter(Vector2Int.zero));
         }
 
+        if (Waypoint.IsSet)
+        {
+            DrawWaypoint(Waypoint.Position);
+        }
+
         if (player != null)
         {
             DrawHeading(player);
@@ -317,7 +353,7 @@ public class WorldMap : MonoBehaviour
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
             "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
             "landmark <color=#5C442D>\u25C6</color>   " +
-            "scroll to zoom   F9 saves the chart     " +
+            "scroll to zoom   click to mark   F9 saves     " +
             toggleKey + " to close</color></size>";
     }
 
@@ -434,6 +470,23 @@ public class WorldMap : MonoBehaviour
                     Plot(Mathf.RoundToInt(p.x) + x, Mathf.RoundToInt(p.y) + y, Mark);
                 }
             }
+        }
+    }
+
+    /// <summary>A cross hair on the marked chunk.</summary>
+    private void DrawWaypoint(Vector3 world)
+    {
+        Vector2 p = ToPixel(world);
+        Color32 c = new Color(0.72f, 0.31f, 0.19f);
+
+        int arm = Mathf.Max(5, cell);
+
+        for (int i = -arm; i <= arm; i++)
+        {
+            if (Mathf.Abs(i) < arm / 3) continue;
+
+            Plot(Mathf.RoundToInt(p.x) + i, Mathf.RoundToInt(p.y), c);
+            Plot(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y) + i, c);
         }
     }
 
