@@ -179,37 +179,37 @@ public class QuestManager : MonoBehaviour
         if (!completedMainQuest && ExplorationLog.Count >= chunksNeededForMainQuest)
         {
             completedMainQuest = true;
-            Debug.Log("[QuestManager] Completed quest: Map the Unknown");
+            Notices.Show("Quest complete: Map the Unknown");
         }
 
         if (!completedDeepSurveyQuest && ExplorationLog.Count >= chunksNeededForDeepSurvey)
         {
             completedDeepSurveyQuest = true;
-            Debug.Log("[QuestManager] Completed quest: Deep Forest Survey");
+            Notices.Show("Quest complete: Deep Forest Survey");
         }
 
         if (!completedDistanceQuest && GetChunkDistanceFromOrigin(currentChunk) >= chunkDistanceGoal)
         {
             completedDistanceQuest = true;
-            Debug.Log("[QuestManager] Completed quest: Walk Beyond the Origin");
+            Notices.Show("Quest complete: Walk Beyond the Origin");
         }
 
         if (!completedLandmarkQuest && LandmarkLog.Count >= landmarksNeeded)
         {
             completedLandmarkQuest = true;
-            Debug.Log("[QuestManager] Completed quest: Marks on the Land");
+            Notices.Show("Quest complete: Marks on the Land");
         }
 
         if (!completedHighPlaceQuest && surveysMade >= surveysNeeded)
         {
             completedHighPlaceQuest = true;
-            Debug.Log("[QuestManager] Completed quest: The High Places");
+            Notices.Show("Quest complete: The High Places");
         }
 
         if (!completedFourDirectionsQuest && HasVisitedAllFourDirections())
         {
             completedFourDirectionsQuest = true;
-            Debug.Log("[QuestManager] Completed quest: Compass Survey");
+            Notices.Show("Quest complete: Compass Survey");
         }
     }
 

@@ -138,7 +138,7 @@ public class LandmarkSpawner : MonoBehaviour
 
             if (distance <= discoveryRange && LandmarkLog.Discover(pair.Key, placement.Kind))
             {
-                Debug.Log("[Landmarks] Found a " + Landmarks.NameOf(placement.Kind) + " at chunk " + pair.Key);
+                Notices.Show("Found a " + Landmarks.NameOf(placement.Kind));
             }
 
             if (surveyedFrom.Contains(pair.Key) || distance > surveyRange)
@@ -181,7 +181,7 @@ public class LandmarkSpawner : MonoBehaviour
         }
 
         Surveyed?.Invoke(kind, charted);
-        Debug.Log("[Landmarks] Surveyed from the " + Landmarks.NameOf(kind) + ": charted " + charted + " new chunks");
+        Notices.Show("Surveyed from the " + Landmarks.NameOf(kind) + " — " + charted + " chunks charted");
     }
 
     /// <summary>Raised when a landmark is used to chart the land, with how much it revealed.</summary>
