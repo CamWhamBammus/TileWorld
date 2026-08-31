@@ -18,6 +18,9 @@ public class WorldMap : MonoBehaviour
     [Header("Look")]
     [SerializeField] private int textureSize = 512;
     [SerializeField, Range(2, 24)] private int maxCellPixels = 14;
+
+    [Tooltip("Scroll or press the bracket keys while the map is open.")]
+    [SerializeField, Range(0.4f, 4f)] private float zoom = 1f;
     [SerializeField] private int marginChunks = 2;
 
     // Unexplored ground is blank paper, not a black void — the map reads as a
@@ -107,6 +110,16 @@ public class WorldMap : MonoBehaviour
         if (!open)
         {
             return;
+        }
+
+        float wheel = Input.mouseScrollDelta.y;
+        float keys = (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus) ? 1f : 0f)
+                   - (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus) ? 1f : 0f);
+
+        if (Mathf.Abs(wheel) > 0.01f || Mathf.Abs(keys) > 0.01f)
+        {
+            zoom = Mathf.Clamp(zoom * (1f + (wheel * 0.12f + keys * 0.25f)), 0.4f, 4f);
+            dirty = true;
         }
 
         // Redraw when the picture would actually change, not every frame.
@@ -265,6 +278,8 @@ public class WorldMap : MonoBehaviour
             "   <color=#8A7E68>|</color>   " +
             "<color=#D8CDB4>grid " + chunk.x + ", " + chunk.y + "</color>" +
             "   <color=#8A7E68>|</color>   " +
+            "<color=#D8CDB4>seed " + seed + "</color>" +
+            "   <color=#8A7E68>|</color>   " +
             "<color=#D8CDB4>elevation " + here.ToString("F1") + "m</color>" +
             "   <color=#8A7E68>|</color>   " +
             "<color=#D8CDB4>" + LandmarkLog.Count + " landmarks</color>" +
@@ -274,7 +289,8 @@ public class WorldMap : MonoBehaviour
                 : "") +
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
             "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
-            "landmark <color=#5C442D>\u25C6</color>     " +
+            "landmark <color=#5C442D>\u25C6</color>   " +
+            "scroll to zoom     " +
             toggleKey + " to close</color></size>";
     }
 
@@ -486,7 +502,9 @@ public class WorldMap : MonoBehaviour
         max += Vector2Int.one * marginChunks;
 
         int span = Mathf.Max(max.x - min.x + 1, max.y - min.y + 1);
-        cell = Mathf.Clamp(textureSize / Mathf.Max(1, span), 2, maxCellPixels);
+
+        // Fit everything charted, then let zoom scale that up or down.
+        cell = Mathf.Clamp(Mathf.RoundToInt(textureSize / Mathf.Max(1, span) * zoom), 1, maxCellPixels * 3);
 
         // Early on, the explored area is far smaller than the texture. Without
         // this the map would be drawn into the bottom-left corner.
@@ -494,6 +512,21 @@ public class WorldMap : MonoBehaviour
             (textureSize - (max.x - min.x + 1) * cell) / 2,
             (textureSize - (max.y - min.y + 1) * cell) / 2
         );
+
+        // Zoomed in far enough that the chart no longer fits, centre on the
+        // player instead of on the middle of everything they have ever seen.
+        int drawnWidth = (max.x - min.x + 1) * cell;
+        int drawnHeight = (max.y - min.y + 1) * cell;
+
+        if (player != null && (drawnWidth > textureSize || drawnHeight > textureSize))
+        {
+            Vector2Int here = WorldGrid.WorldToChunk(player.position);
+
+            drawOffset = new Vector2Int(
+                textureSize / 2 - (here.x - min.x) * cell,
+                textureSize / 2 - (here.y - min.y) * cell
+            );
+        }
     }
 
     private static Color HeightColour(float height)
