@@ -41,6 +41,10 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("Chunks around the player that get a physics collider. Terrain only needs to be solid where you can reach it.")]
     [SerializeField, Range(1, 4)] private int collisionRadius = 1;
 
+    [Header("Water")]
+    [Tooltip("Standing water in hollows below the water line.")]
+    [SerializeField] private bool water = true;
+
     [Header("Flat Ground Fallback")]
     [Tooltip("Used only when terrain collision is off: keeps flat floor under the player past the scene's ground plane.")]
     [SerializeField] private bool maintainGroundCollider = true;
@@ -125,6 +129,10 @@ public class ChunkManager : MonoBehaviour
     private Transform groundCollider;
 
     private readonly Dictionary<Vector2Int, GameObject> chunkColliders = new Dictionary<Vector2Int, GameObject>();
+    private readonly Dictionary<Vector2Int, GameObject> waterPatches = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> waterScratch = new List<Vector2Int>();
+    private Transform waterRoot;
+    private Material waterMaterial;
     private readonly List<Vector2Int> colliderScratch = new List<Vector2Int>();
     private Transform terrainRoot;
 
@@ -151,6 +159,13 @@ public class ChunkManager : MonoBehaviour
         {
             terrainRoot = new GameObject("Terrain Collision (runtime)").transform;
             terrainRoot.SetParent(transform, worldPositionStays: true);
+        }
+
+        if (water)
+        {
+            waterRoot = new GameObject("Water (runtime)").transform;
+            waterRoot.SetParent(transform, worldPositionStays: true);
+            waterMaterial = WaterSurface.CreateMaterial();
         }
         else if (maintainGroundCollider)
         {
@@ -249,6 +264,11 @@ public class ChunkManager : MonoBehaviour
         else
         {
             UpdateGroundCollider();
+        }
+
+        if (water)
+        {
+            RefreshWater();
         }
 
         if (debugMode && logEveryFrame)
@@ -643,6 +663,56 @@ public class ChunkManager : MonoBehaviour
             {
                 Destroy(mc.sharedMesh);
             }
+
+            Destroy(go);
+        }
+    }
+
+    /// <summary>Water is built for the chunks in view and dropped with them.</summary>
+    private void RefreshWater()
+    {
+        for (int dx = -viewRadius; dx <= viewRadius; dx++)
+        for (int dz = -viewRadius; dz <= viewRadius; dz++)
+        {
+            var index = new Vector2Int(playerChunk.x + dx, playerChunk.y + dz);
+
+            if (waterPatches.ContainsKey(index)) continue;
+
+            var mesh = WaterSurface.BuildMesh(index, worldSeed);
+
+            // A dry chunk still gets an entry, so it is not rebuilt every time.
+            var go = new GameObject("Water " + index);
+            go.transform.SetParent(waterRoot, worldPositionStays: true);
+            go.transform.position = new Vector3(index.x * WorldGrid.ChunkWorldSize, 0f, index.y * WorldGrid.ChunkWorldSize);
+
+            if (mesh != null)
+            {
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                go.AddComponent<MeshRenderer>().sharedMaterial = waterMaterial;
+            }
+
+            waterPatches.Add(index, go);
+        }
+
+        waterScratch.Clear();
+
+        foreach (var pair in waterPatches)
+        {
+            Vector2Int offset = pair.Key - playerChunk;
+
+            if (Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y)) > viewRadius + keepRadiusPadding)
+            {
+                waterScratch.Add(pair.Key);
+            }
+        }
+
+        foreach (var index in waterScratch)
+        {
+            var go = waterPatches[index];
+            waterPatches.Remove(index);
+
+            var filter = go.GetComponent<MeshFilter>();
+            if (filter != null && filter.sharedMesh != null) Destroy(filter.sharedMesh);
 
             Destroy(go);
         }
