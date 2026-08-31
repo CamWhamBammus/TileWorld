@@ -52,6 +52,12 @@ That gives you something to aim at. You spot a tower over the trees, walk to it,
 
 Press M. Chunks you have been through are shaded by height, everything else is left blank, and landmarks you have found show up as diamonds. Ground you have only seen from the top of a tower is drawn faded, so you can tell where you have actually been. The arrow is you.
 
+## Time and saving
+
+The world saves itself every thirty seconds and when you quit. Almost nothing needs storing, since the terrain, the tiles and the landmarks all come from the seed: a save is the seed plus where you have been, what you have seen from a tower, which landmarks you reached, the time and where you stood. So you come back to the same world with your chart intact.
+
+There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby. Finishing a quest or reaching something shows up as a note in the corner.
+
 ## Quests
 
 Press Q. Six of them, all based on where you have been: explore new chunks, get a certain distance from spawn, reach all four compass directions, find landmarks, climb towers, and survey a larger area.
@@ -60,7 +66,10 @@ Press Q. Six of them, all based on where you have been: explore new chunks, get 
 
 - WASD to move, mouse to look
 - Left Shift to sprint, Space to jump
-- Q for quests, M for the map
+- Q for the quest log, M for the map
+- E to rest at a landmark you have found, once it is dark
+- Scroll to zoom the map, F9 to save it as an image
+- Escape to pause
 
 ## Running it
 
@@ -86,3 +95,7 @@ The landmark structures are built out of primitives because the tile pack does n
 - `Landmarks`, `LandmarkBuilder` - where structures go and what they look like
 - `ExplorationLog`, `LandmarkLog` - what you have found
 - `WorldMap`, `QuestManager` - the map screen and the objectives
+- `TimeOfDay` - sun, sky, weather
+- `SaveGame`, `SaveCoordinator` - what is kept between sessions
+- `CompassBar`, `Notices`, `PauseMenu` - the rest of the interface
+- `Ambience`, `Fireflies` - sound, and the lights that come out at night
