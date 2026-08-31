@@ -17,6 +17,11 @@ public class LandmarkSpawner : MonoBehaviour
     [Tooltip("How close you must be, horizontally, for climbing one to count as surveying from it.")]
     [SerializeField] private float surveyRange = 14f;
 
+    [Tooltip("Stand this close to a landmark and you can rest there until morning.")]
+    [SerializeField] private float restRange = 12f;
+
+    [SerializeField] private KeyCode restKey = KeyCode.E;
+
     private ChunkManager world;
     private Transform player;
 
@@ -74,6 +79,38 @@ public class LandmarkSpawner : MonoBehaviour
         }
 
         CheckDiscovery();
+        CheckRest();
+    }
+
+    /// <summary>
+    /// Somewhere to wait out the dark. Night is navigable but slow going, and
+    /// walking back to a landmark you already found gives it a second use.
+    /// </summary>
+    private void CheckRest()
+    {
+        if (!Input.GetKeyDown(restKey) || TimeOfDay.Instance == null) return;
+
+        foreach (var pair in live)
+        {
+            if (!LandmarkLog.Found.ContainsKey(pair.Key)) continue;
+
+            Vector3 to = pair.Value.transform.position - player.position;
+            to.y = 0f;
+
+            if (to.sqrMagnitude > restRange * restRange) continue;
+
+            float now = TimeOfDay.Instance.Normalized;
+
+            if (now > 0.24f && now < 0.72f)
+            {
+                Notices.Show("No need to rest in daylight");
+                return;
+            }
+
+            TimeOfDay.Instance.SetTime(0.26f);
+            Notices.Show("Rested at the " + Landmarks.NameOf(Landmarks.In(pair.Key, world.WorldSeed).Kind) + " until morning");
+            return;
+        }
     }
 
     private void Refresh(Vector2Int centre)

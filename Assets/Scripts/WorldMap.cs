@@ -15,6 +15,9 @@ public class WorldMap : MonoBehaviour
     [Header("Input")]
     [SerializeField] private KeyCode toggleKey = KeyCode.M;
 
+    [Tooltip("Writes the chart to a PNG while the map is open.")]
+    [SerializeField] private KeyCode exportKey = KeyCode.F9;
+
     [Header("Look")]
     [SerializeField] private int textureSize = 512;
     [SerializeField, Range(2, 24)] private int maxCellPixels = 14;
@@ -112,6 +115,11 @@ public class WorldMap : MonoBehaviour
             return;
         }
 
+        if (Input.GetKeyDown(exportKey))
+        {
+            Export();
+        }
+
         float wheel = Input.mouseScrollDelta.y;
         float keys = (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus) ? 1f : 0f)
                    - (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus) ? 1f : 0f);
@@ -131,6 +139,25 @@ public class WorldMap : MonoBehaviour
             lastDrawnCount = ExplorationLog.Count;
             lastPlayerChunk = chunk;
             dirty = false;
+        }
+    }
+
+    /// <summary>Writes the chart out as an image, for a game about making one.</summary>
+    private void Export()
+    {
+        try
+        {
+            string file = System.IO.Path.Combine(Application.persistentDataPath,
+                "chart-" + world.WorldSeed + "-" + ExplorationLog.Count + "chunks.png");
+
+            System.IO.File.WriteAllBytes(file, texture.EncodeToPNG());
+            Notices.Show("Chart saved to " + System.IO.Path.GetFileName(file));
+            Debug.Log("[WorldMap] Chart written to " + file);
+        }
+        catch (System.Exception e)
+        {
+            Notices.Show("Could not save the chart");
+            Debug.LogWarning("[WorldMap] " + e.Message);
         }
     }
 
@@ -290,7 +317,7 @@ public class WorldMap : MonoBehaviour
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
             "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
             "landmark <color=#5C442D>\u25C6</color>   " +
-            "scroll to zoom     " +
+            "scroll to zoom   F9 saves the chart     " +
             toggleKey + " to close</color></size>";
     }
 
