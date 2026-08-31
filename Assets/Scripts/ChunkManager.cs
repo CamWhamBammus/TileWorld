@@ -21,6 +21,9 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("Chunks are discarded once they are this far outside the view radius.")]
     [SerializeField, Range(1, 8)] private int keepRadiusPadding = 2;
 
+    [Tooltip("New chunks built per frame once the world is running. Crossing a border needs a whole ring of them, which is enough work to show as a stutter if it all happens at once.")]
+    [SerializeField, Range(1, 32)] private int chunksPerFrame = 4;
+
     [Tooltip("Same seed, same world. Leave at 0 for a different world each run.")]
     [SerializeField] private int worldSeed = 0;
 
@@ -80,6 +83,10 @@ public class ChunkManager : MonoBehaviour
     private Bounds visibleBounds;
     private readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
     private readonly List<Vector2Int> evictionScratch = new List<Vector2Int>();
+
+    // Chunks wanted but not built yet, nearest first.
+    private readonly List<Vector2Int> pending = new List<Vector2Int>();
+    private bool batchesDirty;
 
     // RenderParams per material, built once — creating them per draw would
     // allocate every frame for no benefit.
@@ -144,6 +151,14 @@ public class ChunkManager : MonoBehaviour
         }
 
         RefreshVisibleChunks(force: false);
+        BuildPending();
+
+        if (batchesDirty)
+        {
+            RebuildBatches();
+            batchesDirty = false;
+        }
+
         DrawChunks();
     }
 
@@ -166,14 +181,38 @@ public class ChunkManager : MonoBehaviour
         ExplorationLog.Visit(playerChunk);
 
         visibleChunks.Clear();
+        pending.Clear();
 
         for (int dx = -viewRadius; dx <= viewRadius; dx++)
         for (int dz = -viewRadius; dz <= viewRadius; dz++)
         {
-            visibleChunks.Add(GetOrCreateChunk(new Vector2Int(playerChunk.x + dx, playerChunk.y + dz)));
+            var index = new Vector2Int(playerChunk.x + dx, playerChunk.y + dz);
+
+            if (chunks.TryGetValue(index, out var chunk))
+            {
+                visibleChunks.Add(chunk);
+            }
+            else
+            {
+                pending.Add(index);
+            }
         }
 
-        RebuildBatches();
+        // nearest first, so the ground fills in outward from the player
+        pending.Sort((a, b) =>
+        {
+            int da = Mathf.Abs(a.x - playerChunk.x) + Mathf.Abs(a.y - playerChunk.y);
+            int db = Mathf.Abs(b.x - playerChunk.x) + Mathf.Abs(b.y - playerChunk.y);
+            return da.CompareTo(db);
+        });
+
+        // The first fill has nothing on screen to protect, so it happens at once.
+        if (force)
+        {
+            BuildPending(pending.Count);
+        }
+
+        batchesDirty = true;
         EvictDistantChunks();
 
         if (terrainCollision)
@@ -239,6 +278,26 @@ public class ChunkManager : MonoBehaviour
             WorldGrid.ChunkCenter(playerChunk) + Vector3.up * (WorldHeight.MaxRelief * 0.5f),
             new Vector3(span, WorldHeight.MaxRelief + 24f, span)
         );
+    }
+
+    /// <summary>Builds a few of the waiting chunks, so a border crossing is spread over frames.</summary>
+    private void BuildPending(int budget = -1)
+    {
+        if (pending.Count == 0) return;
+
+        int allowed = budget < 0 ? chunksPerFrame : budget;
+        int made = 0;
+
+        while (pending.Count > 0 && made < allowed)
+        {
+            var index = pending[0];
+            pending.RemoveAt(0);
+
+            visibleChunks.Add(GetOrCreateChunk(index));
+            made++;
+        }
+
+        if (made > 0) batchesDirty = true;
     }
 
     private Chunk GetOrCreateChunk(Vector2Int index)
