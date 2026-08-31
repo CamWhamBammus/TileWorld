@@ -190,6 +190,13 @@ public class TimeOfDay : MonoBehaviour
         return best;
     }
 
+    /// <summary>Puts the clock back to a saved time.</summary>
+    public void SetTime(float normalized)
+    {
+        Normalized = Mathf.Repeat(normalized, 1f);
+        if (sun != null) Apply();
+    }
+
     /// <summary>Something readable for the map header.</summary>
     public string Label()
     {

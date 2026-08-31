@@ -104,7 +104,11 @@ public class ChunkManager : MonoBehaviour
             return;
         }
 
-        if (worldSeed == 0)
+        if (SaveGame.HasSave)
+        {
+            worldSeed = SaveGame.Data.seed;      // return to the world you left
+        }
+        else if (worldSeed == 0)
         {
             worldSeed = Random.Range(1, int.MaxValue);
         }
