@@ -33,6 +33,10 @@ public class SimpleFollowCamera : MonoBehaviour
     {
         if (target == null) return;
 
+        // Paused means the cursor is free for the menu; reading it here would
+        // spin the camera around while the player clicks a button.
+        if (PauseMenu.Paused) return;
+
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 

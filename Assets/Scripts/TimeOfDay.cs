@@ -229,6 +229,14 @@ public class TimeOfDay : MonoBehaviour
         }
     }
 
+    public float DayLengthMinutes => dayLengthMinutes;
+
+    /// <summary>Changes how long a day takes while running.</summary>
+    public void SetDayLength(float minutes)
+    {
+        dayLengthMinutes = Mathf.Clamp(minutes, 2f, 90f);
+    }
+
     /// <summary>Puts the clock back to a saved time.</summary>
     public void SetTime(float normalized)
     {

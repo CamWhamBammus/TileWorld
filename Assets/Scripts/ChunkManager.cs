@@ -62,6 +62,17 @@ public class ChunkManager : MonoBehaviour
     /// <summary>How far chunks are drawn. Landmarks have to reach at least this far.</summary>
     public int ViewRadius => viewRadius;
 
+    /// <summary>Changes the draw distance while running, rebuilding what is visible.</summary>
+    public void SetViewRadius(int radius)
+    {
+        int clamped = Mathf.Clamp(radius, 1, 8);
+
+        if (clamped == viewRadius) return;
+
+        viewRadius = clamped;
+        RefreshVisibleChunks(force: true);
+    }
+
     private Vector2Int playerChunk;
     private bool hasPlayerChunk;
 
