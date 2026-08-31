@@ -56,7 +56,9 @@ Press M. Chunks you have been through are shaded by height, everything else is l
 
 The world saves itself every thirty seconds and when you quit. Almost nothing needs storing, since the terrain, the tiles and the landmarks all come from the seed: a save is the seed plus where you have been, what you have seen from a tower, which landmarks you reached, the time and where you stood. So you come back to the same world with your chart intact.
 
-There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby. Finishing a quest or reaching something shows up as a note in the corner.
+There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby and for anywhere you have marked on the map. Landmarks you have already reached carry their name out in the world. Finishing a quest or reaching something shows up as a note in the corner, and the field journal lists everything found, nearest first.
+
+Nights have stars, fireflies come out in the lowlands, and there is standing water in about one chunk in ten. Wind rises with altitude and with the weather, so an exposed ridge in bad weather sounds like one.
 
 ## Quests
 
@@ -69,6 +71,8 @@ Press Q. Six of them, all based on where you have been: explore new chunks, get 
 - Q for the quest log, M for the map
 - E to rest at a landmark you have found, once it is dark
 - Scroll to zoom the map, F9 to save it as an image
+- J for the field journal, F3 for world statistics
+- Click the map to mark a spot, right click to clear it
 - Escape to pause
 
 ## Running it
