@@ -20,6 +20,9 @@ public class QuestManager : MonoBehaviour
     [Tooltip("Towers to climb and survey from.")]
     [SerializeField] private int surveysNeeded = 2;
 
+    [Tooltip("Height above the valley floor to reach, in metres.")]
+    [SerializeField] private float heightGoal = 26f;
+
     private Vector2Int currentChunk;
 
     private bool completedMainQuest;
@@ -28,7 +31,9 @@ public class QuestManager : MonoBehaviour
     private bool completedDeepSurveyQuest;
     private bool completedLandmarkQuest;
     private bool completedHighPlaceQuest;
+    private bool completedSummitQuest;
     private int surveysMade;
+    private float highestReached;
 
     private void Start()
     {
@@ -153,6 +158,8 @@ public class QuestManager : MonoBehaviour
 
     private void Update()
     {
+        TrackAltitude();
+
         Vector2Int newChunk = GetChunkFromPosition(playerTransform.position);
 
         if (newChunk != currentChunk)
@@ -166,6 +173,45 @@ public class QuestManager : MonoBehaviour
 
             UpdateQuests();
             UpdateQuestUI();
+        }
+    }
+
+    /// <summary>
+    /// Keeps the highest ground reached. Read from the terrain rather than the
+    /// player's transform, so standing on top of a tower does not count as
+    /// having climbed a mountain.
+    /// </summary>
+    private void TrackAltitude()
+    {
+        var world = ChunkManagerRef;
+
+        if (world == null) return;
+
+        int tileX = Mathf.RoundToInt(playerTransform.position.x / WorldGrid.TileSize);
+        int tileZ = Mathf.RoundToInt(playerTransform.position.z / WorldGrid.TileSize);
+
+        float here = WorldHeight.HeightAt(tileX, tileZ, world.WorldSeed);
+
+        if (here > highestReached)
+        {
+            highestReached = here;
+
+            if (!completedSummitQuest && highestReached >= heightGoal)
+            {
+                completedSummitQuest = true;
+                Notices.Show("Quest complete: The Roof of the World");
+            }
+        }
+    }
+
+    private ChunkManager cachedWorld;
+
+    private ChunkManager ChunkManagerRef
+    {
+        get
+        {
+            if (cachedWorld == null) cachedWorld = FindFirstObjectByType<ChunkManager>();
+            return cachedWorld;
         }
     }
 
@@ -308,6 +354,11 @@ public class QuestManager : MonoBehaviour
             "Climb " + surveysNeeded + " towers and chart the land from them.",
             Bar(surveysMade, surveysNeeded) + "  <color=" + Open + ">" +
             Mathf.Min(surveysMade, surveysNeeded) + " / " + surveysNeeded + "</color>");
+
+        log += Quest(completedSummitQuest, "The Roof of the World",
+            "Stand " + Mathf.RoundToInt(heightGoal) + "m above the valley floor.",
+            Bar(Mathf.RoundToInt(highestReached), Mathf.RoundToInt(heightGoal)) + "  <color=" + Open + ">" +
+            Mathf.RoundToInt(Mathf.Min(highestReached, heightGoal)) + " / " + Mathf.RoundToInt(heightGoal) + "m</color>");
 
         log += Quest(completedDeepSurveyQuest, "Deep Forest Survey",
             "Discover " + chunksNeededForDeepSurvey + " total chunks.",
