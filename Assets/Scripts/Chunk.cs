@@ -86,7 +86,16 @@ public class Chunk
             int band = Mathf.Clamp(Mathf.FloorToInt(bare * ShadeByHeight.Length), 0, ShadeByHeight.Length - 1);
             int category = ShadeByHeight[band];
 
-            if (steep > SteepFraction)
+            // Anything under the water line uses the bare dark ground. Left on
+            // a forested tile, the tree simply carries on standing and pokes
+            // out of the pond, since the water is only a surface over the top.
+            bool submerged = WaterSurface.IsUnderwater(gx, gz, worldSeed);
+
+            if (submerged)
+            {
+                category = MarshCategory;           // riverbed, and no trees in it
+            }
+            else if (steep > SteepFraction)
             {
                 category = BareSteepCategory;       // scree on the steep faces
             }
@@ -98,8 +107,9 @@ public class Chunk
             int variant = Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
             int id = category * VariantsPerCategory + variant;
 
-            // Above the treeline, swap a treed tile for a bare one of the same shade.
-            if (CarriesTree[id] && bare > TreelineFraction)
+            // Above the treeline, or under water, swap a treed tile for a bare
+            // one of the same shade.
+            if (CarriesTree[id] && (bare > TreelineFraction || submerged))
             {
                 for (int step = 1; step < VariantsPerCategory; step++)
                 {

@@ -75,7 +75,10 @@ public static class WaterSurface
         Shader lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
         var m = new Material(lit);
 
-        var colour = new Color(0.30f, 0.47f, 0.56f, 0.72f);
+        // Opaque enough that the bed reads as being under water rather than
+        // seen through glass. At 0.72 every submerged log and grass tuft was
+        // legible and it looked like a flooded field.
+        var colour = new Color(0.20f, 0.38f, 0.47f, 0.88f);
 
         m.SetColor("_BaseColor", colour);
         m.color = colour;
