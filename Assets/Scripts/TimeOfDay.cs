@@ -97,6 +97,8 @@ public class TimeOfDay : MonoBehaviour
             RenderSettings.skybox = sky;
         }
 
+        SilenceOtherSuns();
+
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
 
@@ -177,17 +179,54 @@ public class TimeOfDay : MonoBehaviour
         RenderSettings.fogEndDistance = Mathf.Lerp(clearFogEnd, overcastFogEnd, Overcast) * Mathf.Lerp(0.55f, 1f, day);
     }
 
+    /// <summary>
+    /// Picks the light to drive. The scene has two directional lights, and
+    /// choosing purely by intensity was luck: this cycle turns the sun's
+    /// intensity down to nothing every night, so on a reload the wrong one
+    /// could be picked and then never move. A named light wins, then a
+    /// non-runtime one, and intensity only breaks a tie.
+    /// </summary>
     private Light FindSun()
     {
         Light best = null;
+        int bestScore = int.MinValue;
 
         foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
         {
             if (light.type != LightType.Directional || light == moon) continue;
-            if (best == null || light.intensity > best.intensity) best = light;
+
+            int score = 0;
+            if (light.name.Contains("Directional")) score += 100;
+            if (light.name.Contains("Sun")) score += 100;
+            if (!light.name.Contains("runtime")) score += 10;
+            if (light.shadows != LightShadows.None) score += 5;
+
+            if (score > bestScore || (score == bestScore && best != null && light.intensity > best.intensity))
+            {
+                best = light;
+                bestScore = score;
+            }
+        }
+
+        if (best != null)
+        {
+            Debug.Log("[TimeOfDay] Driving the light named '" + best.name + "'.");
         }
 
         return best;
+    }
+
+    /// <summary>Any other directional lights would fight the cycle, so they are turned off.</summary>
+    private void SilenceOtherSuns()
+    {
+        foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+        {
+            if (light.type != LightType.Directional || light == sun || light == moon) continue;
+            if (!light.enabled) continue;
+
+            light.enabled = false;
+            Debug.Log("[TimeOfDay] Disabled a second directional light ('" + light.name + "') so it does not fight the cycle.");
+        }
     }
 
     /// <summary>Puts the clock back to a saved time.</summary>
