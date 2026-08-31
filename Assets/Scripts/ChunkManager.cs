@@ -176,6 +176,7 @@ public class ChunkManager : MonoBehaviour
 
         if (terrainCollision)
         {
+            if (!SaveGame.HasSave) MoveToOpeningView();
             PlacePlayerOnSurface();
         }
 
@@ -566,6 +567,54 @@ public class ChunkManager : MonoBehaviour
         // exactly with the scene's ground box instead of leaving a lip to trip on.
         Vector3 centre = WorldGrid.ChunkCenter(playerChunk);
         groundCollider.position = new Vector3(centre.x, groundSurfaceY - GroundThickness * 0.5f, centre.z);
+    }
+
+    /// <summary>
+    /// On a brand new world, start within sight of a landmark. Spawning in
+    /// empty forest means the first minutes are a blind walk, and the loop the
+    /// game is built on only starts once you can see something to walk to.
+    /// </summary>
+    private void MoveToOpeningView()
+    {
+        const int searchRadius = 8;
+        const float standOff = 62f;
+
+        Vector2Int found = Vector2Int.zero;
+        bool any = false;
+        int nearest = int.MaxValue;
+
+        for (int dx = -searchRadius; dx <= searchRadius; dx++)
+        for (int dz = -searchRadius; dz <= searchRadius; dz++)
+        {
+            var index = new Vector2Int(dx, dz);
+            if (!Landmarks.In(index, worldSeed).Exists) continue;
+
+            int distance = Mathf.Abs(dx) + Mathf.Abs(dz);
+
+            if (distance < nearest) { nearest = distance; found = index; any = true; }
+        }
+
+        if (!any) return;   // nothing close by; spawn where the scene says
+
+        Vector3 target = Landmarks.In(found, worldSeed).Position;
+        Vector3 away = new Vector3(target.x, 0f, target.z) - new Vector3(playerTransform.position.x, 0f, playerTransform.position.z);
+
+        if (away.sqrMagnitude < 0.01f) away = Vector3.forward;
+
+        Vector3 stand = target - away.normalized * standOff;
+
+        var controller = playerTransform.GetComponent<CharacterController>();
+        bool on = controller != null && controller.enabled;
+
+        if (on) controller.enabled = false;
+        playerTransform.position = new Vector3(stand.x, playerTransform.position.y, stand.z);
+        playerTransform.rotation = Quaternion.LookRotation(new Vector3(away.x, 0f, away.z).normalized);
+        if (on) controller.enabled = true;
+
+        if (debugMode)
+        {
+            Debug.Log("[ChunkManager] Opening view: a landmark at chunk " + found + ", " + standOff + "m ahead.");
+        }
     }
 
     /// <summary>
