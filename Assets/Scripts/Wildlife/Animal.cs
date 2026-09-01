@@ -17,6 +17,29 @@ public class Animal : MonoBehaviour
 
     public FaunaKind Kind { get; private set; }
 
+    /// <summary>What it is doing, for anyone with a pencil out.</summary>
+    public Doing Busy
+    {
+        get
+        {
+            switch (state)
+            {
+                case State.Graze: return Doing.Grazing;
+                case State.Drink: return Doing.Drinking;
+                case State.Rest: return Doing.Resting;
+                case State.Alert: return Doing.Watching;
+                case State.Flee: return Doing.Fleeing;
+                case State.Wander:
+                case State.ToWater: return Doing.Walking;
+                default: return Doing.Standing;
+            }
+        }
+    }
+
+    /// <summary>Where its head is, which is what you would be drawing.</summary>
+    public Vector3 Head => body.Head != null ? body.Head.position
+                                             : transform.position + Vector3.up * traits.Size;
+
     private Fauna.Traits traits;
     private AnimalBuilder.Body body;
     private Transform player;
@@ -107,7 +130,9 @@ public class Animal : MonoBehaviour
         // Being seen matters more than whatever it was doing.
         if (state != State.Flee)
         {
-            if (distance < traits.Bolts)
+            float wariness = Stalking.Wariness;
+
+            if (distance < traits.Bolts * wariness)
             {
                 Speak(true);
 
@@ -118,7 +143,7 @@ public class Animal : MonoBehaviour
                 return;
             }
 
-            if (distance < traits.Notices)
+            if (distance < traits.Notices * wariness)
             {
                 if (state != State.Alert) until = Time.time + Random.Range(2f, 5f);
                 state = State.Alert;
