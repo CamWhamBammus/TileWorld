@@ -95,13 +95,11 @@ The landmark structures are built out of primitives because the tile pack does n
 
 ## Layout
 
-- `WorldGrid`, `WorldHeight` - chunk maths and the terrain function
-- `Chunk`, `TerrainCollision` - one chunk of tiles, and the surface you walk on
-- `ChunkManager` - streaming, drawing, culling, colliders
-- `Landmarks`, `LandmarkBuilder` - where structures go and what they look like
-- `ExplorationLog`, `LandmarkLog` - what you have found
-- `WorldMap`, `QuestManager` - the map screen and the objectives
-- `TimeOfDay` - sun, sky, weather
-- `SaveGame`, `SaveCoordinator` - what is kept between sessions
-- `CompassBar`, `Notices`, `PauseMenu` - the rest of the interface
-- `Ambience`, `Fireflies` - sound, and the lights that come out at night
+Scripts are grouped under `Assets/Scripts`:
+
+- `World/` - the grid and the terrain function, chunks and their collision, water, snow, regions, and the streaming in `ChunkManager`
+- `Landmarks/` - where structures go, what they are built from, and what is written at them
+- `Player/` - the follow camera, swimming, and the underwater view
+- `Interface/` - the map, journal, quest log, compass, notices, pause menu and statistics overlay
+- `Atmosphere/` - the day cycle and weather, wind, birdsong, music, rain, stars and fireflies
+- `Systems/` - what has been found, and what is kept between sessions
