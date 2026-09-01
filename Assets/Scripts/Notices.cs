@@ -67,7 +67,10 @@ public class Notices : MonoBehaviour
         var rootGo = new GameObject("Stack");
         rootGo.transform.SetParent(canvasGo.transform, false);
 
-        root = rootGo.GetComponent<RectTransform>();
+        // A bare GameObject gets a Transform. RectTransform only appears when a
+        // UI component is added, so it has to be asked for explicitly, and
+        // reading it off a plain object throws before anything is drawn.
+        root = rootGo.AddComponent<RectTransform>();
         root.anchorMin = new Vector2(0f, 1f);
         root.anchorMax = new Vector2(0f, 1f);
         root.pivot = new Vector2(0f, 1f);

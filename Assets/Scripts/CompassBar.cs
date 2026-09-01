@@ -65,7 +65,10 @@ public class CompassBar : MonoBehaviour
         var stripGo = new GameObject("Strip");
         stripGo.transform.SetParent(canvasGo.transform, false);
 
-        strip = stripGo.GetComponent<RectTransform>();
+        // Added rather than fetched: a bare GameObject has a Transform, and
+        // reading a RectTransform off it throws and kills this whole component
+        // in Start, which is why no compass appeared at all.
+        strip = stripGo.AddComponent<RectTransform>();
         strip.anchorMin = new Vector2(0.5f, 1f);
         strip.anchorMax = new Vector2(0.5f, 1f);
         strip.pivot = new Vector2(0.5f, 1f);
