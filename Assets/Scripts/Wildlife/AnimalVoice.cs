@@ -25,28 +25,117 @@ public static class AnimalVoice
 
     public static bool Ready => Time.time - lastSpoke > 0.45f;
 
+    private enum Sound { Call, Alarm, Walk, Run, Chew, Sip }
+
     public static AudioClip Call(FaunaKind kind, bool alarmed)
     {
-        int key = (int)kind * 2 + (alarmed ? 1 : 0);
+        lastSpoke = Time.time;
+
+        return Pick(kind, alarmed ? Sound.Alarm : Sound.Call);
+    }
+
+    /// <summary>A hoof or a pad coming down. Half the life of a moving animal.</summary>
+    public static AudioClip Step(FaunaKind kind, bool running)
+    {
+        return Pick(kind, running ? Sound.Run : Sound.Walk);
+    }
+
+    /// <summary>Tearing at the grass, for an animal with its head down.</summary>
+    public static AudioClip Chew(FaunaKind kind) => Pick(kind, Sound.Chew);
+
+    public static AudioClip Drink(FaunaKind kind) => Pick(kind, Sound.Sip);
+
+    private static AudioClip Pick(FaunaKind kind, Sound sound)
+    {
+        int key = (int)kind * 8 + (int)sound;
 
         if (!calls.TryGetValue(key, out var set) || set == null || set.Length == 0 || set[0] == null)
         {
-            set = Build(kind, alarmed);
+            set = new AudioClip[3];
+
+            for (int i = 0; i < set.Length; i++)
+            {
+                set[i] = sound == Sound.Call || sound == Sound.Alarm
+                    ? One(kind, sound == Sound.Alarm, i)
+                    : Struck(kind, sound, i);
+            }
+
             calls[key] = set;
         }
-
-        lastSpoke = Time.time;
 
         return set[Random.Range(0, set.Length)];
     }
 
-    private static AudioClip[] Build(FaunaKind kind, bool alarmed)
+    /// <summary>
+    /// The sounds that are hit rather than called: a foot on the ground, a
+    /// mouthful of grass, a muzzle in the water. All of them are a knock of
+    /// noise under a fast decay, and what separates them is how much low end
+    /// there is and how quickly they die away.
+    /// </summary>
+    private static AudioClip Struck(FaunaKind kind, Sound sound, int variant)
     {
-        var set = new AudioClip[3];
+        var rng = new System.Random((int)kind * 613 + (int)sound * 71 + variant);
 
-        for (int i = 0; i < set.Length; i++) set[i] = One(kind, alarmed, i);
+        var traits = Fauna.Of(kind);
 
-        return set;
+        // a heavier animal lands harder and lower
+        float weight = Mathf.Clamp01(traits.Size / 1.6f);
+
+        float length, lowHz, noise, decay, tone;
+
+        switch (sound)
+        {
+            case Sound.Walk:
+                length = 0.11f; lowHz = Mathf.Lerp(150f, 78f, weight);
+                noise = 0.55f; decay = 26f; tone = 0.5f;
+                break;
+
+            case Sound.Run:
+                length = 0.13f; lowHz = Mathf.Lerp(135f, 66f, weight);
+                noise = 0.75f; decay = 20f; tone = 0.62f;
+                break;
+
+            case Sound.Chew:
+                length = 0.16f; lowHz = 220f;
+                noise = 0.95f; decay = 15f; tone = 0.12f;
+                break;
+
+            default:
+                length = 0.14f; lowHz = 320f;
+                noise = 0.7f; decay = 17f; tone = 0.2f;
+                break;
+        }
+
+        length *= 0.88f + (float)rng.NextDouble() * 0.24f;
+        lowHz *= 0.9f + (float)rng.NextDouble() * 0.2f;
+
+        int samples = Mathf.RoundToInt(Rate * length);
+        var data = new float[samples];
+
+        float phase = 0f;
+        float rolling = 0f;
+
+        for (int i = 0; i < samples; i++)
+        {
+            float t = i / (float)samples;
+
+            phase += 2f * Mathf.PI * (lowHz * (1f - 0.45f * t)) / Rate;
+
+            float body = Mathf.Sin(phase) * tone;
+
+            // noise, softened a little so it is a thud and not a hiss
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+            rolling = Mathf.Lerp(rolling, white, sound == Sound.Chew ? 0.55f : 0.30f);
+
+            float envelope = Mathf.Exp(-t * decay);
+
+            data[i] = Mathf.Clamp((body + rolling * noise) * envelope * 0.5f, -1f, 1f);
+        }
+
+        var clip = AudioClip.Create(kind + sound.ToString() + variant, samples, 1, Rate, false);
+        clip.SetData(data, 0);
+
+        return clip;
     }
 
     private static AudioClip One(FaunaKind kind, bool alarmed, int variant)
