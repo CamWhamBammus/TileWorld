@@ -230,7 +230,7 @@ public class LandmarkSpawner : MonoBehaviour
     /// reload, which would leave last run's QuestManager still subscribed.
     /// </summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetEvent()
+    public static void ClearEvent()
     {
         Surveyed = null;
     }

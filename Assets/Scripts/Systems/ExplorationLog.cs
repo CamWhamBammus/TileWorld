@@ -61,7 +61,7 @@ public static class ExplorationLog
     /// domain reload, which would leave the last run's map on screen.
     /// </summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void Reset()
+    public static void Clear()
     {
         visited.Clear();
         surveyed.Clear();

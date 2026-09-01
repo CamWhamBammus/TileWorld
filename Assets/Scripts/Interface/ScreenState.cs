@@ -47,7 +47,7 @@ public static class ScreenState
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void Reset()
+    public static void Clear()
     {
         Current = Screen.None;
         Changed = null;

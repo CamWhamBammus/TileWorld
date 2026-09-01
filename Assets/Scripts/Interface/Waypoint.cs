@@ -27,8 +27,9 @@ public static class Waypoint
         Notices.Show("Waypoint cleared");
     }
 
+    /// <summary>Drops the mark without announcing it, for leaving a world entirely.</summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void Reset()
+    public static void Forget()
     {
         IsSet = false;
     }

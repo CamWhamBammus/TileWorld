@@ -26,7 +26,7 @@ public static class LandmarkLog
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void Reset()
+    public static void Clear()
     {
         found.Clear();
         Discovered = null;

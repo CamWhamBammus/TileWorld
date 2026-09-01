@@ -22,7 +22,7 @@ public class RegionWatcher : MonoBehaviour
     private Vector2Int lastCell = new Vector2Int(int.MinValue, int.MinValue);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void Reset()
+    public static void Clear()
     {
         visited.Clear();
         HasCurrent = false;
