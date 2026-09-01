@@ -27,7 +27,22 @@ public class Starfield : MonoBehaviour
 
     private void Start()
     {
-        Shader unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        // A built player only carries shaders something in it referenced, so
+        // the unlit one is often not there and Shader.Find comes back null.
+        // Making a material out of that throws, and the throw repeats every
+        // frame after it: in a thirty second run of the built game this cost
+        // twelve hundred exceptions apiece.
+        Shader unlit = Shader.Find("Universal Render Pipeline/Unlit")
+                    ?? Shader.Find("Universal Render Pipeline/Lit")
+                    ?? Shader.Find("Unlit/Color");
+
+        if (unlit == null)
+        {
+            Debug.LogWarning("[Starfield] No shader to draw with, so there will be none.");
+            enabled = false;
+            return;
+        }
+
         material = new Material(unlit);
         material.SetColor("_BaseColor", Color.white);
         material.color = Color.white;

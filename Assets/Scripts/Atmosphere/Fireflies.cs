@@ -42,7 +42,19 @@ public class Fireflies : MonoBehaviour
 
         player = world.PlayerTransform;
 
-        Shader lit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        Shader lit = Shader.Find("Universal Render Pipeline/Unlit")
+                   ?? Shader.Find("Universal Render Pipeline/Lit")
+                   ?? Shader.Find("Unlit/Color");
+
+        // Missing in a built player unless something referenced it; a material
+        // made from nothing throws, and goes on throwing every frame after.
+        if (lit == null)
+        {
+            Debug.LogWarning("[Fireflies] No shader to draw with, so there will be none.");
+            enabled = false;
+            return;
+        }
+
         glow = new Material(lit);
         glow.SetColor("_BaseColor", new Color(0.95f, 0.92f, 0.55f));
         glow.color = new Color(0.95f, 0.92f, 0.55f);
