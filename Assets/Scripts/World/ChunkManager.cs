@@ -154,13 +154,17 @@ public class ChunkManager : MonoBehaviour
             return;
         }
 
-        if (SaveGame.HasSave)
+        if (WorldLibrary.HasCurrent)
         {
-            worldSeed = SaveGame.Data.seed;      // return to the world you left
+            worldSeed = WorldLibrary.Current.seed;   // the world that was chosen
         }
-        else if (worldSeed == 0)
+        else
         {
-            worldSeed = Random.Range(1, int.MaxValue);
+            // Nothing chosen: keep a seed set in the inspector, otherwise roll
+            // one, then file it so this session belongs to a world as well.
+            if (worldSeed == 0) worldSeed = Random.Range(1, int.MaxValue);
+
+            WorldLibrary.Adopt(worldSeed);
         }
 
         if (terrainCollision)
@@ -191,7 +195,11 @@ public class ChunkManager : MonoBehaviour
 
         if (terrainCollision)
         {
-            if (!SaveGame.HasSave) MoveToOpeningView();
+            // A world nobody has played yet has nowhere to put you back.
+            if (WorldLibrary.Current == null || WorldLibrary.Current.playerPosition == Vector3.zero)
+            {
+                MoveToOpeningView();
+            }
             PlacePlayerOnSurface();
         }
 

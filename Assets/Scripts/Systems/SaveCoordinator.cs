@@ -55,7 +55,7 @@ public class SaveCoordinator : MonoBehaviour
 
     private void Restore()
     {
-        var data = SaveGame.Data;
+        var data = WorldLibrary.Current;
 
         if (data == null) return;
 
@@ -89,17 +89,31 @@ public class SaveCoordinator : MonoBehaviour
                 + LandmarkLog.Count + " landmarks.");
     }
 
+    /// <summary>Writes the current world out now, before leaving it.</summary>
+    public void SaveNow()
+    {
+        Save();
+    }
+
     private void Save()
     {
         if (world == null) return;
 
-        var data = new SaveData
-        {
-            seed = world.WorldSeed,
-            timeOfDay = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.3f,
-            playerPosition = player != null ? player.position : Vector3.zero,
-            playerYaw = player != null ? player.eulerAngles.y : 0f
-        };
+        var data = WorldLibrary.Current;
+
+        if (data == null) return;
+
+        // The world keeps its name, id and seed; only what has been found in
+        // it is rewritten.
+        data.visited.Clear();
+        data.surveyed.Clear();
+        data.landmarkChunks.Clear();
+        data.landmarkKinds.Clear();
+
+        data.seed = world.WorldSeed;
+        data.timeOfDay = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.3f;
+        data.playerPosition = player != null ? player.position : Vector3.zero;
+        data.playerYaw = player != null ? player.eulerAngles.y : 0f;
 
         foreach (var chunk in ExplorationLog.Visited) data.visited.Add(chunk);
         foreach (var chunk in ExplorationLog.Surveyed) data.surveyed.Add(chunk);
@@ -121,7 +135,7 @@ public class SaveCoordinator : MonoBehaviour
         data.waypointSet = Waypoint.IsSet;
         data.waypointChunk = Waypoint.Chunk;
 
-        SaveGame.Write(data);
+        WorldLibrary.Write(data);
     }
 
     private void OnApplicationQuit()
