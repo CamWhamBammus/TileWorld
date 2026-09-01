@@ -45,6 +45,9 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("Standing water in hollows below the water line.")]
     [SerializeField] private bool water = true;
 
+    [Tooltip("Snow above the snowline.")]
+    [SerializeField] private bool snow = true;
+
     [Header("Flat Ground Fallback")]
     [Tooltip("Used only when terrain collision is off: keeps flat floor under the player past the scene's ground plane.")]
     [SerializeField] private bool maintainGroundCollider = true;
@@ -133,6 +136,11 @@ public class ChunkManager : MonoBehaviour
     private readonly List<Vector2Int> waterScratch = new List<Vector2Int>();
     private Transform waterRoot;
     private Material waterMaterial;
+
+    private readonly Dictionary<Vector2Int, GameObject> snowPatches = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> snowScratch = new List<Vector2Int>();
+    private Transform snowRoot;
+    private Material snowMaterial;
     private readonly List<Vector2Int> colliderScratch = new List<Vector2Int>();
     private Transform terrainRoot;
 
@@ -166,6 +174,13 @@ public class ChunkManager : MonoBehaviour
             waterRoot = new GameObject("Water (runtime)").transform;
             waterRoot.SetParent(transform, worldPositionStays: true);
             waterMaterial = WaterSurface.CreateMaterial();
+        }
+
+        if (snow)
+        {
+            snowRoot = new GameObject("Snow (runtime)").transform;
+            snowRoot.SetParent(transform, worldPositionStays: true);
+            snowMaterial = SnowCover.CreateMaterial();
         }
         else if (maintainGroundCollider)
         {
@@ -269,7 +284,12 @@ public class ChunkManager : MonoBehaviour
 
         if (water)
         {
-            RefreshWater();
+            RefreshOverlay(waterPatches, waterScratch, waterRoot, waterMaterial, WaterSurface.BuildMesh, "Water");
+        }
+
+        if (snow)
+        {
+            RefreshOverlay(snowPatches, snowScratch, snowRoot, snowMaterial, SnowCover.BuildMesh, "Snow");
         }
 
         if (debugMode && logEveryFrame)
@@ -717,48 +737,53 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
-    /// <summary>Water is built for the chunks in view and dropped with them.</summary>
-    private void RefreshWater()
+    /// <summary>
+    /// Builds a mesh overlay for the chunks in view and drops it with them.
+    /// Water and snow are the same job with a different mesh, so they share it.
+    /// </summary>
+    private void RefreshOverlay(Dictionary<Vector2Int, GameObject> patches, List<Vector2Int> scratch,
+        Transform root, Material material, System.Func<Vector2Int, int, Mesh> build, string label)
     {
         for (int dx = -viewRadius; dx <= viewRadius; dx++)
         for (int dz = -viewRadius; dz <= viewRadius; dz++)
         {
             var index = new Vector2Int(playerChunk.x + dx, playerChunk.y + dz);
 
-            if (waterPatches.ContainsKey(index)) continue;
+            if (patches.ContainsKey(index)) continue;
 
-            var mesh = WaterSurface.BuildMesh(index, worldSeed);
+            var mesh = build(index, worldSeed);
 
-            // A dry chunk still gets an entry, so it is not rebuilt every time.
-            var go = new GameObject("Water " + index);
-            go.transform.SetParent(waterRoot, worldPositionStays: true);
+            // A chunk with none still gets an entry, so it is not rebuilt
+            // every time the player crosses a border.
+            var go = new GameObject(label + " " + index);
+            go.transform.SetParent(root, worldPositionStays: true);
             go.transform.position = new Vector3(index.x * WorldGrid.ChunkWorldSize, 0f, index.y * WorldGrid.ChunkWorldSize);
 
             if (mesh != null)
             {
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
-                go.AddComponent<MeshRenderer>().sharedMaterial = waterMaterial;
+                go.AddComponent<MeshRenderer>().sharedMaterial = material;
             }
 
-            waterPatches.Add(index, go);
+            patches.Add(index, go);
         }
 
-        waterScratch.Clear();
+        scratch.Clear();
 
-        foreach (var pair in waterPatches)
+        foreach (var pair in patches)
         {
             Vector2Int offset = pair.Key - playerChunk;
 
             if (Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y)) > viewRadius + keepRadiusPadding)
             {
-                waterScratch.Add(pair.Key);
+                scratch.Add(pair.Key);
             }
         }
 
-        foreach (var index in waterScratch)
+        foreach (var index in scratch)
         {
-            var go = waterPatches[index];
-            waterPatches.Remove(index);
+            var go = patches[index];
+            patches.Remove(index);
 
             var filter = go.GetComponent<MeshFilter>();
             if (filter != null && filter.sharedMesh != null) Destroy(filter.sharedMesh);
