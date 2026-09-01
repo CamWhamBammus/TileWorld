@@ -30,6 +30,12 @@ public class Animal : MonoBehaviour
     private float phase;
     private float thirst;
 
+    private float yaw;               // where it is pointed, kept apart from how it is tilted
+    private float lastYaw;
+    private float pace;              // eased, so nothing starts or stops dead
+    private float hop;               // the shove it gives itself when it bolts
+    private Vector3 slope = Vector3.up;
+
     private AudioSource voice;
     private AudioSource steps;
     private float nextCall;
@@ -47,7 +53,9 @@ public class Animal : MonoBehaviour
         thirst = Random.Range(0f, 1f);
 
         transform.position = Ground(at);
-        transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+
+        yaw = Random.Range(0f, 360f);
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
 
         // Heard from where the animal is rather than from everywhere at once,
         // so a call tells you which way to look.
@@ -89,6 +97,7 @@ public class Animal : MonoBehaviour
 
         Think(distance);
         Move(dt);
+        Stand(dt);
         Animate(dt);
         Talk();
     }
@@ -101,6 +110,10 @@ public class Animal : MonoBehaviour
             if (distance < traits.Bolts)
             {
                 Speak(true);
+
+                // the shove it gives itself getting away
+                if (state != State.Flee) hop = traits.Size * 0.42f;
+
                 Flee();
                 return;
             }
@@ -143,6 +156,22 @@ public class Animal : MonoBehaviour
     {
         float roll = Random.value;
 
+        // Wet weather and the small hours are for sitting still. An animal
+        // that grazed its way through a downpour exactly as it does through a
+        // clear morning is one that has not noticed the weather at all.
+        float overcast = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
+        float hour = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;
+
+        bool nocturnal = Kind == FaunaKind.Fox;
+        bool small = !nocturnal && (hour < 0.18f || hour > 0.88f);
+
+        if ((overcast > 0.72f || small) && roll < 0.5f && distance > traits.Notices * 1.4f)
+        {
+            state = State.Rest;
+            until = Time.time + Random.Range(16f, 40f);
+            return;
+        }
+
         if (thirst > 1f && roll < 0.35f && FindWater(out var shore))
         {
             target = shore;
@@ -180,6 +209,8 @@ public class Animal : MonoBehaviour
         if (state != State.Wander && state != State.Flee && state != State.ToWater)
         {
             if (state == State.Alert) Face(player.position - transform.position, dt, 4f);
+
+            pace = Mathf.MoveTowards(pace, 0f, 8f * dt);
             return;
         }
 
@@ -193,15 +224,66 @@ public class Animal : MonoBehaviour
             return;
         }
 
-        float speed = state == State.Flee ? traits.RunSpeed : traits.WalkSpeed;
+        float want = state == State.Flee ? traits.RunSpeed : traits.WalkSpeed;
+
+        // Weather is worth slowing for; nothing crosses a hillside in the rain
+        // at the pace it would on a clear evening.
+        if (TimeOfDay.Instance != null) want *= Mathf.Lerp(1f, 0.82f, TimeOfDay.Instance.Overcast);
+
+        // Eased rather than switched, so it leans into a run and out of it.
+        pace = Mathf.MoveTowards(pace, want, (state == State.Flee ? 14f : 4f) * dt);
 
         Face(to, dt, state == State.Flee ? 7f : 2.5f);
 
-        transform.position = Ground(transform.position + transform.forward * (speed * dt));
+        Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
 
-        gait += speed * dt * Fauna.Moving(Kind, state == State.Flee).Cadence;
+        transform.position += forward * (pace * dt);
+
+        gait += pace * dt * Fauna.Moving(Kind, state == State.Flee).Cadence;
 
         Footfall(state == State.Flee);
+    }
+
+    /// <summary>
+    /// Puts the animal on the ground and lies it along the hill.
+    ///
+    /// The terrain is terraced, so the height under an animal changes in
+    /// steps. Snapped to it, anything crossing a slope climbs a flight of
+    /// stairs; eased onto it, it walks up the hill. The same goes for which
+    /// way is up: standing bolt upright on a hillside is the thing that most
+    /// gives away something dropped onto a world rather than living in it.
+    /// </summary>
+    private void Stand(float dt)
+    {
+        Vector3 at = transform.position;
+
+        int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
+        int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+
+        float ground = WorldHeight.SurfaceY(x, z, seed);
+
+        // Close the gap quickly but never instantly, and never let it wade far
+        // from the surface if it has been dropped a long way.
+        at.y = Mathf.Abs(at.y - ground) > 3f ? ground : Mathf.Lerp(at.y, ground, 1f - Mathf.Exp(-12f * dt));
+
+        transform.position = at;
+
+        // the lie of the land, from the tiles either side of it
+        float west = WorldHeight.SurfaceY(x - 1, z, seed);
+        float east = WorldHeight.SurfaceY(x + 1, z, seed);
+        float south = WorldHeight.SurfaceY(x, z - 1, seed);
+        float north = WorldHeight.SurfaceY(x, z + 1, seed);
+
+        var normal = new Vector3(west - east, 2f * WorldGrid.TileSize, south - north).normalized;
+
+        slope = Vector3.Slerp(slope, normal, 1f - Mathf.Exp(-6f * dt));
+
+        var tilt = Quaternion.FromToRotation(Vector3.up, slope);
+
+        lastYaw = Mathf.LerpAngle(lastYaw, yaw, 1f - Mathf.Exp(-3f * dt));
+
+        transform.rotation = Quaternion.Slerp(transform.rotation, tilt * Quaternion.Euler(0f, yaw, 0f),
+                                              1f - Mathf.Exp(-9f * dt));
     }
 
     /// <summary>A step whenever a leg comes down, which is twice a gait cycle.</summary>
@@ -277,7 +359,13 @@ public class Animal : MonoBehaviour
             }
             else
             {
-                hip = 0f;
+                // A shuffle while it turns on the spot, so it does not swing
+                // round as one piece.
+                float shuffle = Mathf.Abs(Mathf.DeltaAngle(yaw, lastYaw)) > 0.05f
+                    ? Mathf.Sin(Time.time * 7f + i * 1.9f) * 5f
+                    : 0f;
+
+                hip = shuffle;
                 knee = 0f;
             }
 
@@ -304,6 +392,8 @@ public class Animal : MonoBehaviour
         float pitch = 0f;
         float roll = 0f;
 
+        hop = Mathf.MoveTowards(hop, 0f, traits.Size * 1.6f * dt);
+
         if (state == State.Rest)
         {
             rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.30f, dt * 3f);
@@ -320,11 +410,14 @@ public class Animal : MonoBehaviour
         }
         else
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y, 0f, dt * 5f);
+            // Standing still is not standing frozen: it breathes.
+            float breath = Mathf.Sin(Time.time * 0.9f + phase) * traits.Size * 0.007f;
+
+            rise = Mathf.Lerp(body.Frame.localPosition.y, breath, dt * 5f);
         }
 
         var local = body.Frame.localPosition;
-        local.y = rise;
+        local.y = rise + hop;
         body.Frame.localPosition = local;
 
         body.Frame.localRotation = Quaternion.Slerp(body.Frame.localRotation,
@@ -361,8 +454,14 @@ public class Animal : MonoBehaviour
                 break;
 
             case State.Alert:
-                dip = -6f;
-                turn = Mathf.Sin(Time.time * 0.8f + phase) * 6f;
+                // Watching you, not swaying in your general direction. An
+                // animal that holds your eye is the reason to stand still.
+                Vector3 to = player.position - body.Head.position;
+                Vector3 local = transform.InverseTransformDirection(to);
+
+                turn = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg, -62f, 62f);
+                dip = Mathf.Clamp(-Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude)
+                                  * Mathf.Rad2Deg, -22f, 30f);
                 break;
 
             default:
@@ -371,8 +470,17 @@ public class Animal : MonoBehaviour
                 break;
         }
 
+        // The odd twitch, so a standing animal is never quite still. Driven
+        // off its own phase, so no two of them twitch together.
+        if (state != State.Alert)
+        {
+            float tick = Mathf.Sin(Time.time * 0.37f + phase * 3f);
+            if (tick > 0.985f) turn += (Mathf.Repeat(phase, 1f) > 0.5f ? 9f : -9f);
+        }
+
         var want = Quaternion.Euler(dip, turn, 0f);
-        body.Head.localRotation = Quaternion.Slerp(body.Head.localRotation, want, dt * 5f);
+        body.Head.localRotation = Quaternion.Slerp(body.Head.localRotation, want,
+                                                   dt * (state == State.Alert ? 8f : 5f));
     }
 
     /// <summary>The small sounds of an animal with its head down.</summary>
@@ -413,14 +521,16 @@ public class Animal : MonoBehaviour
         nextCall = Mathf.Max(nextCall, Time.time + 9f);
     }
 
+    /// <summary>Turns towards something. Only the yaw: the tilt is the hill's business.</summary>
     private void Face(Vector3 direction, float dt, float speed)
     {
         direction.y = 0f;
 
         if (direction.sqrMagnitude < 0.001f) return;
 
-        var want = Quaternion.LookRotation(direction);
-        transform.rotation = Quaternion.Slerp(transform.rotation, want, dt * speed);
+        float want = Quaternion.LookRotation(direction).eulerAngles.y;
+
+        yaw = Mathf.LerpAngle(yaw, want, 1f - Mathf.Exp(-speed * dt));
     }
 
     private void Graze()
@@ -560,6 +670,18 @@ public class Animal : MonoBehaviour
         int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
 
         if (!Fauna.Ground(Kind, x, z, seed)) return false;
+
+        // Wild things keep clear of the ruins, which is also the reason a
+        // landmark you walk up to is a quiet place.
+        var placement = Landmarks.In(WorldGrid.WorldToChunk(at), seed);
+
+        if (placement.Exists)
+        {
+            Vector3 apart = placement.Position - at;
+            apart.y = 0f;
+
+            if (apart.sqrMagnitude < 11f * 11f) return false;
+        }
 
         // Nothing here climbs a cliff to get away from you.
         return Mathf.Abs(WorldHeight.SurfaceY(x, z, seed) - transform.position.y) < 8f;
