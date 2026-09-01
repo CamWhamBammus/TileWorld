@@ -24,6 +24,7 @@ public class WorldSave
     public List<Vector2Int> surveyed = new List<Vector2Int>();
     public List<Vector2Int> landmarkChunks = new List<Vector2Int>();
     public List<int> landmarkKinds = new List<int>();
+    public List<int> creaturesSeen = new List<int>();
 
     public int surveysMade;
     public float highestReached;
@@ -259,6 +260,7 @@ public static class WorldLibrary
         LandmarkLog.Clear();
         RegionWatcher.Clear();
         LandmarkSpawner.ClearEvent();
+        SightingLog.Clear();
         Waypoint.Forget();
         ScreenState.Clear();
         Time.timeScale = 1f;

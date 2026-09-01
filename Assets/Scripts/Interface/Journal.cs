@@ -201,9 +201,34 @@ public class Journal : MonoBehaviour
         }
 
         text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n");
+        text.Append("<size=95%><b><color=").Append(head).Append(">CREATURES SEEN</color></b></size>\n");
+
+        if (SightingLog.Count == 0)
+        {
+            text.Append("<size=85%><color=").Append(dim)
+                .Append(">Nothing yet. Look for what moves at either end of the day.</color></size>\n\n");
+        }
+        else
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                var kind = (FaunaKind)i;
+
+                if (!SightingLog.Has(kind)) continue;
+
+                text.Append("<color=").Append(ink).Append(">").Append(Fauna.Of(kind).Name).Append("</color>");
+                text.Append("<size=85%><color=").Append(dim).Append("> — ")
+                    .Append(Fauna.Describe(kind)).Append("</color></size>\n");
+            }
+
+            text.Append("\n");
+        }
+
+        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n");
         text.Append("<size=85%><color=").Append(dim).Append(">")
             .Append(found.Count).Append(" found   ")
             .Append(RegionWatcher.Count).Append(" regions   ")
+            .Append(SightingLog.Count).Append("/4 creatures   ")
             .Append(ExplorationLog.Count).Append(" chunks charted   J to close</color></size>");
 
         if (RegionWatcher.HasCurrent)

@@ -67,6 +67,8 @@ public class SaveCoordinator : MonoBehaviour
             LandmarkLog.Discover(data.landmarkChunks[i], (LandmarkKind)data.landmarkKinds[i]);
         }
 
+        foreach (int kind in data.creaturesSeen) SightingLog.RecordQuietly((FaunaKind)kind);
+
         if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(data.timeOfDay);
 
         var quests = FindFirstObjectByType<QuestManager>();
@@ -109,6 +111,7 @@ public class SaveCoordinator : MonoBehaviour
         data.surveyed.Clear();
         data.landmarkChunks.Clear();
         data.landmarkKinds.Clear();
+        data.creaturesSeen.Clear();
 
         data.seed = world.WorldSeed;
         data.timeOfDay = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.3f;
@@ -123,6 +126,8 @@ public class SaveCoordinator : MonoBehaviour
             data.landmarkChunks.Add(pair.Key);
             data.landmarkKinds.Add((int)pair.Value);
         }
+
+        foreach (var kind in SightingLog.Seen) data.creaturesSeen.Add((int)kind);
 
         var quests = FindFirstObjectByType<QuestManager>();
 
