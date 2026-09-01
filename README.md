@@ -58,6 +58,14 @@ Each kind moves in its own way: a deer trots and breaks into a bound when it is 
 
 They graze, wander a few paces, put their heads down to the grass, walk to the water when they want a drink, lie down when nothing is bothering them, and drift towards their own kind so deer end up in loose herds. And they lift their heads when you get close. Stand still and a deer will hold there watching you; take another step and it goes, downhill and round the water rather than into it. The journal keeps a list of what you have seen, which is saved with the world - a fox seen at midnight in one world is not a fox seen in another.
 
+## The field guide
+
+Press G. Four creatures, and an entry for each wants three things: a drawing of it made from close by, something seen of how it lives, and it found in the country it belongs to. What you have not done yet is the only thing in the game that tells you where to go next.
+
+Drawing is the part you do rather than wait for. Get near enough, keep it in sight, and stand still: the drawing fills in over a few seconds and any real movement spoils it. How near you can get is up to you, because how wary an animal is now depends on how you are moving. Come along at a run and a deer is gone before you have seen it; walk, or stand and let it settle, and it will let you much closer. An animal that has noticed you holds your eye rather than bolting, and that is the moment to draw it.
+
+The other two notes are a matter of being in the right place at the right time - a fox at the water, a rabbit at rest, a goat on the high ground at any hour - so the guide sends you out at dusk and after dark and up onto the tops.
+
 ## The map
 
 ![The map screen](docs/images/map.png)
@@ -88,6 +96,7 @@ Press Q. Six of them, all based on where you have been: explore new chunks, get 
 - E to rest at a landmark you have found, once it is dark
 - Scroll to zoom the map, F9 to save it as an image
 - J for the field journal, F3 for world statistics
+- G for the field guide, and stand still near a creature to draw it
 - Click the map to mark a spot, right click to clear it
 - Escape backs out of whatever is open, then pauses
 
