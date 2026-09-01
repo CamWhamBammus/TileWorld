@@ -25,6 +25,7 @@ public class WorldSave
     public List<Vector2Int> landmarkChunks = new List<Vector2Int>();
     public List<int> landmarkKinds = new List<int>();
     public List<int> creaturesSeen = new List<int>();
+    public List<Vector2Int> creatureChunks = new List<Vector2Int>();
 
     public int surveysMade;
     public float highestReached;

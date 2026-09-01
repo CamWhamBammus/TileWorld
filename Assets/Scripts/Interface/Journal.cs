@@ -219,6 +219,12 @@ public class Journal : MonoBehaviour
                 text.Append("<color=").Append(ink).Append(">").Append(Fauna.Of(kind).Name).Append("</color>");
                 text.Append("<size=85%><color=").Append(dim).Append("> — ")
                     .Append(Fauna.Describe(kind)).Append("</color></size>\n");
+
+                if (SightingLog.FirstSeen(kind, out var seenAt) && seenAt != Vector2Int.zero)
+                {
+                    text.Append("<indent=18px><size=80%><color=").Append(dim).Append(">first seen in ")
+                        .Append(Regions.At(seenAt, seed).Name).Append("</color></size></indent>\n");
+                }
             }
 
             text.Append("\n");
