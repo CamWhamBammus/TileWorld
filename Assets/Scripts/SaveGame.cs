@@ -19,6 +19,13 @@ public class SaveData
     public List<Vector2Int> surveyed = new List<Vector2Int>();
     public List<Vector2Int> landmarkChunks = new List<Vector2Int>();
     public List<int> landmarkKinds = new List<int>();
+
+    // Progress that cannot be recomputed from the chart: how many towers have
+    // been surveyed from, the highest ground reached, and the marked spot.
+    public int surveysMade;
+    public float highestReached;
+    public bool waypointSet;
+    public Vector2Int waypointChunk;
 }
 
 public static class SaveGame

@@ -139,6 +139,22 @@ public class QuestManager : MonoBehaviour
 
     private static readonly Vector2 PanelSize = new Vector2(720f, 880f);
 
+    public int SurveysMade => surveysMade;
+    public float HighestReached => highestReached;
+
+    /// <summary>
+    /// Puts back the progress a save keeps. Chunk counts recompute themselves
+    /// from the chart, but these two do not exist anywhere else.
+    /// </summary>
+    public void RestoreProgress(int surveys, float highest)
+    {
+        surveysMade = Mathf.Max(surveysMade, surveys);
+        highestReached = Mathf.Max(highestReached, highest);
+
+        UpdateQuests();
+        UpdateQuestUI();
+    }
+
     private void OnDestroy()
     {
         LandmarkSpawner.Surveyed -= OnSurveyed;

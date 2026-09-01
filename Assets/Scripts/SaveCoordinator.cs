@@ -69,6 +69,11 @@ public class SaveCoordinator : MonoBehaviour
 
         if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(data.timeOfDay);
 
+        var quests = FindFirstObjectByType<QuestManager>();
+        if (quests != null) quests.RestoreProgress(data.surveysMade, data.highestReached);
+
+        if (data.waypointSet) Waypoint.Set(data.waypointChunk);
+
         if (player != null && data.playerPosition != Vector3.zero)
         {
             var controller = player.GetComponent<CharacterController>();
@@ -104,6 +109,17 @@ public class SaveCoordinator : MonoBehaviour
             data.landmarkChunks.Add(pair.Key);
             data.landmarkKinds.Add((int)pair.Value);
         }
+
+        var quests = FindFirstObjectByType<QuestManager>();
+
+        if (quests != null)
+        {
+            data.surveysMade = quests.SurveysMade;
+            data.highestReached = quests.HighestReached;
+        }
+
+        data.waypointSet = Waypoint.IsSet;
+        data.waypointChunk = Waypoint.Chunk;
 
         SaveGame.Write(data);
     }
