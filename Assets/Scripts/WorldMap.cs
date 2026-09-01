@@ -408,7 +408,12 @@ public class WorldMap : MonoBehaviour
             Mathf.RoundToInt(player.position.x / WorldGrid.TileSize),
             Mathf.RoundToInt(player.position.z / WorldGrid.TileSize), seed) - WorldHeight.BaseSurfaceY;
 
+        string region = RegionWatcher.HasCurrent
+            ? "<color=#F0E6D2>" + RegionWatcher.Current.Name + "</color>   <color=#8A7E68>|</color>   "
+            : "";
+
         statsText.text =
+            region +
             "<color=#D8CDB4>" + ExplorationLog.Count + " chunks charted</color>" +
             "   <color=#8A7E68>|</color>   " +
             "<color=#D8CDB4>grid " + chunk.x + ", " + chunk.y + "</color>" +

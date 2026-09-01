@@ -134,6 +134,12 @@ public class Journal : MonoBehaviour
         panel.SetActive(false);
     }
 
+    /// <summary>The kind recorded for a chunk, for looking its inscription up.</summary>
+    private LandmarkKind LandmarkKindOf(Vector2Int chunk)
+    {
+        return LandmarkLog.Found.TryGetValue(chunk, out var kind) ? kind : LandmarkKind.AbandonedHouse;
+    }
+
     private void Refresh()
     {
         const string head = "#33291D", dim = "#8A7C63", ink = "#4A4032", done = "#4A6B33";
@@ -156,6 +162,14 @@ public class Journal : MonoBehaviour
 
         var text = new System.Text.StringBuilder();
         text.Append("<size=145%><b><color=").Append(head).Append(">FIELD JOURNAL</color></b></size>\n");
+
+        if (RegionWatcher.HasCurrent)
+        {
+            text.Append("<size=90%><color=").Append(dim).Append(">standing in </color><color=")
+                .Append(ink).Append(">").Append(RegionWatcher.Current.Name)
+                .Append("</color><color=").Append(dim).Append("> — ")
+                .Append(Regions.Describe(RegionWatcher.Current.Character)).Append("</color></size>\n");
+        }
         text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n\n");
 
         if (found.Count == 0)
@@ -166,20 +180,36 @@ public class Journal : MonoBehaviour
         {
             foreach (var entry in found)
             {
+                var region = Regions.At(entry.chunk, seed);
+
                 text.Append("<color=").Append(entry.surveyed ? done : ink).Append("><b>")
-                    .Append(entry.name).Append("</b></color>\n");
+                    .Append(entry.name).Append("</b></color>");
+                text.Append("<size=85%><color=").Append(dim).Append("> in ").Append(region.Name)
+                    .Append("</color></size>\n");
+
                 text.Append("<indent=18px><size=85%><color=").Append(dim).Append(">grid ")
                     .Append(entry.chunk.x).Append(", ").Append(entry.chunk.y)
                     .Append("   ").Append(Mathf.RoundToInt(entry.distance)).Append("m away")
                     .Append(entry.surveyed ? "   climbable" : "")
-                    .Append("</color></size></indent>\n\n");
+                    .Append("</color></size>\n");
+
+                // what was written there, which is the reason to have gone
+                text.Append("<indent=18px><size=80%><i><color=").Append(ink).Append(">")
+                    .Append(Inscriptions.For(entry.chunk, LandmarkKindOf(entry.chunk), seed))
+                    .Append("</color></i></size></indent></indent>\n\n");
             }
         }
 
         text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n");
         text.Append("<size=85%><color=").Append(dim).Append(">")
             .Append(found.Count).Append(" found   ")
+            .Append(RegionWatcher.Count).Append(" regions   ")
             .Append(ExplorationLog.Count).Append(" chunks charted   J to close</color></size>");
+
+        if (RegionWatcher.HasCurrent)
+        {
+            text.Insert(0, "");
+        }
 
         body.text = text.ToString();
     }

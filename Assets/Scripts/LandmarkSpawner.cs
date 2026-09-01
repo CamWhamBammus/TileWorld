@@ -176,6 +176,7 @@ public class LandmarkSpawner : MonoBehaviour
             if (distance <= discoveryRange && LandmarkLog.Discover(pair.Key, placement.Kind))
             {
                 Notices.Show("Found a " + Landmarks.NameOf(placement.Kind));
+                Notices.Show(Inscriptions.For(pair.Key, placement.Kind, seed));
             }
 
             if (surveyedFrom.Contains(pair.Key) || distance > surveyRange)
