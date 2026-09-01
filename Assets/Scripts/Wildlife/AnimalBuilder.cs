@@ -17,7 +17,8 @@ public static class AnimalBuilder
     {
         public Transform Frame;          // everything, bobbed while moving
         public Transform Head;           // dips to the grass, comes up to look
-        public Transform[] Legs;
+        public Transform[] Legs;         // hips, which swing the whole leg
+        public Transform[] Knees;        // and the joint half way down each one
         public Transform Tail;
     }
 
@@ -32,9 +33,14 @@ public static class AnimalBuilder
     {
         public Skin Trunk;               // body and neck together
         public Skin Head;
-        public Skin ForeLeg;
-        public Skin HindLeg;
+        public Skin ForeThigh;
+        public Skin ForeShin;
+        public Skin HindThigh;
+        public Skin HindShin;
         public Skin Tail;
+
+        public Vector3 ForeKnee;         // where the joint sits below the hip
+        public Vector3 HindKnee;
         public Material[] Palette;
 
         public Vector3 Neck;             // where the head hangs from
@@ -65,6 +71,7 @@ public static class AnimalBuilder
         Part(body.Head, "skull", kit.Head, kit.Palette, Vector3.zero);
 
         body.Legs = new Transform[4];
+        body.Knees = new Transform[4];
 
         for (int i = 0; i < 4; i++)
         {
@@ -74,8 +81,13 @@ public static class AnimalBuilder
             Vector3 at = fore ? kit.Shoulder : kit.Hip;
             at.x *= side;
 
+            // Hip carries the whole leg; the knee below it carries the lower
+            // half, which is what stops a walk looking like a swinging stick.
             body.Legs[i] = Pivot(frame, fore ? "foreleg" : "hindleg", at);
-            Part(body.Legs[i], "leg", fore ? kit.ForeLeg : kit.HindLeg, kit.Palette, Vector3.zero);
+            Part(body.Legs[i], "thigh", fore ? kit.ForeThigh : kit.HindThigh, kit.Palette, Vector3.zero);
+
+            body.Knees[i] = Pivot(body.Legs[i], "knee", fore ? kit.ForeKnee : kit.HindKnee);
+            Part(body.Knees[i], "shin", fore ? kit.ForeShin : kit.HindShin, kit.Palette, Vector3.zero);
         }
 
         body.Tail = Pivot(frame, "tail", kit.Rump);
@@ -172,8 +184,8 @@ public static class AnimalBuilder
 
         kit.Head = Wrap(head);
 
-        kit.ForeLeg = Leg(h, 0.60f, 0.046f, 0.028f, 0.020f, 0.03f, -0.02f);
-        kit.HindLeg = Leg(h, 0.60f, 0.056f, 0.032f, 0.020f, -0.08f, 0.03f);
+        Leg(kit, true, h, 0.60f, 0.046f, 0.028f, 0.020f, 0.03f, -0.02f);
+        Leg(kit, false, h, 0.60f, 0.056f, 0.032f, 0.020f, -0.08f, 0.03f);
 
         var tail = new List<CreatureMesh.Piece>();
         Add(tail, 0, CreatureMesh.Tube(
@@ -263,8 +275,8 @@ public static class AnimalBuilder
 
         kit.Head = Wrap(head);
 
-        kit.ForeLeg = Leg(h, 0.30f, 0.055f, 0.040f, 0.032f, 0.02f, 0.01f);
-        kit.HindLeg = Leg(h, 0.42f, 0.080f, 0.050f, 0.034f, -0.14f, 0.10f);
+        Leg(kit, true, h, 0.30f, 0.055f, 0.040f, 0.032f, 0.02f, 0.01f);
+        Leg(kit, false, h, 0.42f, 0.080f, 0.050f, 0.034f, -0.14f, 0.10f);
 
         var tail = new List<CreatureMesh.Piece>();
         Add(tail, 1, CreatureMesh.Tube(
@@ -336,8 +348,8 @@ public static class AnimalBuilder
 
         kit.Head = Wrap(head);
 
-        kit.ForeLeg = Leg(h, 0.56f, 0.040f, 0.030f, 0.024f, 0.03f, -0.01f);
-        kit.HindLeg = Leg(h, 0.56f, 0.050f, 0.034f, 0.024f, -0.09f, 0.04f);
+        Leg(kit, true, h, 0.56f, 0.040f, 0.030f, 0.024f, 0.03f, -0.01f);
+        Leg(kit, false, h, 0.56f, 0.050f, 0.034f, 0.024f, -0.09f, 0.04f);
 
         // The brush. Thicker in the middle than at the root, which is the whole
         // difference between a fox's tail and a length of rope.
@@ -430,8 +442,8 @@ public static class AnimalBuilder
 
         kit.Head = Wrap(head);
 
-        kit.ForeLeg = Leg(h, 0.70f, 0.050f, 0.034f, 0.026f, 0.03f, -0.01f);
-        kit.HindLeg = Leg(h, 0.70f, 0.060f, 0.038f, 0.026f, -0.08f, 0.03f);
+        Leg(kit, true, h, 0.70f, 0.050f, 0.034f, 0.026f, 0.03f, -0.01f);
+        Leg(kit, false, h, 0.70f, 0.060f, 0.038f, 0.026f, -0.08f, 0.03f);
 
         var tail = new List<CreatureMesh.Piece>();
         Add(tail, 0, CreatureMesh.Tube(
@@ -460,47 +472,66 @@ public static class AnimalBuilder
     // -------------------------------------------------------------------- bits
 
     /// <summary>
-    /// A leg, hanging from the hip so a rotation swings the whole of it. The
-    /// knee sits forward or back of the line between hip and foot, which is
+    /// A leg in two parts, so it has a knee. The upper half hangs from the hip
+    /// and the lower half from the joint, and the joint only ever folds one
+    /// way: backwards on the front legs, forwards on the back ones, which is
     /// most of what separates a hind leg from a fore one.
     ///
-    /// The top of the leg has to finish inside the barrel: attach it where the
-    /// two surfaces meet and the top ring cuts through the flank as a wedge.
+    /// The top has to finish inside the barrel: attach it where the two
+    /// surfaces meet and the top ring cuts through the flank as a wedge.
     /// </summary>
-    private static Skin Leg(float h, float length, float top, float middle, float ankle,
-                            float kneeZ, float footZ)
+    private static void Leg(Kit kit, bool fore, float h, float length, float top, float middle,
+                            float ankle, float kneeZ, float footZ)
     {
         float l = length * h;
+        float knee = l * 0.44f;
 
-        var pieces = new List<CreatureMesh.Piece>();
+        var thigh = new List<CreatureMesh.Piece>();
 
-        Add(pieces, 0, CreatureMesh.Tube(
+        Add(thigh, 0, CreatureMesh.Tube(
             new[]
             {
                 new Vector3(0f, 0f, 0f),
-                new Vector3(0f, -l * 0.34f, kneeZ * h),
-                new Vector3(0f, -l * 0.68f, footZ * h * 0.5f),
-                new Vector3(0f, -l * 0.94f, footZ * h)
+                new Vector3(0f, -knee * 0.55f, kneeZ * h * 0.6f),
+                new Vector3(0f, -knee, kneeZ * h)
             },
-            new[] { top * h, middle * h, ankle * h, ankle * h * 0.85f }, 7, 1f));
+            new[] { top * h, middle * h * 1.15f, middle * h }, 7, 1f));
 
-        // a foot, so it stands on something rather than tapering into the grass
-        Add(pieces, 2, CreatureMesh.Tube(
+        var shin = new List<CreatureMesh.Piece>();
+        float rest = l - knee;
+
+        Add(shin, 0, CreatureMesh.Tube(
             new[]
             {
-                new Vector3(0f, -l * 0.94f, footZ * h),
-                new Vector3(0f, -l, footZ * h + 0.012f * h)
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0f, -rest * 0.5f, (footZ - kneeZ) * h * 0.5f),
+                new Vector3(0f, -rest * 0.92f, (footZ - kneeZ) * h)
+            },
+            new[] { middle * h, ankle * h, ankle * h * 0.85f }, 7, 1f));
+
+        // a foot, so it stands on something rather than tapering into the grass
+        Add(shin, 2, CreatureMesh.Tube(
+            new[]
+            {
+                new Vector3(0f, -rest * 0.92f, (footZ - kneeZ) * h),
+                new Vector3(0f, -rest, (footZ - kneeZ) * h + 0.012f * h)
             },
             new[] { ankle * h * 0.95f, ankle * h * 0.80f }, 7, 0.9f));
 
-        return Wrap(pieces);
+        if (fore)
+        {
+            kit.ForeThigh = Wrap(thigh);
+            kit.ForeShin = Wrap(shin);
+            kit.ForeKnee = new Vector3(0f, -knee, kneeZ * h);
+        }
+        else
+        {
+            kit.HindThigh = Wrap(thigh);
+            kit.HindShin = Wrap(shin);
+            kit.HindKnee = new Vector3(0f, -knee, kneeZ * h);
+        }
     }
 
-    /// <summary>
-    /// The muscle over a shoulder or a hip. Without it the legs appear to be
-    /// pushed into the side of the barrel, which is most of what made the
-    /// first attempt at these look like furniture.
-    /// </summary>
     /// <summary>An ear: a blade rather than a spike, flattened across its width.</summary>
     private static void Ear(List<CreatureMesh.Piece> head, float h, float side,
                             float rootX, float rootY, float rootZ,

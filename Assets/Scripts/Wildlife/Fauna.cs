@@ -150,6 +150,64 @@ public static class Fauna
     }
 
     /// <summary>
+    /// How a kind carries itself when it moves. A deer trotting and a rabbit
+    /// bounding are not the same animation with different numbers in it: one
+    /// swings its legs in diagonal pairs, the other throws both back legs
+    /// forward together and rises over the gap.
+    /// </summary>
+    public struct Gait
+    {
+        public float Cadence;    // how fast the cycle runs per metre covered
+        public float Swing;      // how far the legs swing at the hip, degrees
+        public float Knee;       // how far the joint folds on the way forward
+        public float Bounce;     // rise and fall of the body, against its height
+        public float Pitch;      // nose up and down over the stride
+        public float Roll;       // weight rocking from side to side
+        public bool Bounds;      // both hind legs together, rather than diagonal pairs
+    }
+
+    public static Gait Moving(FaunaKind kind, bool running)
+    {
+        switch (kind)
+        {
+            case FaunaKind.Rabbit:
+                // never really walks: it is a series of hops with pauses in them
+                return new Gait
+                {
+                    Cadence = running ? 2.4f : 3.0f, Swing = running ? 52f : 34f,
+                    Knee = 62f, Bounce = running ? 0.55f : 0.34f,
+                    Pitch = 13f, Roll = 0f, Bounds = true
+                };
+
+            case FaunaKind.Deer:
+                // a trot, breaking into a bound when it is frightened
+                return running
+                    ? new Gait { Cadence = 2.2f, Swing = 46f, Knee = 44f, Bounce = 0.20f,
+                                 Pitch = 8f, Roll = 2f, Bounds = true }
+                    : new Gait { Cadence = 3.6f, Swing = 24f, Knee = 30f, Bounce = 0.045f,
+                                 Pitch = 2.4f, Roll = 3.2f, Bounds = false };
+
+            case FaunaKind.Fox:
+                // low and quick, and it keeps its head level
+                return new Gait
+                {
+                    Cadence = running ? 2.8f : 4.2f, Swing = running ? 44f : 26f,
+                    Knee = 40f, Bounce = running ? 0.14f : 0.035f,
+                    Pitch = 1.6f, Roll = 2.2f, Bounds = running
+                };
+
+            default:
+                // a goat picks its way, lifting its feet higher than it needs to
+                return new Gait
+                {
+                    Cadence = running ? 2.6f : 3.2f, Swing = running ? 40f : 22f,
+                    Knee = running ? 46f : 52f, Bounce = running ? 0.16f : 0.05f,
+                    Pitch = 2f, Roll = 4f, Bounds = false
+                };
+        }
+    }
+
+    /// <summary>
     /// How many turn up together. Deer are rarely alone, rabbits keep loose
     /// company, and a fox is a fox on its own.
     /// </summary>

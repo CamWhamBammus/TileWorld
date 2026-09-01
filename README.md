@@ -52,6 +52,8 @@ Deer in the wooded lowlands at either end of the day, rabbits in open meadow whi
 
 You hear them before you see them, and from the direction they actually are: a deer's grunt, a fox's bark carrying a long way in the dark, the wobble of a goat, a rabbit drumming its foot. The calls are synthesised in code the same way the wind and the birdsong are, and an animal that has spotted you says something sharper on its way out.
 
+Each kind moves in its own way: a deer trots and breaks into a bound when it is frightened, a rabbit does not really walk at all but hops with pauses in them, a fox stays low and quick, and a goat picks its way, lifting its feet higher than it needs to. The legs have knees, which fold on the way forward and straighten to take the weight.
+
 They graze, wander a few paces, put their heads down to the grass, walk to the water when they want a drink, lie down when nothing is bothering them, and drift towards their own kind so deer end up in loose herds. And they lift their heads when you get close. Stand still and a deer will hold there watching you; take another step and it goes, downhill and round the water rather than into it. The journal keeps a list of what you have seen, which is saved with the world - a fox seen at midnight in one world is not a fox seen in another.
 
 ## The map

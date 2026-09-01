@@ -199,7 +199,7 @@ public class Animal : MonoBehaviour
 
         transform.position = Ground(transform.position + transform.forward * (speed * dt));
 
-        gait += speed * dt * (state == State.Flee ? 3.4f : 4.2f);
+        gait += speed * dt * Fauna.Moving(Kind, state == State.Flee).Cadence;
 
         Footfall(state == State.Flee);
     }
@@ -220,93 +220,13 @@ public class Animal : MonoBehaviour
     private void Animate(float dt)
     {
         bool moving = state == State.Wander || state == State.Flee || state == State.ToWater;
-        bool down = state == State.Graze || state == State.Drink;
+        bool running = state == State.Flee;
 
-        if (body.Legs != null)
-        {
-            for (int i = 0; i < body.Legs.Length; i++)
-            {
-                float swing;
+        var walk = Fauna.Moving(Kind, running);
 
-                if (state == State.Rest)
-                {
-                    // folded under it
-                    swing = Mathf.LerpAngle(Angle(body.Legs[i]), i < 2 ? 68f : -62f, dt * 3f);
-                }
-                else if (moving)
-                {
-                    swing = Mathf.Sin(gait + (i % 3 == 0 ? 0f : Mathf.PI)) * (state == State.Flee ? 42f : 24f);
-                }
-                else
-                {
-                    swing = Mathf.LerpAngle(Angle(body.Legs[i]), 0f, dt * 5f);
-                }
-
-                body.Legs[i].localRotation = Quaternion.Euler(swing, 0f, 0f);
-            }
-        }
-
-        if (body.Head != null)
-        {
-            float dip = 0f;
-            float turn = 0f;
-
-            switch (state)
-            {
-                case State.Graze:
-                    // down in the grass, with the small movements of chewing
-                    dip = 54f + Mathf.Sin(Time.time * 7f + phase) * 3.5f;
-                    break;
-
-                case State.Drink:
-                    dip = 72f + Mathf.Sin(Time.time * 5f + phase) * 2.5f;
-                    break;
-
-                case State.Rest:
-                    dip = 16f;
-                    break;
-
-                case State.Look:
-                    // casting about, the way anything grazing checks on things
-                    turn = Mathf.Sin(Time.time * 1.4f + phase) * 38f;
-                    dip = 4f;
-                    break;
-
-                case State.Alert:
-                    dip = -6f;
-                    turn = Mathf.Sin(Time.time * 0.8f + phase) * 6f;
-                    break;
-
-                default:
-                    dip = moving ? 8f : 22f;
-                    break;
-            }
-
-            var want = Quaternion.Euler(dip, turn, 0f);
-            body.Head.localRotation = Quaternion.Slerp(body.Head.localRotation, want, dt * 5f);
-        }
-
-        if (body.Frame != null)
-        {
-            float bounce;
-
-            if (state == State.Rest)
-            {
-                bounce = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.30f, dt * 3f);
-            }
-            else if (Kind == FaunaKind.Rabbit && moving)
-            {
-                bounce = Mathf.Abs(Mathf.Sin(gait * 0.5f)) * traits.Size * 0.55f;
-            }
-            else
-            {
-                bounce = moving ? Mathf.Abs(Mathf.Sin(gait)) * traits.Size * 0.04f : 0f;
-            }
-
-            var local = body.Frame.localPosition;
-            local.y = bounce;
-            body.Frame.localPosition = local;
-        }
+        Limbs(dt, moving, walk);
+        Carriage(dt, moving, walk);
+        Poise(dt, moving);
 
         if (body.Tail != null)
         {
@@ -318,9 +238,141 @@ public class Animal : MonoBehaviour
         Nibble();
     }
 
-    private static float Angle(Transform t)
+    /// <summary>
+    /// Hips and knees. The hip swings the leg through, and the knee folds on
+    /// the way forward and straightens to take the weight — which is the whole
+    /// difference between an animal walking and a table sliding along.
+    /// </summary>
+    private void Limbs(float dt, bool moving, Fauna.Gait walk)
     {
-        return t.localRotation.eulerAngles.x;
+        if (body.Legs == null) return;
+
+        for (int i = 0; i < body.Legs.Length; i++)
+        {
+            bool fore = i < 2;
+
+            // Bounding throws both front legs forward together and both back
+            // legs after them; a trot moves diagonal pairs.
+            float legPhase = walk.Bounds
+                ? (fore ? 0f : Mathf.PI * 0.62f)
+                : (i % 3 == 0 ? 0f : Mathf.PI);
+
+            float hip, knee;
+
+            if (state == State.Rest)
+            {
+                // folded under it
+                hip = fore ? 62f : -54f;
+                knee = fore ? -96f : 104f;
+            }
+            else if (moving)
+            {
+                float turn = gait + legPhase;
+
+                hip = Mathf.Sin(turn) * walk.Swing;
+
+                // fold while the leg is coming forward, straight while it is down
+                float lift = Mathf.Max(0f, Mathf.Cos(turn));
+                knee = lift * walk.Knee * (fore ? -1f : 1f);
+            }
+            else
+            {
+                hip = 0f;
+                knee = 0f;
+            }
+
+            body.Legs[i].localRotation = Quaternion.Slerp(body.Legs[i].localRotation,
+                Quaternion.Euler(hip, 0f, 0f), moving || state == State.Rest ? 1f : dt * 6f);
+
+            if (body.Knees != null && body.Knees[i] != null)
+            {
+                body.Knees[i].localRotation = Quaternion.Slerp(body.Knees[i].localRotation,
+                    Quaternion.Euler(knee, 0f, 0f), moving || state == State.Rest ? 1f : dt * 6f);
+            }
+        }
+    }
+
+    /// <summary>
+    /// What the body does over the stride: rising and falling, nose tipping up
+    /// and down, weight rocking from one side to the other.
+    /// </summary>
+    private void Carriage(float dt, bool moving, Fauna.Gait walk)
+    {
+        if (body.Frame == null) return;
+
+        float rise;
+        float pitch = 0f;
+        float roll = 0f;
+
+        if (state == State.Rest)
+        {
+            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.30f, dt * 3f);
+        }
+        else if (moving)
+        {
+            // A bound has one rise to a cycle; a walk has two, one per pair.
+            rise = walk.Bounds
+                ? Mathf.Max(0f, Mathf.Sin(gait)) * traits.Size * walk.Bounce
+                : Mathf.Abs(Mathf.Sin(gait)) * traits.Size * walk.Bounce;
+
+            pitch = -Mathf.Sin(gait + 0.6f) * walk.Pitch;
+            roll = Mathf.Sin(gait * 0.5f) * walk.Roll;
+        }
+        else
+        {
+            rise = Mathf.Lerp(body.Frame.localPosition.y, 0f, dt * 5f);
+        }
+
+        var local = body.Frame.localPosition;
+        local.y = rise;
+        body.Frame.localPosition = local;
+
+        body.Frame.localRotation = Quaternion.Slerp(body.Frame.localRotation,
+            Quaternion.Euler(pitch, 0f, roll), moving ? 0.35f : dt * 5f);
+    }
+
+    /// <summary>Where the head is held, which is what the animal is doing.</summary>
+    private void Poise(float dt, bool moving)
+    {
+        if (body.Head == null) return;
+
+        float dip = 0f;
+        float turn = 0f;
+
+        switch (state)
+        {
+            case State.Graze:
+                // down in the grass, with the small movements of chewing
+                dip = 54f + Mathf.Sin(Time.time * 7f + phase) * 3.5f;
+                break;
+
+            case State.Drink:
+                dip = 72f + Mathf.Sin(Time.time * 5f + phase) * 2.5f;
+                break;
+
+            case State.Rest:
+                dip = 16f;
+                break;
+
+            case State.Look:
+                // casting about, the way anything grazing checks on things
+                turn = Mathf.Sin(Time.time * 1.4f + phase) * 38f;
+                dip = 4f;
+                break;
+
+            case State.Alert:
+                dip = -6f;
+                turn = Mathf.Sin(Time.time * 0.8f + phase) * 6f;
+                break;
+
+            default:
+                // the head nods with the stride rather than riding along level
+                dip = moving ? 8f + Mathf.Sin(gait + 1.1f) * 5f : 22f;
+                break;
+        }
+
+        var want = Quaternion.Euler(dip, turn, 0f);
+        body.Head.localRotation = Quaternion.Slerp(body.Head.localRotation, want, dt * 5f);
     }
 
     /// <summary>The small sounds of an animal with its head down.</summary>
