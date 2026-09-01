@@ -21,14 +21,21 @@ public static class AnimalBuilder
         public Transform Tail;
     }
 
+    /// <summary>A mesh with the materials that go on it, in submesh order.</summary>
+    private struct Skin
+    {
+        public Mesh Mesh;
+        public int[] Coats;
+    }
+
     private class Kit
     {
-        public Mesh Trunk;               // body and neck together
-        public Mesh Head;
-        public Mesh ForeLeg;
-        public Mesh HindLeg;
-        public Mesh Tail;
-        public Material[] Coats;
+        public Skin Trunk;               // body and neck together
+        public Skin Head;
+        public Skin ForeLeg;
+        public Skin HindLeg;
+        public Skin Tail;
+        public Material[] Palette;
 
         public Vector3 Neck;             // where the head hangs from
         public Vector3 Hip;              // hind leg attachment, mirrored across x
@@ -52,10 +59,10 @@ public static class AnimalBuilder
         var body = new Body { Frame = frameGo.transform };
         var frame = frameGo.transform;
 
-        Part(frame, "trunk", kit.Trunk, kit.Coats, Vector3.zero);
+        Part(frame, "trunk", kit.Trunk, kit.Palette, Vector3.zero);
 
         body.Head = Pivot(frame, "head", kit.Neck);
-        Part(body.Head, "skull", kit.Head, kit.Coats, Vector3.zero);
+        Part(body.Head, "skull", kit.Head, kit.Palette, Vector3.zero);
 
         body.Legs = new Transform[4];
 
@@ -68,11 +75,11 @@ public static class AnimalBuilder
             at.x *= side;
 
             body.Legs[i] = Pivot(frame, fore ? "foreleg" : "hindleg", at);
-            Part(body.Legs[i], "leg", fore ? kit.ForeLeg : kit.HindLeg, kit.Coats, Vector3.zero);
+            Part(body.Legs[i], "leg", fore ? kit.ForeLeg : kit.HindLeg, kit.Palette, Vector3.zero);
         }
 
         body.Tail = Pivot(frame, "tail", kit.Rump);
-        Part(body.Tail, "brush", kit.Tail, kit.Coats, Vector3.zero);
+        Part(body.Tail, "brush", kit.Tail, kit.Palette, Vector3.zero);
 
         return body;
     }
@@ -81,7 +88,7 @@ public static class AnimalBuilder
 
     private static Kit KitFor(FaunaKind kind)
     {
-        if (kits.TryGetValue(kind, out var cached) && cached.Trunk != null) return cached;
+        if (kits.TryGetValue(kind, out var cached) && cached.Trunk.Mesh != null) return cached;
 
         var traits = Fauna.Of(kind);
 
@@ -95,7 +102,7 @@ public static class AnimalBuilder
             default: kit = Goat(traits.Size); break;
         }
 
-        kit.Coats = new[] { Mat(traits.Coat), Mat(traits.Under), Mat(traits.Dark) };
+        kit.Palette = new[] { Mat(traits.Coat), Mat(traits.Under), Mat(traits.Dark) };
 
         kits[kind] = kit;
 
@@ -137,7 +144,7 @@ public static class AnimalBuilder
             },
             16, 1.20f));
 
-        kit.Trunk = CreatureMesh.Combine(pieces);
+        kit.Trunk = Wrap(pieces);
 
         var head = new List<CreatureMesh.Piece>();
 
@@ -150,7 +157,7 @@ public static class AnimalBuilder
                 new Vector3(0f, -0.03f * h, 0.18f * h),
                 new Vector3(0f, -0.05f * h, 0.28f * h)
             },
-            new[] { 0.030f * h, 0.070f * h, 0.058f * h, 0.044f * h, 0.026f * h }, 12, 1.10f));
+            new[] { 0.030f * h, 0.070f * h, 0.058f * h, 0.044f * h, 0.026f * h }, 8, 1.10f));
 
         Ear(head, h, 1f, 0.050f, 0.06f, -0.02f, 0.125f, 0.15f, -0.07f, 0.032f);
         Ear(head, h, -1f, 0.050f, 0.06f, -0.02f, 0.125f, 0.15f, -0.07f, 0.032f);
@@ -161,9 +168,9 @@ public static class AnimalBuilder
         // a dark muzzle, which is the only two tone marking that reads at range
         Add(head, 2, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.035f * h, 0.20f * h), new Vector3(0f, -0.045f * h, 0.26f * h) },
-            new[] { 0.032f * h, 0.020f * h }, 10, 1f));
+            new[] { 0.032f * h, 0.020f * h }, 7, 1f));
 
-        kit.Head = CreatureMesh.Combine(head);
+        kit.Head = Wrap(head);
 
         kit.ForeLeg = Leg(h, 0.60f, 0.046f, 0.028f, 0.020f, 0.03f, -0.02f);
         kit.HindLeg = Leg(h, 0.60f, 0.056f, 0.032f, 0.020f, -0.08f, 0.03f);
@@ -171,8 +178,8 @@ public static class AnimalBuilder
         var tail = new List<CreatureMesh.Piece>();
         Add(tail, 0, CreatureMesh.Tube(
             new[] { Vector3.zero, new Vector3(0f, -0.05f * h, -0.07f * h), new Vector3(0f, -0.10f * h, -0.11f * h) },
-            new[] { 0.032f * h, 0.030f * h, 0.014f * h }, 8, 1f));
-        kit.Tail = CreatureMesh.Combine(tail);
+            new[] { 0.032f * h, 0.030f * h, 0.014f * h }, 6, 1f));
+        kit.Tail = Wrap(tail);
 
         return kit;
     }
@@ -189,15 +196,15 @@ public static class AnimalBuilder
             new Vector3(0.115f * h * side, 0.40f * h, -0.02f * h)
         };
 
-        Add(head, 1, CreatureMesh.Tube(beam, new[] { 0.017f * h, 0.013f * h, 0.010f * h, 0.005f * h }, 7));
+        Add(head, 1, CreatureMesh.Tube(beam, new[] { 0.017f * h, 0.013f * h, 0.010f * h, 0.005f * h }, 5));
 
         Add(head, 1, CreatureMesh.Taper(beam[1], beam[1] + new Vector3(0.02f * h * side, 0.10f * h, 0.09f * h),
-                                        0.010f * h, 0.004f * h, 6));
+                                        0.010f * h, 0.004f * h, 5));
         Add(head, 1, CreatureMesh.Taper(beam[2], beam[2] + new Vector3(0.02f * h * side, 0.09f * h, 0.10f * h),
-                                        0.009f * h, 0.004f * h, 6));
+                                        0.009f * h, 0.004f * h, 5));
         Add(head, 1, CreatureMesh.Taper(beam[0] + new Vector3(0.004f * h * side, 0.03f * h, 0f),
                                         beam[0] + new Vector3(0.02f * h * side, 0.10f * h, 0.09f * h),
-                                        0.009f * h, 0.004f * h, 6));
+                                        0.009f * h, 0.004f * h, 5));
     }
 
     private static Kit Rabbit(float h)
@@ -232,7 +239,7 @@ public static class AnimalBuilder
             },
             16, 1.02f));
 
-        kit.Trunk = CreatureMesh.Combine(pieces);
+        kit.Trunk = Wrap(pieces);
 
         var head = new List<CreatureMesh.Piece>();
 
@@ -244,7 +251,7 @@ public static class AnimalBuilder
                 new Vector3(0f, -0.02f * h, 0.06f * h),
                 new Vector3(0f, -0.05f * h, 0.13f * h)
             },
-            new[] { 0.060f * h, 0.110f * h, 0.090f * h, 0.040f * h }, 12, 1f));
+            new[] { 0.060f * h, 0.110f * h, 0.090f * h, 0.040f * h }, 8, 1f));
 
         // ears about a head and a half long, leaning apart
         Ear(head, h, 1f, 0.042f, 0.05f, -0.05f, 0.085f, 0.30f, -0.10f, 0.055f);
@@ -252,9 +259,9 @@ public static class AnimalBuilder
 
         Add(head, 2, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.05f * h, 0.10f * h), new Vector3(0f, -0.06f * h, 0.15f * h) },
-            new[] { 0.040f * h, 0.022f * h }, 10, 1f));
+            new[] { 0.040f * h, 0.022f * h }, 7, 1f));
 
-        kit.Head = CreatureMesh.Combine(head);
+        kit.Head = Wrap(head);
 
         kit.ForeLeg = Leg(h, 0.30f, 0.055f, 0.040f, 0.032f, 0.02f, 0.01f);
         kit.HindLeg = Leg(h, 0.42f, 0.080f, 0.050f, 0.034f, -0.14f, 0.10f);
@@ -267,8 +274,8 @@ public static class AnimalBuilder
                 new Vector3(0f, 0.01f * h, -0.05f * h),
                 new Vector3(0f, 0f, -0.10f * h)
             },
-            new[] { 0.040f * h, 0.070f * h, 0.028f * h }, 10, 1f));
-        kit.Tail = CreatureMesh.Combine(tail);
+            new[] { 0.040f * h, 0.070f * h, 0.028f * h }, 7, 1f));
+        kit.Tail = Wrap(tail);
 
         return kit;
     }
@@ -304,7 +311,7 @@ public static class AnimalBuilder
             },
             16, 1.06f));
 
-        kit.Trunk = CreatureMesh.Combine(pieces);
+        kit.Trunk = Wrap(pieces);
 
         var head = new List<CreatureMesh.Piece>();
 
@@ -318,16 +325,16 @@ public static class AnimalBuilder
                 new Vector3(0f, -0.02f * h, 0.17f * h),
                 new Vector3(0f, -0.03f * h, 0.26f * h)
             },
-            new[] { 0.045f * h, 0.100f * h, 0.070f * h, 0.042f * h, 0.022f * h }, 12, 1f));
+            new[] { 0.045f * h, 0.100f * h, 0.070f * h, 0.042f * h, 0.022f * h }, 8, 1f));
 
         Ear(head, h, 1f, 0.060f, 0.06f, -0.07f, 0.085f, 0.24f, -0.12f, 0.052f);
         Ear(head, h, -1f, 0.060f, 0.06f, -0.07f, 0.085f, 0.24f, -0.12f, 0.052f);
 
         Add(head, 2, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.025f * h, 0.21f * h), new Vector3(0f, -0.035f * h, 0.29f * h) },
-            new[] { 0.030f * h, 0.014f * h }, 10, 1f));
+            new[] { 0.030f * h, 0.014f * h }, 7, 1f));
 
-        kit.Head = CreatureMesh.Combine(head);
+        kit.Head = Wrap(head);
 
         kit.ForeLeg = Leg(h, 0.56f, 0.040f, 0.030f, 0.024f, 0.03f, -0.01f);
         kit.HindLeg = Leg(h, 0.56f, 0.050f, 0.034f, 0.024f, -0.09f, 0.04f);
@@ -344,11 +351,11 @@ public static class AnimalBuilder
                 new Vector3(0f, -0.16f * h, -0.48f * h),
                 new Vector3(0f, -0.24f * h, -0.58f * h)
             },
-            new[] { 0.060f * h, 0.115f * h, 0.125f * h, 0.100f * h, 0.045f * h }, 12, 1f));
+            new[] { 0.060f * h, 0.115f * h, 0.125f * h, 0.100f * h, 0.045f * h }, 8, 1f));
         Add(tail, 1, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.22f * h, -0.55f * h), new Vector3(0f, -0.27f * h, -0.63f * h) },
-            new[] { 0.070f * h, 0.030f * h }, 10, 1f));
-        kit.Tail = CreatureMesh.Combine(tail);
+            new[] { 0.070f * h, 0.030f * h }, 7, 1f));
+        kit.Tail = Wrap(tail);
 
         return kit;
     }
@@ -385,7 +392,7 @@ public static class AnimalBuilder
             },
             16, 1.12f));
 
-        kit.Trunk = CreatureMesh.Combine(pieces);
+        kit.Trunk = Wrap(pieces);
 
         var head = new List<CreatureMesh.Piece>();
 
@@ -398,7 +405,7 @@ public static class AnimalBuilder
                 new Vector3(0f, -0.03f * h, 0.19f * h),
                 new Vector3(0f, -0.05f * h, 0.26f * h)
             },
-            new[] { 0.040f * h, 0.082f * h, 0.070f * h, 0.052f * h, 0.034f * h }, 12, 1.05f));
+            new[] { 0.040f * h, 0.082f * h, 0.070f * h, 0.052f * h, 0.034f * h }, 8, 1.05f));
 
         // ears out and down, the way a goat carries them
         Ear(head, h, 1f, 0.066f, 0.04f, -0.01f, 0.135f, -0.07f, -0.06f, 0.042f);
@@ -409,7 +416,7 @@ public static class AnimalBuilder
 
         Add(head, 2, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.05f * h, 0.22f * h), new Vector3(0f, -0.06f * h, 0.28f * h) },
-            new[] { 0.036f * h, 0.022f * h }, 10, 1f));
+            new[] { 0.036f * h, 0.022f * h }, 7, 1f));
 
         // the beard
         Add(head, 1, CreatureMesh.Tube(
@@ -419,9 +426,9 @@ public static class AnimalBuilder
                 new Vector3(0f, -0.17f * h, 0.13f * h),
                 new Vector3(0f, -0.24f * h, 0.11f * h)
             },
-            new[] { 0.030f * h, 0.024f * h, 0.008f * h }, 8, 1f));
+            new[] { 0.030f * h, 0.024f * h, 0.008f * h }, 6, 1f));
 
-        kit.Head = CreatureMesh.Combine(head);
+        kit.Head = Wrap(head);
 
         kit.ForeLeg = Leg(h, 0.70f, 0.050f, 0.034f, 0.026f, 0.03f, -0.01f);
         kit.HindLeg = Leg(h, 0.70f, 0.060f, 0.038f, 0.026f, -0.08f, 0.03f);
@@ -429,8 +436,8 @@ public static class AnimalBuilder
         var tail = new List<CreatureMesh.Piece>();
         Add(tail, 0, CreatureMesh.Tube(
             new[] { Vector3.zero, new Vector3(0f, 0.03f * h, -0.06f * h), new Vector3(0f, 0.04f * h, -0.10f * h) },
-            new[] { 0.034f * h, 0.028f * h, 0.010f * h }, 8, 1f));
-        kit.Tail = CreatureMesh.Combine(tail);
+            new[] { 0.034f * h, 0.028f * h, 0.010f * h }, 6, 1f));
+        kit.Tail = Wrap(tail);
 
         return kit;
     }
@@ -447,7 +454,7 @@ public static class AnimalBuilder
         };
 
         Add(head, 1, CreatureMesh.Tube(path,
-            new[] { 0.028f * h, 0.022f * h, 0.016f * h, 0.011f * h, 0.006f * h }, 8));
+            new[] { 0.028f * h, 0.022f * h, 0.016f * h, 0.011f * h, 0.006f * h }, 6));
     }
 
     // -------------------------------------------------------------------- bits
@@ -460,7 +467,7 @@ public static class AnimalBuilder
     /// The top of the leg has to finish inside the barrel: attach it where the
     /// two surfaces meet and the top ring cuts through the flank as a wedge.
     /// </summary>
-    private static Mesh Leg(float h, float length, float top, float middle, float ankle,
+    private static Skin Leg(float h, float length, float top, float middle, float ankle,
                             float kneeZ, float footZ)
     {
         float l = length * h;
@@ -475,7 +482,7 @@ public static class AnimalBuilder
                 new Vector3(0f, -l * 0.68f, footZ * h * 0.5f),
                 new Vector3(0f, -l * 0.94f, footZ * h)
             },
-            new[] { top * h, middle * h, ankle * h, ankle * h * 0.85f }, 10, 1f));
+            new[] { top * h, middle * h, ankle * h, ankle * h * 0.85f }, 7, 1f));
 
         // a foot, so it stands on something rather than tapering into the grass
         Add(pieces, 2, CreatureMesh.Tube(
@@ -484,9 +491,9 @@ public static class AnimalBuilder
                 new Vector3(0f, -l * 0.94f, footZ * h),
                 new Vector3(0f, -l, footZ * h + 0.012f * h)
             },
-            new[] { ankle * h * 0.95f, ankle * h * 0.80f }, 10, 0.9f));
+            new[] { ankle * h * 0.95f, ankle * h * 0.80f }, 7, 0.9f));
 
-        return CreatureMesh.Combine(pieces);
+        return Wrap(pieces);
     }
 
     /// <summary>
@@ -504,7 +511,7 @@ public static class AnimalBuilder
         var mid = Vector3.Lerp(root, tip, 0.45f);
 
         Add(head, 0, CreatureMesh.Tube(new[] { root, mid, tip },
-            new[] { width * h * 0.75f, width * h, width * h * 0.18f }, 8, 0.34f));
+            new[] { width * h * 0.75f, width * h, width * h * 0.18f }, 6, 0.34f));
     }
 
     private static void Add(List<CreatureMesh.Piece> into, int coat, Mesh mesh)
@@ -521,16 +528,29 @@ public static class AnimalBuilder
         return go.transform;
     }
 
-    private static Transform Part(Transform parent, string name, Mesh mesh, Material[] coats, Vector3 at)
+    private static Skin Wrap(List<CreatureMesh.Piece> pieces)
+    {
+        var mesh = CreatureMesh.Combine(pieces, out var coats);
+
+        return new Skin { Mesh = mesh, Coats = coats };
+    }
+
+    private static Transform Part(Transform parent, string name, Skin skin, Material[] palette, Vector3 at)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         go.transform.localPosition = at;
 
-        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        go.AddComponent<MeshFilter>().sharedMesh = skin.Mesh;
+
+        // One material per submesh, in the order the submeshes were actually
+        // built: a leg with no pale on it wears its coat and then its hoof.
+        var worn = new Material[skin.Coats.Length];
+
+        for (int i = 0; i < worn.Length; i++) worn[i] = palette[skin.Coats[i]];
 
         var renderer = go.AddComponent<MeshRenderer>();
-        renderer.sharedMaterials = coats;
+        renderer.sharedMaterials = worn;
 
         return go.transform;
     }
@@ -550,7 +570,9 @@ public static class AnimalBuilder
         var material = new Material(lit);
         material.SetColor("_BaseColor", c);
         material.color = c;
-        material.SetFloat("_Smoothness", 0.06f);
+        material.SetFloat("_Smoothness", 0.10f);
+        material.SetFloat("_Metallic", 0f);
+        material.SetFloat("_Glossiness", 0f);
         material.enableInstancing = true;
 
         materials[key] = material;

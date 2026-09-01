@@ -12,6 +12,11 @@ public enum FaunaKind { Deer, Rabbit, Fox, Goat }
 /// </summary>
 public static class Fauna
 {
+    /// <summary>
+    /// Colours are taken from the tile pack's own palette texture rather than
+    /// picked to look like the animal: a deer the colour of the ground it
+    /// stands on belongs there, one painted from life does not.
+    /// </summary>
     public struct Traits
     {
         public string Name;
@@ -34,9 +39,9 @@ public static class Fauna
                 return new Traits
                 {
                     Name = "deer",
-                    Coat = new Color(0.52f, 0.37f, 0.24f),
-                    Under = new Color(0.80f, 0.74f, 0.63f),
-                    Dark = new Color(0.14f, 0.11f, 0.09f),
+                    Coat = new Color(0.612f, 0.447f, 0.271f),
+                    Under = new Color(0.855f, 0.741f, 0.588f),
+                    Dark = new Color(0.255f, 0.247f, 0.220f),
                     Size = 1.55f, WalkSpeed = 1.5f, RunSpeed = 8.5f,
                     Notices = 26f, Bolts = 15f, Settles = 55f
                 };
@@ -45,9 +50,9 @@ public static class Fauna
                 return new Traits
                 {
                     Name = "rabbit",
-                    Coat = new Color(0.55f, 0.48f, 0.40f),
-                    Under = new Color(0.88f, 0.86f, 0.82f),
-                    Dark = new Color(0.20f, 0.16f, 0.14f),
+                    Coat = new Color(0.573f, 0.506f, 0.451f),
+                    Under = new Color(0.941f, 0.835f, 0.698f),
+                    Dark = new Color(0.278f, 0.231f, 0.184f),
                     Size = 0.44f, WalkSpeed = 1.1f, RunSpeed = 6.5f,
                     Notices = 14f, Bolts = 8f, Settles = 26f
                 };
@@ -56,9 +61,9 @@ public static class Fauna
                 return new Traits
                 {
                     Name = "fox",
-                    Coat = new Color(0.68f, 0.34f, 0.14f),
-                    Under = new Color(0.93f, 0.91f, 0.87f),
-                    Dark = new Color(0.13f, 0.10f, 0.09f),
+                    Coat = new Color(0.780f, 0.420f, 0.200f),
+                    Under = new Color(0.965f, 0.847f, 0.698f),
+                    Dark = new Color(0.231f, 0.192f, 0.145f),
                     Size = 0.64f, WalkSpeed = 1.8f, RunSpeed = 7.5f,
                     Notices = 20f, Bolts = 11f, Settles = 38f
                 };
@@ -67,9 +72,9 @@ public static class Fauna
                 return new Traits
                 {
                     Name = "goat",
-                    Coat = new Color(0.86f, 0.84f, 0.79f),
-                    Under = new Color(0.52f, 0.47f, 0.40f),
-                    Dark = new Color(0.18f, 0.16f, 0.14f),
+                    Coat = new Color(0.678f, 0.678f, 0.678f),
+                    Under = new Color(0.392f, 0.353f, 0.314f),
+                    Dark = new Color(0.231f, 0.192f, 0.145f),
                     Size = 1.00f, WalkSpeed = 1.2f, RunSpeed = 6.0f,
                     Notices = 22f, Bolts = 10f, Settles = 34f
                 };

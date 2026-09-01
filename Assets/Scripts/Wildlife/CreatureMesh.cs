@@ -129,6 +129,17 @@ public static class CreatureMesh
     /// </summary>
     public static Mesh Combine(List<Piece> pieces)
     {
+        return Combine(pieces, out _);
+    }
+
+    /// <summary>
+    /// Everything joined into one mesh, one submesh per coat that is actually
+    /// used. Which coats those were comes back in `coats`: a mesh with nothing
+    /// in its middle coat gets two submeshes, not three, and materials handed
+    /// to it in the original order would land on the wrong parts of it.
+    /// </summary>
+    public static Mesh Combine(List<Piece> pieces, out int[] coats)
+    {
         var byCoat = new[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
 
         foreach (var piece in pieces)
@@ -137,24 +148,65 @@ public static class CreatureMesh
                 new CombineInstance { mesh = piece.Mesh, transform = piece.At });
         }
 
-        var parts = new CombineInstance[byCoat.Length];
+        var parts = new List<CombineInstance>();
+        var used = new List<int>();
 
         for (int i = 0; i < byCoat.Length; i++)
         {
+            if (byCoat[i].Count == 0) continue;
+
             var one = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            one.CombineMeshes(byCoat[i].ToArray(), true, true);
 
-            // An empty submesh still has to exist, or the materials on the
-            // renderer no longer line up with the coats they were meant for.
-            if (byCoat[i].Count > 0) one.CombineMeshes(byCoat[i].ToArray(), true, true);
-
-            parts[i] = new CombineInstance { mesh = one, transform = Matrix4x4.identity };
+            parts.Add(new CombineInstance { mesh = one, transform = Matrix4x4.identity });
+            used.Add(i);
         }
 
+        coats = used.ToArray();
+
         var all = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
-        all.CombineMeshes(parts, false, false);
+        all.CombineMeshes(parts.ToArray(), false, false);
+
+        Facet(all);
+
         all.RecalculateBounds();
 
         return all;
+    }
+
+    /// <summary>
+    /// Gives every triangle its own three corners, so each face is lit as a
+    /// face. The tiles this world is built from are flat shaded and the light
+    /// breaks over them in hard steps; an animal shaded smoothly sits on that
+    /// ground looking like it wandered in from another game.
+    /// </summary>
+    public static void Facet(Mesh mesh)
+    {
+        var source = mesh.vertices;
+        var faces = new List<Vector3>(mesh.triangles.Length);
+        var sets = new List<int[]>();
+
+        for (int sub = 0; sub < mesh.subMeshCount; sub++)
+        {
+            var indices = mesh.GetTriangles(sub);
+            var rebuilt = new int[indices.Length];
+
+            for (int i = 0; i < indices.Length; i++)
+            {
+                rebuilt[i] = faces.Count;
+                faces.Add(source[indices[i]]);
+            }
+
+            sets.Add(rebuilt);
+        }
+
+        mesh.Clear();
+        mesh.SetVertices(faces);
+        mesh.subMeshCount = sets.Count;
+
+        for (int sub = 0; sub < sets.Count; sub++) mesh.SetTriangles(sets[sub], sub);
+
+        mesh.RecalculateNormals();
     }
 
     public static Matrix4x4 At(Vector3 position, Vector3 euler, float scale = 1f)
