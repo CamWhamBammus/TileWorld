@@ -38,8 +38,18 @@ public class PauseMenu : MonoBehaviour
         BuildUi();
     }
 
+    /// <summary>Lets the world list hide the pause card while it is over it.</summary>
+    public void ShowPanel(bool on)
+    {
+        if (panel != null) panel.SetActive(on);
+    }
+
     private void Update()
     {
+        // The world list has its own Escape, and keeps it for a frame after it
+        // closes so the same press does not unpause behind it.
+        if (WorldsScreen.Blocking) return;
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             // Escape backs out of whatever is open before it pauses, which is
@@ -117,10 +127,11 @@ public class PauseMenu : MonoBehaviour
         readout = Label("Readout", cardGo.transform, 21f, new Vector2(0f, 150f), new Vector2(470f, 300f));
         readout.alignment = TextAlignmentOptions.Top;
 
-        Button("Draw further", new Vector2(0f, -40f), () => Adjust(+1));
-        Button("Draw closer", new Vector2(0f, -110f), () => Adjust(-1));
-        Button("Longer days", new Vector2(0f, -180f), () => AdjustDay(+5f));
-        Button("Shorter days", new Vector2(0f, -250f), () => AdjustDay(-5f));
+        Button("Worlds", new Vector2(0f, -30f), OpenWorlds);
+        Button("Draw further", new Vector2(0f, -92f), () => Adjust(+1));
+        Button("Draw closer", new Vector2(0f, -154f), () => Adjust(-1));
+        Button("Longer days", new Vector2(0f, -216f), () => AdjustDay(+5f));
+        Button("Shorter days", new Vector2(0f, -278f), () => AdjustDay(-5f));
 
         panel.SetActive(false);
         Refresh();
@@ -174,6 +185,11 @@ public class PauseMenu : MonoBehaviour
         return text;
     }
 
+    private void OpenWorlds()
+    {
+        WorldsScreen.Instance?.Open();
+    }
+
     private void Adjust(int by)
     {
         if (world == null) return;
@@ -199,8 +215,11 @@ public class PauseMenu : MonoBehaviour
         string day = clock != null ? clock.DayLengthMinutes.ToString("F0") : "-";
         string time = clock != null ? clock.Clock() + " " + clock.Label() : "-";
 
+        string here = WorldLibrary.HasCurrent ? WorldLibrary.Current.name : "unnamed";
+
         readout.text =
             "<size=140%><b>PAUSED</b></size>\n\n" +
+            "<size=110%>" + here + "</size>\n" +
             "seed " + seed + "\n" +
             time + "\n\n" +
             "draw distance " + radius + " chunks (" + (int)(int.Parse(radius == "-" ? "0" : radius) * 30) + "m)\n" +
