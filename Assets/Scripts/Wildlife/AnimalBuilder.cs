@@ -205,8 +205,8 @@ public static class AnimalBuilder
         var kit = new Kit
         {
             Neck = new Vector3(0f, 0.74f * h, 0.34f * h),
-            Shoulder = new Vector3(0.070f * h, 0.42f * h, 0.14f * h),
-            Hip = new Vector3(0.095f * h, 0.46f * h, -0.24f * h),
+            Shoulder = new Vector3(0.060f * h, 0.44f * h, 0.14f * h),
+            Hip = new Vector3(0.070f * h, 0.48f * h, -0.24f * h),
             Rump = new Vector3(0f, 0.52f * h, -0.50f * h)
         };
 
@@ -257,7 +257,7 @@ public static class AnimalBuilder
         kit.Head = CreatureMesh.Combine(head);
 
         kit.ForeLeg = Leg(h, 0.30f, 0.055f, 0.040f, 0.032f, 0.02f, 0.01f);
-        kit.HindLeg = Leg(h, 0.40f, 0.110f, 0.055f, 0.034f, -0.14f, 0.10f);
+        kit.HindLeg = Leg(h, 0.42f, 0.080f, 0.050f, 0.034f, -0.14f, 0.10f);
 
         var tail = new List<CreatureMesh.Piece>();
         Add(tail, 1, CreatureMesh.Tube(

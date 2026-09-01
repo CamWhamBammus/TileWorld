@@ -29,6 +29,8 @@ public static class CreatureMesh
     /// </summary>
     public static Mesh Tube(Vector3[] path, float[] radius, int sides = 10, float flatten = 1f)
     {
+        Dome(ref path, ref radius);
+
         int rings = path.Length;
 
         var vertices = new List<Vector3>((rings + 2) * (sides + 1));
@@ -80,8 +82,12 @@ public static class CreatureMesh
             int a = i * (sides + 1) + j;
             int b = a + sides + 1;
 
-            triangles.Add(a); triangles.Add(b); triangles.Add(a + 1);
-            triangles.Add(a + 1); triangles.Add(b); triangles.Add(b + 1);
+            // Wound so the face looks outward. The other way round the whole
+            // animal is inside out: the near surface is culled away, you see
+            // its own legs through it, and every normal points into the body
+            // so the light lands on the wrong side of it.
+            triangles.Add(a); triangles.Add(a + 1); triangles.Add(b);
+            triangles.Add(a + 1); triangles.Add(b + 1); triangles.Add(b);
         }
 
         // Ends are closed with a fan to a point just beyond the last ring, so a
@@ -158,6 +164,38 @@ public static class CreatureMesh
 
     // ------------------------------------------------------------------ inside
 
+    /// <summary>
+    /// Adds a couple of drawn-in rings at each end so a tube finishes as a
+    /// dome. Without them the closing fan is a flat lid the width of the tube,
+    /// which reads as a cut end and shades like one.
+    /// </summary>
+    private static void Dome(ref Vector3[] path, ref float[] radius)
+    {
+        var points = new List<Vector3>(path.Length + 4);
+        var radii = new List<float>(radius.Length + 4);
+
+        Vector3 head = Tangent(path, 0);
+        Vector3 tail = Tangent(path, path.Length - 1);
+
+        points.Add(path[0] - head * radius[0] * 0.66f);
+        radii.Add(radius[0] * 0.34f);
+        points.Add(path[0] - head * radius[0] * 0.38f);
+        radii.Add(radius[0] * 0.74f);
+
+        points.AddRange(path);
+        radii.AddRange(radius);
+
+        int last = path.Length - 1;
+
+        points.Add(path[last] + tail * radius[last] * 0.38f);
+        radii.Add(radius[last] * 0.74f);
+        points.Add(path[last] + tail * radius[last] * 0.66f);
+        radii.Add(radius[last] * 0.34f);
+
+        path = points.ToArray();
+        radius = radii.ToArray();
+    }
+
     private static Vector3 Tangent(Vector3[] path, int i)
     {
         Vector3 tangent;
@@ -185,11 +223,11 @@ public static class CreatureMesh
         {
             if (start)
             {
-                triangles.Add(tip); triangles.Add(first + j); triangles.Add(first + j + 1);
+                triangles.Add(tip); triangles.Add(first + j + 1); triangles.Add(first + j);
             }
             else
             {
-                triangles.Add(tip); triangles.Add(first + j + 1); triangles.Add(first + j);
+                triangles.Add(tip); triangles.Add(first + j); triangles.Add(first + j + 1);
             }
         }
     }
