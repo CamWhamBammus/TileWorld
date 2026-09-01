@@ -56,6 +56,8 @@ Press M. Chunks you have been through are shaded by height, everything else is l
 
 The world saves itself every thirty seconds and when you quit. Almost nothing needs storing, since the terrain, the tiles and the landmarks all come from the seed: a save is the seed plus where you have been, what you have seen from a tower, which landmarks you reached, the time and where you stood. So you come back to the same world with your chart intact.
 
+You can keep more than one. Escape, then Worlds, lists what you have made: each with its name, its seed, how much of it you have charted, how many landmarks you found in it and when you were last there. Make a new one with a name and a seed of your choosing, or leave either blank and take what you are given - an unnamed world is called after the ground it starts on. Picking one saves the world you are in first, so wandering off to see a different seed costs you nothing. Worlds can be forgotten too, which takes two presses.
+
 There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby and for anywhere you have marked on the map. Landmarks you have already reached carry their name out in the world. Finishing a quest or reaching something shows up as a note in the corner, and the field journal lists everything found, nearest first.
 
 Nights have stars, fireflies come out in the lowlands, and there is standing water in about one chunk in ten. Snow covers the ground above the snowline, which is roughly eight percent of the world, with a ragged edge rather than a contour line. Wind rises with altitude and with the weather, so an exposed ridge in bad weather sounds like one, birds call in the daytime lowlands, and it rains when the overcast gets heavy. Wind and birdsong are generated in code rather than recorded.
@@ -102,4 +104,4 @@ Scripts are grouped under `Assets/Scripts`:
 - `Player/` - the follow camera, swimming, and the underwater view
 - `Interface/` - the map, journal, quest log, compass, notices, pause menu and statistics overlay
 - `Atmosphere/` - the day cycle and weather, wind, birdsong, music, rain, stars and fireflies
-- `Systems/` - what has been found, and what is kept between sessions
+- `Systems/` - what has been found, the library of saved worlds, and what is kept between sessions
