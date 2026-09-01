@@ -50,6 +50,8 @@ That gives you something to aim at. You spot a tower over the trees, walk to it,
 
 Deer in the wooded lowlands at either end of the day, rabbits in open meadow while it is light, foxes over the same ground after dark, and goats on the high bare rock where none of the others go. Which animal you meet is a question of where you are standing and what time it is, so a dawn walk down a valley and a midnight one across the same ground are not the same walk.
 
+You hear them before you see them, and from the direction they actually are: a deer's grunt, a fox's bark carrying a long way in the dark, the wobble of a goat, a rabbit drumming its foot. The calls are synthesised in code the same way the wind and the birdsong are, and an animal that has spotted you says something sharper on its way out.
+
 They graze, wander a few paces, and lift their heads when you get close. Stand still and a deer will hold there watching you; take another step and it goes, downhill and round the water rather than into it. The journal keeps a list of what you have seen, which is saved with the world - a fox seen at midnight in one world is not a fox seen in another.
 
 ## The map

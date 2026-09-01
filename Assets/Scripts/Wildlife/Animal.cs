@@ -27,6 +27,9 @@ public class Animal : MonoBehaviour
     private float gait;
     private float phase;
 
+    private AudioSource voice;
+    private float nextCall;
+
     public void Settle(FaunaKind kind, int worldSeed, Transform watching, Vector3 at)
     {
         Kind = kind;
@@ -39,6 +42,18 @@ public class Animal : MonoBehaviour
 
         transform.position = Ground(at);
         transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+
+        // Heard from where the animal is rather than from everywhere at once,
+        // so a call tells you which way to look.
+        voice = gameObject.AddComponent<AudioSource>();
+        voice.playOnAwake = false;
+        voice.spatialBlend = 1f;
+        voice.rolloffMode = AudioRolloffMode.Linear;
+        voice.minDistance = 6f;
+        voice.maxDistance = 70f;
+        voice.dopplerLevel = 0f;
+
+        nextCall = Time.time + Random.Range(6f, 30f);
 
         Graze();
     }
@@ -59,6 +74,7 @@ public class Animal : MonoBehaviour
         Think(distance);
         Move(dt);
         Animate(dt, distance);
+        Talk();
     }
 
     private void Think(float distance)
@@ -68,6 +84,7 @@ public class Animal : MonoBehaviour
         {
             if (distance < traits.Bolts)
             {
+                Speak(true);
                 Flee();
                 return;
             }
@@ -169,6 +186,33 @@ public class Animal : MonoBehaviour
             float unease = state == State.Alert ? 5f : 1.2f;
             body.Tail.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * unease + phase) * 12f, 0f, 0f);
         }
+    }
+
+    /// <summary>
+    /// The odd call while it is settled. Grazing animals are quiet most of the
+    /// time, and something that called constantly would be a nuisance rather
+    /// than a thing you look up for.
+    /// </summary>
+    private void Talk()
+    {
+        if (Time.time < nextCall) return;
+
+        nextCall = Time.time + Random.Range(14f, 46f);
+
+        if (state == State.Flee) return;
+
+        Speak(state == State.Alert);
+    }
+
+    private void Speak(bool alarmed)
+    {
+        if (voice == null || !AnimalVoice.Ready) return;
+
+        voice.pitch = Random.Range(0.92f, 1.10f);
+        voice.PlayOneShot(AnimalVoice.Call(Kind, alarmed), alarmed ? 0.75f : 0.5f);
+
+        // Having just spoken, it has nothing more to say for a while.
+        nextCall = Mathf.Max(nextCall, Time.time + 9f);
     }
 
     private void Face(Vector3 direction, float dt, float speed)
