@@ -97,6 +97,26 @@ public class WorldMap : MonoBehaviour
         dirty = true;
     }
 
+    private void OnEnable()
+    {
+        ScreenState.Changed += OnScreenChanged;
+    }
+
+    private void OnDisable()
+    {
+        ScreenState.Changed -= OnScreenChanged;
+    }
+
+    /// <summary>Another screen taking over closes this one.</summary>
+    private void OnScreenChanged(ScreenState.Screen screen)
+    {
+        if (open && screen != ScreenState.Screen.Map)
+        {
+            open = false;
+            if (panel != null) panel.SetActive(false);
+        }
+    }
+
     private void Update()
     {
         if (Input.GetKeyDown(toggleKey))
@@ -106,7 +126,12 @@ public class WorldMap : MonoBehaviour
 
             if (open)
             {
+                ScreenState.Open(ScreenState.Screen.Map);
                 dirty = true;
+            }
+            else
+            {
+                ScreenState.Close(ScreenState.Screen.Map);
             }
         }
 

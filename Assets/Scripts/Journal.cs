@@ -41,12 +41,35 @@ public class Journal : MonoBehaviour
         BuildUi();
     }
 
+    private void OnEnable()
+    {
+        ScreenState.Changed += OnScreenChanged;
+    }
+
+    private void OnDisable()
+    {
+        ScreenState.Changed -= OnScreenChanged;
+    }
+
+    private void OnScreenChanged(ScreenState.Screen screen)
+    {
+        if (open && screen != ScreenState.Screen.Journal)
+        {
+            open = false;
+            if (panel != null) panel.SetActive(false);
+        }
+    }
+
     private void Update()
     {
         if (Input.GetKeyDown(toggleKey))
         {
             open = !open;
             panel.SetActive(open);
+
+            if (open) ScreenState.Open(ScreenState.Screen.Journal);
+            else ScreenState.Close(ScreenState.Screen.Journal);
+
             Ambience.Instance?.Click();
         }
 

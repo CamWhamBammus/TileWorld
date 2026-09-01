@@ -18,9 +18,6 @@ public class PauseMenu : MonoBehaviour
     private TMP_Text readout;
     private TMP_FontAsset font;
 
-    private CursorLockMode lockBefore;
-    private bool cursorBefore;
-
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
@@ -45,7 +42,17 @@ public class PauseMenu : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            Toggle(!Paused);
+            // Escape backs out of whatever is open before it pauses, which is
+            // what everyone expects it to do.
+            if (!Paused && ScreenState.WantsCursor)
+            {
+                ScreenState.Open(ScreenState.Screen.None);
+                ScreenState.Close(ScreenState.Screen.None);
+            }
+            else
+            {
+                Toggle(!Paused);
+            }
         }
 
         if (Paused)
@@ -62,18 +69,8 @@ public class PauseMenu : MonoBehaviour
         // Time.timeScale of zero also stops the day cycle, which is the point.
         Time.timeScale = on ? 0f : 1f;
 
-        if (on)
-        {
-            lockBefore = Cursor.lockState;
-            cursorBefore = Cursor.visible;
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
-        else
-        {
-            Cursor.lockState = lockBefore == CursorLockMode.None ? CursorLockMode.Locked : lockBefore;
-            Cursor.visible = cursorBefore;
-        }
+        if (on) ScreenState.Open(ScreenState.Screen.Pause);
+        else ScreenState.Close(ScreenState.Screen.Pause);
 
         Ambience.Instance?.Click(on ? 0.9f : 1.1f);
     }
