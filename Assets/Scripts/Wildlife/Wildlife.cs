@@ -97,8 +97,13 @@ public class Wildlife : MonoBehaviour
             }
         }
 
+        // Hard weather keeps some of them under cover, so the hillside in a
+        // downpour is not as busy as it is on a clear evening.
+        float overcast = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
+        int wanted = Mathf.RoundToInt(population * Mathf.Lerp(1f, 0.62f, overcast));
+
         // Groups arrive whole, so how many turn up is not known in advance.
-        for (int attempt = 0; attempt < 6 && living.Count < population; attempt++) TryBring(now);
+        for (int attempt = 0; attempt < 6 && living.Count < wanted; attempt++) TryBring(now);
     }
 
     /// <summary>
@@ -259,9 +264,11 @@ public class Wildlife : MonoBehaviour
             // A hill between you and it does not count as having seen it.
             if (Physics.Linecast(camera.transform.position, head)) continue;
 
-            if (SightingLog.Record(animal.Kind))
+            if (SightingLog.Record(animal.Kind, WorldGrid.WorldToChunk(animal.transform.position)))
             {
-                Notices.Show(Fauna.OnFirstSight(animal.Kind));
+                var region = Regions.At(WorldGrid.WorldToChunk(animal.transform.position), world.WorldSeed);
+
+                Notices.Show(Fauna.OnFirstSight(animal.Kind) + " in " + region.Name);
             }
         }
     }
