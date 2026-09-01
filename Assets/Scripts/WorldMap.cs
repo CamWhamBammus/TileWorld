@@ -344,13 +344,44 @@ public class WorldMap : MonoBehaviour
         UpdateStats();
     }
 
+    private static readonly Color Lake = new Color(0.36f, 0.50f, 0.60f);
+    private static readonly Color Snow = new Color(0.94f, 0.95f, 0.96f);
+
+    /// <summary>
+    /// The colour of a chunk on the chart. Sampled across the chunk rather than
+    /// taken from its centre tile, so a lake or a snow cap covering most of it
+    /// actually shows: a chart that leaves out the water is not much of a chart.
+    /// </summary>
     private Color TerrainColour(Vector2Int chunk, int seed)
     {
-        Vector3 centre = WorldGrid.ChunkCenter(chunk);
-        int tileX = Mathf.RoundToInt(centre.x / WorldGrid.TileSize);
-        int tileZ = Mathf.RoundToInt(centre.z / WorldGrid.TileSize);
+        int originX = chunk.x * WorldGrid.TilesPerChunk;
+        int originZ = chunk.y * WorldGrid.TilesPerChunk;
 
-        return HeightColour(WorldHeight.SurfaceY(tileX, tileZ, seed) - WorldHeight.BaseSurfaceY);
+        int wet = 0, snowy = 0, samples = 0;
+        float height = 0f;
+
+        for (int i = 1; i < WorldGrid.TilesPerChunk; i += 4)
+        for (int j = 1; j < WorldGrid.TilesPerChunk; j += 4)
+        {
+            int tileX = originX + i;
+            int tileZ = originZ + j;
+
+            if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) wet++;
+            if (SnowCover.IsSnowy(tileX, tileZ, seed)) snowy++;
+
+            height += WorldHeight.SurfaceY(tileX, tileZ, seed) - WorldHeight.BaseSurfaceY;
+            samples++;
+        }
+
+        Color ground = HeightColour(height / Mathf.Max(1, samples));
+
+        float wetShare = wet / (float)Mathf.Max(1, samples);
+        float snowShare = snowy / (float)Mathf.Max(1, samples);
+
+        if (wetShare > 0.15f) ground = Color.Lerp(ground, Lake, Mathf.Clamp01(wetShare * 1.6f));
+        if (snowShare > 0.15f) ground = Color.Lerp(ground, Snow, Mathf.Clamp01(snowShare * 1.3f));
+
+        return ground;
     }
 
     private void UpdateStats()
@@ -377,6 +408,7 @@ public class WorldMap : MonoBehaviour
                 : "") +
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
             "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
+            "water <color=#5C8099>\u25A0</color>  snow <color=#F0F2F5>\u25A0</color>  " +
             "landmark <color=#5C442D>\u25C6</color>   " +
             "scroll to zoom   click to mark   F9 saves     " +
             toggleKey + " to close</color></size>";
