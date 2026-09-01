@@ -16,7 +16,8 @@ public static class Fauna
     {
         public string Name;
         public Color Coat;
-        public Color Under;        // belly, tail tip, muzzle
+        public Color Under;        // bone, tail tip, the pale markings
+        public Color Dark;         // hooves, paws, the end of the nose
         public float Size;         // shoulder height, world units
         public float WalkSpeed;
         public float RunSpeed;
@@ -35,6 +36,7 @@ public static class Fauna
                     Name = "deer",
                     Coat = new Color(0.52f, 0.37f, 0.24f),
                     Under = new Color(0.80f, 0.74f, 0.63f),
+                    Dark = new Color(0.14f, 0.11f, 0.09f),
                     Size = 1.35f, WalkSpeed = 1.5f, RunSpeed = 8.5f,
                     Notices = 26f, Bolts = 15f, Settles = 55f
                 };
@@ -45,6 +47,7 @@ public static class Fauna
                     Name = "rabbit",
                     Coat = new Color(0.55f, 0.48f, 0.40f),
                     Under = new Color(0.88f, 0.86f, 0.82f),
+                    Dark = new Color(0.20f, 0.16f, 0.14f),
                     Size = 0.34f, WalkSpeed = 1.1f, RunSpeed = 6.5f,
                     Notices = 14f, Bolts = 8f, Settles = 26f
                 };
@@ -55,6 +58,7 @@ public static class Fauna
                     Name = "fox",
                     Coat = new Color(0.68f, 0.34f, 0.14f),
                     Under = new Color(0.93f, 0.91f, 0.87f),
+                    Dark = new Color(0.13f, 0.10f, 0.09f),
                     Size = 0.52f, WalkSpeed = 1.8f, RunSpeed = 7.5f,
                     Notices = 20f, Bolts = 11f, Settles = 38f
                 };
@@ -64,7 +68,8 @@ public static class Fauna
                 {
                     Name = "goat",
                     Coat = new Color(0.86f, 0.84f, 0.79f),
-                    Under = new Color(0.45f, 0.42f, 0.38f),
+                    Under = new Color(0.52f, 0.47f, 0.40f),
+                    Dark = new Color(0.18f, 0.16f, 0.14f),
                     Size = 0.85f, WalkSpeed = 1.2f, RunSpeed = 6.0f,
                     Notices = 22f, Bolts = 10f, Settles = 34f
                 };

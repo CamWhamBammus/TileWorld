@@ -1,0 +1,220 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Mesh building for the animals. Boxes and cylinders can suggest a landmark,
+/// where the straight lines are the point, but nothing alive is made of them:
+/// an animal is a body that swells and tapers along its length, and reads by
+/// its silhouette long before any detail on it does.
+///
+/// So a creature here is a set of tubes. Each is swept along a line with a
+/// changing thickness, the frame carried from one ring to the next so a curved
+/// neck does not twist as it bends, and the seam welded afterwards so the join
+/// down the side does not catch the light.
+/// </summary>
+public static class CreatureMesh
+{
+    /// <summary>One piece of an animal, and which of the two coats it wears.</summary>
+    public struct Piece
+    {
+        public Mesh Mesh;
+        public Matrix4x4 At;
+        public int Coat;        // 0 the coat, 1 the pale markings, 2 hoof and nose
+    }
+
+    /// <summary>
+    /// A swept tube. `path` is the centre line, `radius` the thickness at each
+    /// point of it, and `flatten` squashes the rings vertically so a body can
+    /// be deeper than it is wide.
+    /// </summary>
+    public static Mesh Tube(Vector3[] path, float[] radius, int sides = 10, float flatten = 1f)
+    {
+        int rings = path.Length;
+
+        var vertices = new List<Vector3>((rings + 2) * (sides + 1));
+        var triangles = new List<int>(rings * sides * 6);
+
+        // The frame is carried along the line rather than rebuilt at each ring,
+        // which is what stops a curving neck from spiralling.
+        Vector3 up = Vector3.up;
+        Vector3 previous = Tangent(path, 0);
+
+        var normals = new Vector3[rings];
+        var binormals = new Vector3[rings];
+
+        for (int i = 0; i < rings; i++)
+        {
+            Vector3 tangent = Tangent(path, i);
+
+            // rotate the carried frame by however much the line turned
+            var turn = Quaternion.FromToRotation(previous, tangent);
+            up = turn * up;
+
+            Vector3 side = Vector3.Cross(up, tangent).normalized;
+
+            if (side.sqrMagnitude < 0.001f) side = Vector3.Cross(Vector3.forward, tangent).normalized;
+
+            up = Vector3.Cross(tangent, side).normalized;
+
+            normals[i] = side;
+            binormals[i] = up;
+            previous = tangent;
+        }
+
+        for (int i = 0; i < rings; i++)
+        {
+            for (int j = 0; j <= sides; j++)
+            {
+                float angle = j / (float)sides * Mathf.PI * 2f;
+
+                Vector3 offset = normals[i] * (Mathf.Cos(angle) * radius[i])
+                               + binormals[i] * (Mathf.Sin(angle) * radius[i] * flatten);
+
+                vertices.Add(path[i] + offset);
+            }
+        }
+
+        for (int i = 0; i < rings - 1; i++)
+        for (int j = 0; j < sides; j++)
+        {
+            int a = i * (sides + 1) + j;
+            int b = a + sides + 1;
+
+            triangles.Add(a); triangles.Add(b); triangles.Add(a + 1);
+            triangles.Add(a + 1); triangles.Add(b); triangles.Add(b + 1);
+        }
+
+        // Ends are closed with a fan to a point just beyond the last ring, so a
+        // tapered end comes to a nose rather than a hole.
+        Cap(vertices, triangles, path, radius, sides, true);
+        Cap(vertices, triangles, path, radius, sides, false);
+
+        var mesh = new Mesh();
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+
+        Weld(mesh, rings, sides);
+
+        mesh.RecalculateBounds();
+
+        return mesh;
+    }
+
+    /// <summary>A tube whose thickness follows a curve, for legs and tails.</summary>
+    public static Mesh Taper(Vector3 from, Vector3 to, float thick, float thin, int sides = 8, int rings = 5)
+    {
+        var path = new Vector3[rings];
+        var radius = new float[rings];
+
+        for (int i = 0; i < rings; i++)
+        {
+            float t = i / (float)(rings - 1);
+            path[i] = Vector3.Lerp(from, to, t);
+            radius[i] = Mathf.Lerp(thick, thin, t);
+        }
+
+        return Tube(path, radius, sides);
+    }
+
+    /// <summary>
+    /// Everything joined into one mesh with two submeshes, one per coat, so a
+    /// whole animal is a couple of draws rather than a dozen.
+    /// </summary>
+    public static Mesh Combine(List<Piece> pieces)
+    {
+        var byCoat = new[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
+
+        foreach (var piece in pieces)
+        {
+            byCoat[Mathf.Clamp(piece.Coat, 0, 2)].Add(
+                new CombineInstance { mesh = piece.Mesh, transform = piece.At });
+        }
+
+        var parts = new CombineInstance[byCoat.Length];
+
+        for (int i = 0; i < byCoat.Length; i++)
+        {
+            var one = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+
+            // An empty submesh still has to exist, or the materials on the
+            // renderer no longer line up with the coats they were meant for.
+            if (byCoat[i].Count > 0) one.CombineMeshes(byCoat[i].ToArray(), true, true);
+
+            parts[i] = new CombineInstance { mesh = one, transform = Matrix4x4.identity };
+        }
+
+        var all = new Mesh { indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+        all.CombineMeshes(parts, false, false);
+        all.RecalculateBounds();
+
+        return all;
+    }
+
+    public static Matrix4x4 At(Vector3 position, Vector3 euler, float scale = 1f)
+    {
+        return Matrix4x4.TRS(position, Quaternion.Euler(euler), Vector3.one * scale);
+    }
+
+    // ------------------------------------------------------------------ inside
+
+    private static Vector3 Tangent(Vector3[] path, int i)
+    {
+        Vector3 tangent;
+
+        if (i == 0) tangent = path[1] - path[0];
+        else if (i == path.Length - 1) tangent = path[i] - path[i - 1];
+        else tangent = path[i + 1] - path[i - 1];
+
+        return tangent.sqrMagnitude < 1e-8f ? Vector3.forward : tangent.normalized;
+    }
+
+    private static void Cap(List<Vector3> vertices, List<int> triangles, Vector3[] path, float[] radius,
+                            int sides, bool start)
+    {
+        int ring = start ? 0 : path.Length - 1;
+        Vector3 tangent = Tangent(path, ring) * (start ? -1f : 1f);
+
+        // just past the end, so the cap is a dome rather than a lid
+        vertices.Add(path[ring] + tangent * radius[ring] * 0.8f);
+
+        int tip = vertices.Count - 1;
+        int first = ring * (sides + 1);
+
+        for (int j = 0; j < sides; j++)
+        {
+            if (start)
+            {
+                triangles.Add(tip); triangles.Add(first + j); triangles.Add(first + j + 1);
+            }
+            else
+            {
+                triangles.Add(tip); triangles.Add(first + j + 1); triangles.Add(first + j);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The first and last vertex of every ring sit on top of each other so the
+    /// tube can be unwrapped, and RecalculateNormals treats them as two
+    /// separate corners. Averaging the pair closes the crease.
+    /// </summary>
+    private static void Weld(Mesh mesh, int rings, int sides)
+    {
+        var normals = mesh.normals;
+
+        for (int i = 0; i < rings; i++)
+        {
+            int a = i * (sides + 1);
+            int b = a + sides;
+
+            if (b >= normals.Length) break;
+
+            Vector3 averaged = (normals[a] + normals[b]).normalized;
+            normals[a] = averaged;
+            normals[b] = averaged;
+        }
+
+        mesh.normals = normals;
+    }
+}
