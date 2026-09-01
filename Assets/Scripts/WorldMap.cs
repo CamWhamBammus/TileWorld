@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -52,6 +53,11 @@ public class WorldMap : MonoBehaviour
     private bool dirty = true;
     private int lastDrawnCount = -1;
     private Vector2Int lastPlayerChunk = new Vector2Int(int.MinValue, int.MinValue);
+
+    // Chunk colour is a fixed function of the world, so it is worth keeping.
+    // Sampling across a chunk made a redraw noticeably heavier, and a redraw
+    // happens on every zoom step and every chunk border crossed.
+    private readonly Dictionary<Vector2Int, Color> colourCache = new Dictionary<Vector2Int, Color>();
 
     // Bounds of the drawn area, in chunks, and where it lands on the texture.
     private Vector2Int min, max;
@@ -353,6 +359,16 @@ public class WorldMap : MonoBehaviour
     /// actually shows: a chart that leaves out the water is not much of a chart.
     /// </summary>
     private Color TerrainColour(Vector2Int chunk, int seed)
+    {
+        if (colourCache.TryGetValue(chunk, out var cached)) return cached;
+
+        var colour = ComputeTerrainColour(chunk, seed);
+        colourCache[chunk] = colour;
+
+        return colour;
+    }
+
+    private Color ComputeTerrainColour(Vector2Int chunk, int seed)
     {
         int originX = chunk.x * WorldGrid.TilesPerChunk;
         int originZ = chunk.y * WorldGrid.TilesPerChunk;
