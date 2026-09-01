@@ -26,6 +26,8 @@ public class WorldSave
     public List<int> landmarkKinds = new List<int>();
     public List<int> creaturesSeen = new List<int>();
     public List<Vector2Int> creatureChunks = new List<Vector2Int>();
+    public List<int> guideKinds = new List<int>();
+    public List<int> guideStudies = new List<int>();
 
     public int surveysMade;
     public float highestReached;
@@ -262,6 +264,8 @@ public static class WorldLibrary
         RegionWatcher.Clear();
         LandmarkSpawner.ClearEvent();
         SightingLog.Clear();
+        FieldGuide.Clear();
+        Stalking.Clear();
         Waypoint.Forget();
         ScreenState.Clear();
         Time.timeScale = 1f;
