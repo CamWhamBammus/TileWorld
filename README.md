@@ -46,6 +46,12 @@ Walk up to one and it gets marked on your map. The two towers are worth more tha
 
 That gives you something to aim at. You spot a tower over the trees, walk to it, climb it, and the map fills in far enough to show you where to go next.
 
+## What lives there
+
+Deer in the wooded lowlands at either end of the day, rabbits in open meadow while it is light, foxes over the same ground after dark, and goats on the high bare rock where none of the others go. Which animal you meet is a question of where you are standing and what time it is, so a dawn walk down a valley and a midnight one across the same ground are not the same walk.
+
+They graze, wander a few paces, and lift their heads when you get close. Stand still and a deer will hold there watching you; take another step and it goes, downhill and round the water rather than into it. The journal keeps a list of what you have seen, which is saved with the world - a fox seen at midnight in one world is not a fox seen in another.
+
 ## The map
 
 ![The map screen](docs/images/map.png)
@@ -103,5 +109,6 @@ Scripts are grouped under `Assets/Scripts`:
 - `Landmarks/` - where structures go, what they are built from, and what is written at them
 - `Player/` - the follow camera, swimming, and the underwater view
 - `Interface/` - the map, journal, quest log, compass, notices, pause menu and statistics overlay
+- `Wildlife/` - what lives where, how it is built, and what it does when it sees you
 - `Atmosphere/` - the day cycle and weather, wind, birdsong, music, rain, stars and fireflies
 - `Systems/` - what has been found, the library of saved worlds, and what is kept between sessions
