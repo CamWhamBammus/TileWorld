@@ -622,6 +622,7 @@ public class ChunkManager : MonoBehaviour
         if (away.sqrMagnitude < 0.01f) away = Vector3.forward;
 
         Vector3 stand = target - away.normalized * standOff;
+        stand = NudgeOutOfWater(stand);
 
         var controller = playerTransform.GetComponent<CharacterController>();
         bool on = controller != null && controller.enabled;
@@ -638,13 +639,39 @@ public class ChunkManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Walks a spawn point out of a lake. A new world put the player wherever
+    /// the geometry said, which is fine until that spot happens to be the
+    /// bottom of one.
+    /// </summary>
+    private Vector3 NudgeOutOfWater(Vector3 at)
+    {
+        int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
+        int tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+
+        if (!WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) return at;
+
+        // spiral outward for the nearest dry tile
+        for (int ring = 1; ring <= 40; ring++)
+        for (int dx = -ring; dx <= ring; dx++)
+        for (int dz = -ring; dz <= ring; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != ring) continue;
+            if (WaterSurface.IsUnderwater(tileX + dx, tileZ + dz, worldSeed)) continue;
+
+            return new Vector3((tileX + dx) * WorldGrid.TileSize, at.y, (tileZ + dz) * WorldGrid.TileSize);
+        }
+
+        return at;
+    }
+
+    /// <summary>
     /// The scene spawns the player at a fixed height that assumed flat ground.
     /// With terrain, the hill under spawn can be higher than that — which would
     /// start the player inside the collision mesh. Lift them clear.
     /// </summary>
     private void PlacePlayerOnSurface()
     {
-        Vector3 p = playerTransform.position;
+        Vector3 p = NudgeOutOfWater(playerTransform.position);
 
         int tileX = Mathf.RoundToInt(p.x / WorldGrid.TileSize);
         int tileZ = Mathf.RoundToInt(p.z / WorldGrid.TileSize);
