@@ -58,7 +58,9 @@ The world saves itself every thirty seconds and when you quit. Almost nothing ne
 
 There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby and for anywhere you have marked on the map. Landmarks you have already reached carry their name out in the world. Finishing a quest or reaching something shows up as a note in the corner, and the field journal lists everything found, nearest first.
 
-Nights have stars, fireflies come out in the lowlands, and there is standing water in about one chunk in ten. Wind rises with altitude and with the weather, so an exposed ridge in bad weather sounds like one.
+Nights have stars, fireflies come out in the lowlands, and there is standing water in about one chunk in ten. Snow covers the ground above the snowline, which is roughly eight percent of the world, with a ragged edge rather than a contour line. Wind rises with altitude and with the weather, so an exposed ridge in bad weather sounds like one, birds call in the daytime lowlands, and it rains when the overcast gets heavy. Wind and birdsong are generated in code rather than recorded.
+
+Lakes are deep enough to swim in. Walk into one and you float at the surface rather than strolling along the bottom, the view goes green and the fog closes in while your head is under, and the map shows water and snow as well as height.
 
 ## Quests
 
@@ -73,7 +75,7 @@ Press Q. Six of them, all based on where you have been: explore new chunks, get 
 - Scroll to zoom the map, F9 to save it as an image
 - J for the field journal, F3 for world statistics
 - Click the map to mark a spot, right click to clear it
-- Escape to pause
+- Escape backs out of whatever is open, then pauses
 
 ## Running it
 
