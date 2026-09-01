@@ -13,13 +13,17 @@ using UnityEngine;
 public class Wildlife : MonoBehaviour
 {
     [Tooltip("How many animals are about at once, across every kind.")]
-    [SerializeField] private int population = 16;
+    [SerializeField] private int population = 24;
 
-    // Brought on closer than they were. Spread thinly over a wide ring most of
-    // them were somewhere behind you the whole time and the world read as empty.
-    [SerializeField] private float nearest = 24f;
-    [SerializeField] private float furthest = 60f;
-    [SerializeField] private float forget = 100f;
+    [SerializeField] private float nearest = 22f;
+    [SerializeField] private float furthest = 82f;
+    [SerializeField] private float forget = 135f;
+
+    [Tooltip("How much of the population is brought on ahead of the player.")]
+    [SerializeField, Range(0f, 1f)] private float aheadShare = 0.72f;
+
+    [Tooltip("Inside this, an animal arriving in front of you would be seen to appear.")]
+    [SerializeField] private float tooCloseToArrive = 40f;
 
     [Tooltip("How close, and how plainly in view, before it counts as seen.")]
     [SerializeField] private float sightRange = 52f;
@@ -108,12 +112,20 @@ public class Wildlife : MonoBehaviour
 
         for (int attempt = 0; attempt < 12; attempt++)
         {
-            float angle = Random.Range(0f, Mathf.PI * 2f);
             float radius = Random.Range(nearest, furthest);
 
-            Vector3 at = player.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+            // Most of them out in front, where you are going to walk. The rest
+            // anywhere, so the country behind you is not conspicuously empty.
+            Vector3 heading = Facing();
 
-            if (InPlainView(at, radius)) continue;
+            float spread = Random.value < aheadShare ? 70f : 180f;
+            float angle = Random.Range(-spread, spread);
+
+            Vector3 out_ = Quaternion.Euler(0f, angle, 0f) * heading;
+
+            Vector3 at = player.position + out_ * radius;
+
+            if (PopsIntoView(at, radius)) continue;
 
             int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
             int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
@@ -181,6 +193,17 @@ public class Wildlife : MonoBehaviour
         return null;
     }
 
+    /// <summary>Where the player is looking, flattened.</summary>
+    private Vector3 Facing()
+    {
+        var camera = Eye();
+
+        Vector3 forward = camera != null ? camera.transform.forward : player.forward;
+        forward.y = 0f;
+
+        return forward.sqrMagnitude < 0.001f ? Vector3.forward : forward.normalized;
+    }
+
     private int CountOf(FaunaKind kind)
     {
         int count = 0;
@@ -193,10 +216,18 @@ public class Wildlife : MonoBehaviour
         return count;
     }
 
-    /// <summary>Whether a spot is somewhere the player would watch it appear.</summary>
-    private bool InPlainView(Vector3 at, float radius)
+    /// <summary>
+    /// Whether a spot is close enough, and square enough in front of the
+    /// player, that they would watch the animal appear out of nothing.
+    ///
+    /// This wants to be a narrow rule. Written as "anywhere ahead of you", the
+    /// only places left to put an animal are behind your back — and since you
+    /// walk forwards, everything that was ever brought on fell behind you and
+    /// was retired again without being seen once.
+    /// </summary>
+    private bool PopsIntoView(Vector3 at, float radius)
     {
-        if (radius > 62f) return false;         // far enough not to notice
+        if (radius > tooCloseToArrive) return false;
 
         var camera = Eye();
 
@@ -205,7 +236,7 @@ public class Wildlife : MonoBehaviour
         Vector3 to = at - camera.transform.position;
         to.y = 0f;
 
-        return Vector3.Dot(camera.transform.forward, to.normalized) > 0.35f;
+        return Vector3.Dot(camera.transform.forward, to.normalized) > 0.55f;
     }
 
     /// <summary>Notices when a kind has been seen properly for the first time.</summary>
