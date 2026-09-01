@@ -13,11 +13,13 @@ using UnityEngine;
 public class Wildlife : MonoBehaviour
 {
     [Tooltip("How many animals are about at once, across every kind.")]
-    [SerializeField] private int population = 9;
+    [SerializeField] private int population = 16;
 
-    [SerializeField] private float nearest = 38f;
-    [SerializeField] private float furthest = 78f;
-    [SerializeField] private float forget = 115f;
+    // Brought on closer than they were. Spread thinly over a wide ring most of
+    // them were somewhere behind you the whole time and the world read as empty.
+    [SerializeField] private float nearest = 24f;
+    [SerializeField] private float furthest = 60f;
+    [SerializeField] private float forget = 100f;
 
     [Tooltip("How close, and how plainly in view, before it counts as seen.")]
     [SerializeField] private float sightRange = 52f;
@@ -59,7 +61,7 @@ public class Wildlife : MonoBehaviour
         // themselves move every frame.
         if (Time.time >= nextCensus)
         {
-            nextCensus = Time.time + 1.5f;
+            nextCensus = Time.time + 1f;
             Census();
         }
 
@@ -91,9 +93,8 @@ public class Wildlife : MonoBehaviour
             }
         }
 
-        int wanted = population - living.Count;
-
-        for (int i = 0; i < wanted; i++) TryBring(now);
+        // Groups arrive whole, so how many turn up is not known in advance.
+        for (int attempt = 0; attempt < 6 && living.Count < population; attempt++) TryBring(now);
     }
 
     /// <summary>
@@ -121,16 +122,43 @@ public class Wildlife : MonoBehaviour
 
             if (kind == null) continue;
 
-            var go = new GameObject(Fauna.Of(kind.Value).Name);
-            go.transform.SetParent(transform, false);
+            // However many of that kind keep company, as long as there is room
+            // for them and ground to put them on.
+            int company = Random.Range(1, Fauna.Company(kind.Value) + 1);
 
-            var animal = go.AddComponent<Animal>();
-            animal.Settle(kind.Value, seed, player, at);
+            for (int i = 0; i < company && living.Count < population; i++)
+            {
+                if (CountOf(kind.Value) >= Fauna.Crowd(kind.Value)) break;
 
-            living.Add(animal);
+                Vector3 spot = at;
+
+                if (i > 0)
+                {
+                    Vector2 apart = Random.insideUnitCircle * 9f;
+                    spot += new Vector3(apart.x, 0f, apart.y);
+
+                    int cx = Mathf.RoundToInt(spot.x / WorldGrid.TileSize);
+                    int cz = Mathf.RoundToInt(spot.z / WorldGrid.TileSize);
+
+                    if (!Fauna.Ground(kind.Value, cx, cz, seed)) continue;
+                }
+
+                Bring(kind.Value, seed, spot);
+            }
 
             return;
         }
+    }
+
+    private void Bring(FaunaKind kind, int seed, Vector3 at)
+    {
+        var go = new GameObject(Fauna.Of(kind).Name);
+        go.transform.SetParent(transform, false);
+
+        var animal = go.AddComponent<Animal>();
+        animal.Settle(kind, seed, player, at);
+
+        living.Add(animal);
     }
 
     /// <summary>Which of the kinds abroad at this hour would suit this ground.</summary>

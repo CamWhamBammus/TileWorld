@@ -131,14 +131,31 @@ public static class Fauna
     {
         switch (kind)
         {
-            // out at dawn and dusk, and not much in the middle of the day
+            // Out at dawn and dusk, and thinner in the middle of the day. The
+            // windows overlap on purpose: kept strictly to their own hours the
+            // animals were so seldom about that the world read as empty.
             case FaunaKind.Deer:
-                return (timeOfDay > 0.20f && timeOfDay < 0.36f)
-                    || (timeOfDay > 0.66f && timeOfDay < 0.84f);
+                return (timeOfDay > 0.14f && timeOfDay < 0.46f)
+                    || (timeOfDay > 0.58f && timeOfDay < 0.90f);
 
-            case FaunaKind.Rabbit: return timeOfDay > 0.28f && timeOfDay < 0.78f;
-            case FaunaKind.Fox: return timeOfDay < 0.22f || timeOfDay > 0.80f;
+            case FaunaKind.Rabbit: return timeOfDay > 0.22f && timeOfDay < 0.84f;
+            case FaunaKind.Fox: return timeOfDay < 0.30f || timeOfDay > 0.72f;
             default: return true;
+        }
+    }
+
+    /// <summary>
+    /// How many turn up together. Deer are rarely alone, rabbits keep loose
+    /// company, and a fox is a fox on its own.
+    /// </summary>
+    public static int Company(FaunaKind kind)
+    {
+        switch (kind)
+        {
+            case FaunaKind.Deer: return 3;
+            case FaunaKind.Rabbit: return 2;
+            case FaunaKind.Fox: return 1;
+            default: return 2;
         }
     }
 
@@ -147,10 +164,10 @@ public static class Fauna
     {
         switch (kind)
         {
-            case FaunaKind.Deer: return 4;
-            case FaunaKind.Rabbit: return 5;
-            case FaunaKind.Fox: return 2;
-            default: return 3;
+            case FaunaKind.Deer: return 6;
+            case FaunaKind.Rabbit: return 7;
+            case FaunaKind.Fox: return 4;
+            default: return 5;
         }
     }
 }
