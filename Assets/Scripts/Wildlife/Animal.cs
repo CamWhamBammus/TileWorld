@@ -2,17 +2,18 @@ using UnityEngine;
 
 /// <summary>
 /// One animal, going about its business. There is no animator and no navmesh:
-/// it walks between points it picks itself, stands and grazes, and watches you
-/// when you get near. The only thing it really knows how to do is leave.
+/// it walks between points it picks itself, puts its head down to the grass,
+/// goes to the water when it wants a drink, looks up to check on you, and now
+/// and then lies down.
 ///
-/// The interesting part is the watching. An animal that simply ran would be
-/// scenery with a trigger on it; one that lifts its head, holds still while
+/// The interesting part is still the watching. An animal that simply ran would
+/// be scenery with a trigger on it; one that lifts its head, holds still while
 /// you decide what to do, and only goes when you push it, is the reason to
 /// stop walking for a moment.
 /// </summary>
 public class Animal : MonoBehaviour
 {
-    private enum State { Graze, Wander, Alert, Flee }
+    private enum State { Stand, Graze, Look, Wander, ToWater, Drink, Rest, Alert, Flee }
 
     public FaunaKind Kind { get; private set; }
 
@@ -25,10 +26,14 @@ public class Animal : MonoBehaviour
     private Vector3 target;
     private float until;
     private float gait;
+    private float lastStep;
     private float phase;
+    private float thirst;
 
     private AudioSource voice;
+    private AudioSource steps;
     private float nextCall;
+    private float nextNibble;
 
     public void Settle(FaunaKind kind, int worldSeed, Transform watching, Vector3 at)
     {
@@ -39,23 +44,32 @@ public class Animal : MonoBehaviour
         body = AnimalBuilder.Build(kind, transform);
 
         phase = Random.Range(0f, 10f);
+        thirst = Random.Range(0f, 1f);
 
         transform.position = Ground(at);
         transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 
         // Heard from where the animal is rather than from everywhere at once,
         // so a call tells you which way to look.
-        voice = gameObject.AddComponent<AudioSource>();
-        voice.playOnAwake = false;
-        voice.spatialBlend = 1f;
-        voice.rolloffMode = AudioRolloffMode.Linear;
-        voice.minDistance = 6f;
-        voice.maxDistance = 70f;
-        voice.dopplerLevel = 0f;
+        voice = Source(70f, 0.9f);
+        steps = Source(34f, 1f);
 
         nextCall = Time.time + Random.Range(6f, 30f);
 
         Graze();
+    }
+
+    private AudioSource Source(float reach, float doppler)
+    {
+        var source = gameObject.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        source.spatialBlend = 1f;
+        source.rolloffMode = AudioRolloffMode.Linear;
+        source.minDistance = 5f;
+        source.maxDistance = reach;
+        source.dopplerLevel = 0f;
+
+        return source;
     }
 
     /// <summary>How far off the player is, for the manager's bookkeeping.</summary>
@@ -71,9 +85,11 @@ public class Animal : MonoBehaviour
         float dt = Time.deltaTime;
         float distance = DistanceTo(player.position);
 
+        thirst += dt * 0.022f;
+
         Think(distance);
         Move(dt);
-        Animate(dt, distance);
+        Animate(dt);
         Talk();
     }
 
@@ -91,6 +107,7 @@ public class Animal : MonoBehaviour
 
             if (distance < traits.Notices)
             {
+                if (state != State.Alert) until = Time.time + Random.Range(2f, 5f);
                 state = State.Alert;
                 return;
             }
@@ -102,25 +119,65 @@ public class Animal : MonoBehaviour
 
         switch (state)
         {
-            case State.Graze:
-                Wander();
-                break;
-
-            case State.Wander:
-                Graze();
-                break;
-
             case State.Flee:
-                // far enough away, or it has simply run itself out
                 if (distance > traits.Settles) Graze();
                 else Flee();
+                break;
+
+            case State.ToWater:
+                Drinking();
+                break;
+
+            default:
+                Decide(distance);
                 break;
         }
     }
 
+    /// <summary>
+    /// What to do next. Weighted rather than cycled, so one animal is grazing
+    /// while another wanders off and a third has its head up looking at
+    /// nothing, instead of all of them doing the same thing in step.
+    /// </summary>
+    private void Decide(float distance)
+    {
+        float roll = Random.value;
+
+        if (thirst > 1f && roll < 0.35f && FindWater(out var shore))
+        {
+            target = shore;
+            state = State.ToWater;
+            until = Time.time + 18f;
+            return;
+        }
+
+        // lying down only when nothing is near enough to worry about
+        if (roll < 0.13f && distance > traits.Notices * 1.8f)
+        {
+            state = State.Rest;
+            until = Time.time + Random.Range(14f, 34f);
+            return;
+        }
+
+        if (roll < 0.30f)
+        {
+            state = State.Look;
+            until = Time.time + Random.Range(2.5f, 6f);
+            return;
+        }
+
+        if (roll < 0.62f)
+        {
+            Graze();
+            return;
+        }
+
+        Wander();
+    }
+
     private void Move(float dt)
     {
-        if (state == State.Graze || state == State.Alert)
+        if (state != State.Wander && state != State.Flee && state != State.ToWater)
         {
             if (state == State.Alert) Face(player.position - transform.position, dt, 4f);
             return;
@@ -129,9 +186,10 @@ public class Animal : MonoBehaviour
         Vector3 to = target - transform.position;
         to.y = 0f;
 
-        if (to.sqrMagnitude < 0.4f)
+        if (to.sqrMagnitude < 0.5f)
         {
-            if (state == State.Wander) Graze();
+            if (state == State.ToWater) Drinking();
+            else if (state == State.Wander) Graze();
             return;
         }
 
@@ -139,41 +197,111 @@ public class Animal : MonoBehaviour
 
         Face(to, dt, state == State.Flee ? 7f : 2.5f);
 
-        Vector3 step = transform.position + transform.forward * (speed * dt);
-
-        transform.position = Ground(step);
+        transform.position = Ground(transform.position + transform.forward * (speed * dt));
 
         gait += speed * dt * (state == State.Flee ? 3.4f : 4.2f);
+
+        Footfall(state == State.Flee);
     }
 
-    private void Animate(float dt, float distance)
+    /// <summary>A step whenever a leg comes down, which is twice a gait cycle.</summary>
+    private void Footfall(bool running)
     {
-        bool moving = state == State.Wander || state == State.Flee;
+        if (gait - lastStep < Mathf.PI) return;
 
-        // Legs swing in diagonal pairs, which is enough to read as a walk.
+        lastStep = gait;
+
+        if (steps == null) return;
+
+        steps.pitch = Random.Range(0.9f, 1.12f);
+        steps.PlayOneShot(AnimalVoice.Step(Kind, running), running ? 0.34f : 0.16f);
+    }
+
+    private void Animate(float dt)
+    {
+        bool moving = state == State.Wander || state == State.Flee || state == State.ToWater;
+        bool down = state == State.Graze || state == State.Drink;
+
         if (body.Legs != null)
         {
             for (int i = 0; i < body.Legs.Length; i++)
             {
-                float swing = moving ? Mathf.Sin(gait + (i % 3 == 0 ? 0f : Mathf.PI)) * (state == State.Flee ? 42f : 24f) : 0f;
+                float swing;
+
+                if (state == State.Rest)
+                {
+                    // folded under it
+                    swing = Mathf.LerpAngle(Angle(body.Legs[i]), i < 2 ? 68f : -62f, dt * 3f);
+                }
+                else if (moving)
+                {
+                    swing = Mathf.Sin(gait + (i % 3 == 0 ? 0f : Mathf.PI)) * (state == State.Flee ? 42f : 24f);
+                }
+                else
+                {
+                    swing = Mathf.LerpAngle(Angle(body.Legs[i]), 0f, dt * 5f);
+                }
+
                 body.Legs[i].localRotation = Quaternion.Euler(swing, 0f, 0f);
             }
         }
 
-        // Head down in the grass, up the moment it hears you.
         if (body.Head != null)
         {
-            float dip = state == State.Graze ? 52f : 0f;
-            var want = Quaternion.Euler(dip, 0f, 0f);
-            body.Head.localRotation = Quaternion.Slerp(body.Head.localRotation, want, dt * 4f);
+            float dip = 0f;
+            float turn = 0f;
+
+            switch (state)
+            {
+                case State.Graze:
+                    // down in the grass, with the small movements of chewing
+                    dip = 54f + Mathf.Sin(Time.time * 7f + phase) * 3.5f;
+                    break;
+
+                case State.Drink:
+                    dip = 72f + Mathf.Sin(Time.time * 5f + phase) * 2.5f;
+                    break;
+
+                case State.Rest:
+                    dip = 16f;
+                    break;
+
+                case State.Look:
+                    // casting about, the way anything grazing checks on things
+                    turn = Mathf.Sin(Time.time * 1.4f + phase) * 38f;
+                    dip = 4f;
+                    break;
+
+                case State.Alert:
+                    dip = -6f;
+                    turn = Mathf.Sin(Time.time * 0.8f + phase) * 6f;
+                    break;
+
+                default:
+                    dip = moving ? 8f : 22f;
+                    break;
+            }
+
+            var want = Quaternion.Euler(dip, turn, 0f);
+            body.Head.localRotation = Quaternion.Slerp(body.Head.localRotation, want, dt * 5f);
         }
 
         if (body.Frame != null)
         {
-            // A rabbit hops; everything else just carries itself.
-            float bounce = Kind == FaunaKind.Rabbit && moving
-                ? Mathf.Abs(Mathf.Sin(gait * 0.5f)) * traits.Size * 0.55f
-                : (moving ? Mathf.Abs(Mathf.Sin(gait)) * traits.Size * 0.04f : 0f);
+            float bounce;
+
+            if (state == State.Rest)
+            {
+                bounce = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.30f, dt * 3f);
+            }
+            else if (Kind == FaunaKind.Rabbit && moving)
+            {
+                bounce = Mathf.Abs(Mathf.Sin(gait * 0.5f)) * traits.Size * 0.55f;
+            }
+            else
+            {
+                bounce = moving ? Mathf.Abs(Mathf.Sin(gait)) * traits.Size * 0.04f : 0f;
+            }
 
             var local = body.Frame.localPosition;
             local.y = bounce;
@@ -183,9 +311,28 @@ public class Animal : MonoBehaviour
         if (body.Tail != null)
         {
             // The tail flicks when it is uneasy, which is the tell before it goes.
-            float unease = state == State.Alert ? 5f : 1.2f;
+            float unease = state == State.Alert ? 5f : (state == State.Rest ? 0.5f : 1.2f);
             body.Tail.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * unease + phase) * 12f, 0f, 0f);
         }
+
+        Nibble();
+    }
+
+    private static float Angle(Transform t)
+    {
+        return t.localRotation.eulerAngles.x;
+    }
+
+    /// <summary>The small sounds of an animal with its head down.</summary>
+    private void Nibble()
+    {
+        if (state != State.Graze && state != State.Drink) return;
+        if (Time.time < nextNibble || voice == null) return;
+
+        nextNibble = Time.time + Random.Range(1.1f, 2.6f);
+
+        voice.pitch = Random.Range(0.94f, 1.12f);
+        voice.PlayOneShot(state == State.Drink ? AnimalVoice.Drink(Kind) : AnimalVoice.Chew(Kind), 0.28f);
     }
 
     /// <summary>
@@ -199,7 +346,7 @@ public class Animal : MonoBehaviour
 
         nextCall = Time.time + Random.Range(14f, 46f);
 
-        if (state == State.Flee) return;
+        if (state == State.Flee || state == State.Rest) return;
 
         Speak(state == State.Alert);
     }
@@ -211,7 +358,6 @@ public class Animal : MonoBehaviour
         voice.pitch = Random.Range(0.92f, 1.10f);
         voice.PlayOneShot(AnimalVoice.Call(Kind, alarmed), alarmed ? 0.75f : 0.5f);
 
-        // Having just spoken, it has nothing more to say for a while.
         nextCall = Mathf.Max(nextCall, Time.time + 9f);
     }
 
@@ -228,25 +374,103 @@ public class Animal : MonoBehaviour
     private void Graze()
     {
         state = State.Graze;
-        until = Time.time + Random.Range(3f, 9f);
+        until = Time.time + Random.Range(4f, 11f);
+    }
+
+    private void Drinking()
+    {
+        state = State.Drink;
+        until = Time.time + Random.Range(5f, 10f);
+        thirst = 0f;
     }
 
     private void Wander()
     {
+        // Keep loose company: something of the same kind nearby is worth
+        // drifting towards, which is what turns four deer into a herd.
+        Vector3 pull = Company();
+
         for (int attempt = 0; attempt < 6; attempt++)
         {
             Vector2 offset = Random.insideUnitCircle.normalized * Random.Range(5f, 16f);
             Vector3 at = transform.position + new Vector3(offset.x, 0f, offset.y);
 
+            if (pull != Vector3.zero) at = Vector3.Lerp(at, pull, 0.45f);
+
             if (!Walkable(at)) continue;
 
             target = at;
             state = State.Wander;
-            until = Time.time + 14f;        // give up rather than walk forever
+            until = Time.time + 14f;
             return;
         }
 
         Graze();
+    }
+
+    /// <summary>The nearest of its own kind, if one is close enough to matter.</summary>
+    private Vector3 Company()
+    {
+        var others = transform.parent;
+
+        if (others == null) return Vector3.zero;
+
+        float best = 26f;
+        Vector3 at = Vector3.zero;
+
+        for (int i = 0; i < others.childCount; i++)
+        {
+            var other = others.GetChild(i);
+
+            if (other == transform) continue;
+
+            var animal = other.GetComponent<Animal>();
+
+            if (animal == null || animal.Kind != Kind) continue;
+
+            float distance = Vector3.Distance(other.position, transform.position);
+
+            if (distance > 7f && distance < best)
+            {
+                best = distance;
+                at = other.position;
+            }
+        }
+
+        return at;
+    }
+
+    /// <summary>Somewhere to stand at the edge of water, if there is any about.</summary>
+    private bool FindWater(out Vector3 shore)
+    {
+        shore = Vector3.zero;
+
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            Vector2 offset = Random.insideUnitCircle.normalized * Random.Range(6f, 30f);
+            Vector3 at = transform.position + new Vector3(offset.x, 0f, offset.y);
+
+            int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
+            int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+
+            if (!WaterSurface.IsUnderwater(x, z, seed)) continue;
+
+            // stand on the bank rather than wade in
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (WaterSurface.IsUnderwater(x + dx, z + dz, seed)) continue;
+
+                var bank = new Vector3((x + dx) * WorldGrid.TileSize, 0f, (z + dz) * WorldGrid.TileSize);
+
+                if (!Walkable(bank)) continue;
+
+                shore = bank;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void Flee()
