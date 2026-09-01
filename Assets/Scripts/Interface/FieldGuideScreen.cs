@@ -15,6 +15,8 @@ public class FieldGuideScreen : MonoBehaviour
     private ChunkManager world;
     private GameObject panel;
     private TMP_Text body;
+    private RawImage[] plates;
+    private TMP_Text[] plateNames;
     private TMP_FontAsset font;
     private bool open;
 
@@ -91,7 +93,7 @@ public class FieldGuideScreen : MonoBehaviour
         text.Append("<size=90%><color=").Append(dim).Append(">")
             .Append(FieldGuide.Entries).Append(" of 4 entries finished, ")
             .Append(FieldGuide.Studies).Append(" of 12 notes made</color></size>\n");
-        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 34)).Append("</color>\n\n");
+        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 34)).Append("</color>\n");
 
         for (int i = 0; i < 4; i++)
         {
@@ -136,6 +138,44 @@ public class FieldGuideScreen : MonoBehaviour
             .Append(">Walk slowly and they let you nearer. Stand still to draw. G to close</color></size>");
 
         body.text = text.ToString();
+
+        // and the drawings across the top, which are the entries really
+        for (int i = 0; i < 4; i++)
+        {
+            var kind = (FaunaKind)i;
+            var drawing = SketchBook.Of(kind);
+
+            plates[i].texture = drawing != null ? drawing : blank;
+            plates[i].color = drawing != null ? Color.white : new Color(1f, 1f, 1f, 0.4f);
+
+            plateNames[i].text = drawing != null
+                ? Fauna.Of(kind).Name
+                : (SightingLog.Has(kind) ? "<color=#8B7860>not drawn</color>" : "<color=#8B7860>—</color>");
+        }
+    }
+
+    private Texture2D blank;
+
+    private TMP_Text Label(string name, Transform parent, float size, Vector2 at, Vector2 area)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+
+        var text = go.AddComponent<TextMeshProUGUI>();
+        text.font = font;
+        text.fontSize = size;
+        text.color = new Color(0.20f, 0.16f, 0.11f);
+        text.raycastTarget = false;
+        text.alignment = TextAlignmentOptions.Center;
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.sizeDelta = area;
+        rect.anchoredPosition = at;
+
+        return text;
     }
 
     private void BuildUi()
@@ -191,10 +231,34 @@ public class FieldGuideScreen : MonoBehaviour
         body.raycastTarget = false;
 
         var bodyRect = bodyGo.GetComponent<RectTransform>();
-        bodyRect.anchorMin = new Vector2(0.5f, 0.5f);
-        bodyRect.anchorMax = new Vector2(0.5f, 0.5f);
-        bodyRect.pivot = new Vector2(0.5f, 0.5f);
-        bodyRect.sizeDelta = new Vector2(660f, 800f);
+        bodyRect.anchorMin = new Vector2(0.5f, 0f);
+        bodyRect.anchorMax = new Vector2(0.5f, 0f);
+        bodyRect.pivot = new Vector2(0.5f, 0f);
+        bodyRect.sizeDelta = new Vector2(660f, 560f);
+        bodyRect.anchoredPosition = new Vector2(0f, 40f);
+
+        blank = ParchmentPanel.Create(64, 48);
+
+        plates = new RawImage[4];
+        plateNames = new TMP_Text[4];
+
+        for (int i = 0; i < 4; i++)
+        {
+            var plateGo = new GameObject("Plate " + i);
+            plateGo.transform.SetParent(cardGo.transform, false);
+
+            plates[i] = plateGo.AddComponent<RawImage>();
+
+            var plateRect = plateGo.GetComponent<RectTransform>();
+            plateRect.anchorMin = new Vector2(0.5f, 1f);
+            plateRect.anchorMax = new Vector2(0.5f, 1f);
+            plateRect.pivot = new Vector2(0.5f, 1f);
+            plateRect.sizeDelta = new Vector2(164f, 123f);
+            plateRect.anchoredPosition = new Vector2((i - 1.5f) * 172f, -78f);
+
+            plateNames[i] = Label("Plate name " + i, cardGo.transform, 17f,
+                                  new Vector2((i - 1.5f) * 172f, -214f), new Vector2(164f, 28f));
+        }
 
         panel.SetActive(false);
     }

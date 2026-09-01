@@ -33,6 +33,11 @@ public class Sketching : MonoBehaviour
     private RectTransform fill;
     private TMP_FontAsset font;
 
+    private GameObject sheet;        // the drawing, held up for a moment after
+    private RawImage page;
+    private TMP_Text caption;
+    private float showUntil;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
@@ -63,6 +68,8 @@ public class Sketching : MonoBehaviour
         if (player == null) return;
 
         Stalking.Watch(player, Time.deltaTime);
+
+        if (sheet != null) sheet.SetActive(Time.time < showUntil && !ScreenState.WantsCursor);
 
         // Nothing is drawn with a screen open in front of your face.
         if (ScreenState.WantsCursor)
@@ -107,12 +114,22 @@ public class Sketching : MonoBehaviour
 
         if (progress >= 1f)
         {
+            // The drawing is of this animal, from here, as it stands.
+            var drawing = SketchBook.Draw(subject, Eye());
+
             if (FieldGuide.Record(subject.Kind, FieldGuide.Study.Sketch))
             {
                 Notices.Show("You draw the " + Fauna.Of(subject.Kind).Name
                            + "  ·  " + FieldGuide.Entries + "/4 entries done");
 
                 Ambience.Instance?.Click(1.15f);
+            }
+
+            if (drawing != null)
+            {
+                page.texture = drawing;
+                caption.text = "the " + Fauna.Of(subject.Kind).Name + "  ·  G for the guide";
+                showUntil = Time.time + 4.5f;
             }
 
             progress = 0f;
@@ -270,6 +287,35 @@ public class Sketching : MonoBehaviour
 
         label = Label("Label", panel.transform, 21f, new Vector2(0f, 14f), new Vector2(400f, 44f));
 
+        // the drawing itself, held up for a few seconds once it is finished
+        sheet = new GameObject("Sheet");
+        sheet.transform.SetParent(canvasGo.transform, false);
+
+        var mount = sheet.AddComponent<RawImage>();
+        mount.texture = ParchmentPanel.Create(200, 170);
+
+        var sheetRect = sheet.GetComponent<RectTransform>();
+        sheetRect.anchorMin = new Vector2(1f, 0f);
+        sheetRect.anchorMax = new Vector2(1f, 0f);
+        sheetRect.pivot = new Vector2(1f, 0f);
+        sheetRect.sizeDelta = new Vector2(400f, 340f);
+        sheetRect.anchoredPosition = new Vector2(-40f, 120f);
+
+        var pageGo = new GameObject("Page");
+        pageGo.transform.SetParent(sheet.transform, false);
+
+        page = pageGo.AddComponent<RawImage>();
+
+        var pageRect = pageGo.GetComponent<RectTransform>();
+        pageRect.anchorMin = new Vector2(0.5f, 1f);
+        pageRect.anchorMax = new Vector2(0.5f, 1f);
+        pageRect.pivot = new Vector2(0.5f, 1f);
+        pageRect.sizeDelta = new Vector2(344f, 258f);
+        pageRect.anchoredPosition = new Vector2(0f, -26f);
+
+        caption = Label("Caption", sheet.transform, 19f, new Vector2(0f, 34f), new Vector2(360f, 40f));
+
+        sheet.SetActive(false);
         panel.SetActive(false);
     }
 

@@ -80,6 +80,8 @@ public class SaveCoordinator : MonoBehaviour
             FieldGuide.RecordQuietly((FaunaKind)data.guideKinds[i], (FieldGuide.Study)data.guideStudies[i]);
         }
 
+        SketchBook.Reopen();
+
         if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(data.timeOfDay);
 
         var quests = FindFirstObjectByType<QuestManager>();

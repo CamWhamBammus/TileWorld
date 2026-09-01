@@ -265,6 +265,7 @@ public static class WorldLibrary
         LandmarkSpawner.ClearEvent();
         SightingLog.Clear();
         FieldGuide.Clear();
+        SketchBook.Clear();
         Stalking.Clear();
         Waypoint.Forget();
         ScreenState.Clear();

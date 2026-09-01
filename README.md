@@ -62,6 +62,8 @@ They graze, wander a few paces, put their heads down to the grass, walk to the w
 
 Press G. Four creatures, and an entry for each wants three things: a drawing of it made from close by, something seen of how it lives, and it found in the country it belongs to. What you have not done yet is the only thing in the game that tells you where to go next.
 
+The drawing is a real one. When you finish, the animal is caught as it stands - from where you were, at the angle you saw it, in the pose it was in - and worked over into ink and hatching on the same paper the map is drawn on. It is held up for a moment, then kept in the guide and written out beside the world, so the deer in your book is the deer you stood in front of and nobody else's is quite the same.
+
 Drawing is the part you do rather than wait for. Get near enough, keep it in sight, and stand still: the drawing fills in over a few seconds and any real movement spoils it. How near you can get is up to you, because how wary an animal is now depends on how you are moving. Come along at a run and a deer is gone before you have seen it; walk, or stand and let it settle, and it will let you much closer. An animal that has noticed you holds your eye rather than bolting, and that is the moment to draw it.
 
 The other two notes are a matter of being in the right place at the right time - a fox at the water, a rabbit at rest, a goat on the high ground at any hour - so the guide sends you out at dusk and after dark and up onto the tops.
