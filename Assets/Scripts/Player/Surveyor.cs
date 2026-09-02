@@ -18,7 +18,10 @@ public class Surveyor : MonoBehaviour
     private SurveyorBuilder.Figure figure;
     private float height = 1.8f;
 
-    private float gait;
+    private float lever = 0.78f; // hip to ankle, measured off the figure itself
+    private float gait;         // where we are in the stride, in whole strides
+    private float stance;       // the share of a stride a foot spends on the ground
+    private float step;         // half a step, along the ground, in metres
     private float pace;
     private float drawing;      // how far into holding the glass up
 
@@ -64,6 +67,14 @@ public class Surveyor : MonoBehaviour
 
         figure = SurveyorBuilder.Build(player, height);
 
+        // How far the ankle swings for a given angle at the hip is the whole
+        // basis of the stride below, so it is measured off the built figure
+        // rather than guessed from its height. Guessing it hip-to-sole rather
+        // than hip-to-ankle is a fifth too long, and a fifth of every step is
+        // then made up by the foot skidding along the ground.
+        if (figure.Legs[0] != null && figure.Ankles[0] != null)
+            lever = Vector3.Distance(figure.Legs[0].position, figure.Ankles[0].position);
+
         Debug.Log("[Surveyor] Took over from the robot, " + height.ToString("F1") + " units tall.");
     }
 
@@ -81,7 +92,16 @@ public class Surveyor : MonoBehaviour
         bool afoot = pace > 0.15f;
         bool grounded = body == null || body.isGrounded;
 
-        gait += pace * dt * 2.6f;
+        // A leg on the ground has to travel backwards at exactly the speed the
+        // world goes past, or the foot skates. So the stride is not a wave with
+        // a rate picked by eye: the reach sets how far a foot can carry, and the
+        // rate falls out of how fast we are covering ground. At a walk the foot
+        // is down for most of the stride; at a run it is barely down at all.
+        stance = Mathf.Lerp(0.62f, 0.38f, Mathf.InverseLerp(2f, 5f, pace));
+        step = Reach * Mathf.Sin((20f + pace * 7f) * Mathf.Deg2Rad);
+
+        gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
+        gait -= Mathf.Floor(gait);
 
         drawing = Mathf.MoveTowards(drawing, Sketching.Raised > 0.05f ? 1f : 0f, dt * 4f);
 
@@ -89,15 +109,15 @@ public class Surveyor : MonoBehaviour
         Carriage(dt, afoot);
     }
 
+    /// <summary>How far the ankle reaches from the hip. Measured, not assumed.</summary>
+    private float Reach => lever;
+
     private void Limbs(float dt, bool afoot, bool grounded)
     {
-        float swing = 20f + pace * 5.5f;
-        float reach = 16f + pace * 8f;
-
         for (int side = 0; side < 2; side++)
         {
-            float phase = side == 0 ? 0f : Mathf.PI;
-            float turn = gait + phase;
+            float phase = gait + (side == 0 ? 0f : 0.5f);
+            phase -= Mathf.Floor(phase);
 
             float hip, knee, shoulder, elbow, ankle;
             float roll = 0f;
@@ -105,28 +125,50 @@ public class Surveyor : MonoBehaviour
             if (!grounded)
             {
                 // legs gathered under, arms out a little
-                hip = side == 0 ? 26f : -14f;
-                knee = -42f;
+                hip = side == 0 ? -18f : 10f;
+                knee = 42f;
                 ankle = 16f;
                 shoulder = -22f;
                 elbow = -28f;
             }
             else if (afoot)
             {
-                hip = Mathf.Sin(turn) * swing;
-                knee = -Mathf.Max(0f, Mathf.Cos(turn)) * reach;
+                if (phase < stance)
+                {
+                    // on the ground: the foot holds still in the world and the
+                    // body rides over it, so the angle comes from where the foot
+                    // has to be rather than from a wave
+                    float t = phase / stance;
 
-                // the foot lands heel first and pushes off the toe, a quarter
-                // of a stride behind the knee
-                ankle = Mathf.Sin(turn - 1.4f) * (10f + pace * 5f) - 4f;
+                    hip = Angle(Mathf.Lerp(step, -step, t));
+                    knee = 3f * Mathf.Sin(Mathf.PI * t);
 
-                shoulder = -Mathf.Sin(turn) * (swing * 0.62f);
-                elbow = -9f - Mathf.Max(0f, -Mathf.Sin(turn)) * (8f + pace * 2.5f);
+                    // heel down, roll flat, push off the toe
+                    ankle = t < 0.5f ? Mathf.Lerp(-9f, 0f, t * 2f)
+                                     : Mathf.Lerp(0f, 20f, (t - 0.5f) * 2f);
+                }
+                else
+                {
+                    // and off it: the leg comes through fast, knee folded so the
+                    // boot clears the ground
+                    float t = (phase - stance) / (1f - stance);
+                    float eased = t * t * (3f - 2f * t);
+
+                    hip = Angle(Mathf.Lerp(-step, step, eased));
+                    knee = (34f + pace * 6f) * Mathf.Sin(Mathf.PI * t);
+                    ankle = Mathf.Lerp(14f, -9f, eased);
+                }
+
+                // the arms answer the opposite leg
+                float across = Angle(Mathf.Cos(phase * Mathf.PI * 2f) * step);
+
+                shoulder = -across * 0.78f;
+                elbow = -12f - Mathf.Max(0f, -across) * 0.22f;
             }
             else
             {
                 // standing: a little breath in it, and the arms hanging
-                hip = Mathf.Sin(Time.time * 0.55f) * 1.1f * (side == 0 ? 1f : -1f);
+                hip = 0f;
                 knee = 0f;
                 ankle = 0f;
                 shoulder = Mathf.Sin(Time.time * 0.9f + side) * 1.6f;
@@ -155,10 +197,21 @@ public class Surveyor : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// The hip angle that puts the foot this far along the ground, forward
+    /// being positive. Turning a hanging limb about its own x carries the far
+    /// end backwards, so the sign here is the other way about from the reading
+    /// you would expect: a leg reaching ahead is a negative angle.
+    /// </summary>
+    private float Angle(float along)
+    {
+        return -Mathf.Asin(Mathf.Clamp(along / Reach, -1f, 1f)) * Mathf.Rad2Deg;
+    }
+
     private void Carriage(float dt, bool afoot)
     {
         // rise and fall on the stride, and lean into a run
-        float rise = afoot ? Mathf.Abs(Mathf.Sin(gait)) * height * 0.012f
+        float rise = afoot ? Mathf.Abs(Mathf.Sin(gait * Mathf.PI * 2f)) * height * 0.012f
                            : Mathf.Sin(Time.time * 0.9f) * height * 0.004f;
 
         var local = figure.Root.localPosition;
@@ -169,8 +222,8 @@ public class Surveyor : MonoBehaviour
 
         // the shoulders come round with the stride and the hips roll under it,
         // which is most of the difference between walking and being carried
-        float twist = afoot ? Mathf.Sin(gait) * (3.2f + pace * 1.8f) * (1f - drawing) : 0f;
-        float sway = afoot ? Mathf.Cos(gait) * (1.8f + pace * 1.3f) * (1f - drawing)
+        float twist = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * (3.2f + pace * 1.8f) * (1f - drawing) : 0f;
+        float sway = afoot ? Mathf.Cos(gait * Mathf.PI * 2f) * (1.8f + pace * 1.3f) * (1f - drawing)
                            : Mathf.Sin(Time.time * 0.55f) * 1.2f;
 
         figure.Root.localRotation = Quaternion.Slerp(figure.Root.localRotation,
@@ -179,7 +232,8 @@ public class Surveyor : MonoBehaviour
         // the head holds its own line through all of that, and dips over the glass
         if (figure.Head != null)
         {
-            float about = afoot ? 0f : Mathf.Sin(Time.time * 0.31f) * 9f * (1f - drawing);
+            float glance = Mathf.Sin(Time.time * 0.31f);
+            float about = afoot ? 0f : glance * glance * glance * 14f * (1f - drawing);
 
             figure.Head.localRotation = Quaternion.Slerp(figure.Head.localRotation,
                 Quaternion.Euler(-lean * 0.7f + drawing * 12f, about - twist * 0.85f, -sway * 0.6f),
