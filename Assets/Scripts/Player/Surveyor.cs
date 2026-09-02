@@ -143,9 +143,12 @@ public class Surveyor : MonoBehaviour
                     hip = Angle(Mathf.Lerp(step, -step, t));
                     knee = 3f * Mathf.Sin(Mathf.PI * t);
 
-                    // heel down, roll flat, push off the toe
-                    ankle = t < 0.5f ? Mathf.Lerp(-9f, 0f, t * 2f)
-                                     : Mathf.Lerp(0f, 20f, (t - 0.5f) * 2f);
+                    // heel down, roll flat, push off the toe -- on top of
+                    // whatever it takes to keep the sole on the ground
+                    float heelToe = t < 0.5f ? Mathf.Lerp(-11f, 0f, t * 2f)
+                                             : Mathf.Lerp(0f, 15f, (t - 0.5f) * 2f);
+
+                    ankle = Mathf.Clamp(-(hip + knee) + heelToe, -30f, 30f);
                 }
                 else
                 {
@@ -156,7 +159,9 @@ public class Surveyor : MonoBehaviour
 
                     hip = Angle(Mathf.Lerp(-step, step, eased));
                     knee = (34f + pace * 6f) * Mathf.Sin(Mathf.PI * t);
-                    ankle = Mathf.Lerp(14f, -9f, eased);
+
+                    // carried level, toe a shade up so it clears the ground
+                    ankle = Mathf.Clamp(-(hip + knee) - 5f, -30f, 30f);
                 }
 
                 // the arms answer the opposite leg
@@ -214,20 +219,23 @@ public class Surveyor : MonoBehaviour
         float rise = afoot ? Mathf.Abs(Mathf.Sin(gait * Mathf.PI * 2f)) * height * 0.012f
                            : Mathf.Sin(Time.time * 0.9f) * height * 0.004f;
 
+        float lean = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * height * 0.007f * (1f - drawing) : 0f;
+
         var local = figure.Root.localPosition;
         local.y = Mathf.Lerp(local.y, rise, 1f - Mathf.Exp(-12f * dt));
+        local.x = Mathf.Lerp(local.x, lean, 1f - Mathf.Exp(-12f * dt));
         figure.Root.localPosition = local;
 
-        float lean = Mathf.Clamp(pace * 1.1f, 0f, 7f) * (1f - drawing);
+        float tip = Mathf.Clamp(pace * 1.1f, 0f, 7f) * (1f - drawing);
 
         // the shoulders come round with the stride and the hips roll under it,
         // which is most of the difference between walking and being carried
-        float twist = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * (3.2f + pace * 1.8f) * (1f - drawing) : 0f;
-        float sway = afoot ? Mathf.Cos(gait * Mathf.PI * 2f) * (1.8f + pace * 1.3f) * (1f - drawing)
-                           : Mathf.Sin(Time.time * 0.55f) * 1.2f;
+        float twist = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * (2.2f + pace * 1.1f) * (1f - drawing) : 0f;
+        float sway = afoot ? Mathf.Cos(gait * Mathf.PI * 2f) * (0.4f + pace * 0.22f) * (1f - drawing)
+                           : Mathf.Sin(Time.time * 0.55f) * 0.5f;
 
         figure.Root.localRotation = Quaternion.Slerp(figure.Root.localRotation,
-            Quaternion.Euler(lean, twist, sway), 1f - Mathf.Exp(-10f * dt));
+            Quaternion.Euler(tip, twist, sway), 1f - Mathf.Exp(-10f * dt));
 
         // the head holds its own line through all of that, and dips over the glass
         if (figure.Head != null)
@@ -236,7 +244,7 @@ public class Surveyor : MonoBehaviour
             float about = afoot ? 0f : glance * glance * glance * 14f * (1f - drawing);
 
             figure.Head.localRotation = Quaternion.Slerp(figure.Head.localRotation,
-                Quaternion.Euler(-lean * 0.7f + drawing * 12f, about - twist * 0.85f, -sway * 0.6f),
+                Quaternion.Euler(-tip * 0.7f + drawing * 12f, about - twist * 0.85f, -sway * 0.6f),
                 1f - Mathf.Exp(-7f * dt));
         }
     }
