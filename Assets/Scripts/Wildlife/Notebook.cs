@@ -75,15 +75,15 @@ public static class Notebook
             if (entry.Id == "close-quarters" || entry.Id == "unbothered") close = true;
         }
 
-        if (!night) return "this country has only been seen by daylight so far";
-        if (!high) return "nothing here yet from the ground above the treeline";
-        if (!water) return "nothing yet from the water's edge";
-        if (!wet) return "nothing yet written in bad weather";
-        if (!close) return "nothing has yet let you get properly close to it";
+        if (!night) return "you have not been out at night yet";
+        if (!high) return "you have not been up high yet";
+        if (!water) return "you have not been to the water yet";
+        if (!wet) return "you have not been out in bad weather";
+        if (!close) return "you have not got close to anything yet";
 
         return kept.Count < Possible
-            ? "there is more here than has been written down"
-            : "the country has been gone over thoroughly";
+            ? "more to find"
+            : "you have seen most of it";
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

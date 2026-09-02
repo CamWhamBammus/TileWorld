@@ -139,7 +139,7 @@ public static class SketchBook
 
         if (standing != null && standing.Quality >= judged.Quality)
         {
-            judged.Verdict = "not as good as the one you have";
+            judged.Verdict = "worse than the one you have";
             beaten = true;
 
             Object.Destroy(drawing);
@@ -191,7 +191,7 @@ public static class SketchBook
         if (covered < Width * Height * 0.0008f)
         {
             page.Quality = 0f;
-            page.Verdict = "nothing on the page worth keeping";
+            page.Verdict = "nothing on the page";
             page.Empty = true;
             return page;
         }
@@ -238,13 +238,13 @@ public static class SketchBook
 
         page.Quality = Mathf.Clamp01(quality);
 
-        if (cut) page.Verdict = "it runs off the edge of the page";
-        else if (fill < wanted * 0.35f) page.Verdict = "a small thing at that distance";
-        else if (fill > wanted * 3.5f) page.Verdict = "it crowds the paper";
-        else if (side < 0.3f) page.Verdict = "caught end on, which tells you little";
-        else if (page.Quality > 0.78f) page.Verdict = "a fine likeness";
-        else if (page.Quality > 0.55f) page.Verdict = "a good likeness";
-        else page.Verdict = "a fair likeness";
+        if (cut) page.Verdict = "cut off at the edge";
+        else if (fill < wanted * 0.35f) page.Verdict = "too small";
+        else if (fill > wanted * 3.5f) page.Verdict = "too close";
+        else if (side < 0.3f) page.Verdict = "seen end on";
+        else if (page.Quality > 0.78f) page.Verdict = "a good drawing";
+        else if (page.Quality > 0.55f) page.Verdict = "a decent drawing";
+        else page.Verdict = "a rough drawing";
 
         return page;
     }

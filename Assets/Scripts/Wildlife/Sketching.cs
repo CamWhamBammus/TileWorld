@@ -190,9 +190,9 @@ public class Sketching : MonoBehaviour
 
             Show(have);
 
-            if (!have) Refresh("keep it in sight");
+            if (!have) Refresh("nothing in view");
             else if (!steady) Refresh("hold still");
-            else Refresh("hold " + drawKey + " to raise the glass on the " + working.What.Name);
+            else Refresh("hold " + drawKey + " to draw the " + working.What.Name);
 
             return;
         }
@@ -210,7 +210,7 @@ public class Sketching : MonoBehaviour
         if (drewThisHold)
         {
             Show(true);
-            Refresh("let go, then hold " + drawKey + " again to draw it once more");
+            Refresh("let go of " + drawKey + " to draw again");
 
             return;
         }
@@ -218,9 +218,7 @@ public class Sketching : MonoBehaviour
         progress = Mathf.MoveTowards(progress, 1f, Time.deltaTime / seconds);
 
         Show(true);
-        Refresh(trouble ?? (standing != null && !string.IsNullOrEmpty(standing.Verdict)
-                            ? "drawing — your best so far was " + standing.Verdict
-                            : null));
+        Refresh(trouble);
 
         if (progress >= 1f)
         {
@@ -235,12 +233,12 @@ public class Sketching : MonoBehaviour
             {
                 if (SketchBook.Beaten)
                 {
-                    Notices.Show(made.Verdict + " — the book keeps the better one you had");
+                    Notices.Show(made.Verdict + " — kept your old one instead");
                 }
                 else
                 {
                     Notices.Show((first ? "You draw the " + subject.What.Name + " — " : "")
-                               + made.Verdict + (first ? "" : ", better than before"));
+                               + made.Verdict + (first ? "" : ", better than your last"));
                 }
 
                 if (!SketchBook.Beaten) Ambience.Instance?.Click(1.15f);
@@ -294,14 +292,14 @@ public class Sketching : MonoBehaviour
 
             Vector3 dot = camera.WorldToScreenPoint(corner);
 
-            if (dot.z <= 0f) return "it is behind you";
+            if (dot.z <= 0f) return "behind you";
 
             min = Vector2.Min(min, dot);
             max = Vector2.Max(max, dot);
         }
 
         if (min.x < left || max.x > left + pageWide || min.y < 0f || max.y > pageHigh)
-            return "some of it is off the page";
+            return "part of it is off the page";
 
         float want = SketchBook.Filling(quarry.What);
         float showing = ((max.x - min.x) * (max.y - min.y)) / (pageWide * pageHigh) * 0.35f;
@@ -310,10 +308,10 @@ public class Sketching : MonoBehaviour
         {
             // The wheel is the answer to this and nobody would know unless told.
             return camera.fieldOfView > closest + 1.5f
-                ? "small on the page — turn the wheel to zoom in"
-                : "too far off to draw well, even zoomed in";
+                ? "too small — scroll to zoom in"
+                : "too far away";
         }
-        if (showing > want * 3.5f) return "too close, it crowds the paper";
+        if (showing > want * 3.5f) return "too close";
 
         Vector3 facing = quarry.Body.forward;
         facing.y = 0f;
@@ -323,7 +321,7 @@ public class Sketching : MonoBehaviour
         if (facing.sqrMagnitude > 0.01f
             && 1f - Mathf.Abs(Vector3.Dot(facing.normalized, view.normalized)) < 0.25f)
         {
-            return "get round to one side of it";
+            return "move round to its side";
         }
 
         return null;

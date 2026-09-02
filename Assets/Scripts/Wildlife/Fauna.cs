@@ -86,22 +86,10 @@ public static class Fauna
     {
         switch (kind)
         {
-            case FaunaKind.Deer: return "wooded lowland, at either end of the day";
-            case FaunaKind.Rabbit: return "open meadow, in daylight";
-            case FaunaKind.Fox: return "lowland and wood, after dark";
-            default: return "high ground, in any weather";
-        }
-    }
-
-    /// <summary>What is said the first time you see one.</summary>
-    public static string OnFirstSight(FaunaKind kind)
-    {
-        switch (kind)
-        {
-            case FaunaKind.Deer: return "A deer, watching you from the trees";
-            case FaunaKind.Rabbit: return "A rabbit, gone still in the grass";
-            case FaunaKind.Fox: return "A fox, crossing the dark ahead of you";
-            default: return "A goat, up where nothing else grazes";
+            case FaunaKind.Deer: return "woods and low ground, dawn and dusk";
+            case FaunaKind.Rabbit: return "open ground, in daylight";
+            case FaunaKind.Fox: return "low ground, at night";
+            default: return "high ground, any time";
         }
     }
 

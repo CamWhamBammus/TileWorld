@@ -59,7 +59,7 @@ public class Underwater : MonoBehaviour
         if (under != submerged)
         {
             submerged = under;
-            Ambience.Instance?.Click(under ? 0.55f : 0.75f);
+            // No sound here either: this was the menu click standing in for a splash.
         }
 
         tint.color = new Color(0.10f, 0.29f, 0.38f, under ? 0.42f : 0f);

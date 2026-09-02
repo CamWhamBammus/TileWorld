@@ -268,7 +268,7 @@ public class Wildlife : MonoBehaviour
             {
                 var region = Regions.At(WorldGrid.WorldToChunk(animal.transform.position), world.WorldSeed);
 
-                Notices.Show(Fauna.OnFirstSight(animal.Kind) + " in " + region.Name);
+                Notices.Show("First " + Fauna.Of(animal.Kind).Name + " seen — " + region.Name);
             }
         }
     }

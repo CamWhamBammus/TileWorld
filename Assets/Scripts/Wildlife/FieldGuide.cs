@@ -144,27 +144,27 @@ public static class FieldGuide
         switch (study)
         {
             case Study.Sketch:
-                return subject.Wild ? "drawn from close by" : "drawn whole, from far enough back";
+                return subject.Wild ? "drawn up close" : "drawn from far enough back";
 
             case Study.Inscription:
-                return "read what was written there";
+                return "read the writing"; 
 
             case Study.Habit:
                 switch (subject.Fauna)
                 {
-                    case FaunaKind.Deer: return "watched one grazing";
-                    case FaunaKind.Rabbit: return "caught one at rest";
-                    case FaunaKind.Fox: return "watched one drink";
-                    default: return "watched one on the move";
+                    case FaunaKind.Deer: return "saw one grazing";
+                    case FaunaKind.Rabbit: return "saw one resting";
+                    case FaunaKind.Fox: return "saw one drinking";
+                    default: return "saw one walking";
                 }
 
             default:
                 switch (subject.Fauna)
                 {
-                    case FaunaKind.Deer: return "found under the trees at dusk";
-                    case FaunaKind.Rabbit: return "found out in the open in daylight";
-                    case FaunaKind.Fox: return "found after dark";
-                    default: return "found on the high ground";
+                    case FaunaKind.Deer: return "found in the woods at dusk";
+                    case FaunaKind.Rabbit: return "found in the open in daylight";
+                    case FaunaKind.Fox: return "found at night";
+                    default: return "found up high";
                 }
         }
     }
@@ -192,17 +192,17 @@ public static class FieldGuide
         {
             case Study.Sketch:
                 return subject.Wild
-                    ? "walk up slowly - running frightens them off sooner - then stand still and hold F until the drawing fills"
-                    : "back away until the whole of it fits in front of you, then hold F";
+                    ? "walk up slowly, stand still, then hold F"
+                    : "back up until all of it fits, then hold F";
 
             case Study.Habit:
-                return "you have to be near enough to see it happen; it cannot be looked up";
+                return "you have to be there when it happens";
 
             case Study.Inscription:
-                return "walk right up to it, close enough to touch the stone";
+                return "walk right up to it";
 
             default:
-                return "be on the right ground at the right hour, with it in sight";
+                return "be in the right place at the right time";
         }
     }
 
@@ -213,10 +213,10 @@ public static class FieldGuide
 
         switch (subject.Landmark)
         {
-            case LandmarkKind.AbandonedHouse: return "in the lower country, where somebody once thought to live";
-            case LandmarkKind.RuinedTower: return "standing alone, and visible a long way off";
-            case LandmarkKind.StoneCircle: return "out in the open, on flat ground";
-            default: return "on high ground, put there to see from";
+            case LandmarkKind.AbandonedHouse: return "down on the low ground";
+            case LandmarkKind.RuinedTower: return "stands alone, seen from a long way off";
+            case LandmarkKind.StoneCircle: return "out in the open on flat ground";
+            default: return "up high, built to see from";
         }
     }
 
@@ -227,14 +227,14 @@ public static class FieldGuide
         {
             case Study.Sketch:
                 return subject.Wild
-                    ? "draw it from close by, without putting it to flight"
-                    : "draw it whole, from far enough back";
+                    ? "draw it up close"
+                    : "draw all of it, from far enough back";
 
             case Study.Habit:
                 return Habit(subject.Fauna);
 
             case Study.Inscription:
-                return "read what is written there";
+                return "read the writing on it";
 
             default:
                 return Country(subject.Fauna);
@@ -246,10 +246,10 @@ public static class FieldGuide
     {
         switch (kind)
         {
-            case FaunaKind.Deer: return "watch one grazing";
-            case FaunaKind.Rabbit: return "catch one at rest";
-            case FaunaKind.Fox: return "see one drink";
-            default: return "watch one on the move";
+            case FaunaKind.Deer: return "see one grazing";
+            case FaunaKind.Rabbit: return "see one resting";
+            case FaunaKind.Fox: return "see one drinking";
+            default: return "see one walking";
         }
     }
 
@@ -269,10 +269,10 @@ public static class FieldGuide
     {
         switch (kind)
         {
-            case FaunaKind.Deer: return "find one under the trees at dusk";
-            case FaunaKind.Rabbit: return "find one out in the open in daylight";
-            case FaunaKind.Fox: return "find one after dark";
-            default: return "find one on the high ground";
+            case FaunaKind.Deer: return "find one in the woods at dusk";
+            case FaunaKind.Rabbit: return "find one in the open in daylight";
+            case FaunaKind.Fox: return "find one at night";
+            default: return "find one up high";
         }
     }
 

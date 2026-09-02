@@ -107,8 +107,8 @@ public class FieldGuideScreen : MonoBehaviour
 
     private void Turn(int by)
     {
+        // No sound for turning a page: eleven pages is eleven clicks.
         page = Mathf.Clamp(page + by, 0, Pages - 1);
-        Ambience.Instance?.Click(1.06f);
     }
 
     private void Refresh()
@@ -120,7 +120,7 @@ public class FieldGuideScreen : MonoBehaviour
         else Noticed(page - all.Length - 1);
 
         footer.text = "<color=" + Dim + ">page " + (page + 1) + " of " + Pages
-                    + "   ·   left and right arrows turn the page   ·   G closes the book</color>";
+                    + "   ·   arrows turn the page   ·   G closes</color>";
     }
 
     /// <summary>
@@ -136,16 +136,14 @@ public class FieldGuideScreen : MonoBehaviour
 
         heading.text = "<size=125%><b><color=" + Ink + ">NOTICED</color></b></size>\n"
                      + "<size=80%><color=" + Dim + ">" + Notebook.Count + " of "
-                     + Notebook.Possible + " things worth remarking on  ·  "
-                     + Notebook.Wondering() + "</color></size>";
+                     + Notebook.Possible + " seen  ·  " + Notebook.Wondering() + "</color></size>";
 
         var text = new System.Text.StringBuilder();
 
         if (Notebook.Count == 0)
         {
             text.Append("<color=").Append(Dim)
-                .Append(">Nothing yet. It fills itself as you go: the book only writes down what ")
-                .Append("happens in front of you, so there is nothing here to go and fetch.</color>");
+                .Append(">Nothing yet. These fill in as you go — there is nothing to go and fetch.</color>");
         }
         else
         {
@@ -230,11 +228,10 @@ public class FieldGuideScreen : MonoBehaviour
                 : "<color=" + Dim + ">" + (met ? all[i].Name : "not yet found") + "</color>";
         }
 
-        body.text = "<color=" + Dim + ">A creature wants drawing from close by, something seen of how it "
-                  + "lives, and finding in its own country. A ruin wants drawing whole, from far enough "
-                  + "back, and whatever is written there read.\n\nPast those pages the book keeps what it "
-                  + "has noticed on its own: " + Notebook.Count + " of " + Notebook.Possible
-                  + " so far.</color>";
+        body.text = "<color=" + Dim + ">Draw each creature up close, see what it does, and find it "
+                  + "where it lives. Ruins want all of it drawn from further back, and the writing on "
+                  + "them read.\n\nThe book also notes things you come across as you go: "
+                  + Notebook.Count + " of " + Notebook.Possible + " so far.</color>";
     }
 
     private void Entry(Subject subject)
@@ -255,7 +252,7 @@ public class FieldGuideScreen : MonoBehaviour
         var wants = FieldGuide.Wants(subject);
 
         heading.text = "<size=125%><b><color=" + (full ? Done : Ink) + ">"
-                     + (met ? subject.Name.ToUpper() : "NOT YET FOUND")
+                     + (met ? subject.Name.ToUpper() : "NOT FOUND YET")
                      + "</color></b></size>\n<size=80%><color=" + Dim + ">"
                      + FieldGuide.Count(subject) + " of " + wants.Length + " done"
                      + "  ·  " + FieldGuide.Where(subject) + "</color></size>";
@@ -416,10 +413,10 @@ public class FieldGuideScreen : MonoBehaviour
         contentsRect.offsetMax = Vector2.zero;
 
         Label("Row creatures", contents.transform, 19f, new Vector2(0f, -136f), new Vector2(800f, 28f))
-            .text = "<color=" + Dim + ">THE CREATURES OF THIS COUNTRY</color>";
+            .text = "<color=" + Dim + ">CREATURES</color>";
 
         Label("Row built", contents.transform, 19f, new Vector2(0f, -366f), new Vector2(800f, 28f))
-            .text = "<color=" + Dim + ">WHAT WAS BUILT IN IT</color>";
+            .text = "<color=" + Dim + ">RUINS</color>";
 
         thumbs = new RawImage[8];
         thumbNames = new TMP_Text[8];

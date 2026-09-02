@@ -73,142 +73,142 @@ public static class Observations
         }
 
         // --- the plain things, which is most of what there is to see ------
-        Add("deer-graze", "a deer with its head down in the grass",
+        Add("deer-graze", "a deer grazing",
             s => s.Kind == FaunaKind.Deer && s.Doing == Doing.Grazing);
 
-        Add("rabbit-hop", "how a rabbit gets about, which is not by walking",
+        Add("rabbit-hop", "a rabbit hopping",
             s => s.Kind == FaunaKind.Rabbit && s.Doing == Doing.Walking);
 
-        Add("fox-trot", "a fox going somewhere, low and quick and not in a hurry",
+        Add("fox-trot", "a fox trotting past",
             s => s.Kind == FaunaKind.Fox && s.Doing == Doing.Walking);
 
-        Add("goat-moving", "a goat picking its way along, lifting its feet higher than it needs to",
+        Add("goat-moving", "a goat picking its way along",
             s => s.Kind == FaunaKind.Goat && s.Doing == Doing.Walking);
 
-        Add("held-eye", "an animal that stood and watched you instead of leaving",
+        Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 
-        Add("bolted", "how fast a thing goes once it decides you are too near",
+        Add("bolted", "an animal running off",
             s => s.Doing == Doing.Fleeing);
 
-        Add("looking-up", "a grazing animal lifting its head for no reason you can see",
+        Add("looking-up", "an animal looking up from the grass",
             s => s.Doing == Doing.Standing);
 
-        Add("any-drink", "an animal at the water's edge, drinking",
+        Add("any-drink", "an animal drinking",
             s => s.Doing == Doing.Drinking);
 
-        Add("any-rest", "something lying down with its legs folded under it",
+        Add("any-rest", "an animal lying down",
             s => s.Doing == Doing.Resting);
 
-        Add("company-two", "two of a kind on the same ground, keeping loose company",
+        Add("company-two", "two of a kind together",
             s => s.Company >= 2);
 
         // --- and where they keep ------------------------------------------
-        Add("goat-high", "a goat on ground above where anything else grazes",
+        Add("goat-high", "a goat up on the high ground",
             s => s.Kind == FaunaKind.Goat && s.Relief > 0.5f);
 
-        Add("rabbit-low", "a rabbit out in the open, well away from the high ground",
+        Add("rabbit-low", "a rabbit out in the open",
             s => s.Kind == FaunaKind.Rabbit && s.Relief < 0.2f);
 
-        Add("deer-wood", "deer keeping to the lower, greener ground",
+        Add("deer-wood", "deer down on the low ground",
             s => s.Kind == FaunaKind.Deer && s.Relief < 0.35f);
 
-        Add("near-water", "an animal that has not gone far from the water",
+        Add("near-water", "an animal close to water",
             s => s.ByWater);
 
-        Add("clear-of-ruins", "nothing grazing within a stone's throw of the ruins",
+        Add("clear-of-ruins", "empty ground around a ruin",
             s => s.NearRuin);
 
-        Add("goat-slope", "a goat crossing a slope you could not keep your feet on",
+        Add("goat-slope", "a goat on a steep slope",
             s => s.Kind == FaunaKind.Goat && s.Slope > 22f);
 
         Add("goat-snow", "a goat standing in snow",
             s => s.Kind == FaunaKind.Goat && s.Snow);
 
         // --- what they make of you ----------------------------------------
-        Add("close-quarters", "a creature that let you within five paces of it",
+        Add("close-quarters", "getting within five paces of something",
             s => s.Distance < 5f && s.Doing != Doing.Fleeing);
 
-        Add("unbothered", "an animal that went on eating with you stood over it",
+        Add("unbothered", "an animal that kept eating with you next to it",
             s => s.Doing == Doing.Grazing && s.Distance < 9f);
 
-        Add("watched-close", "being looked at, straight on, by something wild",
+        Add("watched-close", "an animal looking straight at you",
             s => s.Doing == Doing.Watching && s.Distance < 10f);
 
-        Add("kept-distance", "how far off a thing will let you come, and no further",
+        Add("kept-distance", "how close an animal will let you get",
             s => s.Doing == Doing.Fleeing && s.Distance > 18f);
 
-        Add("water-turn", "an animal turning along the shore rather than going into the water",
+        Add("water-turn", "an animal running along the shore instead of into the water",
             s => s.Doing == Doing.Fleeing && s.ByWater);
 
         // --- the hours -----------------------------------------------------
-        Add("graze-dawn", "a deer with its head down at first light, undisturbed",
+        Add("graze-dawn", "a deer grazing at first light",
             s => s.Kind == FaunaKind.Deer && s.Doing == Doing.Grazing && Dawn(s));
 
-        Add("graze-dusk", "deer out on the grass as the light goes",
+        Add("graze-dusk", "deer out on the grass at dusk",
             s => s.Kind == FaunaKind.Deer && s.Doing == Doing.Grazing && Dusk(s));
 
-        Add("fox-night", "a fox abroad in the dark, when nothing else is",
+        Add("fox-night", "a fox out after dark",
             s => s.Kind == FaunaKind.Fox && Night(s));
 
-        Add("fox-drink-night", "a fox at the water in the dark",
+        Add("fox-drink-night", "a fox drinking at night",
             s => s.Kind == FaunaKind.Fox && s.Doing == Doing.Drinking && Night(s));
 
-        Add("rest-night", "an animal bedded down in the small hours",
+        Add("rest-night", "an animal bedded down at night",
             s => s.Doing == Doing.Resting && s.Hour < 0.16f);
 
-        Add("midday-quiet", "the middle of the day, and the grass empty of everything but rabbits",
+        Add("midday-quiet", "a rabbit out at midday",
             s => s.Kind == FaunaKind.Rabbit && s.Hour > 0.42f && s.Hour < 0.58f);
 
         // --- the weather ---------------------------------------------------
-        Add("rest-rain", "something lying up out of the weather rather than feeding",
+        Add("rest-rain", "an animal lying up in the rain",
             s => s.Doing == Doing.Resting && Wet(s));
 
-        Add("drink-rain", "an animal drinking in the rain, which it did not need to do",
+        Add("drink-rain", "an animal drinking in the rain",
             s => s.Doing == Doing.Drinking && Wet(s));
 
-        Add("wet-grazing", "an animal grazing straight through a downpour",
+        Add("wet-grazing", "an animal grazing in the rain",
             s => s.Doing == Doing.Grazing && Wet(s));
 
         // --- the rarer conjunctions ----------------------------------------
-        Add("herd-three", "three deer on the same ground at once",
+        Add("herd-three", "three deer together",
             s => s.Kind == FaunaKind.Deer && s.Company >= 3);
 
-        Add("herd-four", "a herd of four, which is as many as this country holds together",
+        Add("herd-four", "four deer together",
             s => s.Company >= 4);
 
-        Add("mixed", "two kinds sharing a hillside without minding one another",
+        Add("mixed", "two different kinds on the same ground",
             s => s.Mixed);
 
-        Add("fox-and-rabbit", "a rabbit feeding with a fox in sight of it, and neither much troubled",
+        Add("fox-and-rabbit", "a fox and a rabbit near each other",
             s => s.Kind == FaunaKind.Rabbit && s.Mixed && s.Other == FaunaKind.Fox);
 
-        Add("goat-snow-weather", "a goat in snow with the weather coming in behind it",
+        Add("goat-snow-weather", "a goat in snow with the weather coming in",
             s => s.Kind == FaunaKind.Goat && s.Snow && Wet(s));
 
         // --- the country itself, with nothing in front of you --------------
-        Add("high-ground", "how far the country runs when you are stood on the top of it",
+        Add("high-ground", "the view from high ground",
             s => s.Standing > 0.7f, false);
 
-        Add("at-water", "standing at the edge of water with the bottom shelving away",
+        Add("at-water", "standing at the water's edge",
             s => s.AtWater, false);
 
-        Add("rain-high", "rain coming across the high ground with nothing to shelter under",
+        Add("rain-high", "rain up on the high ground",
             s => Wet(s) && s.Standing > 0.45f, false);
 
-        Add("night-water", "still water at night, black and flat and going nowhere",
+        Add("night-water", "water at night",
             s => Night(s) && s.AtWater, false);
 
-        Add("first-light", "the light coming back onto ground you crossed in the dark",
+        Add("first-light", "first light",
             s => s.Hour > 0.18f && s.Hour < 0.26f, false);
 
-        Add("weather-turn", "the weather closing in, and the hillside emptying before it",
+        Add("weather-turn", "the weather closing in",
             s => s.Overcast > 0.75f, false);
 
-        Add("dark-alone", "how dark it gets out here with nothing of yours in sight",
+        Add("dark-alone", "being out in the dark",
             s => Night(s), false);
 
-        Add("steep-going", "ground steep enough that you go up it sideways",
+        Add("steep-going", "ground too steep to walk straight up",
             s => s.Slope > 24f, false);
 
         return notes;
