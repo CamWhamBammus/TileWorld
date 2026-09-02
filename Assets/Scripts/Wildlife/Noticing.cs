@@ -68,7 +68,6 @@ public class Noticing : MonoBehaviour
             if (Notebook.Write(note.Id, note.Line, where, when))
             {
                 Notices.Show("Noted: " + note.Line);
-                Ambience.Instance?.Click(1.2f);
 
                 quiet = Time.time + 4.5f;
             }

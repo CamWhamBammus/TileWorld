@@ -32,7 +32,7 @@ public class Sketching : MonoBehaviour
     [SerializeField] private KeyCode drawKey = KeyCode.F;
 
     [Tooltip("How narrow a view it takes when raised, and the range the wheel works over.")]
-    [SerializeField] private float closest = 15f;
+    [SerializeField] private float closest = 10f;
     [SerializeField] private float widest = 46f;
 
     private ChunkManager world;
@@ -50,7 +50,7 @@ public class Sketching : MonoBehaviour
     /// <summary>How far into the glass we are, for anything that cares — the camera does.</summary>
     public static float Raised { get; private set; }
 
-    private float zoom = 30f;
+    private float zoom = 20f;
     private float restingView = -1f;
 
     private bool drewThisHold;      // one page to a press of the button
@@ -244,7 +244,7 @@ public class Sketching : MonoBehaviour
                                + made.Verdict + (first ? "" : ", better than before"));
                 }
 
-                Ambience.Instance?.Click(1.15f);
+                if (!SketchBook.Beaten) Ambience.Instance?.Click(1.15f);
 
                 var kept = SketchBook.Of(subject.What);
 
@@ -306,7 +306,13 @@ public class Sketching : MonoBehaviour
         float want = SketchBook.Filling(quarry.What);
         float showing = ((max.x - min.x) * (max.y - min.y)) / (pageWide * pageHigh) * 0.35f;
 
-        if (showing < want * 0.35f) return "too far off to draw well";
+        if (showing < want * 0.35f)
+        {
+            // The wheel is the answer to this and nobody would know unless told.
+            return camera.fieldOfView > closest + 1.5f
+                ? "small on the page — turn the wheel to zoom in"
+                : "too far off to draw well, even zoomed in";
+        }
         if (showing > want * 3.5f) return "too close, it crowds the paper";
 
         Vector3 facing = quarry.Body.forward;

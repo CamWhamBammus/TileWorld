@@ -121,7 +121,9 @@ public class Notices : MonoBehaviour
             live.RemoveAt(0);
         }
 
-        Ambience.Instance?.Click(1.3f);
+        // No sound. A notice is the world remarking on something, and it was
+        // using the click that belongs to opening a menu — several a minute
+        // once the book started noticing things on its own.
     }
 
     private void Update()

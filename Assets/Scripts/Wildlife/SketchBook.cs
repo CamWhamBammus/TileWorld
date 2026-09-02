@@ -27,6 +27,7 @@ public static class SketchBook
         public string When;
         public string Where;
         public bool Empty;
+        public float Covered;        // the share of the page the subject took
     }
 
     private static readonly Dictionary<string, Page> drawings = new Dictionary<string, Page>();
@@ -185,6 +186,8 @@ public static class SketchBook
 
         var page = new Page();
 
+        page.Covered = covered / (float)(Width * Height);
+
         if (covered < Width * Height * 0.0008f)
         {
             page.Quality = 0f;
@@ -253,10 +256,12 @@ public static class SketchBook
     /// </summary>
     public static float Filling(Subject subject)
     {
-        // With a glass to zoom, anything can be made to fill the page, so
-        // there is no longer any need to ask less of a rabbit than of a deer:
-        // what is judged is how you framed it, not what it happened to be.
-        return 0.10f;
+        // Measured rather than hoped for: a goat at six paces through a thirty
+        // degree glass covers three and a half percent of the page, and six
+        // paces is about as near as it will have you. Asking for a tenth of the
+        // sheet meant every honest drawing was marked down as a small thing at
+        // a distance, and looked like an empty page besides.
+        return 0.05f;
     }
 
     /// <summary>Ink where the edges are, a wash where the animal is dark, paper elsewhere.</summary>
