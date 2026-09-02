@@ -81,7 +81,6 @@ public class Sketching : MonoBehaviour
     private GameObject finder;       // the frame the page will take
     private GameObject sheet;        // the drawing, held up for a moment after
     private RawImage page;
-    private TMP_Text caption;
     private float showUntil;
     private float sheetFade;
     private CanvasGroup sheetShowing;
@@ -230,7 +229,7 @@ public class Sketching : MonoBehaviour
 
             drewThisHold = true;
 
-            bool first = FieldGuide.Record(subject.What, FieldGuide.Study.Sketch);
+            bool first = FieldGuide.Record(subject.What, FieldGuide.Study.Sketch, Here(), Now());
 
             if (made != null)
             {
@@ -250,8 +249,9 @@ public class Sketching : MonoBehaviour
 
                 if (kept != null)
                 {
+                    // Nothing written across it: the page is a drawing, and a
+                    // line of type over the top only reads as a fault in it.
                     page.texture = kept;
-                    caption.text = made.Verdict + "  ·  G for the book";
                     showUntil = Time.time + 4.5f;
                 }
             }
@@ -346,14 +346,14 @@ public class Sketching : MonoBehaviour
 
         if (!FieldGuide.Has(seen.What, FieldGuide.Study.Habit)
             && FieldGuide.Habit(kind, seen.Creature.Busy)
-            && FieldGuide.Record(seen.What, FieldGuide.Study.Habit))
+            && FieldGuide.Record(seen.What, FieldGuide.Study.Habit, Here(), Now()))
         {
             Notices.Show("Noted: " + FieldGuide.Habit(kind));
         }
 
         if (!FieldGuide.Has(seen.What, FieldGuide.Study.Country)
             && FieldGuide.Country(kind, seen.Body.position, world.WorldSeed, hour)
-            && FieldGuide.Record(seen.What, FieldGuide.Study.Country))
+            && FieldGuide.Record(seen.What, FieldGuide.Study.Country, Here(), Now()))
         {
             Notices.Show("Noted: " + FieldGuide.Country(kind));
         }
@@ -374,7 +374,7 @@ public class Sketching : MonoBehaviour
             if (FieldGuide.Has(what, FieldGuide.Study.Inscription)) continue;
             if (Vector3.Distance(player.position, ruin.transform.position) > readable) continue;
 
-            if (FieldGuide.Record(what, FieldGuide.Study.Inscription))
+            if (FieldGuide.Record(what, FieldGuide.Study.Inscription, Here(), Now()))
             {
                 Notices.Show("\"" + Inscriptions.For(ruin.Chunk, ruin.Kind, world.WorldSeed) + "\"");
             }
@@ -505,6 +505,17 @@ public class Sketching : MonoBehaviour
         foreach (var piece in what.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
 
         return bounds.center;
+    }
+
+    /// <summary>The country underfoot, and the hour, for the book's records.</summary>
+    private string Here()
+    {
+        return world != null ? Regions.At(WorldGrid.WorldToChunk(player.position), world.WorldSeed).Name : "";
+    }
+
+    private static string Now()
+    {
+        return TimeOfDay.Instance != null ? TimeOfDay.Instance.Clock() : "";
     }
 
     private Camera Eye()
@@ -644,9 +655,9 @@ public class Sketching : MonoBehaviour
         trackRect.anchorMin = new Vector2(0f, 0f);
         trackRect.anchorMax = new Vector2(1f, 0f);
         trackRect.pivot = new Vector2(0.5f, 0f);
-        trackRect.offsetMin = new Vector2(22f, 16f);
-        trackRect.offsetMax = new Vector2(-22f, 0f);
-        trackRect.sizeDelta = new Vector2(trackRect.sizeDelta.x, 10f);
+        trackRect.offsetMin = new Vector2(26f, 18f);
+        trackRect.offsetMax = new Vector2(-26f, 0f);
+        trackRect.sizeDelta = new Vector2(trackRect.sizeDelta.x, 9f);
 
         var fillGo = new GameObject("Fill");
         fillGo.transform.SetParent(trackGo.transform, false);
@@ -661,7 +672,9 @@ public class Sketching : MonoBehaviour
         fill.offsetMin = Vector2.zero;
         fill.offsetMax = Vector2.zero;
 
-        label = Label("Label", panel.transform, 21f, new Vector2(0f, 14f), new Vector2(400f, 44f));
+        // Above the bar rather than across the middle of the card, which put it
+        // neither on the bar nor clear of it.
+        label = Label("Label", panel.transform, 20f, new Vector2(0f, 12f), new Vector2(384f, 40f));
 
         // The frame the page will take. Corners only: a full box across the
         // middle of the screen would be a nuisance to look through.
@@ -713,13 +726,11 @@ public class Sketching : MonoBehaviour
         pageRect.anchorMin = new Vector2(0.5f, 1f);
         pageRect.anchorMax = new Vector2(0.5f, 1f);
         pageRect.pivot = new Vector2(0.5f, 1f);
-        pageRect.sizeDelta = new Vector2(344f, 258f);
-        pageRect.anchoredPosition = new Vector2(0f, -26f);
+        pageRect.sizeDelta = new Vector2(352f, 264f);
+        pageRect.anchoredPosition = new Vector2(0f, -38f);
 
         // Under the drawing, not across it: the label helper measures from the
         // middle of what it is given, and the page fills the top of the sheet.
-        caption = Label("Caption", sheet.transform, 19f, new Vector2(0f, -142f), new Vector2(360f, 40f));
-
         sheet.SetActive(false);
         panel.SetActive(false);
     }

@@ -258,9 +258,6 @@ public class FieldGuideScreen : MonoBehaviour
                      + (met ? subject.Name.ToUpper() : "NOT YET FOUND")
                      + "</color></b></size>\n<size=80%><color=" + Dim + ">"
                      + FieldGuide.Count(subject) + " of " + wants.Length + " done"
-                     + (made == null ? "  ·  no drawing yet"
-                                     : "  ·  " + made.Verdict
-                                       + (string.IsNullOrEmpty(made.When) ? "" : ", " + made.When))
                      + "  ·  " + FieldGuide.Where(subject) + "</color></size>";
 
         var text = new System.Text.StringBuilder();
@@ -277,11 +274,35 @@ public class FieldGuideScreen : MonoBehaviour
                 .Append("<size=80%><color=").Append(has ? Done : Dim).Append(">   ")
                 .Append(has ? "done" : "not yet").Append("</color></size>\n");
 
-            text.Append("<indent=16px><color=").Append(has ? Dim : Ink).Append(">")
-                .Append(FieldGuide.Asks(subject, study)).Append("</color></indent>\n");
-
-            if (!has)
+            if (has)
             {
+                // What happened, and where and when, rather than the instruction
+                // still standing there under the word done.
+                text.Append("<indent=16px><color=").Append(Ink).Append(">")
+                    .Append(FieldGuide.Did(subject, study));
+
+                if (study == FieldGuide.Study.Sketch && made != null && !string.IsNullOrEmpty(made.Verdict))
+                {
+                    text.Append(" — ").Append(made.Verdict);
+                }
+
+                text.Append("</color>");
+
+                string detail = FieldGuide.Detail(subject, study);
+
+                if (!string.IsNullOrEmpty(detail))
+                {
+                    text.Append("<size=80%><color=").Append(Dim).Append(">   ").Append(detail)
+                        .Append("</color></size>");
+                }
+
+                text.Append("</indent>\n");
+            }
+            else
+            {
+                text.Append("<indent=16px><color=").Append(Ink).Append(">")
+                    .Append(FieldGuide.Asks(subject, study)).Append("</color></indent>\n");
+
                 text.Append("<indent=16px><size=78%><i><color=").Append(Dim).Append(">")
                     .Append(FieldGuide.How(subject, study)).Append("</color></i></size></indent>\n");
             }

@@ -16,8 +16,11 @@ public static class FieldGuide
 {
     public enum Study { Sketch, Habit, Country, Inscription }
 
-    private static readonly Dictionary<string, HashSet<Study>> done =
-        new Dictionary<string, HashSet<Study>>();
+    // What has been done, and where and when it was done. An entry that says
+    // only "done" against "find one out in the open in daylight" reads as a
+    // task still to do; one that says where you found it is a record.
+    private static readonly Dictionary<string, Dictionary<Study, string>> done =
+        new Dictionary<string, Dictionary<Study, string>>();
 
     public static event System.Action<Subject, Study> Filled;
 
@@ -31,7 +34,15 @@ public static class FieldGuide
 
     public static bool Has(Subject subject, Study study)
     {
-        return done.TryGetValue(subject.Key, out var set) && set.Contains(study);
+        return done.TryGetValue(subject.Key, out var set) && set.ContainsKey(study);
+    }
+
+    /// <summary>Where and when it was done, if that was written down.</summary>
+    public static string Detail(Subject subject, Study study)
+    {
+        return done.TryGetValue(subject.Key, out var set) && set.TryGetValue(study, out var detail)
+            ? detail
+            : "";
     }
 
     public static int Count(Subject subject)
@@ -79,15 +90,13 @@ public static class FieldGuide
         }
     }
 
-    public static bool Record(Subject subject, Study study)
+    public static bool Record(Subject subject, Study study, string where = "", string when = "")
     {
-        if (!done.TryGetValue(subject.Key, out var set))
-        {
-            set = new HashSet<Study>();
-            done[subject.Key] = set;
-        }
+        var set = Set(subject);
 
-        if (!set.Add(study)) return false;
+        if (set.ContainsKey(study)) return false;
+
+        set[study] = Written(where, when);
 
         Filled?.Invoke(subject, study);
 
@@ -95,20 +104,69 @@ public static class FieldGuide
     }
 
     /// <summary>Restoring a save, where nothing should be announced again.</summary>
-    public static void RecordQuietly(Subject subject, Study study)
+    public static void RecordQuietly(Subject subject, Study study, string detail = "")
+    {
+        Set(subject)[study] = detail;
+    }
+
+    private static Dictionary<Study, string> Set(Subject subject)
     {
         if (!done.TryGetValue(subject.Key, out var set))
         {
-            set = new HashSet<Study>();
+            set = new Dictionary<Study, string>();
             done[subject.Key] = set;
         }
 
-        set.Add(study);
+        return set;
+    }
+
+    private static string Written(string where, string when)
+    {
+        if (string.IsNullOrEmpty(where)) return when ?? "";
+
+        return string.IsNullOrEmpty(when) ? where : where + ", " + when;
     }
 
     public static IEnumerable<Study> Of(Subject subject)
     {
-        return done.TryGetValue(subject.Key, out var set) ? (IEnumerable<Study>)set : new Study[0];
+        return done.TryGetValue(subject.Key, out var set)
+            ? (IEnumerable<Study>)set.Keys
+            : new Study[0];
+    }
+
+    /// <summary>
+    /// What the entry says once it is done: a thing that happened, not a thing
+    /// to go and do. "find one out in the open in daylight" against the word
+    /// done reads as an instruction nobody has followed.
+    /// </summary>
+    public static string Did(Subject subject, Study study)
+    {
+        switch (study)
+        {
+            case Study.Sketch:
+                return subject.Wild ? "drawn from close by" : "drawn whole, from far enough back";
+
+            case Study.Inscription:
+                return "read what was written there";
+
+            case Study.Habit:
+                switch (subject.Fauna)
+                {
+                    case FaunaKind.Deer: return "watched one grazing";
+                    case FaunaKind.Rabbit: return "caught one at rest";
+                    case FaunaKind.Fox: return "watched one drink";
+                    default: return "watched one on the move";
+                }
+
+            default:
+                switch (subject.Fauna)
+                {
+                    case FaunaKind.Deer: return "found under the trees at dusk";
+                    case FaunaKind.Rabbit: return "found out in the open in daylight";
+                    case FaunaKind.Fox: return "found after dark";
+                    default: return "found on the high ground";
+                }
+        }
     }
 
     /// <summary>What to call each part of an entry, so the page reads as a form.</summary>

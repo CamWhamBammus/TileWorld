@@ -84,7 +84,9 @@ public class SaveCoordinator : MonoBehaviour
 
         for (int i = 0; i < data.bookSubjects.Count && i < data.bookStudies.Count; i++)
         {
-            FieldGuide.RecordQuietly(Subject.FromKey(data.bookSubjects[i]), (FieldGuide.Study)data.bookStudies[i]);
+            FieldGuide.RecordQuietly(Subject.FromKey(data.bookSubjects[i]),
+                                     (FieldGuide.Study)data.bookStudies[i],
+                                     i < data.bookWhere.Count ? data.bookWhere[i] : "");
         }
 
         for (int i = 0; i < data.noticed.Count; i++)
@@ -149,6 +151,7 @@ public class SaveCoordinator : MonoBehaviour
         data.guideStudies.Clear();
         data.bookSubjects.Clear();
         data.bookStudies.Clear();
+        data.bookWhere.Clear();
         data.drawingKeys.Clear();
         data.drawingQuality.Clear();
         data.drawingVerdict.Clear();
@@ -198,6 +201,7 @@ public class SaveCoordinator : MonoBehaviour
             {
                 data.bookSubjects.Add(subject.Key);
                 data.bookStudies.Add((int)study);
+                data.bookWhere.Add(FieldGuide.Detail(subject, study));
             }
         }
 
