@@ -667,14 +667,18 @@ public class Sketching : MonoBehaviour
         panel.transform.SetParent(canvasGo.transform, false);
 
         var card = panel.AddComponent<RawImage>();
-        card.texture = ParchmentPanel.Create(160, 40);
+
+        // Drawn at the size it is shown at. A hundred and sixty by forty
+        // stretched across four hundred turned the thin rule round the edge of
+        // the paper into a fat box, and the writing sat straight on top of it.
+        card.texture = ParchmentPanel.Create(460, 96);
 
         var rect = panel.GetComponent<RectTransform>();
         rect.anchorMin = new Vector2(0.5f, 0f);
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
-        rect.sizeDelta = new Vector2(420f, 84f);
-        rect.anchoredPosition = new Vector2(0f, 130f);
+        rect.sizeDelta = new Vector2(460f, 96f);
+        rect.anchoredPosition = new Vector2(0f, 120f);
 
         // the line the drawing fills in
         var trackGo = new GameObject("Track");
@@ -688,9 +692,10 @@ public class Sketching : MonoBehaviour
         trackRect.anchorMin = new Vector2(0f, 0f);
         trackRect.anchorMax = new Vector2(1f, 0f);
         trackRect.pivot = new Vector2(0.5f, 0f);
-        trackRect.offsetMin = new Vector2(26f, 18f);
-        trackRect.offsetMax = new Vector2(-26f, 0f);
-        trackRect.sizeDelta = new Vector2(trackRect.sizeDelta.x, 9f);
+        // Inside the rule round the paper, with the writing clear above it.
+        trackRect.offsetMin = new Vector2(34f, 22f);
+        trackRect.offsetMax = new Vector2(-34f, 0f);
+        trackRect.sizeDelta = new Vector2(trackRect.sizeDelta.x, 8f);
 
         var fillGo = new GameObject("Fill");
         fillGo.transform.SetParent(trackGo.transform, false);
@@ -705,9 +710,8 @@ public class Sketching : MonoBehaviour
         fill.offsetMin = Vector2.zero;
         fill.offsetMax = Vector2.zero;
 
-        // Above the bar rather than across the middle of the card, which put it
-        // neither on the bar nor clear of it.
-        label = Label("Label", panel.transform, 20f, new Vector2(0f, 12f), new Vector2(384f, 40f));
+        // Above the bar and inside the rule, so it crosses neither.
+        label = Label("Label", panel.transform, 19f, new Vector2(0f, 12f), new Vector2(380f, 34f));
 
         // The frame the page will take. Corners only: a full box across the
         // middle of the screen would be a nuisance to look through.
