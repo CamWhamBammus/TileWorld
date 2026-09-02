@@ -28,8 +28,12 @@ public class Sketching : MonoBehaviour
 
     [SerializeField] private float seconds = 4.2f;
 
-    [Tooltip("Held down to draw. Doing it merely by standing still was not something anybody was going to guess.")]
+    [Tooltip("Held down to raise the glass and draw through it.")]
     [SerializeField] private KeyCode drawKey = KeyCode.F;
+
+    [Tooltip("How narrow a view it takes when raised, and the range the wheel works over.")]
+    [SerializeField] private float closest = 15f;
+    [SerializeField] private float widest = 46f;
 
     private ChunkManager world;
     private Transform player;
@@ -43,6 +47,12 @@ public class Sketching : MonoBehaviour
     // frame off the screen and throw away the drawing you were part way through.
     private float holding;          // how long the subject may be kept while unseen
     private float unsteady;         // how long the player has actually been moving
+    /// <summary>How far into the glass we are, for anything that cares — the camera does.</summary>
+    public static float Raised { get; private set; }
+
+    private float zoom = 30f;
+    private float restingView = -1f;
+
     private bool drewThisHold;      // one page to a press of the button
     private string hint;            // the standing hint, changed slowly
     private string pending;
@@ -157,7 +167,7 @@ public class Sketching : MonoBehaviour
         bool have = candidate.Any || (subject.Any && holding > 0f);
         var working = candidate.Any ? candidate : subject;
 
-        Frame(have);
+        Frame(have && Input.GetKey(drawKey));
 
         var candidateStanding = have ? SketchBook.Made(working.What) : null;
 
@@ -168,6 +178,8 @@ public class Sketching : MonoBehaviour
         bool drawing = Input.GetKey(drawKey);
 
         if (!drawing) drewThisHold = false;
+
+        Glass(drawing);
 
         if (!have || !steady || !drawing)
         {
@@ -181,7 +193,7 @@ public class Sketching : MonoBehaviour
 
             if (!have) Refresh("keep it in sight");
             else if (!steady) Refresh("hold still");
-            else Refresh("hold " + drawKey + " to draw the " + working.What.Name);
+            else Refresh("hold " + drawKey + " to raise the glass on the " + working.What.Name);
 
             return;
         }
@@ -388,17 +400,23 @@ public class Sketching : MonoBehaviour
 
         if (camera == null) return best;
 
-        float closest = float.MaxValue;
+        // Whatever is nearest the middle of the frame, not whatever is nearest
+        // to you. Chosen by distance it would fasten onto something off at the
+        // side of the view while you were plainly pointing at something else,
+        // and then draw a page with nothing on it.
+        float straightest = 999f;
 
         foreach (var animal in FindObjectsByType<Animal>(FindObjectsSortMode.None))
         {
             if (forDrawing && animal.Busy == Doing.Fleeing) continue;
 
-            float distance = Look(camera, animal.Head, forDrawing ? reach : watching, forDrawing);
+            if (Look(camera, animal.Head, forDrawing ? reach : watching, forDrawing) < 0f) continue;
 
-            if (distance < 0f || distance >= closest) continue;
+            float off = Off(camera, animal.Head);
 
-            closest = distance;
+            if (off >= straightest) continue;
+
+            straightest = off;
             best = new Quarry
             {
                 What = Subject.Creature(animal.Kind),
@@ -415,9 +433,13 @@ public class Sketching : MonoBehaviour
 
             float distance = Look(camera, middle, ruinReach, false);
 
-            if (distance < ruinBack || distance >= closest) continue;
+            if (distance < ruinBack) continue;
 
-            closest = distance;
+            float off = Off(camera, middle);
+
+            if (off >= straightest) continue;
+
+            straightest = off;
             best = new Quarry { What = Subject.Structure(ruin.Kind), Body = ruin.transform };
         }
 
@@ -444,6 +466,12 @@ public class Sketching : MonoBehaviour
         if (Blocked(eyes, at)) return -1f;
 
         return distance;
+    }
+
+    /// <summary>How far off the middle of the frame a thing sits, in degrees.</summary>
+    private static float Off(Camera camera, Vector3 at)
+    {
+        return Vector3.Angle(camera.transform.forward, at - camera.transform.position);
     }
 
     /// <summary>Whether anything but the player themselves is in the way.</summary>
@@ -522,6 +550,33 @@ public class Sketching : MonoBehaviour
         label.text = hint == null
             ? "drawing the " + name
             : "<color=#8B7860>" + hint + "</color>";
+    }
+
+    /// <summary>
+    /// Raising the glass. Holding the key narrows the view down to what the
+    /// page will take, and the wheel works the zoom, so a thing that will not
+    /// let you near can still be drawn properly from where it will have you.
+    /// </summary>
+    private void Glass(bool up)
+    {
+        var camera = Eye();
+
+        if (camera == null) return;
+
+        if (restingView < 0f) restingView = camera.fieldOfView;
+
+        if (up)
+        {
+            float turned = Input.mouseScrollDelta.y;
+
+            if (Mathf.Abs(turned) > 0.01f) zoom = Mathf.Clamp(zoom - turned * 3.5f, closest, widest);
+        }
+
+        float wanted = up ? zoom : restingView;
+
+        camera.fieldOfView = Mathf.MoveTowards(camera.fieldOfView, wanted, Time.deltaTime * 110f);
+
+        Raised = Mathf.InverseLerp(restingView, closest, camera.fieldOfView);
     }
 
     /// <summary>The frame, brought up and taken away rather than snapped on and off.</summary>

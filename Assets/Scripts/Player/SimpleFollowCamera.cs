@@ -50,8 +50,12 @@ public class SimpleFollowCamera : MonoBehaviour
         // would spin the camera while the player is clicking the map.
         if (PauseMenu.Paused || ScreenState.WantsCursor) return;
 
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        // Aiming through the glass turns slower, or the least movement of the
+        // hand swings the whole frame off whatever you were pointing at.
+        float steadiness = Mathf.Lerp(1f, 0.4f, Sketching.Raised);
+
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * steadiness;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * steadiness;
 
         yaw += mouseX;
         pitch -= mouseY;

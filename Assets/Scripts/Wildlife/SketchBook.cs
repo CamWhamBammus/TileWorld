@@ -26,6 +26,7 @@ public static class SketchBook
         public string Verdict;
         public string When;
         public string Where;
+        public bool Empty;
     }
 
     private static readonly Dictionary<string, Page> drawings = new Dictionary<string, Page>();
@@ -125,6 +126,13 @@ public static class SketchBook
     {
         var standing = Made(subject);
 
+        if (judged.Empty)
+        {
+            beaten = true;
+            Object.Destroy(drawing);
+            return;
+        }
+
         judged.Paper = drawing;
         judged.When = TimeOfDay.Instance != null ? TimeOfDay.Instance.Clock() : "";
 
@@ -177,10 +185,11 @@ public static class SketchBook
 
         var page = new Page();
 
-        if (covered == 0)
+        if (covered < Width * Height * 0.0008f)
         {
             page.Quality = 0f;
-            page.Verdict = "nothing on the page at all";
+            page.Verdict = "nothing on the page worth keeping";
+            page.Empty = true;
             return page;
         }
 
@@ -244,17 +253,10 @@ public static class SketchBook
     /// </summary>
     public static float Filling(Subject subject)
     {
-        if (!subject.Wild) return 0.09f;
-
-        var traits = Fauna.Of(subject.Fauna);
-
-        // it lets you no nearer than this, and standing still is the best you
-        // can do about that
-        float nearest = Mathf.Max(1.5f, traits.Bolts * 0.55f);
-
-        float across = traits.Size / nearest;
-
-        return Mathf.Clamp(across * across * 0.55f, 0.004f, 0.12f);
+        // With a glass to zoom, anything can be made to fill the page, so
+        // there is no longer any need to ask less of a rabbit than of a deer:
+        // what is judged is how you framed it, not what it happened to be.
+        return 0.10f;
     }
 
     /// <summary>Ink where the edges are, a wash where the animal is dark, paper elsewhere.</summary>
