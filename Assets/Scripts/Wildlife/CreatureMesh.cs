@@ -136,15 +136,23 @@ public static class CreatureMesh
     /// Everything joined into one mesh, one submesh per coat that is actually
     /// used. Which coats those were comes back in `coats`: a mesh with nothing
     /// in its middle coat gets two submeshes, not three, and materials handed
-    /// to it in the original order would land on the wrong parts of it.
+    /// to it in the original order would land on the wrong parts of it. As many
+    /// coats as the pieces ask for — an animal wants three, a person in
+    /// clothes wants a colour for skin as well.
     /// </summary>
     public static Mesh Combine(List<Piece> pieces, out int[] coats)
     {
-        var byCoat = new[] { new List<CombineInstance>(), new List<CombineInstance>(), new List<CombineInstance>() };
+        int span = 3;
+
+        foreach (var piece in pieces) span = Mathf.Max(span, piece.Coat + 1);
+
+        var byCoat = new List<CombineInstance>[span];
+
+        for (int i = 0; i < span; i++) byCoat[i] = new List<CombineInstance>();
 
         foreach (var piece in pieces)
         {
-            byCoat[Mathf.Clamp(piece.Coat, 0, 2)].Add(
+            byCoat[Mathf.Clamp(piece.Coat, 0, span - 1)].Add(
                 new CombineInstance { mesh = piece.Mesh, transform = piece.At });
         }
 
