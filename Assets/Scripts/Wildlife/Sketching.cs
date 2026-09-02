@@ -405,7 +405,9 @@ public class Sketching : MonoBehaviour
         pageRect.sizeDelta = new Vector2(344f, 258f);
         pageRect.anchoredPosition = new Vector2(0f, -26f);
 
-        caption = Label("Caption", sheet.transform, 19f, new Vector2(0f, 34f), new Vector2(360f, 40f));
+        // Under the drawing, not across it: the label helper measures from the
+        // middle of what it is given, and the page fills the top of the sheet.
+        caption = Label("Caption", sheet.transform, 19f, new Vector2(0f, -142f), new Vector2(360f, 40f));
 
         sheet.SetActive(false);
         panel.SetActive(false);
