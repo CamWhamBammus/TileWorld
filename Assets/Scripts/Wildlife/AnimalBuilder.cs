@@ -592,7 +592,7 @@ public static class AnimalBuilder
 
         if (materials.TryGetValue(key, out var cached) && cached != null) return cached;
 
-        Shader lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
 
         // Without a shader there is no material to make, and a grey animal is
         // better than an exception part way through building one.

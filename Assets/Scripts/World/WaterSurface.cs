@@ -72,7 +72,7 @@ public static class WaterSurface
     /// <summary>Translucent, unlit enough to read as water without a shader of its own.</summary>
     public static Material CreateMaterial()
     {
-        Shader lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
         var m = new Material(lit);
 
         // Opaque enough that the bed reads as being under water rather than

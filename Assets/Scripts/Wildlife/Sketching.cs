@@ -112,9 +112,12 @@ public class Sketching : MonoBehaviour
 
             sheetFade = Mathf.MoveTowards(sheetFade, wanted ? 1f : 0f, Time.deltaTime * 3f);
 
-            if (sheetShowing == null)
+            // Not GetComponent ?? AddComponent: a component that is not there
+            // comes back as a reference to nothing rather than as no reference,
+            // so the coalescing operator keeps it and the group is never added.
+            if (sheetShowing == null && !sheet.TryGetComponent(out sheetShowing))
             {
-                sheetShowing = sheet.GetComponent<CanvasGroup>() ?? sheet.AddComponent<CanvasGroup>();
+                sheetShowing = sheet.AddComponent<CanvasGroup>();
             }
 
             sheetShowing.alpha = sheetFade;
@@ -455,7 +458,7 @@ public class Sketching : MonoBehaviour
 
         // Brought up and taken away with the frame, rather than blinking on and
         // off every time a branch passes in front of the animal.
-        if (showing == null) showing = panel.GetComponent<CanvasGroup>() ?? panel.AddComponent<CanvasGroup>();
+        if (showing == null && !panel.TryGetComponent(out showing)) showing = panel.AddComponent<CanvasGroup>();
 
         showing.alpha = fade;
 

@@ -42,9 +42,9 @@ public class Fireflies : MonoBehaviour
 
         player = world.PlayerTransform;
 
-        Shader lit = Shader.Find("Universal Render Pipeline/Unlit")
-                   ?? Shader.Find("Universal Render Pipeline/Lit")
-                   ?? Shader.Find("Unlit/Color");
+        Shader lit = Shaders.First("Universal Render Pipeline/Unlit",
+                                   "Universal Render Pipeline/Lit",
+                                   "Unlit/Color");
 
         // Missing in a built player unless something referenced it; a material
         // made from nothing throws, and goes on throwing every frame after.

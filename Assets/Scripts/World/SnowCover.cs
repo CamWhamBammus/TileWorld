@@ -77,7 +77,7 @@ public static class SnowCover
 
     public static Material CreateMaterial()
     {
-        Shader lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
         var m = new Material(lit);
 
         var colour = new Color(0.93f, 0.95f, 0.97f);

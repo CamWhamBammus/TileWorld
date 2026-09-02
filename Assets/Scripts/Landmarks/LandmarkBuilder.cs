@@ -60,7 +60,7 @@ public static class LandmarkBuilder
 
     private static Material Mat(Color c)
     {
-        Shader lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
         var m = new Material(lit);
         m.SetColor("_BaseColor", c);
         m.color = c;

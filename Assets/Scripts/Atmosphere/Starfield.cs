@@ -32,9 +32,9 @@ public class Starfield : MonoBehaviour
         // Making a material out of that throws, and the throw repeats every
         // frame after it: in a thirty second run of the built game this cost
         // twelve hundred exceptions apiece.
-        Shader unlit = Shader.Find("Universal Render Pipeline/Unlit")
-                    ?? Shader.Find("Universal Render Pipeline/Lit")
-                    ?? Shader.Find("Unlit/Color");
+        Shader unlit = Shaders.First("Universal Render Pipeline/Unlit",
+                                   "Universal Render Pipeline/Lit",
+                                   "Unlit/Color");
 
         if (unlit == null)
         {
