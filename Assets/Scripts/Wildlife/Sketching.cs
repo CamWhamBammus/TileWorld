@@ -433,7 +433,7 @@ public class Sketching : MonoBehaviour
 
         foreach (var ruin in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None))
         {
-            Vector3 middle = Middle(ruin.transform);
+            Vector3 middle = Seen(ruin.transform);
 
             float distance = Look(camera, middle, ruinReach, false);
 
@@ -501,6 +501,41 @@ public class Sketching : MonoBehaviour
         var bounds = new Bounds(what.position, Vector3.one * 0.1f);
 
         foreach (var piece in what.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
+
+        return bounds.center;
+    }
+
+    /// <summary>
+    /// A point on a building that can be seen from outside it.
+    ///
+    /// The middle of a house is inside the house, so a line drawn to it from
+    /// where you stand goes through the wall and the game decides the place is
+    /// hidden. An animal never had this trouble because its head is out in the
+    /// air. So a structure offers several points - its middle, its roof, its
+    /// corners - and counts as visible if any one of them can be seen.
+    /// </summary>
+    private Vector3 Seen(Transform what)
+    {
+        var bounds = new Bounds(what.position, Vector3.one * 0.1f);
+
+        foreach (var piece in what.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
+
+        Vector3 eyes = player.position + Vector3.up * 1.5f;
+
+        var tries = new[]
+        {
+            bounds.center + Vector3.up * bounds.extents.y * 0.8f,      // the roof line
+            bounds.center,
+            bounds.center + new Vector3(bounds.extents.x, 0f, 0f) * 0.9f,
+            bounds.center + new Vector3(-bounds.extents.x, 0f, 0f) * 0.9f,
+            bounds.center + new Vector3(0f, 0f, bounds.extents.z) * 0.9f,
+            bounds.center + new Vector3(0f, 0f, -bounds.extents.z) * 0.9f
+        };
+
+        foreach (var point in tries)
+        {
+            if (!Blocked(eyes, point)) return point;
+        }
 
         return bounds.center;
     }
