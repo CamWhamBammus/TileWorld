@@ -88,8 +88,10 @@ public class CompassBar : MonoBehaviour
             marks.Add((label, heading.angle));
         }
 
-        // a fixed mark showing dead ahead
-        var centre = MakeLabel("▼", 16f, new Color(0.85f, 0.42f, 0.32f));
+        // A fixed mark showing dead ahead. Plain characters throughout: the
+        // font atlas is Latin-1 and nothing else, so an arrow or a diamond
+        // comes out as an empty box.
+        var centre = MakeLabel("|", 16f, new Color(0.85f, 0.42f, 0.32f));
         centre.anchoredPosition = new Vector2(0f, 14f);
     }
 
@@ -134,7 +136,7 @@ public class CompassBar : MonoBehaviour
     {
         if (waypointMark == null)
         {
-            waypointMark = MakeLabel("▲", 20f, new Color(0.85f, 0.42f, 0.28f));
+            waypointMark = MakeLabel("^", 20f, new Color(0.85f, 0.42f, 0.28f));
         }
 
         if (!Waypoint.IsSet)
@@ -154,7 +156,7 @@ public class CompassBar : MonoBehaviour
         if (!visible) return;
 
         waypointMark.anchoredPosition = new Vector2(bearing / halfSpanDegrees * (width * 0.5f), -30f);
-        waypointMark.GetComponent<TMP_Text>().text = "▲ " + Mathf.RoundToInt(to.magnitude) + "m";
+        waypointMark.GetComponent<TMP_Text>().text = "^ " + Mathf.RoundToInt(to.magnitude) + "m";
     }
 
     /// <summary>Position by bearing, and hide anything behind the player.</summary>
@@ -185,7 +187,7 @@ public class CompassBar : MonoBehaviour
 
             while (landmarkTicks.Count <= used)
             {
-                var tick = MakeLabel("◆", 15f, new Color(0.82f, 0.72f, 0.45f));
+                var tick = MakeLabel("•", 15f, new Color(0.82f, 0.72f, 0.45f));
                 landmarkTicks.Add(tick);
             }
 

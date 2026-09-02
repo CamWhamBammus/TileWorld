@@ -170,7 +170,7 @@ public class Journal : MonoBehaviour
                 .Append("</color><color=").Append(dim).Append("> — ")
                 .Append(Regions.Describe(RegionWatcher.Current.Character)).Append("</color></size>\n");
         }
-        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n\n");
+        text.Append("<color=").Append(dim).Append(">").Append(new string('—', 30)).Append("</color>\n\n");
 
         if (found.Count == 0)
         {
@@ -200,7 +200,7 @@ public class Journal : MonoBehaviour
             }
         }
 
-        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n");
+        text.Append("<color=").Append(dim).Append(">").Append(new string('—', 30)).Append("</color>\n");
         text.Append("<size=95%><b><color=").Append(head).Append(">CREATURES SEEN</color></b></size>\n");
 
         if (SightingLog.Count == 0)
@@ -230,7 +230,7 @@ public class Journal : MonoBehaviour
             text.Append("\n");
         }
 
-        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 30)).Append("</color>\n");
+        text.Append("<color=").Append(dim).Append(">").Append(new string('—', 30)).Append("</color>\n");
         text.Append("<size=85%><color=").Append(dim).Append(">")
             .Append(found.Count).Append(" found   ")
             .Append(RegionWatcher.Count).Append(" regions   ")

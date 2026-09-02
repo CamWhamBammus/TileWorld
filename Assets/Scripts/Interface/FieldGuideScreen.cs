@@ -94,7 +94,7 @@ public class FieldGuideScreen : MonoBehaviour
             .Append(FieldGuide.Entries).Append(" of 8 entries finished, ")
             .Append(FieldGuide.Notes).Append(" of ").Append(FieldGuide.NotesWanted)
             .Append(" notes made</color></size>\n");
-        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 34)).Append("</color>\n");
+        text.Append("<color=").Append(dim).Append(">").Append(new string('—', 34)).Append("</color>\n");
 
         foreach (var subject in Subject.All())
         {
@@ -122,7 +122,7 @@ public class FieldGuideScreen : MonoBehaviour
                 bool has = FieldGuide.Has(subject, study);
 
                 text.Append("<indent=18px><size=85%><color=").Append(has ? done : dim).Append(">")
-                    .Append(has ? "✓ " : "·  ").Append(FieldGuide.Asks(subject, study))
+                    .Append(has ? "• " : "·  ").Append(FieldGuide.Asks(subject, study))
                     .Append("</color></size></indent>\n");
             }
 
@@ -133,7 +133,7 @@ public class FieldGuideScreen : MonoBehaviour
             }
         }
 
-        text.Append("<color=").Append(dim).Append(">").Append(new string('─', 34)).Append("</color>\n");
+        text.Append("<color=").Append(dim).Append(">").Append(new string('—', 34)).Append("</color>\n");
         text.Append("<size=85%><color=").Append(dim)
             .Append(">Walk slowly and creatures let you nearer. Stand still to draw them, ")
             .Append("stand back to draw a ruin. G to close</color></size>");
