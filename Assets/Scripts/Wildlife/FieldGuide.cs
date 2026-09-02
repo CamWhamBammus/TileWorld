@@ -111,6 +111,57 @@ public static class FieldGuide
         return done.TryGetValue(subject.Key, out var set) ? (IEnumerable<Study>)set : new Study[0];
     }
 
+    /// <summary>What to call each part of an entry, so the page reads as a form.</summary>
+    public static string Title(Subject subject, Study study)
+    {
+        switch (study)
+        {
+            case Study.Sketch: return "THE DRAWING";
+            case Study.Habit: return "WHAT IT DOES";
+            case Study.Inscription: return "WHAT IS WRITTEN THERE";
+            default: return "WHERE IT LIVES";
+        }
+    }
+
+    /// <summary>
+    /// How you would actually go about it. The requirement says what the book
+    /// wants; this says what to do with your hands, which is the part that was
+    /// missing and left people looking at a page wondering what it wanted.
+    /// </summary>
+    public static string How(Subject subject, Study study)
+    {
+        switch (study)
+        {
+            case Study.Sketch:
+                return subject.Wild
+                    ? "walk up slowly - running frightens them off sooner - then stand still and keep it in view until the drawing fills"
+                    : "back away until the whole of it fits in front of you, then stand still and keep it in view";
+
+            case Study.Habit:
+                return "you have to be near enough to see it happen; it cannot be looked up";
+
+            case Study.Inscription:
+                return "walk right up to it, close enough to touch the stone";
+
+            default:
+                return "be on the right ground at the right hour, with it in sight";
+        }
+    }
+
+    /// <summary>Where to go looking, which is worth saying before it is finished.</summary>
+    public static string Where(Subject subject)
+    {
+        if (subject.Wild) return Fauna.Describe(subject.Fauna);
+
+        switch (subject.Landmark)
+        {
+            case LandmarkKind.AbandonedHouse: return "in the lower country, where somebody once thought to live";
+            case LandmarkKind.RuinedTower: return "standing alone, and visible a long way off";
+            case LandmarkKind.StoneCircle: return "out in the open, on flat ground";
+            default: return "on high ground, put there to see from";
+        }
+    }
+
     /// <summary>What each study asks for, in the book's own words.</summary>
     public static string Asks(Subject subject, Study study)
     {

@@ -120,7 +120,7 @@ public class FieldGuideScreen : MonoBehaviour
         else Noticed(page - all.Length - 1);
 
         footer.text = "<color=" + Dim + ">page " + (page + 1) + " of " + Pages
-                    + "  ·  arrows to turn  ·  G to close</color>";
+                    + "   ·   left and right arrows turn the page   ·   G closes the book</color>";
     }
 
     /// <summary>
@@ -173,11 +173,11 @@ public class FieldGuideScreen : MonoBehaviour
     {
         var rect = body.rectTransform;
 
-        rect.sizeDelta = new Vector2(800f, wide ? 720f : 210f);
-        rect.anchoredPosition = new Vector2(0f, wide ? -140f : -640f);
+        rect.sizeDelta = new Vector2(800f, wide ? 700f : 372f);
+        rect.anchoredPosition = new Vector2(0f, wide ? -140f : -498f);
 
-        body.alignment = wide ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.Top;
-        body.fontSize = wide ? 21f : 23f;
+        body.alignment = TextAlignmentOptions.TopLeft;
+        body.fontSizeMax = wide ? 21f : 23f;
     }
 
     private void Contents()
@@ -226,15 +226,16 @@ public class FieldGuideScreen : MonoBehaviour
         plate.texture = drawing != null ? drawing : blank;
         plate.color = drawing != null ? Color.white : new Color(1f, 1f, 1f, 0.3f);
 
-        bool met = Met(subject);
+        bool met = Met(subject) || FieldGuide.Count(subject) > 0;
         bool full = FieldGuide.Complete(subject);
         var wants = FieldGuide.Wants(subject);
 
         heading.text = "<size=125%><b><color=" + (full ? Done : Ink) + ">"
-                     + (met || FieldGuide.Count(subject) > 0 ? subject.Name.ToUpper() : "NOT YET FOUND")
+                     + (met ? subject.Name.ToUpper() : "NOT YET FOUND")
                      + "</color></b></size>\n<size=80%><color=" + Dim + ">"
-                     + (full ? "entry finished" : FieldGuide.Count(subject) + " of " + wants.Length + " notes")
-                     + "</color></size>";
+                     + FieldGuide.Count(subject) + " of " + wants.Length + " done"
+                     + (drawing == null ? "  ·  no drawing yet" : "")
+                     + "  ·  " + FieldGuide.Where(subject) + "</color></size>";
 
         var text = new System.Text.StringBuilder();
 
@@ -242,23 +243,28 @@ public class FieldGuideScreen : MonoBehaviour
         {
             bool has = FieldGuide.Has(subject, study);
 
-            text.Append("<color=").Append(has ? Done : Dim).Append(">")
-                .Append(has ? "•  " : "·  ").Append(FieldGuide.Asks(subject, study)).Append("</color>\n");
-        }
+            // Each part of an entry as its own block: what it is called, whether
+            // it is done, what it wants, and - if it is not done - what to
+            // actually do about it.
+            text.Append("<b><color=").Append(has ? Done : Ink).Append(">")
+                .Append(FieldGuide.Title(subject, study)).Append("</color></b>")
+                .Append("<size=80%><color=").Append(has ? Done : Dim).Append(">   ")
+                .Append(has ? "done" : "not yet").Append("</color></size>\n");
 
-        text.Append("\n");
+            text.Append("<indent=16px><color=").Append(has ? Dim : Ink).Append(">")
+                .Append(FieldGuide.Asks(subject, study)).Append("</color></indent>\n");
 
-        if (subject.Wild)
-        {
-            if (full)
+            if (!has)
             {
-                text.Append("<i><color=").Append(Ink).Append(">")
-                    .Append(Fauna.Describe(subject.Fauna)).Append("</color></i>");
+                text.Append("<indent=16px><size=78%><i><color=").Append(Dim).Append(">")
+                    .Append(FieldGuide.How(subject, study)).Append("</color></i></size></indent>\n");
             }
+
+            text.Append("\n");
         }
-        else if (FieldGuide.Has(subject, FieldGuide.Study.Inscription))
+
+        if (!subject.Wild && FieldGuide.Has(subject, FieldGuide.Study.Inscription))
         {
-            // what was cut into the stone, which is the only voice out there
             string line = Written(subject.Landmark);
 
             if (!string.IsNullOrEmpty(line))
@@ -349,8 +355,8 @@ public class FieldGuideScreen : MonoBehaviour
         plateRect.anchorMin = new Vector2(0.5f, 1f);
         plateRect.anchorMax = new Vector2(0.5f, 1f);
         plateRect.pivot = new Vector2(0.5f, 1f);
-        plateRect.sizeDelta = new Vector2(620f, 465f);
-        plateRect.anchoredPosition = new Vector2(0f, -130f);
+        plateRect.sizeDelta = new Vector2(460f, 345f);
+        plateRect.anchoredPosition = new Vector2(0f, -134f);
 
         // the contents: all eight, small
         contents = new GameObject("Contents");
@@ -361,6 +367,12 @@ public class FieldGuideScreen : MonoBehaviour
         contentsRect.anchorMax = Vector2.one;
         contentsRect.offsetMin = Vector2.zero;
         contentsRect.offsetMax = Vector2.zero;
+
+        Label("Row creatures", contents.transform, 19f, new Vector2(0f, -96f), new Vector2(800f, 28f))
+            .text = "<color=" + Dim + ">THE CREATURES OF THIS COUNTRY</color>";
+
+        Label("Row built", contents.transform, 19f, new Vector2(0f, -296f), new Vector2(800f, 28f))
+            .text = "<color=" + Dim + ">WHAT WAS BUILT IN IT</color>";
 
         thumbs = new RawImage[8];
         thumbNames = new TMP_Text[8];
@@ -380,7 +392,7 @@ public class FieldGuideScreen : MonoBehaviour
             rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
             rect.sizeDelta = new Vector2(190f, 143f);
-            rect.anchoredPosition = new Vector2((column - 1.5f) * 200f, -130f - row * 200f);
+            rect.anchoredPosition = new Vector2((column - 1.5f) * 200f, -128f - row * 200f);
 
             thumbNames[i] = Label("Thumb name " + i, contents.transform, 19f,
                                   new Vector2((column - 1.5f) * 200f, -278f - row * 200f),
@@ -388,9 +400,15 @@ public class FieldGuideScreen : MonoBehaviour
         }
 
         body = Label("Body", cardGo.transform, 23f, new Vector2(0f, -640f), new Vector2(800f, 210f));
-        body.alignment = TextAlignmentOptions.Top;
+        body.alignment = TextAlignmentOptions.TopLeft;
 
-        footer = Label("Footer", cardGo.transform, 19f, new Vector2(0f, -880f), new Vector2(800f, 40f));
+        // Nothing should ever run off the paper again: if a page is long, the
+        // type comes down a point or two rather than spilling over the edge.
+        body.enableAutoSizing = true;
+        body.fontSizeMin = 16f;
+        body.fontSizeMax = 23f;
+
+        footer = Label("Footer", cardGo.transform, 19f, new Vector2(0f, -886f), new Vector2(800f, 40f));
 
         panel.SetActive(false);
     }
