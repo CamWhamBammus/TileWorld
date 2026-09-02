@@ -108,7 +108,7 @@ public static class SketchBook
 
         Restore(was);
 
-        var judged = Judge(shot, what, eye);
+        var judged = Judge(subject, shot, what, eye);
         var drawing = ToInk(shot);
 
         Object.Destroy(shot);
@@ -153,7 +153,7 @@ public static class SketchBook
     /// sits on the page or runs off the edge of it, and whether you caught the
     /// side of the animal or the back end of it going away.
     /// </summary>
-    private static Page Judge(Texture2D shot, Transform what, Camera eye)
+    private static Page Judge(Subject subject, Texture2D shot, Transform what, Camera eye)
     {
         var pixels = shot.GetPixels();
 
@@ -186,12 +186,16 @@ public static class SketchBook
 
         float fill = covered / (float)(Width * Height);
 
-        // Best when it fills a good part of the sheet without crowding it.
-        // Measured rather than guessed: a goat at seven paces covers about two
-        // percent of the page, a deer at five about seven, and the wariest of
-        // them will not let you much closer than that.
-        float size = Mathf.Clamp01(Mathf.InverseLerp(0.012f, 0.05f, fill))
-                   * Mathf.Clamp01(Mathf.InverseLerp(0.30f, 0.15f, fill));
+        // How much paper a thing covers depends on how big it is and how near
+        // it will let you come, and those differ by kind: a rabbit at the four
+        // paces it allows covers a fraction of what a deer does at eight. Judged
+        // against a fixed figure, a rabbit could never be drawn well however
+        // carefully you went about it, so each is judged against what is
+        // actually possible for it.
+        float wanted = Filling(subject);
+
+        float size = Mathf.Clamp01(Mathf.InverseLerp(wanted * 0.28f, wanted, fill))
+                   * Mathf.Clamp01(Mathf.InverseLerp(wanted * 5f, wanted * 2.4f, fill));
 
         bool cut = minX <= 1 || minY <= 1 || maxX >= Width - 2 || maxY >= Height - 2;
 
@@ -223,14 +227,34 @@ public static class SketchBook
         page.Quality = Mathf.Clamp01(quality);
 
         if (cut) page.Verdict = "it runs off the edge of the page";
-        else if (fill < 0.02f) page.Verdict = "a small thing at that distance";
-        else if (fill > 0.24f) page.Verdict = "it crowds the paper";
+        else if (fill < wanted * 0.35f) page.Verdict = "a small thing at that distance";
+        else if (fill > wanted * 3.5f) page.Verdict = "it crowds the paper";
         else if (side < 0.3f) page.Verdict = "caught end on, which tells you little";
         else if (page.Quality > 0.78f) page.Verdict = "a fine likeness";
         else if (page.Quality > 0.55f) page.Verdict = "a good likeness";
         else page.Verdict = "a fair likeness";
 
         return page;
+    }
+
+    /// <summary>
+    /// The share of the page a well drawn one of these would cover: what it
+    /// subtends at the closest it will let you stand. Structures do not run
+    /// away, so they are simply asked to fill a good part of the sheet.
+    /// </summary>
+    public static float Filling(Subject subject)
+    {
+        if (!subject.Wild) return 0.09f;
+
+        var traits = Fauna.Of(subject.Fauna);
+
+        // it lets you no nearer than this, and standing still is the best you
+        // can do about that
+        float nearest = Mathf.Max(1.5f, traits.Bolts * 0.55f);
+
+        float across = traits.Size / nearest;
+
+        return Mathf.Clamp(across * across * 0.55f, 0.004f, 0.12f);
     }
 
     /// <summary>Ink where the edges are, a wash where the animal is dark, paper elsewhere.</summary>

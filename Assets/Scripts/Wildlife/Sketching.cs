@@ -35,6 +35,19 @@ public class Sketching : MonoBehaviour
     private Quarry subject;
     private float progress;
 
+    // Keeping hold of things for a moment. A branch crossing in front of an
+    // animal, or it stepping behind a rock, used to drop the subject, blink the
+    // frame off the screen and throw away the drawing you were part way through.
+    private float holding;          // how long the subject may be kept while unseen
+    private float unsteady;         // how long the player has actually been moving
+    private readonly System.Collections.Generic.Dictionary<string, float> lastDrawn =
+        new System.Collections.Generic.Dictionary<string, float>();
+
+    private string hint;            // the standing hint, changed slowly
+    private string pending;
+    private float pendingSince;
+    private float fade;             // what the frame and the bar are showing at
+
     /// <summary>Something in front of you worth putting on paper.</summary>
     private struct Quarry
     {
@@ -59,6 +72,8 @@ public class Sketching : MonoBehaviour
     private RawImage page;
     private TMP_Text caption;
     private float showUntil;
+    private float sheetFade;
+    private CanvasGroup sheetShowing;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -91,7 +106,22 @@ public class Sketching : MonoBehaviour
 
         Stalking.Watch(player, Time.deltaTime);
 
-        if (sheet != null) sheet.SetActive(Time.time < showUntil && !ScreenState.WantsCursor);
+        if (sheet != null)
+        {
+            bool wanted = Time.time < showUntil && !ScreenState.WantsCursor;
+
+            sheetFade = Mathf.MoveTowards(sheetFade, wanted ? 1f : 0f, Time.deltaTime * 3f);
+
+            if (sheetShowing == null)
+            {
+                sheetShowing = sheet.GetComponent<CanvasGroup>() ?? sheet.AddComponent<CanvasGroup>();
+            }
+
+            sheetShowing.alpha = sheetFade;
+
+            bool up = sheetFade > 0.02f;
+            if (sheet.activeSelf != up) sheet.SetActive(up);
+        }
 
         // Nothing is drawn with a screen open in front of your face.
         if (ScreenState.WantsCursor)
@@ -104,44 +134,81 @@ public class Sketching : MonoBehaviour
 
         var candidate = Nearest(true);
 
-        if (finder != null) finder.SetActive(candidate.Any);
+        // Whatever is in front of you now, or what was a moment ago.
+        if (candidate.Any)
+        {
+            if (!subject.Same(candidate) && (progress <= 0.02f || !subject.Any || holding <= 0f))
+            {
+                subject = candidate;
+                progress = 0f;
+            }
 
-        var candidateStanding = candidate.Any ? SketchBook.Made(candidate.What) : null;
+            holding = 1.4f;
+        }
+        else
+        {
+            holding -= Time.deltaTime;
+        }
 
-        if (!candidate.Any || (candidate.What.Wild && !Stalking.Steady))
+        bool have = candidate.Any || (subject.Any && holding > 0f);
+        var working = candidate.Any ? candidate : subject;
+
+        Frame(have);
+
+        var candidateStanding = have ? SketchBook.Made(working.What) : null;
+
+        // A stumble should not throw the drawing away; walking off should.
+        unsteady = Stalking.Steady ? 0f : unsteady + Time.deltaTime;
+
+        bool steady = !working.What.Wild || unsteady < 0.35f;
+
+        if (!have || !steady)
         {
             // A drawing left half done is worth nothing, but it fades rather
             // than snapping away, so a moment's wobble is not fatal.
-            progress = Mathf.MoveTowards(progress, 0f, Time.deltaTime * 0.55f);
+            progress = Mathf.MoveTowards(progress, 0f, Time.deltaTime * 0.5f);
 
-            if (progress <= 0.01f) subject = default;
+            if (progress <= 0.01f && holding <= 0f) subject = default;
 
-            Show(candidate.Any);
-            Refresh(!candidate.Any ? "keep it in sight"
-                                   : Composition(candidate, candidateStanding) ?? "hold still");
+            Show(have);
+            Refresh(!have ? "keep it in sight" : "hold still");
 
             return;
         }
 
-        if (!subject.Same(candidate))
-        {
-            subject = candidate;
-            progress = 0f;
-        }
+        subject = working;
 
         // A subject already drawn can be drawn again: the book keeps whichever
         // of the two is the better, so there is a reason to go back.
         var standing = SketchBook.Made(subject.What);
 
+        string trouble = Composition(subject, standing);
+
+        // A subject already in the book is only drawn again on purpose: the
+        // frame has to be a good one, and not straight after the last attempt.
+        // Otherwise standing near something you have drawn quietly redraws it
+        // every few seconds and tells you about it each time.
+        if (standing != null && !Ready(subject, standing, trouble))
+        {
+            progress = Mathf.MoveTowards(progress, 0f, Time.deltaTime * 0.5f);
+
+            Show(true);
+            Refresh(trouble ?? "your best is " + standing.Verdict + " — a better frame would beat it");
+
+            return;
+        }
+
         progress = Mathf.MoveTowards(progress, 1f, Time.deltaTime / seconds);
 
         Show(true);
-        Refresh(Composition(subject, standing));
+        Refresh(trouble);
 
         if (progress >= 1f)
         {
             // The drawing is of this one, from here, as you framed it.
             var made = SketchBook.Draw(subject.What, subject.Body, Eye());
+
+            lastDrawn[subject.What.Key] = Time.time;
 
             bool first = FieldGuide.Record(subject.What, FieldGuide.Study.Sketch);
 
@@ -213,13 +280,14 @@ public class Sketching : MonoBehaviour
             max = Vector2.Max(max, dot);
         }
 
-        float fill = ((max.x - min.x) * (max.y - min.y)) / (pageWide * pageHigh);
-
         if (min.x < left || max.x > left + pageWide || min.y < 0f || max.y > pageHigh)
             return "some of it is off the page";
 
-        if (fill < 0.02f) return "too far off to draw well";
-        if (fill > 0.45f) return "too close, it crowds the paper";
+        float want = SketchBook.Filling(quarry.What);
+        float showing = ((max.x - min.x) * (max.y - min.y)) / (pageWide * pageHigh) * 0.35f;
+
+        if (showing < want * 0.35f) return "too far off to draw well";
+        if (showing > want * 3.5f) return "too close, it crowds the paper";
 
         Vector3 facing = quarry.Body.forward;
         facing.y = 0f;
@@ -231,8 +299,6 @@ public class Sketching : MonoBehaviour
         {
             return "get round to one side of it";
         }
-
-        if (standing != null) return "your best is " + standing.Verdict;
 
         return null;
     }
@@ -381,9 +447,21 @@ public class Sketching : MonoBehaviour
 
     // ------------------------------------------------------------------ the bar
 
+    private CanvasGroup showing;
+
     private void Show(bool on)
     {
-        if (panel != null && panel.activeSelf != on) panel.SetActive(on);
+        if (panel == null) return;
+
+        // Brought up and taken away with the frame, rather than blinking on and
+        // off every time a branch passes in front of the animal.
+        if (showing == null) showing = panel.GetComponent<CanvasGroup>() ?? panel.AddComponent<CanvasGroup>();
+
+        showing.alpha = fade;
+
+        bool up = on || fade > 0.02f;
+
+        if (panel.activeSelf != up) panel.SetActive(up);
     }
 
     private void Refresh(string trouble)
@@ -392,11 +470,126 @@ public class Sketching : MonoBehaviour
 
         fill.anchorMax = new Vector2(Mathf.Clamp01(progress), 1f);
 
+        // Held for a third of a second before it changes, or it flickers
+        // between two true things as the animal shifts its weight.
+        if (trouble != pending)
+        {
+            pending = trouble;
+            pendingSince = Time.time;
+        }
+        else if (Time.time - pendingSince > 0.33f)
+        {
+            hint = trouble;
+        }
+
         string name = subject.Any ? subject.What.Name : "it";
 
-        label.text = trouble == null
+        label.text = hint == null
             ? "drawing the " + name
-            : "<color=#8B7860>" + trouble + "</color>";
+            : "<color=#8B7860>" + hint + "</color>";
+    }
+
+    /// <summary>
+    /// Whether a second attempt at something already drawn is worth making. It
+    /// is not enough for the frame to be a good one: it has to be better than
+    /// the drawing already in the book, or standing admiring an animal would
+    /// quietly redraw it every few seconds and report each time that the one
+    /// you had was better.
+    /// </summary>
+    private bool Ready(Quarry quarry, SketchBook.Page standing, string trouble)
+    {
+        if (trouble != null) return false;
+
+        if (lastDrawn.TryGetValue(quarry.What.Key, out float last) && Time.time - last < 3f) return false;
+
+        return Promise(quarry) > standing.Quality + 0.05f;
+    }
+
+    /// <summary>
+    /// What this frame looks worth, judged the way the book judges a finished
+    /// page but from what is on screen. Rough, because a silhouette covers
+    /// rather less paper than the box around it, but it moves the same way.
+    /// </summary>
+    private float Promise(Quarry quarry)
+    {
+        var camera = Eye();
+
+        if (camera == null || !quarry.Any) return 0f;
+
+        var bounds = new Bounds(quarry.Body.position, Vector3.one * 0.1f);
+
+        foreach (var piece in quarry.Body.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
+
+        float pageHigh = Screen.height;
+        float pageWide = pageHigh * 4f / 3f;
+        float left = (Screen.width - pageWide) * 0.5f;
+
+        var min = new Vector2(float.MaxValue, float.MaxValue);
+        var max = new Vector2(float.MinValue, float.MinValue);
+
+        for (int i = 0; i < 8; i++)
+        {
+            var corner = new Vector3(
+                (i & 1) == 0 ? bounds.min.x : bounds.max.x,
+                (i & 2) == 0 ? bounds.min.y : bounds.max.y,
+                (i & 4) == 0 ? bounds.min.z : bounds.max.z);
+
+            Vector3 dot = camera.WorldToScreenPoint(corner);
+
+            if (dot.z <= 0f) return 0f;
+
+            min = Vector2.Min(min, dot);
+            max = Vector2.Max(max, dot);
+        }
+
+        bool cut = min.x < left || max.x > left + pageWide || min.y < 0f || max.y > pageHigh;
+
+        // a box holds about three times what the animal inside it does
+        float fill = ((max.x - min.x) * (max.y - min.y)) / (pageWide * pageHigh) * 0.35f;
+
+        float wanted = SketchBook.Filling(quarry.What);
+
+        float size = Mathf.Clamp01(Mathf.InverseLerp(wanted * 0.28f, wanted, fill))
+                   * Mathf.Clamp01(Mathf.InverseLerp(wanted * 5f, wanted * 2.4f, fill));
+
+        var middle = (min + max) * 0.5f;
+        float driftX = Mathf.Abs((middle.x - left) / pageWide - 0.5f) * 2f;
+        float driftY = Mathf.Abs(middle.y / pageHigh - 0.5f) * 2f;
+        float centred = 1f - Mathf.Clamp01(Mathf.Max(driftX, driftY));
+
+        Vector3 facing = quarry.Body.forward;
+        facing.y = 0f;
+        Vector3 view = camera.transform.forward;
+        view.y = 0f;
+
+        float side = facing.sqrMagnitude > 0.01f
+            ? 1f - Mathf.Abs(Vector3.Dot(facing.normalized, view.normalized))
+            : 0.5f;
+
+        float quality = (0.4f + centred * 0.25f + side * 0.35f) * (0.25f + 0.75f * size);
+
+        return Mathf.Clamp01(cut ? quality * 0.68f : quality);
+    }
+
+    /// <summary>The frame, brought up and taken away rather than snapped on and off.</summary>
+    private void Frame(bool wanted)
+    {
+        fade = Mathf.MoveTowards(fade, wanted ? 1f : 0f, Time.deltaTime * 4f);
+
+        if (finder == null) return;
+
+        bool on = fade > 0.02f;
+
+        if (finder.activeSelf != on) finder.SetActive(on);
+
+        if (!on) return;
+
+        foreach (var mark in finder.GetComponentsInChildren<RawImage>())
+        {
+            var colour = mark.color;
+            colour.a = 0.55f * fade;
+            mark.color = colour;
+        }
     }
 
     private void BuildUi()
