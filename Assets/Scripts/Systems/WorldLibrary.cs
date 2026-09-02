@@ -30,6 +30,9 @@ public class WorldSave
     public List<string> bookSubjects = new List<string>();
     public List<int> guideStudies = new List<int>();
     public List<int> bookStudies = new List<int>();
+    public List<string> noticed = new List<string>();       // id, then where, then when
+    public List<string> noticedWhere = new List<string>();
+    public List<string> noticedWhen = new List<string>();
 
     public bool waypointSet;
     public Vector2Int waypointChunk;
@@ -265,6 +268,7 @@ public static class WorldLibrary
         LandmarkSpawner.ClearEvent();
         SightingLog.Clear();
         FieldGuide.Clear();
+        Notebook.Clear();
         SketchBook.Clear();
         Stalking.Clear();
         Waypoint.Forget();

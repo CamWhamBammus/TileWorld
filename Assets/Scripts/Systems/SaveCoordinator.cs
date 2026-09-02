@@ -87,6 +87,13 @@ public class SaveCoordinator : MonoBehaviour
             FieldGuide.RecordQuietly(Subject.FromKey(data.bookSubjects[i]), (FieldGuide.Study)data.bookStudies[i]);
         }
 
+        for (int i = 0; i < data.noticed.Count; i++)
+        {
+            Notebook.WriteQuietly(data.noticed[i],
+                i < data.noticedWhere.Count ? data.noticedWhere[i] : "",
+                i < data.noticedWhen.Count ? data.noticedWhen[i] : "");
+        }
+
         SketchBook.Reopen();
 
         if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(data.timeOfDay);
@@ -134,6 +141,9 @@ public class SaveCoordinator : MonoBehaviour
         data.guideStudies.Clear();
         data.bookSubjects.Clear();
         data.bookStudies.Clear();
+        data.noticed.Clear();
+        data.noticedWhere.Clear();
+        data.noticedWhen.Clear();
 
         data.seed = world.WorldSeed;
         data.timeOfDay = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.3f;
@@ -153,6 +163,13 @@ public class SaveCoordinator : MonoBehaviour
         {
             data.creaturesSeen.Add((int)kind);
             data.creatureChunks.Add(SightingLog.FirstSeen(kind, out var chunk) ? chunk : Vector2Int.zero);
+        }
+
+        foreach (var entry in Notebook.All)
+        {
+            data.noticed.Add(entry.Id);
+            data.noticedWhere.Add(entry.Where);
+            data.noticedWhen.Add(entry.When);
         }
 
         foreach (var subject in Subject.All())

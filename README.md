@@ -60,7 +60,12 @@ They graze, wander a few paces, put their heads down to the grass, walk to the w
 
 ## The sketchbook
 
-Press G. This is the game. Eight entries: the four creatures of the country and the four kinds of thing built in it.
+Press G. This is the game.
+
+Past the entries, the book keeps its own record of what it has noticed. It is not a list of errands: you go about the country, and when something worth remarking on happens in front of you - three deer on the same ground, a fox abroad in the dark, a goat crossing a slope you could not keep your feet on, still water at night - the book writes it down, with the region it happened in and the hour it happened at. Forty-odd of them, none of which can be failed and none of which need be sought.
+
+Every one is a true thing about this world rather than an errand. A deer really will turn along the shore rather than swim, a goat really does walk ground you would fall off, and wild things really do keep clear of the ruins: what you are collecting is an understanding of how the place works. When it runs dry the book says what it is wondering about - that the country has only been seen by daylight, say - which sends you out at an hour you had not tried rather than to a marker on a map.
+ Eight entries: the four creatures of the country and the four kinds of thing built in it.
 
 A creature's entry wants three things: a drawing of it made from close by, something seen of how it lives, and it found in the country it belongs to. What you have not done yet is the only thing in the game that tells you where to go next.
 

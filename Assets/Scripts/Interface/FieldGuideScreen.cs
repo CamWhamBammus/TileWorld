@@ -100,27 +100,92 @@ public class FieldGuideScreen : MonoBehaviour
         Refresh();
     }
 
+    private const int PerPage = 8;
+
+    /// <summary>Contents, then a page each, then however many the notes fill.</summary>
+    private static int Pages => 1 + Subject.All().Length + Mathf.Max(1, Mathf.CeilToInt(Notebook.Count / (float)PerPage));
+
     private void Turn(int by)
     {
-        page = Mathf.Clamp(page + by, 0, Subject.All().Length);
+        page = Mathf.Clamp(page + by, 0, Pages - 1);
         Ambience.Instance?.Click(1.06f);
     }
 
     private void Refresh()
     {
-        if (page == 0) Contents();
-        else Entry(Subject.All()[page - 1]);
+        var all = Subject.All();
 
-        footer.text = page == 0
-            ? "<color=" + Dim + ">right arrow to turn the page  ·  G to close</color>"
-            : "<color=" + Dim + ">page " + page + " of " + Subject.All().Length
-              + "  ·  arrows to turn  ·  G to close</color>";
+        if (page == 0) Contents();
+        else if (page <= all.Length) Entry(all[page - 1]);
+        else Noticed(page - all.Length - 1);
+
+        footer.text = "<color=" + Dim + ">page " + (page + 1) + " of " + Pages
+                    + "  ·  arrows to turn  ·  G to close</color>";
+    }
+
+    /// <summary>
+    /// The running record of what the book has remarked on. Not a list of
+    /// things to go and do: a list of things that happened while you were out.
+    /// </summary>
+    private void Noticed(int sheet)
+    {
+        contents.SetActive(false);
+        plate.gameObject.SetActive(false);
+
+        Room(true);
+
+        heading.text = "<size=125%><b><color=" + Ink + ">NOTICED</color></b></size>\n"
+                     + "<size=80%><color=" + Dim + ">" + Notebook.Count + " of "
+                     + Notebook.Possible + " things worth remarking on  ·  "
+                     + Notebook.Wondering() + "</color></size>";
+
+        var text = new System.Text.StringBuilder();
+
+        if (Notebook.Count == 0)
+        {
+            text.Append("<color=").Append(Dim)
+                .Append(">Nothing yet. It fills itself as you go: the book only writes down what ")
+                .Append("happens in front of you, so there is nothing here to go and fetch.</color>");
+        }
+        else
+        {
+            int from = sheet * PerPage;
+
+            for (int i = from; i < from + PerPage && i < Notebook.Count; i++)
+            {
+                var entry = Notebook.All[i];
+
+                text.Append("<color=").Append(Ink).Append(">•  ").Append(entry.Line).Append("</color>\n");
+                text.Append("<indent=22px><size=80%><color=").Append(Dim).Append(">")
+                    .Append(entry.Where);
+
+                if (!string.IsNullOrEmpty(entry.When)) text.Append(", ").Append(entry.When);
+
+                text.Append("</color></size></indent>\n");
+            }
+        }
+
+        body.text = text.ToString();
+    }
+
+    /// <summary>The notes want the whole page; a subject's page leaves room for its drawing.</summary>
+    private void Room(bool wide)
+    {
+        var rect = body.rectTransform;
+
+        rect.sizeDelta = new Vector2(800f, wide ? 720f : 210f);
+        rect.anchoredPosition = new Vector2(0f, wide ? -140f : -640f);
+
+        body.alignment = wide ? TextAlignmentOptions.TopLeft : TextAlignmentOptions.Top;
+        body.fontSize = wide ? 21f : 23f;
     }
 
     private void Contents()
     {
         contents.SetActive(true);
         plate.gameObject.SetActive(false);
+
+        Room(false);
 
         heading.text = "<size=125%><b><color=" + Ink + ">FIELD SKETCHBOOK</color></b></size>\n"
                      + "<size=80%><color=" + Dim + ">" + FieldGuide.Entries + " of 8 entries finished, "
@@ -144,12 +209,16 @@ public class FieldGuideScreen : MonoBehaviour
 
         body.text = "<color=" + Dim + ">A creature wants drawing from close by, something seen of how it "
                   + "lives, and finding in its own country. A ruin wants drawing whole, from far enough "
-                  + "back, and whatever is written there read.</color>";
+                  + "back, and whatever is written there read.\n\nPast those pages the book keeps what it "
+                  + "has noticed on its own: " + Notebook.Count + " of " + Notebook.Possible
+                  + " so far.</color>";
     }
 
     private void Entry(Subject subject)
     {
         contents.SetActive(false);
+
+        Room(false);
 
         var drawing = SketchBook.Of(subject);
 
