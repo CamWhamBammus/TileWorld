@@ -2,105 +2,133 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// The book you are filling in. A creature is not done with when you have laid
-/// eyes on it: an entry wants a drawing of it, something seen of how it lives,
-/// and it found in the country it belongs to.
+/// The book you are filling in, which is now the game.
+///
+/// It holds both halves of the country: the creatures in it and the things
+/// built in it. A creature's entry wants a drawing, something seen of how it
+/// lives, and it found in the ground it belongs to. A structure's wants a
+/// drawing and whatever is written there, which means going inside.
 ///
 /// Like the chart, this is what the player has personally done rather than
 /// what exists, so it is kept with the world rather than derived from it.
 /// </summary>
 public static class FieldGuide
 {
-    /// <summary>The three things an entry asks for.</summary>
-    public enum Study { Sketch, Habit, Country }
+    public enum Study { Sketch, Habit, Country, Inscription }
 
-    private static readonly Dictionary<FaunaKind, HashSet<Study>> done =
-        new Dictionary<FaunaKind, HashSet<Study>>();
+    private static readonly Dictionary<string, HashSet<Study>> done =
+        new Dictionary<string, HashSet<Study>>();
 
-    public static event System.Action<FaunaKind, Study> Filled;
+    public static event System.Action<Subject, Study> Filled;
 
-    public static bool Has(FaunaKind kind, Study study)
+    /// <summary>What a subject's entry asks for. Creatures want three, ruins two.</summary>
+    public static Study[] Wants(Subject subject)
     {
-        return done.TryGetValue(kind, out var set) && set.Contains(study);
+        return subject.Wild
+            ? new[] { Study.Sketch, Study.Habit, Study.Country }
+            : new[] { Study.Sketch, Study.Inscription };
     }
 
-    public static int Count(FaunaKind kind)
+    public static bool Has(Subject subject, Study study)
     {
-        return done.TryGetValue(kind, out var set) ? set.Count : 0;
+        return done.TryGetValue(subject.Key, out var set) && set.Contains(study);
     }
 
-    public static bool Complete(FaunaKind kind) => Count(kind) >= 3;
+    public static int Count(Subject subject)
+    {
+        return done.TryGetValue(subject.Key, out var set) ? set.Count : 0;
+    }
 
-    /// <summary>How many of the four are finished.</summary>
+    public static bool Complete(Subject subject) => Count(subject) >= Wants(subject).Length;
+
+    /// <summary>Finished entries, out of the eight there are.</summary>
     public static int Entries
     {
         get
         {
             int n = 0;
 
-            for (int i = 0; i < 4; i++) if (Complete((FaunaKind)i)) n++;
+            foreach (var subject in Subject.All()) if (Complete(subject)) n++;
 
             return n;
         }
     }
 
-    public static int Studies
+    /// <summary>Notes made, out of the twenty the book holds.</summary>
+    public static int Notes
     {
         get
         {
             int n = 0;
 
-            for (int i = 0; i < 4; i++) n += Count((FaunaKind)i);
+            foreach (var subject in Subject.All()) n += Count(subject);
 
             return n;
         }
     }
 
-    public static bool Record(FaunaKind kind, Study study)
+    public static int NotesWanted
     {
-        if (!done.TryGetValue(kind, out var set))
+        get
+        {
+            int n = 0;
+
+            foreach (var subject in Subject.All()) n += Wants(subject).Length;
+
+            return n;
+        }
+    }
+
+    public static bool Record(Subject subject, Study study)
+    {
+        if (!done.TryGetValue(subject.Key, out var set))
         {
             set = new HashSet<Study>();
-            done[kind] = set;
+            done[subject.Key] = set;
         }
 
         if (!set.Add(study)) return false;
 
-        Filled?.Invoke(kind, study);
+        Filled?.Invoke(subject, study);
 
         return true;
     }
 
     /// <summary>Restoring a save, where nothing should be announced again.</summary>
-    public static void RecordQuietly(FaunaKind kind, Study study)
+    public static void RecordQuietly(Subject subject, Study study)
     {
-        if (!done.TryGetValue(kind, out var set))
+        if (!done.TryGetValue(subject.Key, out var set))
         {
             set = new HashSet<Study>();
-            done[kind] = set;
+            done[subject.Key] = set;
         }
 
         set.Add(study);
     }
 
-    public static IEnumerable<Study> Of(FaunaKind kind)
+    public static IEnumerable<Study> Of(Subject subject)
     {
-        return done.TryGetValue(kind, out var set) ? (IEnumerable<Study>)set : new Study[0];
+        return done.TryGetValue(subject.Key, out var set) ? (IEnumerable<Study>)set : new Study[0];
     }
 
-    /// <summary>What each study asks for, in the guide's own words.</summary>
-    public static string Asks(FaunaKind kind, Study study)
+    /// <summary>What each study asks for, in the book's own words.</summary>
+    public static string Asks(Subject subject, Study study)
     {
         switch (study)
         {
             case Study.Sketch:
-                return "draw it from close by, without putting it to flight";
+                return subject.Wild
+                    ? "draw it from close by, without putting it to flight"
+                    : "draw it whole, from far enough back";
 
             case Study.Habit:
-                return Habit(kind);
+                return Habit(subject.Fauna);
+
+            case Study.Inscription:
+                return "read what is written there";
 
             default:
-                return Country(kind);
+                return Country(subject.Fauna);
         }
     }
 

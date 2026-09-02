@@ -58,15 +58,19 @@ Each kind moves in its own way: a deer trots and breaks into a bound when it is 
 
 They graze, wander a few paces, put their heads down to the grass, walk to the water when they want a drink, lie down when nothing is bothering them, and drift towards their own kind so deer end up in loose herds. And they lift their heads when you get close. Stand still and a deer will hold there watching you; take another step and it goes, downhill and round the water rather than into it. The journal keeps a list of what you have seen, which is saved with the world - a fox seen at midnight in one world is not a fox seen in another.
 
-## The field guide
+## The sketchbook
 
-Press G. Four creatures, and an entry for each wants three things: a drawing of it made from close by, something seen of how it lives, and it found in the country it belongs to. What you have not done yet is the only thing in the game that tells you where to go next.
+Press G. This is the game. Eight entries: the four creatures of the country and the four kinds of thing built in it.
+
+A creature's entry wants three things: a drawing of it made from close by, something seen of how it lives, and it found in the country it belongs to. What you have not done yet is the only thing in the game that tells you where to go next.
 
 The drawing is a real one. When you finish, the animal is caught as it stands - from where you were, at the angle you saw it, in the pose it was in - and worked over into ink and hatching on the same paper the map is drawn on. It is held up for a moment, then kept in the guide and written out beside the world, so the deer in your book is the deer you stood in front of and nobody else's is quite the same.
 
 Drawing is the part you do rather than wait for. Get near enough, keep it in sight, and stand still: the drawing fills in over a few seconds and any real movement spoils it. How near you can get is up to you, because how wary an animal is now depends on how you are moving. Come along at a run and a deer is gone before you have seen it; walk, or stand and let it settle, and it will let you much closer. An animal that has noticed you holds your eye rather than bolting, and that is the moment to draw it.
 
-The other two notes are a matter of being in the right place at the right time - a fox at the water, a rabbit at rest, a goat on the high ground at any hour - so the guide sends you out at dusk and after dark and up onto the tops.
+A ruin's entry wants two, and asks the opposite of you: stand far enough back to fit the whole of it on the page, and then go in and read what somebody cut into the stone there. Drawing a watchtower is a matter of finding the view of it, not of holding your breath.
+
+The other two creature notes are a matter of being in the right place at the right time - a fox at the water, a rabbit at rest, a goat on the high ground at any hour - so the guide sends you out at dusk and after dark and up onto the tops.
 
 ## The map
 
@@ -80,21 +84,17 @@ The world saves itself every thirty seconds and when you quit. Almost nothing ne
 
 You can keep more than one. Escape, then Worlds, lists what you have made: each with its name, its seed, how much of it you have charted, how many landmarks you found in it and when you were last there. Make a new one with a name and a seed of your choosing, or leave either blank and take what you are given - an unnamed world is called after the ground it starts on. Picking one saves the world you are in first, so wandering off to see a different seed costs you nothing. Worlds can be forgotten too, which takes two presses.
 
-There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby and for anywhere you have marked on the map. Landmarks you have already reached carry their name out in the world. Finishing a quest or reaching something shows up as a note in the corner, and the field journal lists everything found, nearest first.
+There is a compass across the top showing which way you are facing, with a mark for every landmark you have found nearby and for anywhere you have marked on the map. Landmarks you have already reached carry their name out in the world. Reaching something shows up as a note in the corner, and the field journal lists everything found, nearest first.
 
 Nights have stars, fireflies come out in the lowlands, and there is standing water in about one chunk in ten. Snow covers the ground above the snowline, which is roughly eight percent of the world, with a ragged edge rather than a contour line. Wind rises with altitude and with the weather, so an exposed ridge in bad weather sounds like one, birds call in the daytime lowlands, and it rains when the overcast gets heavy. Wind and birdsong are generated in code rather than recorded.
 
 Lakes are deep enough to swim in. Walk into one and you float at the surface rather than strolling along the bottom, the view goes green and the fog closes in while your head is under, and the map shows water and snow as well as height.
 
-## Quests
-
-Press Q. Six of them, all based on where you have been: explore new chunks, get a certain distance from spawn, reach all four compass directions, find landmarks, climb towers, and survey a larger area.
-
 ## Controls
 
 - WASD to move, mouse to look
 - Left Shift to sprint, Space to jump
-- Q for the quest log, M for the map
+- M for the map
 - E to rest at a landmark you have found, once it is dark
 - Scroll to zoom the map, F9 to save it as an image
 - J for the field journal, F3 for world statistics
@@ -125,7 +125,7 @@ Scripts are grouped under `Assets/Scripts`:
 - `World/` - the grid and the terrain function, chunks and their collision, water, snow, regions, and the streaming in `ChunkManager`
 - `Landmarks/` - where structures go, what they are built from, and what is written at them
 - `Player/` - the follow camera, swimming, and the underwater view
-- `Interface/` - the map, journal, quest log, compass, notices, pause menu and statistics overlay
+- `Interface/` - the map, journal, sketchbook, compass, notices, pause menu and statistics overlay
 - `Wildlife/` - what lives where, how it is built, and what it does when it sees you
 - `Atmosphere/` - the day cycle and weather, wind, birdsong, music, rain, stars and fireflies
 - `Systems/` - what has been found, the library of saved worlds, and what is kept between sessions

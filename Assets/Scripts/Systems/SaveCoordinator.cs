@@ -75,17 +75,21 @@ public class SaveCoordinator : MonoBehaviour
             SightingLog.RecordQuietly((FaunaKind)data.creaturesSeen[i], chunk);
         }
 
+        // an older save kept only creatures, and only by kind
         for (int i = 0; i < data.guideKinds.Count && i < data.guideStudies.Count; i++)
         {
-            FieldGuide.RecordQuietly((FaunaKind)data.guideKinds[i], (FieldGuide.Study)data.guideStudies[i]);
+            FieldGuide.RecordQuietly(Subject.Creature((FaunaKind)data.guideKinds[i]),
+                                     (FieldGuide.Study)data.guideStudies[i]);
+        }
+
+        for (int i = 0; i < data.bookSubjects.Count && i < data.bookStudies.Count; i++)
+        {
+            FieldGuide.RecordQuietly(Subject.FromKey(data.bookSubjects[i]), (FieldGuide.Study)data.bookStudies[i]);
         }
 
         SketchBook.Reopen();
 
         if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(data.timeOfDay);
-
-        var quests = FindFirstObjectByType<QuestManager>();
-        if (quests != null) quests.RestoreProgress(data.surveysMade, data.highestReached);
 
         if (data.waypointSet) Waypoint.Set(data.waypointChunk);
 
@@ -128,6 +132,8 @@ public class SaveCoordinator : MonoBehaviour
         data.creatureChunks.Clear();
         data.guideKinds.Clear();
         data.guideStudies.Clear();
+        data.bookSubjects.Clear();
+        data.bookStudies.Clear();
 
         data.seed = world.WorldSeed;
         data.timeOfDay = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.3f;
@@ -149,21 +155,13 @@ public class SaveCoordinator : MonoBehaviour
             data.creatureChunks.Add(SightingLog.FirstSeen(kind, out var chunk) ? chunk : Vector2Int.zero);
         }
 
-        for (int i = 0; i < 4; i++)
+        foreach (var subject in Subject.All())
         {
-            foreach (var study in FieldGuide.Of((FaunaKind)i))
+            foreach (var study in FieldGuide.Of(subject))
             {
-                data.guideKinds.Add(i);
-                data.guideStudies.Add((int)study);
+                data.bookSubjects.Add(subject.Key);
+                data.bookStudies.Add((int)study);
             }
-        }
-
-        var quests = FindFirstObjectByType<QuestManager>();
-
-        if (quests != null)
-        {
-            data.surveysMade = quests.SurveysMade;
-            data.highestReached = quests.HighestReached;
         }
 
         data.waypointSet = Waypoint.IsSet;

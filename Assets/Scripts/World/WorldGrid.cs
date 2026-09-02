@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// The one place that knows how big the world grid is.
 ///
-/// These numbers used to be copied into ChunkManager, Chunk, QuestManager and
+/// These numbers used to be copied into ChunkManager, Chunk and
 /// ChunkExplorationObjective separately, which meant changing the chunk size in
 /// one of them silently desynced the others: the world would generate on one
 /// grid while the quest log counted chunks on another.

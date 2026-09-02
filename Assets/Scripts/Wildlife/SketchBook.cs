@@ -18,32 +18,32 @@ public static class SketchBook
     public const int Width = 320;
     public const int Height = 240;
 
-    private static readonly Dictionary<FaunaKind, Texture2D> drawings =
-        new Dictionary<FaunaKind, Texture2D>();
+    private static readonly Dictionary<string, Texture2D> drawings =
+        new Dictionary<string, Texture2D>();
 
     private static readonly Color Paper = new Color(0.902f, 0.855f, 0.749f);
     private static readonly Color Ink = new Color(0.204f, 0.161f, 0.114f);
 
-    public static Texture2D Of(FaunaKind kind)
+    public static Texture2D Of(Subject subject)
     {
-        return drawings.TryGetValue(kind, out var found) ? found : null;
+        return drawings.TryGetValue(subject.Key, out var found) ? found : null;
     }
 
-    public static bool Has(FaunaKind kind) => Of(kind) != null;
+    public static bool Has(Subject subject) => Of(subject) != null;
 
     /// <summary>
     /// Draws the animal. It is rendered on its own against nothing, so the
     /// hillside behind it does not end up in the drawing, then reduced to a
     /// line where its edges are and a wash where it is dark.
     /// </summary>
-    public static Texture2D Draw(Animal animal, Camera eye)
+    public static Texture2D Draw(Subject subject, Transform what, Camera eye)
     {
-        if (animal == null || eye == null) return null;
+        if (what == null || eye == null) return null;
 
         int layer = SpareLayer();
         var was = new Dictionary<Transform, int>();
 
-        Hide(animal.transform, layer, was);
+        Hide(what, layer, was);
 
         var target = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGB32) { antiAliasing = 2 };
 
@@ -59,9 +59,9 @@ public static class SketchBook
         // Frame the whole of it, from where the player was standing. Aiming at
         // the head and guessing a width put half the animal off the page, and
         // a long one like the fox lost its legs.
-        var bounds = new Bounds(animal.transform.position, Vector3.one * 0.1f);
+        var bounds = new Bounds(what.position, Vector3.one * 0.1f);
 
-        foreach (var piece in animal.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
+        foreach (var piece in what.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
 
         Vector3 centre = bounds.center;
         float away = Vector3.Distance(eye.transform.position, centre);
@@ -91,9 +91,9 @@ public static class SketchBook
         var drawing = ToInk(shot);
         Object.Destroy(shot);
 
-        drawings[animal.Kind] = drawing;
+        drawings[subject.Key] = drawing;
 
-        Write(animal.Kind, drawing);
+        Write(subject, drawing);
 
         return drawing;
     }
@@ -210,12 +210,13 @@ public static class SketchBook
         }
     }
 
-    private static void Write(FaunaKind kind, Texture2D drawing)
+    private static void Write(Subject subject, Texture2D drawing)
     {
         try
         {
             System.IO.Directory.CreateDirectory(Folder);
-            System.IO.File.WriteAllBytes(System.IO.Path.Combine(Folder, kind + ".png"), drawing.EncodeToPNG());
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(Folder, subject.Key + ".png"),
+                                         drawing.EncodeToPNG());
         }
         catch (System.Exception e)
         {
@@ -232,16 +233,15 @@ public static class SketchBook
         {
             if (!System.IO.Directory.Exists(Folder)) return;
 
-            for (int i = 0; i < 4; i++)
+            foreach (var subject in Subject.All())
             {
-                var kind = (FaunaKind)i;
-                string path = System.IO.Path.Combine(Folder, kind + ".png");
+                string path = System.IO.Path.Combine(Folder, subject.Key + ".png");
 
                 if (!System.IO.File.Exists(path)) continue;
 
                 var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
 
-                if (texture.LoadImage(System.IO.File.ReadAllBytes(path))) drawings[kind] = texture;
+                if (texture.LoadImage(System.IO.File.ReadAllBytes(path))) drawings[subject.Key] = texture;
             }
         }
         catch (System.Exception e)

@@ -89,72 +89,86 @@ public class FieldGuideScreen : MonoBehaviour
 
         var text = new System.Text.StringBuilder();
 
-        text.Append("<size=145%><b><color=").Append(ink).Append(">FIELD GUIDE</color></b></size>\n");
+        text.Append("<size=145%><b><color=").Append(ink).Append(">FIELD SKETCHBOOK</color></b></size>\n");
         text.Append("<size=90%><color=").Append(dim).Append(">")
-            .Append(FieldGuide.Entries).Append(" of 4 entries finished, ")
-            .Append(FieldGuide.Studies).Append(" of 12 notes made</color></size>\n");
+            .Append(FieldGuide.Entries).Append(" of 8 entries finished, ")
+            .Append(FieldGuide.Notes).Append(" of ").Append(FieldGuide.NotesWanted)
+            .Append(" notes made</color></size>\n");
         text.Append("<color=").Append(dim).Append(">").Append(new string('─', 34)).Append("</color>\n");
 
-        for (int i = 0; i < 4; i++)
+        foreach (var subject in Subject.All())
         {
-            var kind = (FaunaKind)i;
-            bool met = SightingLog.Has(kind);
+            bool met = subject.Wild ? SightingLog.Has(subject.Fauna) : Found(subject.Landmark);
 
-            if (!met)
+            if (!met && FieldGuide.Count(subject) == 0)
             {
-                // Nothing given away about something you have never seen.
-                text.Append("<color=").Append(dim).Append("><b>—————</b>   not yet seen</color>\n\n");
+                // Nothing given away about something you have not come across.
+                text.Append("<color=").Append(dim).Append("><b>—————</b>   ")
+                    .Append(subject.Wild ? "not yet seen" : "not yet found").Append("</color>\n");
                 continue;
             }
 
-            bool full = FieldGuide.Complete(kind);
+            bool full = FieldGuide.Complete(subject);
+            var wants = FieldGuide.Wants(subject);
 
             text.Append("<color=").Append(full ? done : ink).Append("><b>")
-                .Append(Fauna.Of(kind).Name.ToUpper()).Append("</b></color>");
+                .Append(subject.Name.ToUpper()).Append("</b></color>");
             text.Append("<size=85%><color=").Append(dim).Append(">   ")
-                .Append(full ? "entry finished" : FieldGuide.Count(kind) + " of 3").Append("</color></size>\n");
+                .Append(full ? "entry finished" : FieldGuide.Count(subject) + " of " + wants.Length)
+                .Append("</color></size>\n");
 
-            for (int s = 0; s < 3; s++)
+            foreach (var study in wants)
             {
-                var study = (FieldGuide.Study)s;
-                bool has = FieldGuide.Has(kind, study);
+                bool has = FieldGuide.Has(subject, study);
 
                 text.Append("<indent=18px><size=85%><color=").Append(has ? done : dim).Append(">")
-                    .Append(has ? "✓ " : "·  ").Append(FieldGuide.Asks(kind, study))
+                    .Append(has ? "✓ " : "·  ").Append(FieldGuide.Asks(subject, study))
                     .Append("</color></size></indent>\n");
             }
 
-            if (full)
+            if (full && subject.Wild)
             {
                 text.Append("<indent=18px><size=80%><i><color=").Append(ink).Append(">")
-                    .Append(Fauna.Describe(kind)).Append("</color></i></size></indent>\n");
+                    .Append(Fauna.Describe(subject.Fauna)).Append("</color></i></size></indent>\n");
             }
-
-            text.Append("\n");
         }
 
         text.Append("<color=").Append(dim).Append(">").Append(new string('─', 34)).Append("</color>\n");
         text.Append("<size=85%><color=").Append(dim)
-            .Append(">Walk slowly and they let you nearer. Stand still to draw. G to close</color></size>");
+            .Append(">Walk slowly and creatures let you nearer. Stand still to draw them, ")
+            .Append("stand back to draw a ruin. G to close</color></size>");
 
         body.text = text.ToString();
 
         // and the drawings across the top, which are the entries really
-        for (int i = 0; i < 4; i++)
+        var all = Subject.All();
+
+        for (int i = 0; i < all.Length; i++)
         {
-            var kind = (FaunaKind)i;
-            var drawing = SketchBook.Of(kind);
+            var drawing = SketchBook.Of(all[i]);
 
             plates[i].texture = drawing != null ? drawing : blank;
-            plates[i].color = drawing != null ? Color.white : new Color(1f, 1f, 1f, 0.4f);
+            plates[i].color = drawing != null ? Color.white : new Color(1f, 1f, 1f, 0.35f);
 
             plateNames[i].text = drawing != null
-                ? Fauna.Of(kind).Name
-                : (SightingLog.Has(kind) ? "<color=#8B7860>not drawn</color>" : "<color=#8B7860>—</color>");
+                ? all[i].Name
+                : "<color=#8B7860>—</color>";
         }
     }
 
     private Texture2D blank;
+
+    /// <summary>Whether a structure of this sort has been walked up to yet.</summary>
+    private static bool Found(LandmarkKind kind)
+    {
+        foreach (var pair in LandmarkLog.Found)
+        {
+            if (pair.Value == kind) return true;
+        }
+
+        return false;
+    }
+
 
     private TMP_Text Label(string name, Transform parent, float size, Vector2 at, Vector2 area)
     {
@@ -234,16 +248,20 @@ public class FieldGuideScreen : MonoBehaviour
         bodyRect.anchorMin = new Vector2(0.5f, 0f);
         bodyRect.anchorMax = new Vector2(0.5f, 0f);
         bodyRect.pivot = new Vector2(0.5f, 0f);
-        bodyRect.sizeDelta = new Vector2(660f, 560f);
-        bodyRect.anchoredPosition = new Vector2(0f, 40f);
+        bodyRect.sizeDelta = new Vector2(680f, 440f);
+        bodyRect.anchoredPosition = new Vector2(0f, 34f);
 
         blank = ParchmentPanel.Create(64, 48);
 
-        plates = new RawImage[4];
-        plateNames = new TMP_Text[4];
+        // two rows: the creatures above, what was built below
+        plates = new RawImage[8];
+        plateNames = new TMP_Text[8];
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 8; i++)
         {
+            int column = i % 4;
+            int row = i / 4;
+
             var plateGo = new GameObject("Plate " + i);
             plateGo.transform.SetParent(cardGo.transform, false);
 
@@ -253,11 +271,12 @@ public class FieldGuideScreen : MonoBehaviour
             plateRect.anchorMin = new Vector2(0.5f, 1f);
             plateRect.anchorMax = new Vector2(0.5f, 1f);
             plateRect.pivot = new Vector2(0.5f, 1f);
-            plateRect.sizeDelta = new Vector2(164f, 123f);
-            plateRect.anchoredPosition = new Vector2((i - 1.5f) * 172f, -78f);
+            plateRect.sizeDelta = new Vector2(160f, 120f);
+            plateRect.anchoredPosition = new Vector2((column - 1.5f) * 168f, -74f - row * 150f);
 
-            plateNames[i] = Label("Plate name " + i, cardGo.transform, 17f,
-                                  new Vector2((i - 1.5f) * 172f, -214f), new Vector2(164f, 28f));
+            plateNames[i] = Label("Plate name " + i, cardGo.transform, 16f,
+                                  new Vector2((column - 1.5f) * 168f, -196f - row * 150f),
+                                  new Vector2(160f, 26f));
         }
 
         panel.SetActive(false);

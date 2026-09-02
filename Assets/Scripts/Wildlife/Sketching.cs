@@ -13,8 +13,15 @@ using UnityEngine.UI;
 /// </summary>
 public class Sketching : MonoBehaviour
 {
-    [Tooltip("How close you have to be to draw anything worth keeping.")]
+    [Tooltip("How close you have to be to draw an animal worth keeping.")]
     [SerializeField] private float reach = 22f;
+
+    [Tooltip("Structures are big, so they are drawn from further off — and not from under them.")]
+    [SerializeField] private float ruinReach = 52f;
+    [SerializeField] private float ruinBack = 12f;
+
+    [Tooltip("Close enough to read what somebody cut into the stone.")]
+    [SerializeField] private float readable = 6.5f;
 
     [Tooltip("And how close you have to be for what it is doing to count.")]
     [SerializeField] private float watching = 34f;
@@ -25,8 +32,22 @@ public class Sketching : MonoBehaviour
     private Transform player;
     private Camera eye;
 
-    private Animal subject;
+    private Quarry subject;
     private float progress;
+
+    /// <summary>Something in front of you worth putting on paper.</summary>
+    private struct Quarry
+    {
+        public Subject What;
+        public Transform Body;
+        public Animal Creature;
+
+        public bool Any => Body != null;
+
+        public Vector3 Aim => Creature != null ? Creature.Head : Body.position;
+
+        public bool Same(Quarry other) => Body == other.Body;
+    }
 
     private GameObject panel;
     private TMP_Text label;
@@ -80,28 +101,29 @@ public class Sketching : MonoBehaviour
 
         Notice();
 
-        var candidate = Nearest(reach, true);
+        var candidate = Nearest(true);
 
-        if (candidate == null || !Stalking.Steady)
+        if (!candidate.Any || (candidate.What.Wild && !Stalking.Steady))
         {
             // A drawing left half done is worth nothing, but it fades rather
             // than snapping away, so a moment's wobble is not fatal.
             progress = Mathf.MoveTowards(progress, 0f, Time.deltaTime * 0.55f);
-            subject = progress > 0.01f ? subject : null;
+
+            if (progress <= 0.01f) subject = default;
 
             Show(progress > 0.01f);
-            Refresh(candidate == null ? "keep it in sight" : "hold still");
+            Refresh(!candidate.Any ? "keep it in sight" : "hold still");
 
             return;
         }
 
-        if (subject != candidate)
+        if (!subject.Same(candidate))
         {
             subject = candidate;
             progress = 0f;
         }
 
-        if (FieldGuide.Has(subject.Kind, FieldGuide.Study.Sketch))
+        if (FieldGuide.Has(subject.What, FieldGuide.Study.Sketch))
         {
             Show(false);
             return;
@@ -114,13 +136,13 @@ public class Sketching : MonoBehaviour
 
         if (progress >= 1f)
         {
-            // The drawing is of this animal, from here, as it stands.
-            var drawing = SketchBook.Draw(subject, Eye());
+            // The drawing is of this one, from here, as it stands.
+            var drawing = SketchBook.Draw(subject.What, subject.Body, Eye());
 
-            if (FieldGuide.Record(subject.Kind, FieldGuide.Study.Sketch))
+            if (FieldGuide.Record(subject.What, FieldGuide.Study.Sketch))
             {
-                Notices.Show("You draw the " + Fauna.Of(subject.Kind).Name
-                           + "  ·  " + FieldGuide.Entries + "/4 entries done");
+                Notices.Show("You draw the " + subject.What.Name
+                           + "  ·  " + FieldGuide.Entries + "/8 entries done");
 
                 Ambience.Instance?.Click(1.15f);
             }
@@ -128,12 +150,12 @@ public class Sketching : MonoBehaviour
             if (drawing != null)
             {
                 page.texture = drawing;
-                caption.text = "the " + Fauna.Of(subject.Kind).Name + "  ·  G for the guide";
+                caption.text = "the " + subject.What.Name + "  ·  G for the book";
                 showUntil = Time.time + 4.5f;
             }
 
             progress = 0f;
-            subject = null;
+            subject = default;
             Show(false);
         }
     }
@@ -144,63 +166,133 @@ public class Sketching : MonoBehaviour
     /// </summary>
     private void Notice()
     {
-        var seen = Nearest(watching, false);
+        Reading();
 
-        if (seen == null) return;
+        var seen = Nearest(false);
+
+        if (!seen.Any || !seen.What.Wild || seen.Creature == null) return;
 
         float hour = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;
+        var kind = seen.What.Fauna;
 
-        if (!FieldGuide.Has(seen.Kind, FieldGuide.Study.Habit)
-            && FieldGuide.Habit(seen.Kind, seen.Busy)
-            && FieldGuide.Record(seen.Kind, FieldGuide.Study.Habit))
+        if (!FieldGuide.Has(seen.What, FieldGuide.Study.Habit)
+            && FieldGuide.Habit(kind, seen.Creature.Busy)
+            && FieldGuide.Record(seen.What, FieldGuide.Study.Habit))
         {
-            Notices.Show("Noted: " + FieldGuide.Habit(seen.Kind));
+            Notices.Show("Noted: " + FieldGuide.Habit(kind));
         }
 
-        if (!FieldGuide.Has(seen.Kind, FieldGuide.Study.Country)
-            && FieldGuide.Country(seen.Kind, seen.transform.position, world.WorldSeed, hour)
-            && FieldGuide.Record(seen.Kind, FieldGuide.Study.Country))
+        if (!FieldGuide.Has(seen.What, FieldGuide.Study.Country)
+            && FieldGuide.Country(kind, seen.Body.position, world.WorldSeed, hour)
+            && FieldGuide.Record(seen.What, FieldGuide.Study.Country))
         {
-            Notices.Show("Noted: " + FieldGuide.Country(seen.Kind));
+            Notices.Show("Noted: " + FieldGuide.Country(kind));
         }
 
-        if (FieldGuide.Complete(seen.Kind) && !told.Contains(seen.Kind))
+        Finished(seen.What);
+    }
+
+    /// <summary>
+    /// Standing close enough to a ruin to read it. What is cut into these
+    /// places is the only voice in the world, so it is worth walking in for.
+    /// </summary>
+    private void Reading()
+    {
+        foreach (var ruin in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None))
         {
-            told.Add(seen.Kind);
-            Notices.Show("The " + Fauna.Of(seen.Kind).Name + " entry is finished");
+            var what = Subject.Structure(ruin.Kind);
+
+            if (FieldGuide.Has(what, FieldGuide.Study.Inscription)) continue;
+            if (Vector3.Distance(player.position, ruin.transform.position) > readable) continue;
+
+            if (FieldGuide.Record(what, FieldGuide.Study.Inscription))
+            {
+                Notices.Show("\"" + Inscriptions.For(ruin.Chunk, ruin.Kind, world.WorldSeed) + "\"");
+            }
+
+            Finished(what);
         }
     }
 
-    private readonly System.Collections.Generic.HashSet<FaunaKind> told =
-        new System.Collections.Generic.HashSet<FaunaKind>();
+    private void Finished(Subject what)
+    {
+        if (!FieldGuide.Complete(what) || told.Contains(what.Key)) return;
 
-    /// <summary>The nearest animal you can actually see, if any.</summary>
-    private Animal Nearest(float range, bool forDrawing)
+        told.Add(what.Key);
+        Notices.Show("The " + what.Name + " entry is finished");
+    }
+
+    private readonly System.Collections.Generic.HashSet<string> told =
+        new System.Collections.Generic.HashSet<string>();
+
+    /// <summary>
+    /// The nearest thing you can actually see and would want to draw, creature
+    /// or structure. A ruin has to be far enough off to fit on the page, which
+    /// is the opposite of what an animal asks of you.
+    /// </summary>
+    private Quarry Nearest(bool forDrawing)
     {
         var camera = Eye();
+        var best = default(Quarry);
 
-        if (camera == null) return null;
+        if (camera == null) return best;
 
-        Animal best = null;
-        float closest = range;
+        float closest = float.MaxValue;
 
         foreach (var animal in FindObjectsByType<Animal>(FindObjectsSortMode.None))
         {
             if (forDrawing && animal.Busy == Doing.Fleeing) continue;
 
-            Vector3 head = animal.Head;
-            Vector3 to = head - camera.transform.position;
-            float distance = to.magnitude;
+            float distance = Look(camera, animal.Head, forDrawing ? reach : watching, forDrawing);
 
-            if (distance > closest) continue;
-            if (Vector3.Dot(camera.transform.forward, to.normalized) < (forDrawing ? 0.62f : 0.5f)) continue;
-            if (Physics.Linecast(camera.transform.position, head)) continue;
+            if (distance < 0f || distance >= closest) continue;
 
             closest = distance;
-            best = animal;
+            best = new Quarry
+            {
+                What = Subject.Creature(animal.Kind),
+                Body = animal.transform,
+                Creature = animal
+            };
+        }
+
+        if (!forDrawing) return best;
+
+        foreach (var ruin in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None))
+        {
+            Vector3 middle = Middle(ruin.transform);
+
+            float distance = Look(camera, middle, ruinReach, false);
+
+            if (distance < ruinBack || distance >= closest) continue;
+
+            closest = distance;
+            best = new Quarry { What = Subject.Structure(ruin.Kind), Body = ruin.transform };
         }
 
         return best;
+    }
+
+    /// <summary>How far off a thing is, or less than nothing if it cannot be seen.</summary>
+    private float Look(Camera camera, Vector3 at, float range, bool strict)
+    {
+        Vector3 to = at - camera.transform.position;
+        float distance = to.magnitude;
+
+        if (distance > range) return -1f;
+        if (Vector3.Dot(camera.transform.forward, to.normalized) < (strict ? 0.62f : 0.5f)) return -1f;
+        if (Physics.Linecast(camera.transform.position, at)) return -1f;
+
+        return distance;
+    }
+
+    private static Vector3 Middle(Transform what)
+    {
+        var bounds = new Bounds(what.position, Vector3.one * 0.1f);
+
+        foreach (var piece in what.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
+
+        return bounds.center;
     }
 
     private Camera Eye()
@@ -223,7 +315,7 @@ public class Sketching : MonoBehaviour
 
         fill.anchorMax = new Vector2(Mathf.Clamp01(progress), 1f);
 
-        string name = subject != null ? Fauna.Of(subject.Kind).Name : "it";
+        string name = subject.Any ? subject.What.Name : "it";
 
         label.text = trouble == null
             ? "drawing the " + name

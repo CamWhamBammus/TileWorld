@@ -227,7 +227,7 @@ public class LandmarkSpawner : MonoBehaviour
 
     /// <summary>
     /// Statics survive between play sessions when the editor skips domain
-    /// reload, which would leave last run's QuestManager still subscribed.
+    /// reload, which would leave last run's listeners still subscribed.
     /// </summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     public static void ClearEvent()

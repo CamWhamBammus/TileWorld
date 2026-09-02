@@ -26,11 +26,11 @@ public class WorldSave
     public List<int> landmarkKinds = new List<int>();
     public List<int> creaturesSeen = new List<int>();
     public List<Vector2Int> creatureChunks = new List<Vector2Int>();
-    public List<int> guideKinds = new List<int>();
+    public List<int> guideKinds = new List<int>();       // creatures only; kept for older saves
+    public List<string> bookSubjects = new List<string>();
     public List<int> guideStudies = new List<int>();
+    public List<int> bookStudies = new List<int>();
 
-    public int surveysMade;
-    public float highestReached;
     public bool waypointSet;
     public Vector2Int waypointChunk;
 

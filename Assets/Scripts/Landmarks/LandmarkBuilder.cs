@@ -25,6 +25,8 @@ public static class LandmarkBuilder
         root.transform.position = placement.Position;
         root.transform.rotation = Quaternion.Euler(0f, placement.Yaw, 0f);
 
+        LandmarkTag.Attach(root, placement.Kind, placement.Chunk);
+
         var rng = new System.Random(placement.Chunk.x * 73856093 ^ placement.Chunk.y * 19349663 ^ ((int)placement.Kind * 977));
 
         switch (placement.Kind)
