@@ -106,13 +106,15 @@ public class Journal : MonoBehaviour
         cardGo.transform.SetParent(panel.transform, false);
 
         var card = cardGo.AddComponent<RawImage>();
-        card.texture = ParchmentPanel.Create(448, 512);
+        card.texture = ParchmentPanel.Create(760, 840);
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = new Vector2(0.5f, 0.5f);
         cardRect.anchorMax = new Vector2(0.5f, 0.5f);
         cardRect.pivot = new Vector2(0.5f, 0.5f);
         cardRect.sizeDelta = new Vector2(760f, 840f);
+
+        ParchmentPanel.Shade(cardRect, 42f);
 
         var textGo = new GameObject("Body");
         textGo.transform.SetParent(cardGo.transform, false);

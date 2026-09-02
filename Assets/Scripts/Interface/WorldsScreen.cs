@@ -233,7 +233,7 @@ public class WorldsScreen : MonoBehaviour
         cardGo.transform.SetParent(panel.transform, false);
 
         var paper = cardGo.AddComponent<RawImage>();
-        paper.texture = ParchmentPanel.Create(400, 430);
+        paper.texture = ParchmentPanel.Create(800, 860);
 
         // Adding a UI graphic swaps the plain Transform for a RectTransform and
         // throws the old one out, so the card is only worth holding on to once
@@ -242,6 +242,8 @@ public class WorldsScreen : MonoBehaviour
         card = cardGo.transform;
 
         Centre(cardGo.GetComponent<RectTransform>(), Vector2.zero, new Vector2(800f, 860f));
+
+        ParchmentPanel.Shade(cardGo.GetComponent<RectTransform>(), 42f);
 
         heading = Label("Heading", card, 24f, new Vector2(0f, 356f), new Vector2(700f, 90f));
 

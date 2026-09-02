@@ -377,7 +377,7 @@ public class FieldGuideScreen : MonoBehaviour
         cardGo.transform.SetParent(panel.transform, false);
 
         var paper = cardGo.AddComponent<RawImage>();
-        paper.texture = ParchmentPanel.Create(380, 460);
+        paper.texture = ParchmentPanel.Create(920, 940);
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -385,9 +385,27 @@ public class FieldGuideScreen : MonoBehaviour
         cardRect.pivot = new Vector2(0.5f, 0.5f);
         cardRect.sizeDelta = new Vector2(920f, 940f);
 
-        blank = ParchmentPanel.Create(64, 48);
+        ParchmentPanel.Shade(cardRect, 46f);
+
+        blank = ParchmentPanel.Create(190, 143, false);
 
         heading = Label("Heading", cardGo.transform, 30f, new Vector2(0f, -40f), new Vector2(800f, 84f));
+
+        // a rule under the heading, the way a page of a book is headed
+        var ruleGo = new GameObject("Heading rule");
+        ruleGo.transform.SetParent(cardGo.transform, false);
+
+        var rule = ruleGo.AddComponent<RawImage>();
+        rule.texture = Texture2D.whiteTexture;
+        rule.color = new Color(0.29f, 0.24f, 0.17f, 0.35f);
+        rule.raycastTarget = false;
+
+        var ruleRect = ruleGo.GetComponent<RectTransform>();
+        ruleRect.anchorMin = new Vector2(0.5f, 1f);
+        ruleRect.anchorMax = new Vector2(0.5f, 1f);
+        ruleRect.pivot = new Vector2(0.5f, 1f);
+        ruleRect.sizeDelta = new Vector2(660f, 2f);
+        ruleRect.anchoredPosition = new Vector2(0f, -122f);
 
         // the big drawing on a subject's page
         var plateGo = new GameObject("Plate");

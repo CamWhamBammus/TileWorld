@@ -79,6 +79,7 @@ public class Sketching : MonoBehaviour
     private TMP_FontAsset font;
 
     private GameObject finder;       // the frame the page will take
+    private GameObject cardShadow, sheetShadow;
     private GameObject sheet;        // the drawing, held up for a moment after
     private RawImage page;
     private float showUntil;
@@ -134,6 +135,16 @@ public class Sketching : MonoBehaviour
 
             bool up = sheetFade > 0.02f;
             if (sheet.activeSelf != up) sheet.SetActive(up);
+
+            if (sheetShadow != null)
+            {
+                if (sheetShadow.activeSelf != up) sheetShadow.SetActive(up);
+
+                var shade = sheetShadow.GetComponent<RawImage>();
+                var colour = shade.color;
+                colour.a = sheetFade;
+                shade.color = colour;
+            }
         }
 
         // Nothing is drawn with a screen open in front of your face.
@@ -575,6 +586,16 @@ public class Sketching : MonoBehaviour
         bool up = on || fade > 0.02f;
 
         if (panel.activeSelf != up) panel.SetActive(up);
+
+        if (cardShadow != null)
+        {
+            if (cardShadow.activeSelf != up) cardShadow.SetActive(up);
+
+            var shade = cardShadow.GetComponent<RawImage>();
+            var colour = shade.color;
+            colour.a = fade;
+            shade.color = colour;
+        }
     }
 
     private void Refresh(string trouble)
@@ -680,6 +701,10 @@ public class Sketching : MonoBehaviour
         rect.sizeDelta = new Vector2(460f, 96f);
         rect.anchoredPosition = new Vector2(0f, 120f);
 
+        // The card is the thing that gets shown and hidden, so its shadow has
+        // to be shown and hidden with it rather than left lying on the screen.
+        cardShadow = ParchmentPanel.Shade(rect, 30f);
+
         // the line the drawing fills in
         var trackGo = new GameObject("Track");
         trackGo.transform.SetParent(panel.transform, false);
@@ -745,7 +770,7 @@ public class Sketching : MonoBehaviour
         sheet.transform.SetParent(canvasGo.transform, false);
 
         var mount = sheet.AddComponent<RawImage>();
-        mount.texture = ParchmentPanel.Create(200, 170);
+        mount.texture = ParchmentPanel.Create(400, 340);
 
         var sheetRect = sheet.GetComponent<RectTransform>();
         sheetRect.anchorMin = new Vector2(1f, 0f);
@@ -753,6 +778,8 @@ public class Sketching : MonoBehaviour
         sheetRect.pivot = new Vector2(1f, 0f);
         sheetRect.sizeDelta = new Vector2(400f, 340f);
         sheetRect.anchoredPosition = new Vector2(-40f, 120f);
+
+        sheetShadow = ParchmentPanel.Shade(sheetRect, 30f);
 
         var pageGo = new GameObject("Page");
         pageGo.transform.SetParent(sheet.transform, false);

@@ -116,13 +116,15 @@ public class PauseMenu : MonoBehaviour
         cardGo.transform.SetParent(panel.transform, false);
 
         var card = cardGo.AddComponent<RawImage>();
-        card.texture = ParchmentPanel.Create(384, 448);
+        card.texture = ParchmentPanel.Create(560, 640);
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = new Vector2(0.5f, 0.5f);
         cardRect.anchorMax = new Vector2(0.5f, 0.5f);
         cardRect.pivot = new Vector2(0.5f, 0.5f);
         cardRect.sizeDelta = new Vector2(560f, 640f);
+
+        ParchmentPanel.Shade(cardRect, 38f);
 
         readout = Label("Readout", cardGo.transform, 21f, new Vector2(0f, 150f), new Vector2(470f, 300f));
         readout.alignment = TextAlignmentOptions.Top;
