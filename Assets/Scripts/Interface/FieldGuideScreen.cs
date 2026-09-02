@@ -132,7 +132,7 @@ public class FieldGuideScreen : MonoBehaviour
         contents.SetActive(false);
         plate.gameObject.SetActive(false);
 
-        Room(true);
+        Room(Shape.Notes);
 
         heading.text = "<size=125%><b><color=" + Ink + ">NOTICED</color></b></size>\n"
                      + "<size=80%><color=" + Dim + ">" + Notebook.Count + " of "
@@ -168,16 +168,39 @@ public class FieldGuideScreen : MonoBehaviour
         body.text = text.ToString();
     }
 
-    /// <summary>The notes want the whole page; a subject's page leaves room for its drawing.</summary>
-    private void Room(bool wide)
+    private enum Shape { Entry, Notes, Contents }
+
+    /// <summary>
+    /// Where the text sits, which differs by page: the notes want the whole
+    /// sheet, an entry leaves the top of it to the drawing, and the contents
+    /// has two rows of thumbnails to keep clear of.
+    /// </summary>
+    private void Room(Shape shape)
     {
         var rect = body.rectTransform;
 
-        rect.sizeDelta = new Vector2(800f, wide ? 700f : 372f);
-        rect.anchoredPosition = new Vector2(0f, wide ? -140f : -498f);
+        switch (shape)
+        {
+            case Shape.Notes:
+                rect.sizeDelta = new Vector2(800f, 700f);
+                rect.anchoredPosition = new Vector2(0f, -140f);
+                body.fontSizeMax = 21f;
+                break;
+
+            case Shape.Contents:
+                rect.sizeDelta = new Vector2(800f, 250f);
+                rect.anchoredPosition = new Vector2(0f, -600f);
+                body.fontSizeMax = 21f;
+                break;
+
+            default:
+                rect.sizeDelta = new Vector2(800f, 372f);
+                rect.anchoredPosition = new Vector2(0f, -498f);
+                body.fontSizeMax = 23f;
+                break;
+        }
 
         body.alignment = TextAlignmentOptions.TopLeft;
-        body.fontSizeMax = wide ? 21f : 23f;
     }
 
     private void Contents()
@@ -185,7 +208,7 @@ public class FieldGuideScreen : MonoBehaviour
         contents.SetActive(true);
         plate.gameObject.SetActive(false);
 
-        Room(false);
+        Room(Shape.Contents);
 
         heading.text = "<size=125%><b><color=" + Ink + ">FIELD SKETCHBOOK</color></b></size>\n"
                      + "<size=80%><color=" + Dim + ">" + FieldGuide.Entries + " of 8 entries finished, "
@@ -218,7 +241,7 @@ public class FieldGuideScreen : MonoBehaviour
     {
         contents.SetActive(false);
 
-        Room(false);
+        Room(Shape.Entry);
 
         var drawing = SketchBook.Of(subject);
 
@@ -368,10 +391,10 @@ public class FieldGuideScreen : MonoBehaviour
         contentsRect.offsetMin = Vector2.zero;
         contentsRect.offsetMax = Vector2.zero;
 
-        Label("Row creatures", contents.transform, 19f, new Vector2(0f, -96f), new Vector2(800f, 28f))
+        Label("Row creatures", contents.transform, 19f, new Vector2(0f, -136f), new Vector2(800f, 28f))
             .text = "<color=" + Dim + ">THE CREATURES OF THIS COUNTRY</color>";
 
-        Label("Row built", contents.transform, 19f, new Vector2(0f, -296f), new Vector2(800f, 28f))
+        Label("Row built", contents.transform, 19f, new Vector2(0f, -366f), new Vector2(800f, 28f))
             .text = "<color=" + Dim + ">WHAT WAS BUILT IN IT</color>";
 
         thumbs = new RawImage[8];
@@ -392,10 +415,10 @@ public class FieldGuideScreen : MonoBehaviour
             rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
             rect.sizeDelta = new Vector2(190f, 143f);
-            rect.anchoredPosition = new Vector2((column - 1.5f) * 200f, -128f - row * 200f);
+            rect.anchoredPosition = new Vector2((column - 1.5f) * 200f, -172f - row * 230f);
 
             thumbNames[i] = Label("Thumb name " + i, contents.transform, 19f,
-                                  new Vector2((column - 1.5f) * 200f, -278f - row * 200f),
+                                  new Vector2((column - 1.5f) * 200f, -320f - row * 230f),
                                   new Vector2(196f, 30f));
         }
 
@@ -408,7 +431,7 @@ public class FieldGuideScreen : MonoBehaviour
         body.fontSizeMin = 16f;
         body.fontSizeMax = 23f;
 
-        footer = Label("Footer", cardGo.transform, 19f, new Vector2(0f, -886f), new Vector2(800f, 40f));
+        footer = Label("Footer", cardGo.transform, 19f, new Vector2(0f, -872f), new Vector2(800f, 36f));
 
         panel.SetActive(false);
     }
