@@ -30,6 +30,11 @@ public class WorldSave
     public List<string> bookSubjects = new List<string>();
     public List<int> guideStudies = new List<int>();
     public List<int> bookStudies = new List<int>();
+    public List<string> drawingKeys = new List<string>();
+    public List<float> drawingQuality = new List<float>();
+    public List<string> drawingVerdict = new List<string>();
+    public List<string> drawingWhen = new List<string>();
+
     public List<string> noticed = new List<string>();       // id, then where, then when
     public List<string> noticedWhere = new List<string>();
     public List<string> noticedWhen = new List<string>();

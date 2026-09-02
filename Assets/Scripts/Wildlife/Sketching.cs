@@ -54,6 +54,7 @@ public class Sketching : MonoBehaviour
     private RectTransform fill;
     private TMP_FontAsset font;
 
+    private GameObject finder;       // the frame the page will take
     private GameObject sheet;        // the drawing, held up for a moment after
     private RawImage page;
     private TMP_Text caption;
@@ -103,6 +104,10 @@ public class Sketching : MonoBehaviour
 
         var candidate = Nearest(true);
 
+        if (finder != null) finder.SetActive(candidate.Any);
+
+        var candidateStanding = candidate.Any ? SketchBook.Made(candidate.What) : null;
+
         if (!candidate.Any || (candidate.What.Wild && !Stalking.Steady))
         {
             // A drawing left half done is worth nothing, but it fades rather
@@ -111,8 +116,9 @@ public class Sketching : MonoBehaviour
 
             if (progress <= 0.01f) subject = default;
 
-            Show(progress > 0.01f);
-            Refresh(!candidate.Any ? "keep it in sight" : "hold still");
+            Show(candidate.Any);
+            Refresh(!candidate.Any ? "keep it in sight"
+                                   : Composition(candidate, candidateStanding) ?? "hold still");
 
             return;
         }
@@ -123,41 +129,112 @@ public class Sketching : MonoBehaviour
             progress = 0f;
         }
 
-        if (FieldGuide.Has(subject.What, FieldGuide.Study.Sketch))
-        {
-            Show(false);
-            return;
-        }
+        // A subject already drawn can be drawn again: the book keeps whichever
+        // of the two is the better, so there is a reason to go back.
+        var standing = SketchBook.Made(subject.What);
 
         progress = Mathf.MoveTowards(progress, 1f, Time.deltaTime / seconds);
 
         Show(true);
-        Refresh(null);
+        Refresh(Composition(subject, standing));
 
         if (progress >= 1f)
         {
-            // The drawing is of this one, from here, as it stands.
-            var drawing = SketchBook.Draw(subject.What, subject.Body, Eye());
+            // The drawing is of this one, from here, as you framed it.
+            var made = SketchBook.Draw(subject.What, subject.Body, Eye());
 
-            if (FieldGuide.Record(subject.What, FieldGuide.Study.Sketch))
+            bool first = FieldGuide.Record(subject.What, FieldGuide.Study.Sketch);
+
+            if (made != null)
             {
-                Notices.Show("You draw the " + subject.What.Name
-                           + "  ·  " + FieldGuide.Entries + "/8 entries done");
+                if (SketchBook.Beaten)
+                {
+                    Notices.Show(made.Verdict + " — the book keeps the better one you had");
+                }
+                else
+                {
+                    Notices.Show((first ? "You draw the " + subject.What.Name + " — " : "")
+                               + made.Verdict + (first ? "" : ", better than before"));
+                }
 
                 Ambience.Instance?.Click(1.15f);
-            }
 
-            if (drawing != null)
-            {
-                page.texture = drawing;
-                caption.text = "the " + subject.What.Name + "  ·  G for the book";
-                showUntil = Time.time + 4.5f;
+                var kept = SketchBook.Of(subject.What);
+
+                if (kept != null)
+                {
+                    page.texture = kept;
+                    caption.text = made.Verdict + "  ·  G for the book";
+                    showUntil = Time.time + 4.5f;
+                }
             }
 
             progress = 0f;
             subject = default;
             Show(false);
         }
+    }
+
+    /// <summary>
+    /// What is wrong with the picture as it stands, while you can still do
+    /// something about it. Null when there is nothing worth saying, which is
+    /// the game's way of telling you to hold where you are.
+    /// </summary>
+    private string Composition(Quarry quarry, SketchBook.Page standing)
+    {
+        var camera = Eye();
+
+        if (camera == null || !quarry.Any) return null;
+
+        var bounds = new Bounds(quarry.Body.position, Vector3.one * 0.1f);
+
+        foreach (var piece in quarry.Body.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
+
+        // the page takes the middle of your view, four across by three down
+        float pageHigh = Screen.height;
+        float pageWide = pageHigh * 4f / 3f;
+        float left = (Screen.width - pageWide) * 0.5f;
+
+        var min = new Vector2(float.MaxValue, float.MaxValue);
+        var max = new Vector2(float.MinValue, float.MinValue);
+
+        for (int i = 0; i < 8; i++)
+        {
+            var corner = new Vector3(
+                (i & 1) == 0 ? bounds.min.x : bounds.max.x,
+                (i & 2) == 0 ? bounds.min.y : bounds.max.y,
+                (i & 4) == 0 ? bounds.min.z : bounds.max.z);
+
+            Vector3 dot = camera.WorldToScreenPoint(corner);
+
+            if (dot.z <= 0f) return "it is behind you";
+
+            min = Vector2.Min(min, dot);
+            max = Vector2.Max(max, dot);
+        }
+
+        float fill = ((max.x - min.x) * (max.y - min.y)) / (pageWide * pageHigh);
+
+        if (min.x < left || max.x > left + pageWide || min.y < 0f || max.y > pageHigh)
+            return "some of it is off the page";
+
+        if (fill < 0.02f) return "too far off to draw well";
+        if (fill > 0.45f) return "too close, it crowds the paper";
+
+        Vector3 facing = quarry.Body.forward;
+        facing.y = 0f;
+        Vector3 view = camera.transform.forward;
+        view.y = 0f;
+
+        if (facing.sqrMagnitude > 0.01f
+            && 1f - Mathf.Abs(Vector3.Dot(facing.normalized, view.normalized)) < 0.25f)
+        {
+            return "get round to one side of it";
+        }
+
+        if (standing != null) return "your best is " + standing.Verdict;
+
+        return null;
     }
 
     /// <summary>
@@ -379,6 +456,33 @@ public class Sketching : MonoBehaviour
 
         label = Label("Label", panel.transform, 21f, new Vector2(0f, 14f), new Vector2(400f, 44f));
 
+        // The frame the page will take. Corners only: a full box across the
+        // middle of the screen would be a nuisance to look through.
+        finder = new GameObject("Finder");
+        finder.transform.SetParent(canvasGo.transform, false);
+
+        var finderRect = finder.AddComponent<RectTransform>();
+        finderRect.anchorMin = new Vector2(0.5f, 0f);
+        finderRect.anchorMax = new Vector2(0.5f, 1f);
+        finderRect.pivot = new Vector2(0.5f, 0.5f);
+        finderRect.offsetMin = new Vector2(0f, 0f);
+        finderRect.offsetMax = new Vector2(0f, 0f);
+
+        var fit = finder.AddComponent<AspectRatioFitter>();
+        fit.aspectMode = AspectRatioFitter.AspectMode.HeightControlsWidth;
+        fit.aspectRatio = 4f / 3f;
+
+        for (int corner = 0; corner < 4; corner++)
+        {
+            float ax = (corner % 2 == 0) ? 0f : 1f;
+            float ay = (corner < 2) ? 1f : 0f;
+
+            Bracket(finder.transform, ax, ay, new Vector2(64f, 4f));
+            Bracket(finder.transform, ax, ay, new Vector2(4f, 64f));
+        }
+
+        finder.SetActive(false);
+
         // the drawing itself, held up for a few seconds once it is finished
         sheet = new GameObject("Sheet");
         sheet.transform.SetParent(canvasGo.transform, false);
@@ -411,6 +515,25 @@ public class Sketching : MonoBehaviour
 
         sheet.SetActive(false);
         panel.SetActive(false);
+    }
+
+    /// <summary>One arm of a corner mark.</summary>
+    private void Bracket(Transform parent, float ax, float ay, Vector2 size)
+    {
+        var go = new GameObject("Bracket");
+        go.transform.SetParent(parent, false);
+
+        var mark = go.AddComponent<RawImage>();
+        mark.texture = Texture2D.whiteTexture;
+        mark.color = new Color(0.94f, 0.91f, 0.84f, 0.55f);
+        mark.raycastTarget = false;
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(ax, ay);
+        rect.anchorMax = new Vector2(ax, ay);
+        rect.pivot = new Vector2(ax, ay);
+        rect.sizeDelta = size;
+        rect.anchoredPosition = new Vector2(ax == 0f ? 18f : -18f, ay == 0f ? 18f : -18f);
     }
 
     private TMP_Text Label(string name, Transform parent, float size, Vector2 at, Vector2 area)

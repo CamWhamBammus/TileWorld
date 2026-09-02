@@ -96,6 +96,14 @@ public class SaveCoordinator : MonoBehaviour
 
         SketchBook.Reopen();
 
+        for (int i = 0; i < data.drawingKeys.Count; i++)
+        {
+            SketchBook.Remember(data.drawingKeys[i],
+                i < data.drawingQuality.Count ? data.drawingQuality[i] : 0.5f,
+                i < data.drawingVerdict.Count ? data.drawingVerdict[i] : "",
+                i < data.drawingWhen.Count ? data.drawingWhen[i] : "");
+        }
+
         if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(data.timeOfDay);
 
         if (data.waypointSet) Waypoint.Set(data.waypointChunk);
@@ -141,6 +149,10 @@ public class SaveCoordinator : MonoBehaviour
         data.guideStudies.Clear();
         data.bookSubjects.Clear();
         data.bookStudies.Clear();
+        data.drawingKeys.Clear();
+        data.drawingQuality.Clear();
+        data.drawingVerdict.Clear();
+        data.drawingWhen.Clear();
         data.noticed.Clear();
         data.noticedWhere.Clear();
         data.noticedWhen.Clear();
@@ -163,6 +175,14 @@ public class SaveCoordinator : MonoBehaviour
         {
             data.creaturesSeen.Add((int)kind);
             data.creatureChunks.Add(SightingLog.FirstSeen(kind, out var chunk) ? chunk : Vector2Int.zero);
+        }
+
+        foreach (var pair in SketchBook.Shelf)
+        {
+            data.drawingKeys.Add(pair.Key);
+            data.drawingQuality.Add(pair.Value.Quality);
+            data.drawingVerdict.Add(pair.Value.Verdict);
+            data.drawingWhen.Add(pair.Value.When);
         }
 
         foreach (var entry in Notebook.All)

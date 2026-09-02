@@ -243,7 +243,8 @@ public class FieldGuideScreen : MonoBehaviour
 
         Room(Shape.Entry);
 
-        var drawing = SketchBook.Of(subject);
+        var made = SketchBook.Made(subject);
+        var drawing = made != null ? made.Paper : null;
 
         plate.gameObject.SetActive(true);
         plate.texture = drawing != null ? drawing : blank;
@@ -257,7 +258,9 @@ public class FieldGuideScreen : MonoBehaviour
                      + (met ? subject.Name.ToUpper() : "NOT YET FOUND")
                      + "</color></b></size>\n<size=80%><color=" + Dim + ">"
                      + FieldGuide.Count(subject) + " of " + wants.Length + " done"
-                     + (drawing == null ? "  ·  no drawing yet" : "")
+                     + (made == null ? "  ·  no drawing yet"
+                                     : "  ·  " + made.Verdict
+                                       + (string.IsNullOrEmpty(made.When) ? "" : ", " + made.When))
                      + "  ·  " + FieldGuide.Where(subject) + "</color></size>";
 
         var text = new System.Text.StringBuilder();

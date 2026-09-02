@@ -18,25 +18,54 @@ public static class SketchBook
     public const int Width = 320;
     public const int Height = 240;
 
-    private static readonly Dictionary<string, Texture2D> drawings =
-        new Dictionary<string, Texture2D>();
+    /// <summary>A drawing, and what is worth remembering about the making of it.</summary>
+    public class Page
+    {
+        public Texture2D Paper;
+        public float Quality;        // nought to one
+        public string Verdict;
+        public string When;
+        public string Where;
+    }
+
+    private static readonly Dictionary<string, Page> drawings = new Dictionary<string, Page>();
 
     private static readonly Color Paper = new Color(0.902f, 0.855f, 0.749f);
     private static readonly Color Ink = new Color(0.204f, 0.161f, 0.114f);
 
-    public static Texture2D Of(Subject subject)
+    public static Page Made(Subject subject)
     {
         return drawings.TryGetValue(subject.Key, out var found) ? found : null;
     }
 
+    public static Texture2D Of(Subject subject)
+    {
+        var page = Made(subject);
+
+        return page != null ? page.Paper : null;
+    }
+
     public static bool Has(Subject subject) => Of(subject) != null;
+
+    /// <summary>Every drawing on the shelf, for writing the save out.</summary>
+    public static IEnumerable<KeyValuePair<string, Page>> Shelf => drawings;
+
+    /// <summary>What was thought of a drawing, put back after it is read in.</summary>
+    public static void Remember(string key, float quality, string verdict, string when)
+    {
+        if (!drawings.TryGetValue(key, out var page)) return;
+
+        page.Quality = quality;
+        page.Verdict = verdict;
+        page.When = when;
+    }
 
     /// <summary>
     /// Draws the animal. It is rendered on its own against nothing, so the
     /// hillside behind it does not end up in the drawing, then reduced to a
     /// line where its edges are and a wash where it is dark.
     /// </summary>
-    public static Texture2D Draw(Subject subject, Transform what, Camera eye)
+    public static Page Draw(Subject subject, Transform what, Camera eye)
     {
         if (what == null || eye == null) return null;
 
@@ -56,20 +85,11 @@ public static class SketchBook
         studio.clearFlags = CameraClearFlags.SolidColor;
         studio.backgroundColor = new Color(0f, 0f, 0f, 0f);
 
-        // Frame the whole of it, from where the player was standing. Aiming at
-        // the head and guessing a width put half the animal off the page, and
-        // a long one like the fox lost its legs.
-        var bounds = new Bounds(what.position, Vector3.one * 0.1f);
-
-        foreach (var piece in what.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(piece.bounds);
-
-        Vector3 centre = bounds.center;
-        float away = Vector3.Distance(eye.transform.position, centre);
-        float radius = bounds.extents.magnitude * 1.12f;      // a margin of paper round it
-
-        studio.transform.position = eye.transform.position;
-        studio.transform.rotation = Quaternion.LookRotation(centre - eye.transform.position);
-        studio.fieldOfView = Mathf.Clamp(2f * Mathf.Atan2(radius, Mathf.Max(0.5f, away)) * Mathf.Rad2Deg, 4f, 70f);
+        // The page takes what you were looking at, from where you were looking
+        // at it. Framing it for the player made every drawing the same drawing:
+        // it is worth having only if standing in the right place was your doing.
+        studio.transform.SetPositionAndRotation(eye.transform.position, eye.transform.rotation);
+        studio.fieldOfView = eye.fieldOfView;
 
         studio.Render();
 
@@ -88,14 +108,129 @@ public static class SketchBook
 
         Restore(was);
 
+        var judged = Judge(shot, what, eye);
         var drawing = ToInk(shot);
-        Object.Destroy(shot);
 
-        drawings[subject.Key] = drawing;
+        Object.Destroy(shot);
+        Restored(subject, drawing, judged);
+
+        return judged;
+    }
+
+    /// <summary>
+    /// A worse drawing never replaces a better one. Going back to a subject you
+    /// made a poor job of is the whole reason the book says how good it was.
+    /// </summary>
+    private static void Restored(Subject subject, Texture2D drawing, Page judged)
+    {
+        var standing = Made(subject);
+
+        judged.Paper = drawing;
+        judged.When = TimeOfDay.Instance != null ? TimeOfDay.Instance.Clock() : "";
+
+        if (standing != null && standing.Quality >= judged.Quality)
+        {
+            judged.Verdict = "not as good as the one you have";
+            beaten = true;
+
+            Object.Destroy(drawing);
+            return;
+        }
+
+        beaten = false;
+        drawings[subject.Key] = judged;
 
         Write(subject, drawing);
+    }
 
-        return drawing;
+    /// <summary>Whether the last drawing was thrown away for being the worse of the two.</summary>
+    public static bool Beaten => beaten;
+
+    private static bool beaten;
+
+    /// <summary>
+    /// What the drawing is worth. How much of the paper it fills, whether it
+    /// sits on the page or runs off the edge of it, and whether you caught the
+    /// side of the animal or the back end of it going away.
+    /// </summary>
+    private static Page Judge(Texture2D shot, Transform what, Camera eye)
+    {
+        var pixels = shot.GetPixels();
+
+        int covered = 0, minX = Width, maxX = 0, minY = Height, maxY = 0;
+        long sumX = 0, sumY = 0;
+
+        for (int y = 0; y < Height; y++)
+        for (int x = 0; x < Width; x++)
+        {
+            if (pixels[y * Width + x].a < 0.5f) continue;
+
+            covered++;
+            sumX += x;
+            sumY += y;
+
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+
+        var page = new Page();
+
+        if (covered == 0)
+        {
+            page.Quality = 0f;
+            page.Verdict = "nothing on the page at all";
+            return page;
+        }
+
+        float fill = covered / (float)(Width * Height);
+
+        // Best when it fills a good part of the sheet without crowding it.
+        // Measured rather than guessed: a goat at seven paces covers about two
+        // percent of the page, a deer at five about seven, and the wariest of
+        // them will not let you much closer than that.
+        float size = Mathf.Clamp01(Mathf.InverseLerp(0.012f, 0.05f, fill))
+                   * Mathf.Clamp01(Mathf.InverseLerp(0.30f, 0.15f, fill));
+
+        bool cut = minX <= 1 || minY <= 1 || maxX >= Width - 2 || maxY >= Height - 2;
+
+        float driftX = Mathf.Abs((sumX / (float)covered) / Width - 0.5f) * 2f;
+        float driftY = Mathf.Abs((sumY / (float)covered) / Height - 0.5f) * 2f;
+        float centred = 1f - Mathf.Clamp01(Mathf.Max(driftX, driftY));
+
+        // side on tells you what a thing is; head on or going away does not
+        Vector3 facing = what.forward;
+        facing.y = 0f;
+        Vector3 view = eye.transform.forward;
+        view.y = 0f;
+
+        float side = facing.sqrMagnitude > 0.001f && view.sqrMagnitude > 0.001f
+            ? 1f - Mathf.Abs(Vector3.Dot(facing.normalized, view.normalized))
+            : 0.5f;
+
+        // Size multiplies rather than adds: a well composed speck is still a
+        // speck, and was scoring half marks when it counted for a share of the
+        // total instead of against all of it.
+        float judgement = 0.4f + centred * 0.25f + side * 0.35f;
+
+        float quality = judgement * (0.25f + 0.75f * size);
+
+        // Losing a leg off the edge spoils a drawing however well judged the
+        // rest of it is, so it costs a good deal rather than a tenth.
+        if (cut) quality *= 0.68f;
+
+        page.Quality = Mathf.Clamp01(quality);
+
+        if (cut) page.Verdict = "it runs off the edge of the page";
+        else if (fill < 0.02f) page.Verdict = "a small thing at that distance";
+        else if (fill > 0.24f) page.Verdict = "it crowds the paper";
+        else if (side < 0.3f) page.Verdict = "caught end on, which tells you little";
+        else if (page.Quality > 0.78f) page.Verdict = "a fine likeness";
+        else if (page.Quality > 0.55f) page.Verdict = "a good likeness";
+        else page.Verdict = "a fair likeness";
+
+        return page;
     }
 
     /// <summary>Ink where the edges are, a wash where the animal is dark, paper elsewhere.</summary>
@@ -241,7 +376,10 @@ public static class SketchBook
 
                 var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
 
-                if (texture.LoadImage(System.IO.File.ReadAllBytes(path))) drawings[subject.Key] = texture;
+                if (texture.LoadImage(System.IO.File.ReadAllBytes(path)))
+                {
+                    drawings[subject.Key] = new Page { Paper = texture, Quality = 0.5f, Verdict = "" };
+                }
             }
         }
         catch (System.Exception e)
