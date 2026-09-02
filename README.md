@@ -73,7 +73,7 @@ Drawing is something you can be good at. A frame shows what the page will take, 
 
 The drawing is a real one. When you finish, the animal is caught as it stands - from where you were, at the angle you saw it, in the pose it was in - and worked over into ink and hatching on the same paper the map is drawn on. It is held up for a moment, then kept in the guide and written out beside the world, so the deer in your book is the deer you stood in front of and nobody else's is quite the same.
 
-Drawing is the part you do rather than wait for. Get near enough, keep it in sight, and stand still: the drawing fills in over a few seconds and any real movement spoils it. How near you can get is up to you, because how wary an animal is now depends on how you are moving. Come along at a run and a deer is gone before you have seen it; walk, or stand and let it settle, and it will let you much closer. An animal that has noticed you holds your eye rather than bolting, and that is the moment to draw it.
+Drawing is the part you do rather than wait for. Hold F with the thing in front of you and the page fills in over a few seconds; let go, or walk off, and it does not. Get near enough, keep it in sight, and stand still: the drawing fills in over a few seconds and any real movement spoils it. How near you can get is up to you, because how wary an animal is now depends on how you are moving. Come along at a run and a deer is gone before you have seen it; walk, or stand and let it settle, and it will let you much closer. An animal that has noticed you holds your eye rather than bolting, and that is the moment to draw it.
 
 A ruin's entry wants two, and asks the opposite of you: stand far enough back to fit the whole of it on the page, and then go in and read what somebody cut into the stone there. Drawing a watchtower is a matter of finding the view of it, not of holding your breath.
 
@@ -105,7 +105,7 @@ Lakes are deep enough to swim in. Walk into one and you float at the surface rat
 - E to rest at a landmark you have found, once it is dark
 - Scroll to zoom the map, F9 to save it as an image
 - J for the field journal, F3 for world statistics
-- G for the field guide, and stand still near a creature to draw it
+- G for the sketchbook, and hold F to draw whatever you are looking at
 - Click the map to mark a spot, right click to clear it
 - Escape backs out of whatever is open, then pauses
 

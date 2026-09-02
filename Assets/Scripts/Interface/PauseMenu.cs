@@ -224,6 +224,6 @@ public class PauseMenu : MonoBehaviour
             time + "\n\n" +
             "draw distance " + radius + " chunks (" + (int)(int.Parse(radius == "-" ? "0" : radius) * 30) + "m)\n" +
             "day length " + day + " min\n\n" +
-            "<size=85%>Esc to go back  ·  M map  ·  G sketchbook  ·  J journal</size>";
+            "<size=85%>Esc to go back  ·  M map  ·  G sketchbook  ·  J journal  ·  F to draw</size>";
     }
 }

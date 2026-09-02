@@ -28,6 +28,9 @@ public class Sketching : MonoBehaviour
 
     [SerializeField] private float seconds = 4.2f;
 
+    [Tooltip("Held down to draw. Doing it merely by standing still was not something anybody was going to guess.")]
+    [SerializeField] private KeyCode drawKey = KeyCode.F;
+
     private ChunkManager world;
     private Transform player;
     private Camera eye;
@@ -164,8 +167,9 @@ public class Sketching : MonoBehaviour
         unsteady = Stalking.Steady ? 0f : unsteady + Time.deltaTime;
 
         bool steady = !working.What.Wild || unsteady < 0.35f;
+        bool drawing = Input.GetKey(drawKey);
 
-        if (!have || !steady)
+        if (!have || !steady || !drawing)
         {
             // A drawing left half done is worth nothing, but it fades rather
             // than snapping away, so a moment's wobble is not fatal.
@@ -174,7 +178,10 @@ public class Sketching : MonoBehaviour
             if (progress <= 0.01f && holding <= 0f) subject = default;
 
             Show(have);
-            Refresh(!have ? "keep it in sight" : "hold still");
+
+            if (!have) Refresh("keep it in sight");
+            else if (!steady) Refresh("hold still");
+            else Refresh("hold " + drawKey + " to draw the " + working.What.Name);
 
             return;
         }

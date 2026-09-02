@@ -134,8 +134,8 @@ public static class FieldGuide
         {
             case Study.Sketch:
                 return subject.Wild
-                    ? "walk up slowly - running frightens them off sooner - then stand still and keep it in view until the drawing fills"
-                    : "back away until the whole of it fits in front of you, then stand still and keep it in view";
+                    ? "walk up slowly - running frightens them off sooner - then stand still and hold F until the drawing fills"
+                    : "back away until the whole of it fits in front of you, then hold F";
 
             case Study.Habit:
                 return "you have to be near enough to see it happen; it cannot be looked up";
