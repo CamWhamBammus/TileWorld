@@ -16,10 +16,13 @@ public class SimpleFollowCamera : MonoBehaviour
     public float maxPitch = 70f;
 
     [Tooltip("How far the camera keeps off the ground, since looking up swings it low behind you.")]
-    public float clearance = 0.8f;
+    public float clearance = 0.45f;
 
-    [Tooltip("How far above the player it aims when looking up as far as it goes.")]
-    public float lift = 9f;
+    [Tooltip("How far above the player it aims when looking up as far as it goes. Kept small: aim far over their head and the player slides out of shot and the whole thing appears to swing around a point in mid air.")]
+    public float lift = 1.7f;
+
+    [Tooltip("How much the camera closes in as it looks up, so it can get low without meeting the ground.")]
+    public float drawIn = 0.88f;
 
     private Vector3 velocity;
     private float yaw;
@@ -57,7 +60,13 @@ public class SimpleFollowCamera : MonoBehaviour
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
 
         Vector3 pivot = target.position + Vector3.up * 1.4f;
-        Vector3 desiredPosition = target.position + rotation * offset;
+
+        // Coming in closer as it looks up lets the camera get below the player
+        // without burying itself in the hillside, which is what the ground
+        // clamp was otherwise fighting.
+        float raised = Mathf.InverseLerp(0f, minPitch, pitch);
+
+        Vector3 desiredPosition = target.position + rotation * (offset * Mathf.Lerp(1f, drawIn, raised));
 
         // Looking up swings the camera low behind the player, which put it
         // inside the hill. A ray from the player cannot help here — on a slope
@@ -81,8 +90,6 @@ public class SimpleFollowCamera : MonoBehaviour
         // below you, and the ground is in the way. So past level it also raises
         // where it is aiming, and at the top of its travel it is looking well
         // over the player's head rather than at it.
-        float lifting = Mathf.InverseLerp(0f, minPitch, pitch);
-
-        transform.LookAt(pivot + Vector3.up * (lifting * lift));
+        transform.LookAt(pivot + Vector3.up * (raised * lift));
     }
 }
