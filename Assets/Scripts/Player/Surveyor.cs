@@ -91,15 +91,15 @@ public class Surveyor : MonoBehaviour
 
     private void Limbs(float dt, bool afoot, bool grounded)
     {
-        float swing = 13f + pace * 3.4f;
-        float reach = 9f + pace * 5f;
+        float swing = 20f + pace * 5.5f;
+        float reach = 16f + pace * 8f;
 
         for (int side = 0; side < 2; side++)
         {
             float phase = side == 0 ? 0f : Mathf.PI;
             float turn = gait + phase;
 
-            float hip, knee, shoulder, elbow;
+            float hip, knee, shoulder, elbow, ankle;
             float roll = 0f;
 
             if (!grounded)
@@ -107,6 +107,7 @@ public class Surveyor : MonoBehaviour
                 // legs gathered under, arms out a little
                 hip = side == 0 ? 26f : -14f;
                 knee = -42f;
+                ankle = 16f;
                 shoulder = -22f;
                 elbow = -28f;
             }
@@ -115,16 +116,21 @@ public class Surveyor : MonoBehaviour
                 hip = Mathf.Sin(turn) * swing;
                 knee = -Mathf.Max(0f, Mathf.Cos(turn)) * reach;
 
-                shoulder = -Mathf.Sin(turn) * (swing * 0.8f);
-                elbow = -18f - Mathf.Max(0f, -Mathf.Sin(turn)) * 14f;
+                // the foot lands heel first and pushes off the toe, a quarter
+                // of a stride behind the knee
+                ankle = Mathf.Sin(turn - 1.4f) * (10f + pace * 5f) - 4f;
+
+                shoulder = -Mathf.Sin(turn) * (swing * 0.62f);
+                elbow = -9f - Mathf.Max(0f, -Mathf.Sin(turn)) * (8f + pace * 2.5f);
             }
             else
             {
                 // standing: a little breath in it, and the arms hanging
-                hip = 0f;
+                hip = Mathf.Sin(Time.time * 0.55f) * 1.1f * (side == 0 ? 1f : -1f);
                 knee = 0f;
+                ankle = 0f;
                 shoulder = Mathf.Sin(Time.time * 0.9f + side) * 1.6f;
-                elbow = -10f;
+                elbow = -10f + Mathf.Sin(Time.time * 0.7f + side * 2f) * 2.5f;
             }
 
             // holding the glass up: one hand to the eye, the other steadying
@@ -138,10 +144,12 @@ public class Surveyor : MonoBehaviour
                 roll = Mathf.Lerp(roll, (holding ? -26f : -14f) * (side == 0 ? 1f : -1f), drawing);
                 hip = Mathf.Lerp(hip, 0f, drawing);
                 knee = Mathf.Lerp(knee, 0f, drawing);
+                ankle = Mathf.Lerp(ankle, 0f, drawing);
             }
 
             Turn(figure.Legs[side], hip, dt, afoot || !grounded);
             Turn(figure.Knees[side], knee, dt, afoot || !grounded);
+            Turn(figure.Ankles[side], ankle, dt, afoot || !grounded);
             Turn(figure.Arms[side], shoulder, dt, true, roll);
             Turn(figure.Elbows[side], elbow, dt, true);
         }
@@ -159,14 +167,23 @@ public class Surveyor : MonoBehaviour
 
         float lean = Mathf.Clamp(pace * 1.1f, 0f, 7f) * (1f - drawing);
 
-        figure.Root.localRotation = Quaternion.Slerp(figure.Root.localRotation,
-            Quaternion.Euler(lean, 0f, 0f), 1f - Mathf.Exp(-8f * dt));
+        // the shoulders come round with the stride and the hips roll under it,
+        // which is most of the difference between walking and being carried
+        float twist = afoot ? Mathf.Sin(gait) * (3.2f + pace * 1.8f) * (1f - drawing) : 0f;
+        float sway = afoot ? Mathf.Cos(gait) * (1.8f + pace * 1.3f) * (1f - drawing)
+                           : Mathf.Sin(Time.time * 0.55f) * 1.2f;
 
-        // the head stays level while the body leans, and dips over the glass
+        figure.Root.localRotation = Quaternion.Slerp(figure.Root.localRotation,
+            Quaternion.Euler(lean, twist, sway), 1f - Mathf.Exp(-10f * dt));
+
+        // the head holds its own line through all of that, and dips over the glass
         if (figure.Head != null)
         {
+            float about = afoot ? 0f : Mathf.Sin(Time.time * 0.31f) * 9f * (1f - drawing);
+
             figure.Head.localRotation = Quaternion.Slerp(figure.Head.localRotation,
-                Quaternion.Euler(-lean * 0.7f + drawing * 12f, 0f, 0f), 1f - Mathf.Exp(-8f * dt));
+                Quaternion.Euler(-lean * 0.7f + drawing * 12f, about - twist * 0.85f, -sway * 0.6f),
+                1f - Mathf.Exp(-7f * dt));
         }
     }
 
@@ -175,6 +192,6 @@ public class Surveyor : MonoBehaviour
         if (joint == null) return;
 
         joint.localRotation = Quaternion.Slerp(joint.localRotation, Quaternion.Euler(degrees, 0f, roll),
-                                               quickly ? 1f - Mathf.Exp(-18f * dt) : 1f - Mathf.Exp(-8f * dt));
+                                               quickly ? 1f - Mathf.Exp(-26f * dt) : 1f - Mathf.Exp(-8f * dt));
     }
 }

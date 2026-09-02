@@ -16,6 +16,7 @@ public static class SurveyorBuilder
         public Transform Head;
         public Transform[] Legs;     // hips
         public Transform[] Knees;
+        public Transform[] Ankles;
         public Transform[] Arms;     // shoulders
         public Transform[] Elbows;
     }
@@ -45,6 +46,7 @@ public static class SurveyorBuilder
             Root = rootGo.transform,
             Legs = new Transform[2],
             Knees = new Transform[2],
+            Ankles = new Transform[2],
             Arms = new Transform[2],
             Elbows = new Transform[2]
         };
@@ -158,22 +160,37 @@ public static class SurveyorBuilder
 
         Add(head, CoatDark, CreatureMesh.Tube(
             new[] { new Vector3(0f, 0.070f * h, 0f), new Vector3(0f, 0.086f * h, 0f) },
-            new[] { 0.058f * h, 0.058f * h }, 9, 1.02f));    // the band
+            new[] { 0.062f * h, 0.062f * h }, 9, 1.06f));    // the band
 
         Add(head, CoatLight, CreatureMesh.Tube(
             new[] { new Vector3(0f, 0.082f * h, 0.002f * h), new Vector3(0f, 0.092f * h, 0.002f * h) },
-            new[] { 0.140f * h, 0.136f * h }, 12, 1f),
-            Squash(0.087f * h, 0.11f));                      // the brim, broad and flat
+            new[] { 0.096f * h, 0.093f * h }, 12, 1.36f),
+            Squash(0.087f * h, 0.13f));                      // the brim, long front to back
+
+        for (int side = 0; side < 2; side++)
+        {
+            float x = (side == 0 ? 1f : -1f) * 0.092f * h;
+
+            Add(head, CoatLight, CreatureMesh.Tube(
+                new[]
+                {
+                    new Vector3(x, 0.089f * h, -0.072f * h),
+                    new Vector3(x * 1.10f, 0.106f * h, 0f),
+                    new Vector3(x, 0.089f * h, 0.072f * h)
+                },
+                new[] { 0.020f * h, 0.024f * h, 0.020f * h }, 6, 0.9f),
+                Squash(0.090f * h, 0.62f));
+        }
 
         Add(head, CoatLight, CreatureMesh.Tube(
             new[]
             {
                 new Vector3(0f, 0.084f * h, 0f),
-                new Vector3(0f, 0.110f * h, 0f),
-                new Vector3(0f, 0.132f * h, 0f)
+                new Vector3(0f, 0.135f * h, 0f),
+                new Vector3(0f, 0.172f * h, 0f)
             },
-            new[] { 0.072f * h, 0.070f * h, 0.066f * h }, 9, 1f),
-            Squash(0.084f * h, 0.42f));                              // and the crown, low and round
+            new[] { 0.064f * h, 0.060f * h, 0.054f * h }, 9, 1.06f),
+            Squash(0.084f * h, 0.62f));                              // and the crown, tall and tapered
 
         Part(headPivot, "head", head);
 
@@ -189,10 +206,13 @@ public static class SurveyorBuilder
             Part(figure.Elbows[side], "forearm", Arm(h, false));
 
             figure.Legs[side] = Limb(figure.Root, "hip", new Vector3(0.052f * h * x, 0.44f * h, 0f));
-            Part(figure.Legs[side], "thigh", Leg(h, true));
+            Part(figure.Legs[side], "thigh", Leg(h, 0));
 
             figure.Knees[side] = Limb(figure.Legs[side], "knee", new Vector3(0f, -0.21f * h, 0f));
-            Part(figure.Knees[side], "shin", Leg(h, false));
+            Part(figure.Knees[side], "shin", Leg(h, 1));
+
+            figure.Ankles[side] = Limb(figure.Knees[side], "ankle", new Vector3(0f, -0.132f * h, 0f));
+            Part(figure.Ankles[side], "boot", Leg(h, 2));
         }
 
         return figure;
@@ -227,29 +247,33 @@ public static class SurveyorBuilder
         return pieces;
     }
 
-    private static List<CreatureMesh.Piece> Leg(float h, bool thigh)
+    private static List<CreatureMesh.Piece> Leg(float h, int part)
     {
         var pieces = new List<CreatureMesh.Piece>();
 
-        if (thigh)
+        if (part == 0)
         {
             Add(pieces, CoatLight, CreatureMesh.Tube(
                 new[] { new Vector3(0f, 0.012f * h, 0f), new Vector3(0f, -0.21f * h, 0f) },
                 new[] { 0.060f * h, 0.048f * h }, 7, 1f));
         }
-        else
+        else if (part == 1)
         {
             Add(pieces, CoatLight, CreatureMesh.Tube(
-                new[] { new Vector3(0f, 0.010f * h, 0f), new Vector3(0f, -0.128f * h, 0f) },
+                new[] { new Vector3(0f, 0.010f * h, 0f), new Vector3(0f, -0.132f * h, 0f) },
                 new[] { 0.046f * h, 0.040f * h }, 7, 1f));
-
-            // a boot, and the foot in front of it
+        }
+        else
+        {
+            // the boot hangs off an ankle of its own: a foot welded to the shin
+            // keeps the same angle all the way through a stride, and a leg that
+            // never rolls over its toe is the stiffest thing about a walk
             Add(pieces, CoatDark, CreatureMesh.Tube(
                 new[]
                 {
-                    new Vector3(0f, -0.125f * h, -0.005f * h),
-                    new Vector3(0f, -0.215f * h, 0f),
-                    new Vector3(0f, -0.226f * h, 0.038f * h)
+                    new Vector3(0f, 0.008f * h, -0.005f * h),
+                    new Vector3(0f, -0.082f * h, 0f),
+                    new Vector3(0f, -0.093f * h, 0.038f * h)
                 },
                 new[] { 0.050f * h, 0.047f * h, 0.032f * h }, 7, 1f));
         }
