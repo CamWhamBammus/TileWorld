@@ -218,7 +218,7 @@ public class DevTools : MonoBehaviour
             if (!at.Exists || at.Kind != want) continue;
 
             // the stair comes down the structure's +x side, before it is turned
-            Vector3 toFoot = Quaternion.Euler(0f, at.Yaw, 0f) * new Vector3(11f, 0f, 0f);
+            Vector3 toFoot = Quaternion.Euler(0f, at.Yaw, 0f) * new Vector3(Landmarks.All(want).Ahead * 2f + 5f, 0f, 0f);
             Vector3 stand = at.Position + toFoot;
 
             int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize);
@@ -349,12 +349,12 @@ public class DevTools : MonoBehaviour
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 0.5f);
-        cardRect.sizeDelta = new Vector2(940f, 800f);
+        cardRect.sizeDelta = new Vector2(940f, 1000f);
 
-        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 338f), new Vector2(880f, 90f));
+        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 438f), new Vector2(880f, 90f));
         heading.color = new Color(0.85f, 0.87f, 0.90f);
 
-        Label("Go", cardGo.transform, 17f, new Vector2(0f, 278f), new Vector2(880f, 30f))
+        Label("Go", cardGo.transform, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST";
 
         var kinds = (Regions.Character[])System.Enum.GetValues(typeof(Regions.Character));
@@ -364,13 +364,13 @@ public class DevTools : MonoBehaviour
             var kind = kinds[i];
 
             float x = (i % 3 - 1) * 300f;
-            float y = 230f - (i / 3) * 56f;
+            float y = 330f - (i / 3) * 56f;
 
             labels[kind] = Button(kind.ToString(), cardGo.transform,
                 new Vector2(x, y), new Vector2(285f, 52f), () => GoTo(kind));
         }
 
-        Label("Water", cardGo.transform, 17f, new Vector2(0f, 8f), new Vector2(880f, 30f))
+        Label("Water", cardGo.transform, 17f, new Vector2(0f, 108f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST WATER   (a lake is not a region, it is a thing inside one)";
 
         var bodies = (WaterSurface.Body[])System.Enum.GetValues(typeof(WaterSurface.Body));
@@ -380,10 +380,10 @@ public class DevTools : MonoBehaviour
             var kind = bodies[i];
 
             waters[kind] = Button(kind.ToString(), cardGo.transform,
-                new Vector2((i - 1) * 300f, -34f), new Vector2(285f, 52f), () => GoToWater(kind));
+                new Vector2((i - 1) * 300f, 66f), new Vector2(285f, 52f), () => GoToWater(kind));
         }
 
-        Label("Built", cardGo.transform, 17f, new Vector2(0f, -96f), new Vector2(880f, 30f))
+        Label("Built", cardGo.transform, 17f, new Vector2(0f, 16f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST STRUCTURE";
 
         var built = (LandmarkKind[])System.Enum.GetValues(typeof(LandmarkKind));
@@ -393,14 +393,14 @@ public class DevTools : MonoBehaviour
             var kind = built[i];
 
             Button(Landmarks.NameOf(kind), cardGo.transform,
-                new Vector2((i - 1) * 300f, -138f), new Vector2(285f, 52f), () => GoToStructure(kind));
+                new Vector2((i % 3 - 1) * 300f, -26f - (i / 3) * 56f), new Vector2(285f, 52f), () => GoToStructure(kind));
         }
 
-        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -200f), new Vector2(880f, 30f))
+        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -210f), new Vector2(880f, 30f))
             .text = "THE FIRST FEW MINUTES";
 
         Button("Show the opening again", cardGo.transform,
-            new Vector2(-230f, -250f), new Vector2(430f, 52f), () =>
+            new Vector2(-230f, -260f), new Vector2(430f, 52f), () =>
             {
                 Arrival.Replay();
                 Toggle(false);
@@ -408,9 +408,9 @@ public class DevTools : MonoBehaviour
             });
 
         wipeLabel = Button("Put this world back to nothing", cardGo.transform,
-            new Vector2(230f, -250f), new Vector2(430f, 52f), Wipe);
+            new Vector2(230f, -260f), new Vector2(430f, 52f), Wipe);
 
-        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -318f), new Vector2(880f, 40f))
+        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -330f), new Vector2(880f, 40f))
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
         panel.SetActive(false);

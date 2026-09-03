@@ -40,7 +40,7 @@ public static class WaterSurface
     {
         // A region wet enough to be named for it is open water, and open water
         // has a shore: that is the one place sand belongs.
-        if (Regions.CharacterAtTile(tileX, tileZ, worldSeed) == Regions.Character.Water) return Body.Beach;
+        if (Regions.CharacterAtTile(tileX, tileZ, worldSeed, false) == Regions.Character.Water) return Body.Beach;
 
         // Otherwise it is a lake or a pond, and which one is a question of how
         // far down it goes rather than how far across.

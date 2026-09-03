@@ -1,8 +1,15 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum LandmarkKind
 {
-    ForestersWatch   // a tower on a raised square of ground, deep in the woods
+    ForestersWatch,   // a tower on a raised square of ground, deep in the woods
+    Shipwreck,        // a hull broken on a beach, bow out of the water
+    SandGate,         // two towers with a walk between their tops, in the desert
+    TrappersCabin,    // a log cabin in the snow, with a yard and a woodpile
+    FishingJetty,     // a plank jetty out over a lake in the reeds
+    SteppedAltar,     // three tiers of stone and an idol on the top
+    ToadstoolRing     // a ring of giant mushrooms round a raised altar
 }
 
 /// <summary>
@@ -11,26 +18,81 @@ public enum LandmarkKind
 /// puts the same watch on the same rise, and a chunk can be asked about long
 /// before it is ever loaded.
 ///
-/// Each kind belongs to one kind of country, and is only ever found there.
+/// Each kind belongs to one kind of country, and is only ever found there,
+/// and each asks for its own sort of site: level ground, a beach's shallows,
+/// a lake's shore.
 /// </summary>
 public static class Landmarks
 {
+    /// <summary>What sort of ground a kind is built on.</summary>
+    public enum Site
+    {
+        Level,      // level ground, footprint checked for flatness
+        Shallows,   // just under the water off a beach, facing the shore
+        Shore       // dry ground at a lake's edge, facing out over the water
+    }
+
     /// <summary>One structure, entire, the same way a creature is.</summary>
     public struct Kind
     {
         public string Name;
         public Regions.Character Country;   // the only region it is built in
+        public Site Site;
         public int SurveyRadius;            // how far it charts, in chunks
         public float SurveyHeight;          // how far up you have to get before it counts
         public string Where;                // where the guide wants it found
         public float LabelHeight;           // how far above it the map writes its name
+
+        // The ground it takes, in tiles, in its own frame before it is turned:
+        // +x is 'ahead', where the stair or the jetty or the shore is.
+        public int Behind, Ahead, Aside;
+
+        // How level the ground must be under the core and under the rest.
+        public int CoreHalf;
+        public float CoreVariation, ApronVariation;
+
+        // Out of a hundred chunks of its country that could take it, how many
+        // do. Each has its own: a desert is common and level, and at one rate
+        // for all there were fifteen gates to a watch.
+        public int Chance;
     }
 
     private static readonly Kind[] kinds =
     {
-        new Kind { Name = "Forester's Watch", Country = Regions.Character.Forest,
-                   SurveyRadius = 5, SurveyHeight = 1.5f,
-                   Where = "in the woods, its tower above the trees", LabelHeight = 9f },
+        new Kind { Chance = 22, Name = "Forester's Watch", Country = Regions.Character.Forest, Site = Site.Level,
+                   SurveyRadius = 5, SurveyHeight = 1.5f, LabelHeight = 9f,
+                   Where = "in the woods, its tower above the trees",
+                   Behind = 1, Ahead = 4, Aside = 1, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
+
+        new Kind { Chance = 30, Name = "Shipwreck", Country = Regions.Character.Water, Site = Site.Shallows,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "broken on a beach, its bow out of the water",
+                   Behind = 3, Ahead = 4, Aside = 2, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+
+        new Kind { Chance = 7, Name = "Sand Gate", Country = Regions.Character.Desert, Site = Site.Level,
+                   SurveyRadius = 4, SurveyHeight = 0f, LabelHeight = 10f,
+                   Where = "out in the sand, two towers and the walk between them",
+                   Behind = 2, Ahead = 2, Aside = 2, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.6f },
+
+        new Kind { Chance = 16, Name = "Trapper's Cabin", Country = Regions.Character.Snow, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 7f,
+                   Where = "in the snow, a hut of pale stone with a yard",
+                   Behind = 2, Ahead = 3, Aside = 2, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.6f },
+
+        new Kind { Chance = 45, Name = "Fishing Jetty", Country = Regions.Character.Reed, Site = Site.Shore,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
+                   Where = "on a lake shore in the reeds, planks out over the water",
+                   Behind = 2, Ahead = 5, Aside = 1, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+
+        new Kind { Chance = 22, Name = "Stepped Altar", Country = Regions.Character.Stone, Site = Site.Level,
+                   SurveyRadius = 6, SurveyHeight = 3.0f, LabelHeight = 10f,
+                   Where = "on the bare rock, three steps of stone and something on the top",
+                   Behind = 2, Ahead = 4, Aside = 2, CoreHalf = 2, CoreVariation = 0.26f, ApronVariation = 0.8f },
+
+        new Kind { Chance = 14, Name = "Toadstool Ring", Country = Regions.Character.Fungal, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "in the damp woods, a ring of toadstools taller than you",
+                   Behind = 3, Ahead = 3, Aside = 3, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
     };
 
     /// <summary>How many kinds there are, so nothing has to be told twice.</summary>
@@ -49,26 +111,8 @@ public static class Landmarks
 
     public static Kind All(LandmarkKind kind) => kinds[Mathf.Clamp((int)kind, 0, kinds.Length - 1)];
 
-    /// <summary>
-    /// A ceiling rather than the real rate: most rolls are turned down by the
-    /// ground, which has to be nearly level under the whole footprint, and by
-    /// the country, since each kind is only built in its own.
-    /// </summary>
-    private const int ChanceInHundred = 22;
-
     /// <summary>Kept away from chunk edges so a landmark is never cut in half by a seam.</summary>
     private const int EdgeMargin = 5;
-
-    /// <summary>
-    /// The platform is three tiles square, and the stair reaches two more to
-    /// one side. The ground under the platform has to be level to within one
-    /// terrace step, which the grass cap's overhang hides; under the stair it
-    /// may fall a little further.
-    /// </summary>
-    public const int PlatformHalf = 1;
-    public const int StairReach = 2;
-    private const float PlatformVariation = 0.26f;
-    private const float ApronVariation = 0.8f;
 
     public struct Placement
     {
@@ -80,33 +124,79 @@ public static class Landmarks
         public int TileX, TileZ;
     }
 
+    // Asked per tile by the ground and the planting, and a shore site is
+    // found by looking over the whole chunk, so the answer is kept.
+    private static readonly Dictionary<long, Placement> placements = new Dictionary<long, Placement>();
+    private static int placementsFor;
+
     public static Placement In(Vector2Int chunk, int worldSeed)
+    {
+        if (placementsFor != worldSeed) { placements.Clear(); placementsFor = worldSeed; }
+
+        long key = ((long)chunk.x << 32) ^ (uint)chunk.y;
+        if (placements.TryGetValue(key, out var known)) return known;
+
+        var worked = Work(chunk, worldSeed);
+        placements[key] = worked;
+        return worked;
+    }
+
+    private static Placement Work(Vector2Int chunk, int worldSeed)
     {
         var result = new Placement { Exists = false, Chunk = chunk };
 
-        int roll = Hash(chunk.x, chunk.y, worldSeed ^ 0x5F3A) % 100;
+        // The country decides the kind: whichever kinds belong here, one is
+        // picked by hash. Rolled the other way round, a kind whose country
+        // is rare was rarer still.
+        var here = Regions.CharacterAt(chunk, worldSeed);
+        int fitting = 0;
+        for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here) fitting++;
+        if (fitting == 0) return result;
 
-        if (roll >= ChanceInHundred) return result;
+        int pick = Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % fitting;
+        int index = -1;
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            if (kinds[i].Country != here) continue;
+            if (pick-- == 0) { index = i; break; }
+        }
 
-        var kind = (LandmarkKind)(Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % kinds.Length);
+        var kind = (LandmarkKind)index;
+        var about = kinds[index];
 
-        // only in its own country -- asked of the chunk's middle, the way the
-        // chunk's name is
-        if (Regions.CharacterAt(chunk, worldSeed) != All(kind).Country) return result;
+        // and the kind decides how often. A ceiling rather than the rate:
+        // the ground still has to suit it.
+        if (Hash(chunk.x, chunk.y, worldSeed ^ 0x5F3A) % 100 >= about.Chance) return result;
 
-        int span = WorldGrid.TilesPerChunk - EdgeMargin * 2;
-        int localX = EdgeMargin + Hash(chunk.x, chunk.y, worldSeed ^ 0x1234) % span;
-        int localZ = EdgeMargin + Hash(chunk.x, chunk.y, worldSeed ^ 0x9ABC) % span;
+        int tileX, tileZ, turns;
 
-        int tileX = chunk.x * WorldGrid.TilesPerChunk + localX;
-        int tileZ = chunk.y * WorldGrid.TilesPerChunk + localZ;
+        switch (about.Site)
+        {
+            case Site.Shallows:
+                if (!FindShallows(chunk, worldSeed, out tileX, out tileZ, out turns)) return result;
+                break;
 
-        // Square to the grid: the tiles it is built from are.
-        int turns = Hash(chunk.x, chunk.y, worldSeed ^ 0xBEEF) % 4;
+            case Site.Shore:
+                if (!FindShore(chunk, worldSeed, out tileX, out tileZ, out turns)) return result;
+                break;
 
-        if (!Level(tileX, tileZ, PlatformHalf, PlatformVariation, worldSeed)) return result;
-        if (!Level(tileX, tileZ, PlatformHalf + StairReach, ApronVariation, worldSeed)) return result;
-        if (Wet(tileX, tileZ, PlatformHalf + StairReach + 1, worldSeed)) return result;
+            default:
+            {
+                int span = WorldGrid.TilesPerChunk - EdgeMargin * 2;
+                tileX = chunk.x * WorldGrid.TilesPerChunk + EdgeMargin + Hash(chunk.x, chunk.y, worldSeed ^ 0x1234) % span;
+                tileZ = chunk.y * WorldGrid.TilesPerChunk + EdgeMargin + Hash(chunk.x, chunk.y, worldSeed ^ 0x9ABC) % span;
+
+                // Square to the grid: the tiles it is built from are.
+                turns = Hash(chunk.x, chunk.y, worldSeed ^ 0xBEEF) % 4;
+
+                int apron = Mathf.Max(about.Ahead, Mathf.Max(about.Behind, about.Aside));
+
+                if (!Level(tileX, tileZ, about.CoreHalf, about.CoreVariation, worldSeed)) return result;
+                if (!Level(tileX, tileZ, apron, about.ApronVariation, worldSeed)) return result;
+                if (Wet(tileX, tileZ, apron + 1, worldSeed)) return result;
+                break;
+            }
+        }
 
         result.Exists = true;
         result.Kind = kind;
@@ -122,6 +212,110 @@ public static class Landmarks
     }
 
     /// <summary>
+    /// The four ways a structure can face, as the yaw that turns its +x to
+    /// point that way: 0 is +x, 1 is -z, 2 is -x, 3 is +z, which is what a
+    /// quarter turn about y does to +x in this engine.
+    /// </summary>
+    private static readonly Vector2Int[] Facing =
+    {
+        new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(-1, 0), new Vector2Int(0, 1)
+    };
+
+    /// <summary>
+    /// A tile just under the water off a beach, with dry ground a few tiles
+    /// off in one direction; that direction is the way the wreck faces.
+    /// </summary>
+    /// <summary>
+    /// A shore is looked for over more of the chunk than level ground is:
+    /// five tiles in from every edge left twenty five to choose from, and a
+    /// lake's edge is rarely among so few. What hangs past the edge is only
+    /// a jetty over water or cargo on a beach, and the neighbouring chunk is
+    /// asked about it all the same.
+    /// </summary>
+    private const int ShoreMargin = 3;
+
+    private static bool FindShallows(Vector2Int chunk, int seed, out int tileX, out int tileZ, out int turns)
+    {
+        int span = WorldGrid.TilesPerChunk - ShoreMargin * 2;
+        int start = Hash(chunk.x, chunk.y, seed ^ 0x2468) % (span * span);
+
+        for (int n = 0; n < span * span; n++)
+        {
+            int i = (start + n) % (span * span);
+            int x = chunk.x * WorldGrid.TilesPerChunk + ShoreMargin + i % span;
+            int z = chunk.y * WorldGrid.TilesPerChunk + ShoreMargin + i / span;
+
+            float depth = WaterSurface.Level - WorldHeight.SurfaceY(x, z, seed);
+            if (depth < 0.3f || depth > 1.3f) continue;
+            if (WaterSurface.BodyAt(x, z, seed) != WaterSurface.Body.Beach) continue;
+
+            for (int f = 0; f < 4; f++)
+            {
+                // the two tiles behind it under water, and dry ground within four ahead
+                if (!WaterSurface.IsUnderwater(x - Facing[f].x, z - Facing[f].y, seed)) continue;
+                if (!WaterSurface.IsUnderwater(x - 2 * Facing[f].x, z - 2 * Facing[f].y, seed)) continue;
+
+                bool dry = false;
+                for (int d = 1; d <= 4 && !dry; d++)
+                    if (!WaterSurface.IsUnderwater(x + d * Facing[f].x, z + d * Facing[f].y, seed)) dry = true;
+                if (!dry) continue;
+
+                tileX = x; tileZ = z; turns = f;
+                return true;
+            }
+        }
+
+        tileX = tileZ = turns = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// Dry ground at the edge of a lake or pond, with water ahead for five
+    /// tiles, deep enough for the posts. Not a beach: a jetty into surf is
+    /// a different thing from a jetty into a lake.
+    /// </summary>
+    private static bool FindShore(Vector2Int chunk, int seed, out int tileX, out int tileZ, out int turns)
+    {
+        int span = WorldGrid.TilesPerChunk - ShoreMargin * 2;
+        int start = Hash(chunk.x, chunk.y, seed ^ 0x1357) % (span * span);
+
+        for (int n = 0; n < span * span; n++)
+        {
+            int i = (start + n) % (span * span);
+            int x = chunk.x * WorldGrid.TilesPerChunk + ShoreMargin + i % span;
+            int z = chunk.y * WorldGrid.TilesPerChunk + ShoreMargin + i / span;
+
+            // The water level sits exactly on a terrace, so the shoreline
+            // itself is the terrace at nought above the water -- not a hair
+            // above it. Asked for a hair above, the search only ever found
+            // the terrace one step back, which is never beside water.
+            float above = WorldHeight.SurfaceY(x, z, seed) - WaterSurface.Level;
+            if (above < -0.001f || above > 1.0f) continue;
+
+            for (int f = 0; f < 4; f++)
+            {
+                bool water = true;
+                for (int d = 1; d <= 4 && water; d++)
+                {
+                    int wx = x + d * Facing[f].x, wz = z + d * Facing[f].y;
+                    if (WaterSurface.Level - WorldHeight.SurfaceY(wx, wz, seed) < 0.2f) water = false;
+                }
+                if (!water) continue;
+                if (WaterSurface.BodyAt(x + Facing[f].x, z + Facing[f].y, seed) == WaterSurface.Body.Beach) continue;
+
+                // and ground behind it to stand on
+                if (WaterSurface.IsUnderwater(x - Facing[f].x, z - Facing[f].y, seed)) continue;
+
+                tileX = x; tileZ = z; turns = f;
+                return true;
+            }
+        }
+
+        tileX = tileZ = turns = 0;
+        return false;
+    }
+
+    /// <summary>
     /// Whether a tile is under a structure, so that nothing is planted on it
     /// and no tile with a tree on it is laid there: a tree up through the
     /// middle of the platform is what the old ruins had.
@@ -132,32 +326,25 @@ public static class Landmarks
             Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
             Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
 
-        var at = In(chunk, worldSeed);
-        if (!at.Exists) return false;
-
-        int dx = tileX - at.TileX;
-        int dz = tileZ - at.TileZ;
-
-        // the platform, and the strip the stair comes down, which is on the
-        // structure's +x side before it is turned
-        int ahead = Mathf.RoundToInt(at.Yaw) switch
+        // this chunk's, and the eight around it: a shore site can reach past
+        // its chunk's edge
+        for (int cx = -1; cx <= 1; cx++)
+        for (int cz = -1; cz <= 1; cz++)
         {
-            90 => dz,
-            180 => -dx,
-            270 => -dz,
-            _ => dx
-        };
-        int aside = Mathf.RoundToInt(at.Yaw) switch
-        {
-            90 => -dx,
-            180 => -dz,
-            270 => dx,
-            _ => dz
-        };
+            var at = In(new Vector2Int(chunk.x + cx, chunk.y + cz), worldSeed);
+            if (!at.Exists) continue;
 
-        if (Mathf.Abs(ahead) <= PlatformHalf && Mathf.Abs(aside) <= PlatformHalf) return true;
+            // the offset, turned back into the structure's own frame
+            Vector3 local = Quaternion.Euler(0f, -at.Yaw, 0f) * new Vector3(tileX - at.TileX, 0f, tileZ - at.TileZ);
+            int ahead = Mathf.RoundToInt(local.x);
+            int aside = Mathf.RoundToInt(local.z);
 
-        return ahead > PlatformHalf && ahead <= PlatformHalf + StairReach + 1 && Mathf.Abs(aside) <= 1;
+            var about = All(at.Kind);
+
+            if (ahead >= -about.Behind && ahead <= about.Ahead && Mathf.Abs(aside) <= about.Aside) return true;
+        }
+
+        return false;
     }
 
     private static bool Level(int tileX, int tileZ, int half, float allow, int seed)

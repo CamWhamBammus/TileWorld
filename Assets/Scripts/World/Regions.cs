@@ -133,6 +133,16 @@ public static class Regions
     }
 
     /// <summary>
+    /// The same, but with the border a line rather than a scatter. For what
+    /// must not speckle: a lake that lies across a border got reeds on every
+    /// tile the fray happened to hand to the other side.
+    /// </summary>
+    public static Character CharacterAtTile(int tileX, int tileZ, int worldSeed, bool fray)
+    {
+        return CharacterOfCell(CellOfTile(tileX, tileZ, worldSeed, fray), worldSeed);
+    }
+
+    /// <summary>
     /// What a chunk is like, taken at its middle. Only the middle: the edges of
     /// a chunk can lie across a border now, and a chunk has to be one thing
     /// for the sake of everything that names it.

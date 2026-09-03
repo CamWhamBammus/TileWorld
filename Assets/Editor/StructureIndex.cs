@@ -17,12 +17,16 @@ public static class StructureIndex
 
         asset.Tower = One("Tower/Tower");
         asset.Stair = One("Passages/Climbe");
+        asset.Bridge = One("Passages/Bridge");
+        asset.Slab = One("Passages/Bridge_1");
         asset.Fences = Many("Environment/Fence", "Environment/Fence_0", "Environment/Fence_1", "Environment/Fence_2", "Environment/Fence_3");
         asset.Lamp = One("Environment/Lamp");
-        asset.Busts = Many("Busts/Bust_0", "Busts/Bust_1", "Busts/Bust_2", "Busts/Bust_3", "Busts/Bust_4", "Busts/Bust_5");
+        asset.Bushes = Many("Busts/Bust_0", "Busts/Bust_1", "Busts/Bust_2", "Busts/Bust_3", "Busts/Bust_4", "Busts/Bust_5");
         asset.Boxes = Many("Environment/Box", "Environment/Box_0", "Environment/Box_1");
         asset.Chest = One("Environment/Chest");
+        asset.Doors = One("Environment/Doors");
         asset.Timber = One("Environment/Timber");
+        asset.Poles = Many("Environment/Rarefoot", "Environment/Rarefoot_0", "Environment/Rarefoot_1", "Environment/Rarefoot_2", "Environment/Rarefoot_3");
         asset.Signboard = One("Environment/Singboard");
 
         if (fresh) AssetDatabase.CreateAsset(asset, Written);
@@ -30,7 +34,7 @@ public static class StructureIndex
 
         AssetDatabase.SaveAssets();
         Debug.Log("STRUCTURES indexed: tower " + (asset.Tower != null) + ", stair " + (asset.Stair != null)
-            + ", fences " + asset.Fences.Length + ", busts " + asset.Busts.Length);
+            + ", fences " + asset.Fences.Length + ", bushes " + asset.Bushes.Length);
     }
 
     private static GameObject One(string name)
