@@ -24,7 +24,7 @@ using UnityEngine;
 public class Swimming : MonoBehaviour
 {
     [Tooltip("Where the surface sits relative to the player's feet when floating.")]
-    [SerializeField] private float floatDepth = 1.0f;
+    [SerializeField] private float floatDepth = 1.35f;
 
     [Tooltip("How quickly the surface is reached. Kept low; this is a float, not a launch.")]
     [SerializeField] private float riseSpeed = 3.0f;
@@ -46,6 +46,13 @@ public class Swimming : MonoBehaviour
 
     /// <summary>Whether the player is in the water, for anything that has to look like it.</summary>
     public static bool InWater { get; private set; }
+
+    /// <summary>
+    /// Whether they are actually off the bottom. Being in the water is not the
+    /// same as swimming in it: in the shallows the feet are still carrying and
+    /// the arms are in the air, and a stroke up there looks like nothing at all.
+    /// </summary>
+    public static bool Afloat { get; private set; }
 
     private bool swimming;
     private float walkSpeed, sprintSpeed;
@@ -122,6 +129,15 @@ public class Swimming : MonoBehaviour
         if (!swimming && depth > enterDepth) Enter();
         else if (swimming && depth < exitDepth) Exit();
 
+        // How deep the water is here, rather than how deep they are in it: to
+        // float, the bottom has to be further down than they sit.
+        int tx = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize);
+        int tz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+
+        float bed = WaterSurface.Level - WorldHeight.SurfaceY(tx, tz, world.WorldSeed);
+
+        Afloat = swimming && bed > floatDepth + (Afloat ? 0.05f : 0.25f);
+
         if (!swimming) return;
 
         // Told it is grounded, the controller clamps its own fall to -2 instead
@@ -150,6 +166,7 @@ public class Swimming : MonoBehaviour
     {
         swimming = false;
         InWater = false;
+        Afloat = false;
 
         if (movement != null)
         {

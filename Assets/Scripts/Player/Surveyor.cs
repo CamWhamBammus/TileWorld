@@ -102,7 +102,7 @@ public class Surveyor : MonoBehaviour
         stance = Mathf.Lerp(0.62f, 0.38f, Mathf.InverseLerp(2f, 5f, pace));
         step = Reach * Mathf.Sin((20f + pace * 7f) * Mathf.Deg2Rad);
 
-        bool wet = Swimming.InWater;
+        bool wet = Swimming.Afloat;
 
         if (grounded && !wet) gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
         gait -= Mathf.Floor(gait);
