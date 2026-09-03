@@ -9,7 +9,15 @@ public enum LandmarkKind
     TrappersCabin,    // a log cabin in the snow, with a yard and a woodpile
     FishingJetty,     // a plank jetty out over a lake in the reeds
     SteppedAltar,     // three tiers of stone and an idol on the top
-    ToadstoolRing     // a ring of giant mushrooms round a raised altar
+    ToadstoolRing,    // a ring of giant mushrooms round a raised altar
+    CharcoalCamp,     // a burner's kiln and woodpiles in the dead woods
+    HilltopBeacon,    // a tower on a tall plinth on the hills, a light on top
+    SummitCairn,      // a heap of stones on a peak
+    WaysideShrine,    // a stone on a plinth by the way, in the lowlands
+    StandingStones,   // a ring of stones in the open
+    Lighthouse,       // a tower on a plinth at a beach's edge, a light on top
+    HuntersHide,      // a small raised platform in the forest
+    BuriedTower       // a tower sunk in the sand, leaning
 }
 
 /// <summary>
@@ -29,7 +37,8 @@ public static class Landmarks
     {
         Level,      // level ground, footprint checked for flatness
         Shallows,   // just under the water off a beach, facing the shore
-        Shore       // dry ground at a lake's edge, facing out over the water
+        Shore,      // dry ground at a lake's edge, facing out over the water
+        BeachShore  // dry ground at a beach's edge, facing out to the open water
     }
 
     /// <summary>One structure, entire, the same way a creature is.</summary>
@@ -93,6 +102,46 @@ public static class Landmarks
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
                    Where = "in the damp woods, a ring of toadstools taller than you",
                    Behind = 3, Ahead = 3, Aside = 3, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
+
+        new Kind { Chance = 20, Name = "Charcoal Camp", Country = Regions.Character.Dead, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "in the dead woods, a kiln and the wood cut for it",
+                   Behind = 2, Ahead = 3, Aside = 2, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.6f },
+
+        new Kind { Chance = 10, Name = "Hilltop Beacon", Country = Regions.Character.Hills, Site = Site.Level,
+                   SurveyRadius = 6, SurveyHeight = 0f, LabelHeight = 12f,
+                   Where = "on the hills, a tower on a plinth with a light kept on top",
+                   Behind = 2, Ahead = 2, Aside = 2, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.9f },
+
+        new Kind { Chance = 6, Name = "Summit Cairn", Country = Regions.Character.Peaks, Site = Site.Level,
+                   SurveyRadius = 7, SurveyHeight = 0f, LabelHeight = 5f,
+                   Where = "on a peak, a heap of stones and a pole",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 1.3f },
+
+        new Kind { Chance = 7, Name = "Wayside Shrine", Country = Regions.Character.Lowland, Site = Site.Level,
+                   SurveyRadius = 2, SurveyHeight = 0f, LabelHeight = 5f,
+                   Where = "on the low ground by the way, a stone on a plinth",
+                   Behind = 1, Ahead = 2, Aside = 1, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.6f },
+
+        new Kind { Chance = 30, Name = "Standing Stones", Country = Regions.Character.Lowland, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "out on the open low ground, a ring of stones on end",
+                   Behind = 3, Ahead = 3, Aside = 3, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
+
+        new Kind { Chance = 20, Name = "Lighthouse", Country = Regions.Character.Water, Site = Site.BeachShore,
+                   SurveyRadius = 6, SurveyHeight = 1.5f, LabelHeight = 12f,
+                   Where = "at a beach's edge, a tower on a plinth with a light on top",
+                   Behind = 3, Ahead = 2, Aside = 2, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+
+        new Kind { Chance = 14, Name = "Hunter's Hide", Country = Regions.Character.Forest, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 1.5f, LabelHeight = 6f,
+                   Where = "in the woods, a small platform up a stair",
+                   Behind = 1, Ahead = 3, Aside = 1, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.8f },
+
+        new Kind { Chance = 10, Name = "Buried Tower", Country = Regions.Character.Desert, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
+                   Where = "in the sand, a tower sunk to its shoulders and leaning",
+                   Behind = 2, Ahead = 2, Aside = 2, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.6f },
     };
 
     /// <summary>How many kinds there are, so nothing has to be told twice.</summary>
@@ -177,7 +226,11 @@ public static class Landmarks
                 break;
 
             case Site.Shore:
-                if (!FindShore(chunk, worldSeed, out tileX, out tileZ, out turns)) return result;
+                if (!FindShore(chunk, worldSeed, false, out tileX, out tileZ, out turns)) return result;
+                break;
+
+            case Site.BeachShore:
+                if (!FindShore(chunk, worldSeed, true, out tileX, out tileZ, out turns)) return result;
                 break;
 
             default:
@@ -270,11 +323,12 @@ public static class Landmarks
     }
 
     /// <summary>
-    /// Dry ground at the edge of a lake or pond, with water ahead for five
-    /// tiles, deep enough for the posts. Not a beach: a jetty into surf is
-    /// a different thing from a jetty into a lake.
+    /// Dry ground at the water's edge, with water ahead for four tiles, deep
+    /// enough for posts. Asked for a lake, a beach will not do: a jetty into
+    /// surf is a different thing from a jetty into a lake. Asked for a beach,
+    /// only a beach will.
     /// </summary>
-    private static bool FindShore(Vector2Int chunk, int seed, out int tileX, out int tileZ, out int turns)
+    private static bool FindShore(Vector2Int chunk, int seed, bool beach, out int tileX, out int tileZ, out int turns)
     {
         int span = WorldGrid.TilesPerChunk - ShoreMargin * 2;
         int start = Hash(chunk.x, chunk.y, seed ^ 0x1357) % (span * span);
@@ -301,7 +355,7 @@ public static class Landmarks
                     if (WaterSurface.Level - WorldHeight.SurfaceY(wx, wz, seed) < 0.2f) water = false;
                 }
                 if (!water) continue;
-                if (WaterSurface.BodyAt(x + Facing[f].x, z + Facing[f].y, seed) == WaterSurface.Body.Beach) continue;
+                if ((WaterSurface.BodyAt(x + Facing[f].x, z + Facing[f].y, seed) == WaterSurface.Body.Beach) != beach) continue;
 
                 // and ground behind it to stand on
                 if (WaterSurface.IsUnderwater(x - Facing[f].x, z - Facing[f].y, seed)) continue;

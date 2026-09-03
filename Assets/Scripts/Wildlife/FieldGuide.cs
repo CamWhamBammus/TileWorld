@@ -52,7 +52,7 @@ public static class FieldGuide
 
     public static bool Complete(Subject subject) => Count(subject) >= Wants(subject).Length;
 
-    /// <summary>Finished entries, out of the eight there are.</summary>
+    /// <summary>Finished entries, out of however many there are.</summary>
     public static int Entries
     {
         get

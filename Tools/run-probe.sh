@@ -24,7 +24,8 @@ sed "s#__STAGES__#$STAGES#g" "$PROBE" > "$PROJECT/Assets/Scripts/_Probe.cs"
 "$HERE/build.sh" || { rm -f "$PROJECT/Assets/Scripts/_Probe.cs"*; exit 1; }
 rm -f "$PROJECT/Assets/Scripts/_Probe.cs" "$PROJECT/Assets/Scripts/_Probe.cs.meta"
 
-rm -f "$STAGES" "$OUT/probe.log" "$SHOTS"/*.png "$SAVE"/probe-*.png
+# earlier shots are kept; a probe's own overwrite by name
+rm -f "$STAGES" "$OUT/probe.log" "$SAVE"/probe-*.png
 "$PROJECT/Builds/Dev/TileWorld.app/Contents/MacOS/Tile World" -logFile "$OUT/probe.log" \
     -screen-width 1400 -screen-height 900 -screen-fullscreen 0 >/dev/null 2>&1 &
 PID=$!

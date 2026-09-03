@@ -1,0 +1,61 @@
+// A probe: opens the field guide on its contents page and photographs it,
+// then turns to the first structure's page and photographs that.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(8f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        string dir = Application.persistentDataPath;
+
+        FieldGuideScreen.Show();
+        yield return new WaitForSecondsRealtime(2f);
+        Mark("guide open, subjects " + Subject.All().Length);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-guide-contents.png"));
+        yield return new WaitForSecondsRealtime(1.5f);
+
+        // the arrow key turns pages; the same method the key calls
+        var screen = FindFirstObjectByType<FieldGuideScreen>();
+        var turn = typeof(FieldGuideScreen).GetMethod("Turn", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (screen != null && turn != null)
+        {
+            for (int i = 0; i < 5; i++) turn.Invoke(screen, new object[] { 1 });
+            yield return new WaitForSecondsRealtime(1.5f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-guide-entry.png"));
+            yield return new WaitForSecondsRealtime(1.5f);
+            Mark("turned to page 6");
+        }
+        else Mark("no Turn method found");
+
+        Mark("done");
+    }
+}

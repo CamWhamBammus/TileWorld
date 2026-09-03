@@ -81,6 +81,14 @@ public static class LandmarkBuilder
             case LandmarkKind.FishingJetty: Jetty(b); break;
             case LandmarkKind.SteppedAltar: Altar(b); break;
             case LandmarkKind.ToadstoolRing: Ring(b); break;
+            case LandmarkKind.CharcoalCamp: Camp(b); break;
+            case LandmarkKind.HilltopBeacon: Beacon(b); break;
+            case LandmarkKind.SummitCairn: Cairn(b); break;
+            case LandmarkKind.WaysideShrine: Shrine(b); break;
+            case LandmarkKind.StandingStones: Stones(b); break;
+            case LandmarkKind.Lighthouse: Lighthouse(b); break;
+            case LandmarkKind.HuntersHide: Hide(b); break;
+            case LandmarkKind.BuriedTower: Buried(b); break;
             default:
             case LandmarkKind.ForestersWatch: Watch(b); break;
         }
@@ -106,7 +114,7 @@ public static class LandmarkBuilder
         float edge = 1.5f * Tile;
         Stair(b, new Vector3(edge + 2.0f, Deck1 + StairUp, 0f), 90f);
 
-        Rail(b, edge, Deck1, true);
+        Rail(b, edge, Deck1, 1);
 
         Piece(b, b.Shelf.Lamp, new Vector3(edge - 0.42f, Deck1 + LampUp, 1.55f), 90f);
         Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(edge + 4.5f, Ground + BustUp, 1.3f), 0f, new Vector3(0.6f, 1f, 0.6f), new Vector3(0f, 0.13f, 0f));
@@ -391,6 +399,226 @@ public static class LandmarkBuilder
         Piece(b, b.Shelf.Chest, new Vector3(-1.9f, Ground + ChestUp, 1.7f), 120f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
     }
 
+    // ---------------------------------------------------------- Charcoal Camp
+
+    /// <summary>
+    /// A kiln of black earth, one tile up, with poles round it and a lamp on
+    /// it; a fenced yard ahead with the wood cut and stacked; the burner's
+    /// things left about.
+    /// </summary>
+    private static void Camp(Job b)
+    {
+        GroundTile(b, MudTiles, new Vector3(0f, Stack(1), 0f));
+        Piece(b, b.Shelf.Lamp, new Vector3(0f, Deck1 + LampUp, 0f), Turn(b));
+
+        foreach (float x in new[] { -1.35f, 1.35f })
+        foreach (float z in new[] { -1.35f, 1.35f })
+            Piece(b, Pick(b.Shelf.Poles, b), new Vector3(x, Ground + 1.0f, z), 0f, Vector3.zero, Vector3.zero, new Vector3((z < 0f ? -1f : 1f) * 8f, 0f, (x < 0f ? 1f : -1f) * 8f));
+
+        Piece(b, b.Shelf.Doors, new Vector3(1.25f, Ground + DoorUp - 0.25f, 0.9f), 90f, Vector3.zero, Vector3.zero, new Vector3(0f, 0f, -24f));
+
+        for (float z = -2.6f; z <= 2.6f; z += 0.86f)
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(7.0f, Ground + FenceUp, z), 90f);
+        for (float x = 3.2f; x <= 6.6f; x += 0.86f)
+        {
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(x, Ground + FenceUp, -2.9f), 0f);
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(x, Ground + FenceUp, 2.9f), 0f);
+        }
+
+        foreach (float z in new[] { -1.8f, -0.6f, 0.8f })
+        {
+            Piece(b, b.Shelf.Timber, new Vector3(5.2f, Ground + TimberUp, z), 0f);
+            Piece(b, b.Shelf.Timber, new Vector3(5.2f, Ground + TimberUp + 0.7f, z + 0.2f), 0f);
+        }
+        Piece(b, b.Shelf.Timber, new Vector3(3.9f, Ground + TimberUp, 2.0f), 30f);
+
+        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(-2.2f, Ground + BoxUp, -1.4f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
+        Piece(b, b.Shelf.Chest, new Vector3(-2.4f, Ground + ChestUp, 1.2f), 90f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+        Piece(b, b.Shelf.Signboard, new Vector3(2.6f, Ground + SignUp, -3.4f), 0f);
+    }
+
+    // -------------------------------------------------------- Hilltop Beacon
+
+    /// <summary>
+    /// The tower on a plinth two tiles high, a lamp burning on its top, a ring
+    /// of fence round the foot and lamps at the quarters: a light to steer by
+    /// from a long way off.
+    /// </summary>
+    private static void Beacon(Job b)
+    {
+        GroundTile(b, GrassTiles, new Vector3(0f, Stack(1), 0f));
+        GroundTile(b, GrassTiles, new Vector3(0f, Stack(2), 0f));
+        Piece(b, b.Shelf.Tower, new Vector3(0f, Deck2, 0f), 0f, new Vector3(2.1f, 3.5f, 2.1f), new Vector3(0f, 1.75f, 0f));
+        Piece(b, b.Shelf.Lamp, new Vector3(0f, Deck2 + 3.5f + LampUp, 0f), Turn(b));
+
+        for (int i = 0; i < 14; i++)
+        {
+            float a = i / 14f * Mathf.PI * 2f;
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(Mathf.Cos(a) * 3.6f, Ground + FenceUp, Mathf.Sin(a) * 3.6f), -a * Mathf.Rad2Deg + 90f);
+        }
+
+        foreach (float x in new[] { -2.2f, 2.2f })
+        foreach (float z in new[] { -2.2f, 2.2f })
+            Piece(b, b.Shelf.Lamp, new Vector3(x, Ground + LampUp, z), x < 0f ? 0f : 180f);
+
+        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(1.5f, Ground + BoxUp, 0.4f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
+        Piece(b, b.Shelf.Chest, new Vector3(-1.5f, Ground + ChestUp, -0.6f), 90f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+        Piece(b, b.Shelf.Signboard, new Vector3(4.6f, Ground + SignUp, -1.2f), 0f);
+    }
+
+    // ----------------------------------------------------------- Summit Cairn
+
+    /// <summary>
+    /// A heap of the pack's boulders, one on end at the top, with a pole
+    /// beside it for whoever comes up to see from below.
+    /// </summary>
+    private static void Cairn(Job b)
+    {
+        Standing(b, new Vector3(0f, Ground + 0.5f, 0f), 1.5f);
+
+        for (int i = 0; i < 6; i++)
+        {
+            float a = i / 6f * Mathf.PI * 2f + 0.3f;
+            Lying(b, new Vector3(Mathf.Cos(a) * 0.95f, Ground, Mathf.Sin(a) * 0.95f), 0.8f + (float)b.Rng.NextDouble() * 0.3f);
+        }
+        for (int i = 0; i < 5; i++)
+        {
+            float a = i / 5f * Mathf.PI * 2f;
+            Lying(b, new Vector3(Mathf.Cos(a) * 1.7f, Ground, Mathf.Sin(a) * 1.7f), 0.45f + (float)b.Rng.NextDouble() * 0.25f);
+        }
+
+        Piece(b, Pick(b.Shelf.Poles, b), new Vector3(0.55f, Ground + 1.0f + 0.5f, -0.4f), 0f, Vector3.zero, Vector3.zero, new Vector3(0f, 0f, -7f));
+        Piece(b, b.Shelf.Signboard, new Vector3(2.4f, Ground + SignUp, -1.5f), 20f);
+    }
+
+    // --------------------------------------------------------- Wayside Shrine
+
+    /// <summary>
+    /// A stone on end on one raised tile, a lamp kept by it, a fence on three
+    /// sides and bushes at the back; the sort of thing left where paths met.
+    /// </summary>
+    private static void Shrine(Job b)
+    {
+        GroundTile(b, GrassTiles, new Vector3(0f, Stack(1), 0f));
+        Standing(b, new Vector3(0f, Deck1, 0f), 1.5f);
+
+        foreach (float along in new[] { -0.45f, 0.45f })
+        {
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Ground + FenceUp, -1.7f), 0f);
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Ground + FenceUp, 1.7f), 0f);
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(-1.7f, Ground + FenceUp, along), 90f);
+        }
+
+        Piece(b, b.Shelf.Lamp, new Vector3(2.0f, Ground + LampUp, 1.4f), 180f);
+        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(-2.1f, Ground + BustUp, 1.3f), Turn(b));
+        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(-2.1f, Ground + BustUp, -1.3f), Turn(b));
+        Piece(b, b.Shelf.Chest, new Vector3(2.0f, Ground + ChestUp, -1.3f), 270f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+        Piece(b, b.Shelf.Signboard, new Vector3(3.4f, Ground + SignUp, 0.4f), 0f);
+    }
+
+    // -------------------------------------------------------- Standing Stones
+
+    /// <summary>
+    /// Seven stones on end in a ring, one fallen, one lying flat in the
+    /// middle. Nothing else: no lamp, no fence, nobody keeps it.
+    /// </summary>
+    private static void Stones(Job b)
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            float a = i / 7f * Mathf.PI * 2f + 0.2f;
+            var foot = new Vector3(Mathf.Cos(a) * 4.6f, Ground, Mathf.Sin(a) * 4.6f);
+
+            if (i == 4) Lying(b, foot, 1.3f);
+            else Standing(b, foot, 2.2f + (float)b.Rng.NextDouble() * 0.9f);
+        }
+
+        Lying(b, new Vector3(0f, Ground, 0f), 1.2f);
+        Piece(b, b.Shelf.Signboard, new Vector3(6.4f, Ground + SignUp, 0.8f), 0f);
+    }
+
+    // ------------------------------------------------------------ Lighthouse
+
+    /// <summary>
+    /// At a beach's edge: a platform of pale stone three across and one up,
+    /// a plinth on that, the tower on the plinth with a lamp burning on top,
+    /// and the stair up from the land side. The platform's seaward row stands
+    /// in the water.
+    /// </summary>
+    private static void Lighthouse(Job b)
+    {
+        for (int x = -1; x <= 1; x++)
+        for (int z = -1; z <= 1; z++)
+            GroundTile(b, SandTiles, new Vector3(x * Tile, Stack(1), z * Tile));
+
+        GroundTile(b, SandTiles, new Vector3(0f, Stack(2), 0f));
+        Piece(b, b.Shelf.Tower, new Vector3(0f, Deck2, 0f), 0f, new Vector3(2.1f, 3.5f, 2.1f), new Vector3(0f, 1.75f, 0f));
+        Piece(b, b.Shelf.Lamp, new Vector3(0f, Deck2 + 3.5f + LampUp, 0f), Turn(b));
+
+        float edge = 1.5f * Tile;
+        Stair(b, new Vector3(-(edge + 2.0f), Deck1 + StairUp, 0f), 270f);
+        Rail(b, edge, Deck1, -1);
+
+        Piece(b, b.Shelf.Lamp, new Vector3(-edge + 0.42f, Deck1 + LampUp, -1.55f), 270f);
+        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(edge - 0.6f, Deck1 + BoxUp, edge - 0.6f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
+
+        Piece(b, b.Shelf.Chest, new Vector3(-edge - 4.6f, GroundAt(b, -edge - 4.6f, 1.6f) + ChestUp, 1.6f), 90f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(-edge - 5.2f, GroundAt(b, -edge - 5.2f, -1.4f) + BoxUp, -1.4f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
+        Piece(b, b.Shelf.Signboard, new Vector3(-edge - 4.0f, GroundAt(b, -edge - 4.0f, -2.4f) + SignUp, -2.4f), 180f);
+    }
+
+    // ---------------------------------------------------------- Hunter's Hide
+
+    /// <summary>
+    /// One tile up, fenced on three sides, a stair up the fourth; somewhere
+    /// to wait above the eyeline of whatever comes by.
+    /// </summary>
+    private static void Hide(Job b)
+    {
+        GroundTile(b, GrassTiles, new Vector3(0f, Stack(1), 0f));
+
+        float edge = 0.5f * Tile;
+        Stair(b, new Vector3(edge + 2.0f, Deck1 + StairUp, 0f), 90f);
+
+        foreach (float along in new[] { -0.45f, 0.45f })
+        {
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Deck1 + FenceUp, edge - 0.12f), 0f);
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Deck1 + FenceUp, -edge + 0.12f), 0f);
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(-edge + 0.12f, Deck1 + FenceUp, along), 90f);
+        }
+
+        Piece(b, b.Shelf.Lamp, new Vector3(-0.55f, Deck1 + LampUp, 0.55f), 0f);
+        Piece(b, b.Shelf.Chest, new Vector3(0.3f, Deck1 + ChestUp, -0.5f), 180f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+
+        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(edge + 4.6f, Ground + BustUp, 1.3f), Turn(b));
+        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(edge + 4.6f, Ground + BustUp, -1.3f), Turn(b));
+        Piece(b, b.Shelf.Signboard, new Vector3(edge + 3.6f, Ground + SignUp, -2.2f), 0f);
+    }
+
+    // ---------------------------------------------------------- Buried Tower
+
+    /// <summary>
+    /// The tower sunk to its shoulders in the sand and leaning, what was
+    /// round it half buried with it. The sand is winning.
+    /// </summary>
+    private static void Buried(Job b)
+    {
+        Piece(b, b.Shelf.Tower, new Vector3(0f, Ground - 1.9f, 0f), Turn(b), new Vector3(2.1f, 3.5f, 2.1f), new Vector3(0f, 1.75f, 0f), new Vector3(0f, 0f, 14f));
+
+        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(2.3f, Ground + BoxUp - 0.32f, 1.1f), Turn(b));
+        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(-1.9f, Ground + BoxUp - 0.2f, -1.6f), Turn(b));
+        Piece(b, b.Shelf.Chest, new Vector3(1.6f, Ground + ChestUp - 0.3f, -2.2f), 120f);
+
+        // the gate, flat on the sand and half under it
+        Piece(b, b.Shelf.Doors, new Vector3(-2.6f, Ground + 0.02f, 0.9f), Turn(b), Vector3.zero, Vector3.zero, new Vector3(0f, 0f, 90f));
+
+        for (int i = 0; i < 3; i++)
+            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(3.2f + i * 0.86f, Ground + FenceUp - 0.12f * i, 0.2f), 0f);
+
+        Standing(b, new Vector3(2.9f, Ground - 0.3f, 2.6f), 1.3f);
+        Piece(b, b.Shelf.Signboard, new Vector3(3.8f, Ground + SignUp - 0.2f, -2.4f), 0f, Vector3.zero, Vector3.zero, new Vector3(0f, 0f, 12f));
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /// <summary>
@@ -428,21 +656,53 @@ public static class LandmarkBuilder
         var stone = b.Flora.Boulders[b.Rng.Next(b.Flora.Boulders.Length)];
         if (stone.Mesh == null || stone.Size < 0.0001f) return;
 
-        // stood on end: the boulder's long way up, which is its width
-        float size = tall / Mathf.Max(stone.Wide, 0.01f);
-        float lift = stone.Foot > 0.9f ? 0f : stone.Foot * size;
+        // Stood on end, and drawn out along its height: a boulder is about as
+        // wide as it is long, so on end at its own proportions it was still a
+        // boulder, and a ring of them read as a rock fall rather than as
+        // stones somebody set up. After the quarter turn about z below, the
+        // mesh's own x is what points up.
+        const float drawn = 2.3f;
+        float size = tall / Mathf.Max(stone.Wide * drawn, 0.01f);
 
         var go = new GameObject("Standing stone");
         go.transform.SetParent(b.Root, false);
         go.transform.localPosition = new Vector3(foot.x, foot.y + tall * 0.5f, foot.z);
         go.transform.localRotation = Quaternion.Euler(0f, b.Rng.Next(360), 90f);
-        go.transform.localScale = Vector3.one * size;
+        go.transform.localScale = new Vector3(size * drawn, size * 0.85f, size * 0.85f);
 
         go.AddComponent<MeshFilter>().sharedMesh = stone.Mesh;
         go.AddComponent<MeshRenderer>().sharedMaterial = b.Flora.Paint;
 
         var box = go.AddComponent<BoxCollider>();
         box.size = new Vector3(stone.Size * 0.6f, stone.Wide, stone.Size * 0.6f);
+    }
+
+    /// <summary>A boulder lying as it fell, its own way up, to a height.</summary>
+    private static void Lying(Job b, Vector3 foot, float tall)
+    {
+        if (b.Flora == null || b.Flora.Boulders == null || b.Flora.Boulders.Length == 0) return;
+
+        var stone = b.Flora.Boulders[b.Rng.Next(b.Flora.Boulders.Length)];
+        if (stone.Mesh == null || stone.Size < 0.0001f) return;
+
+        float size = tall / stone.Size;
+        float lift = stone.Foot > 0.9f ? 0f : stone.Foot * size;
+
+        var go = new GameObject("Boulder");
+        go.transform.SetParent(b.Root, false);
+        go.transform.localPosition = new Vector3(foot.x, foot.y + 0.1f + lift, foot.z);
+        go.transform.localRotation = Quaternion.Euler(0f, b.Rng.Next(360), 0f);
+        go.transform.localScale = Vector3.one * size;
+
+        go.AddComponent<MeshFilter>().sharedMesh = stone.Mesh;
+        go.AddComponent<MeshRenderer>().sharedMaterial = b.Flora.Paint;
+
+        if (tall > 0.7f)
+        {
+            var box = go.AddComponent<BoxCollider>();
+            box.size = new Vector3(stone.Wide * 0.8f, stone.Size, stone.Wide * 0.8f);
+            box.center = new Vector3(0f, stone.Size * 0.5f - (stone.Foot > 0.9f ? 0f : stone.Foot), 0f);
+        }
     }
 
     /// <summary>One of the pack's mushrooms, stood on the ground at a height.</summary>
@@ -489,17 +749,22 @@ public static class LandmarkBuilder
         Under(b, under, b.Shelf.Slab, at, yaw, tilt);
     }
 
-    /// <summary>A fence round a square deck of a given half width, with a gap for the stair on +x.</summary>
-    private static void Rail(Job b, float edge, float deck, bool stairGap)
+    /// <summary>
+    /// A fence round a square deck of a given half width, with a gap for a
+    /// stair on the +x side (gap 1), the -x side (-1), or none (0).
+    /// </summary>
+    private static void Rail(Job b, float edge, float deck, int gap)
     {
         float rim = edge - 0.12f;
 
         for (float along = -edge + 0.5f; along <= edge - 0.4f; along += 0.86f)
         {
+            bool middle = Mathf.Abs(along) < 1.25f;
+
             Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, deck + FenceUp, rim), 0f);
             Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, deck + FenceUp, -rim), 0f);
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(-rim, deck + FenceUp, along), 90f);
-            if (!stairGap || Mathf.Abs(along) >= 1.25f) Piece(b, Pick(b.Shelf.Fences, b), new Vector3(rim, deck + FenceUp, along), 90f);
+            if (!(middle && gap < 0)) Piece(b, Pick(b.Shelf.Fences, b), new Vector3(-rim, deck + FenceUp, along), 90f);
+            if (!(middle && gap > 0)) Piece(b, Pick(b.Shelf.Fences, b), new Vector3(rim, deck + FenceUp, along), 90f);
         }
     }
 

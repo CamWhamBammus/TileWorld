@@ -80,6 +80,86 @@ public static class Inscriptions
         "Scratched on the tallest stalk: \"{0}. Still growing.\""
     };
 
+    private static readonly string[] CampLines =
+    {
+        "Burned into the kiln door: \"{0}. Three days a burn. Do not open it.\"",
+        "The wood is stacked by size. Whoever did it had done it a thousand times.",
+        "Chalked on the chest: \"charcoal to the smith at {0}, one cart\".",
+        "Ash to the ankles round the kiln. It has burned here a long while.",
+        "Notches on the fence, five and a stroke, five and a stroke.",
+        "\"Went for water\" scratched on the door, and a date a long way back."
+    };
+
+    private static readonly string[] BeaconLines =
+    {
+        "Cut into the plinth: \"{0}. Keep it lit. They steer by it.\"",
+        "The lamp is full and the wick is trimmed. Somebody climbs up here.",
+        "A list of nights on the wall, each with a mark: lit, lit, lit, out.",
+        "\"Seen from the {0} road\" chalked under the sign, and a small drawing of the tower.",
+        "The fence has been mended with rope. Sheep, probably.",
+        "Chalked on the chest: \"oil for a month, no more\"."
+    };
+
+    private static readonly string[] CairnLines =
+    {
+        "On the sign, faint: \"{0} below. Add a stone if you got here.\"",
+        "The top stone has been set and reset. Every hand that came up moved it.",
+        "Names cut into the flat stones, dozens of them, the newest still sharp.",
+        "The pole has held a flag. Only the knots are left.",
+        "Scratched on a stone: \"could see the sea from here. Could not see home.\"",
+        "\"{0}, the long way\" and an arrow, pointing down the wrong side."
+    };
+
+    private static readonly string[] ShrineLines =
+    {
+        "On the sign: \"{0}. Leave a little for the road.\"",
+        "Coins in the chest, none of them worth anything. Something is.",
+        "The stone has been touched smooth at one place, about hand height.",
+        "Chalked on the fence: \"lamp lit, all well\". The lamp is lit.",
+        "Under the sign, in a child's hand: \"we passed here going to {0}\".",
+        "Flowers, dried, tied to the fence. Not old."
+    };
+
+    private static readonly string[] StonesLines =
+    {
+        "On the sign, newer than the stones by a thousand years: \"{0}. Do not move them.\"",
+        "The fallen one fell inward. Whoever set them meant it to.",
+        "Marks on the flat stone line up with the tallest at sunrise. You checked.",
+        "Nothing is written on the stones. That is what is written on them.",
+        "The ring is seven. There is a hollow where an eighth stood.",
+        "Scratched on the sign, in a hurry: \"{0}. Not at night.\""
+    };
+
+    private static readonly string[] LighthouseLines =
+    {
+        "Cut over the stair: \"{0}. Lit at dusk, out at dawn, no exceptions.\"",
+        "A tally of wrecks on the wall, and after the light was built, none.",
+        "The lamp is full. Someone rows out.",
+        "Chalked on the plinth: \"tide to here in the big storm\", well above your head.",
+        "\"Watched a ship go past {0} all night and not come in\" scratched by the rail.",
+        "The chest holds rope, oil, and a letter nobody sent."
+    };
+
+    private static readonly string[] HideLines =
+    {
+        "On the sign: \"{0}. Quiet. They come at first light.\"",
+        "Tallies on the rail, in two columns: seen, and taken.",
+        "The chest holds a blanket and a horn. It gets cold up here.",
+        "Chalked on the platform: \"stag, seven points, went east\".",
+        "Someone slept here. The grass is flat where they lay.",
+        "\"Missed\" scratched into the rail, and under it, \"missed again\"."
+    };
+
+    private static readonly string[] BuriedLines =
+    {
+        "Just above the sand, a line of letters: \"...{0} was green then...\"",
+        "The door lies flat. The sand is over half of it already.",
+        "Scratched on the tower, at what is now knee height: \"stand here and you can see the wall\". There is no wall.",
+        "Chalked on the chest, recently: \"dug for an hour. Nothing.\"",
+        "The lean has a mark on the sign: how far it has gone since somebody last checked.",
+        "\"{0}\" cut deep into the stone, and under it a number too worn to read."
+    };
+
     public static string For(Vector2Int chunk, LandmarkKind kind, int worldSeed)
     {
         var region = Regions.At(chunk, worldSeed);
@@ -92,6 +172,14 @@ public static class Inscriptions
             LandmarkKind.FishingJetty => JettyLines,
             LandmarkKind.SteppedAltar => AltarLines,
             LandmarkKind.ToadstoolRing => RingLines,
+            LandmarkKind.CharcoalCamp => CampLines,
+            LandmarkKind.HilltopBeacon => BeaconLines,
+            LandmarkKind.SummitCairn => CairnLines,
+            LandmarkKind.WaysideShrine => ShrineLines,
+            LandmarkKind.StandingStones => StonesLines,
+            LandmarkKind.Lighthouse => LighthouseLines,
+            LandmarkKind.HuntersHide => HideLines,
+            LandmarkKind.BuriedTower => BuriedLines,
             _ => WatchLines
         };
 

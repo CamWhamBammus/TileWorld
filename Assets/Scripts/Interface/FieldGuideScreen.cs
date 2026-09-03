@@ -192,7 +192,7 @@ public class FieldGuideScreen : MonoBehaviour
     /// <summary>
     /// Where the text sits, which differs by page: the notes want the whole
     /// sheet, an entry leaves the top of it to the drawing, and the contents
-    /// has two rows of thumbnails to keep clear of.
+    /// has four rows of thumbnails to keep clear of.
     /// </summary>
     private void Room(Shape shape)
     {
@@ -207,9 +207,10 @@ public class FieldGuideScreen : MonoBehaviour
                 break;
 
             case Shape.Contents:
-                rect.sizeDelta = new Vector2(800f, 250f);
-                rect.anchoredPosition = new Vector2(0f, -600f);
-                body.fontSizeMax = 21f;
+                // under four rows of thumbnails now, so lower and shorter
+                rect.sizeDelta = new Vector2(800f, 150f);
+                rect.anchoredPosition = new Vector2(0f, -706f);
+                body.fontSizeMax = 18f;
                 break;
 
             default:
@@ -230,7 +231,7 @@ public class FieldGuideScreen : MonoBehaviour
         Room(Shape.Contents);
 
         heading.text = "<size=125%><b><color=" + Ink + ">FIELD SKETCHBOOK</color></b></size>\n"
-                     + "<size=80%><color=" + Dim + ">" + FieldGuide.Entries + " of 8 entries finished, "
+                     + "<size=80%><color=" + Dim + ">" + FieldGuide.Entries + " of " + Subject.All().Length + " entries finished, "
                      + FieldGuide.Notes + " of " + FieldGuide.NotesWanted + " notes made</color></size>";
 
         var all = Subject.All();
@@ -451,19 +452,35 @@ public class FieldGuideScreen : MonoBehaviour
         contentsRect.offsetMin = Vector2.zero;
         contentsRect.offsetMax = Vector2.zero;
 
+        // The contents: every creature, then every structure, small. There
+        // were eight in two rows of four when this was written; there are
+        // nineteen now, so the thumbnails are smaller and five to a row, and
+        // the arrays are as long as the book is.
+        var all = Subject.All();
+        int creatures = 0;
+        foreach (var one in all) if (one.Wild) creatures++;
+
         Label("Row creatures", contents.transform, 19f, new Vector2(0f, -136f), new Vector2(800f, 28f))
             .text = "<color=" + Dim + ">CREATURES</color>";
 
-        Label("Row built", contents.transform, 19f, new Vector2(0f, -366f), new Vector2(800f, 28f))
-            .text = "<color=" + Dim + ">RUINS</color>";
+        int creatureRows = Mathf.CeilToInt(creatures / 5f);
+        float builtLabelY = -160f - creatureRows * 128f - 6f;
 
-        thumbs = new RawImage[8];
-        thumbNames = new TMP_Text[8];
+        Label("Row built", contents.transform, 19f, new Vector2(0f, builtLabelY), new Vector2(800f, 28f))
+            .text = "<color=" + Dim + ">STRUCTURES</color>";
 
-        for (int i = 0; i < 8; i++)
+        thumbs = new RawImage[all.Length];
+        thumbNames = new TMP_Text[all.Length];
+
+        for (int i = 0; i < all.Length; i++)
         {
-            int column = i % 4;
-            int row = i / 4;
+            bool wild = i < creatures;
+            int within = wild ? i : i - creatures;
+            int column = within % 5;
+            int row = within / 5;
+
+            float top = wild ? -166f : builtLabelY - 30f;
+            float y = top - row * 128f;
 
             var thumbGo = new GameObject("Thumb " + i);
             thumbGo.transform.SetParent(contents.transform, false);
@@ -474,12 +491,12 @@ public class FieldGuideScreen : MonoBehaviour
             rect.anchorMin = new Vector2(0.5f, 1f);
             rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(190f, 143f);
-            rect.anchoredPosition = new Vector2((column - 1.5f) * 200f, -172f - row * 230f);
+            rect.sizeDelta = new Vector2(124f, 93f);
+            rect.anchoredPosition = new Vector2((column - 2f) * 156f, y);
 
-            thumbNames[i] = Label("Thumb name " + i, contents.transform, 19f,
-                                  new Vector2((column - 1.5f) * 200f, -320f - row * 230f),
-                                  new Vector2(196f, 30f));
+            thumbNames[i] = Label("Thumb name " + i, contents.transform, 14f,
+                                  new Vector2((column - 2f) * 156f, y - 96f),
+                                  new Vector2(152f, 26f));
         }
 
         body = Label("Body", cardGo.transform, 23f, new Vector2(0f, -640f), new Vector2(800f, 210f));

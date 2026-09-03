@@ -349,7 +349,7 @@ public class DevTools : MonoBehaviour
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 0.5f);
-        cardRect.sizeDelta = new Vector2(940f, 1000f);
+        cardRect.sizeDelta = new Vector2(940f, 1040f);
 
         heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 438f), new Vector2(880f, 90f));
         heading.color = new Color(0.85f, 0.87f, 0.90f);
@@ -393,14 +393,14 @@ public class DevTools : MonoBehaviour
             var kind = built[i];
 
             Button(Landmarks.NameOf(kind), cardGo.transform,
-                new Vector2((i % 3 - 1) * 300f, -26f - (i / 3) * 56f), new Vector2(285f, 52f), () => GoToStructure(kind));
+                new Vector2((i % 4 - 1.5f) * 222f, -26f - (i / 4) * 56f), new Vector2(212f, 52f), () => GoToStructure(kind));
         }
 
-        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -210f), new Vector2(880f, 30f))
+        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -262f), new Vector2(880f, 30f))
             .text = "THE FIRST FEW MINUTES";
 
         Button("Show the opening again", cardGo.transform,
-            new Vector2(-230f, -260f), new Vector2(430f, 52f), () =>
+            new Vector2(-230f, -312f), new Vector2(430f, 52f), () =>
             {
                 Arrival.Replay();
                 Toggle(false);
@@ -408,9 +408,9 @@ public class DevTools : MonoBehaviour
             });
 
         wipeLabel = Button("Put this world back to nothing", cardGo.transform,
-            new Vector2(230f, -260f), new Vector2(430f, 52f), Wipe);
+            new Vector2(230f, -312f), new Vector2(430f, 52f), Wipe);
 
-        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -330f), new Vector2(880f, 40f))
+        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
         panel.SetActive(false);
