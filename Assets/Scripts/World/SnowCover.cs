@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Snow on the high ground, laid over the tiles the same way water is laid
@@ -49,6 +50,22 @@ public static class SnowCover
         return Hash(tileX, tileZ, worldSeed) % 1000 < t * 1000f;
     }
 
+    /// <summary>How far the snow stands above the ground it lies on.</summary>
+    private const float Rise = 0.17f;
+
+    /// <summary>And how far it hangs down over the edge of the tile.</summary>
+    private const float Skirt = 0.26f;
+
+    /// <summary>How many corners the rim of one tile's snow has.</summary>
+    private const int Corners = 12;
+
+    // A ring of corners meets its neighbours at the flat middle of each edge,
+    // not at the corners, and that middle sits at cos(pi/Corners) of the reach.
+    // Reach only as far as the tile edge and the flats fall short of it, which
+    // is a gap of bare rock along every seam. So reach past it by that much
+    // again, and then some, and let the drifts run together.
+    private const float Spread = 1.12f;
+
     public static Mesh BuildMesh(Vector2Int chunkIndex, int worldSeed)
     {
         int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
@@ -57,13 +74,6 @@ public static class SnowCover
         var vertices = new List<Vector3>();
         var triangles = new List<int>();
 
-        // Exactly the tile it covers, so sheets meet edge to edge and never
-        // lie over one another. Widened, they did two wrong things at once:
-        // they hung visibly over the sides of the tiles, and where two of them
-        // overlapped at the same height the depth buffer had no way to choose
-        // between them, so a snowfield flickered even harder than the desert
-        // did -- half the pixels in the frame changing from one frame to the
-        // next.
         float half = WorldGrid.TileSize * 0.5f;
 
         for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
@@ -74,35 +84,59 @@ public static class SnowCover
 
             if (!IsSnowy(tileX, tileZ, worldSeed)) continue;
 
-            // Just clear of the tile, so it does not fight with the ground.
-            //
-            // Nothing is added to set neighbours apart. That was wanted while
-            // the sheets overlapped, and once they were cut back to meeting
-            // edge to edge it was the wrong thing entirely: a sheet a few
-            // thousandths above the one beside it leaves a step along their
-            // shared edge, and a step you can see through draws a hairline
-            // down every seam in the field. Sheets that meet do not overlap,
-            // so there is nothing for them to fight over, and lying at exactly
-            // the same height they meet without a seam at all.
-            float y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.04f;
+            float ground = WorldHeight.SurfaceY(tileX, tileZ, worldSeed);
 
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;
 
-            int v = vertices.Count;
+            // The rim, as a ring of corners rather than four. Each sits a
+            // little further out or in than the last, which is what the pack's
+            // own tiles do -- their grass is not a square either, and that is
+            // most of why it looks laid on rather than printed on.
+            var rim = new Vector3[Corners];
 
-            vertices.Add(new Vector3(x - half, y, z - half));
-            vertices.Add(new Vector3(x - half, y, z + half));
-            vertices.Add(new Vector3(x + half, y, z + half));
-            vertices.Add(new Vector3(x + half, y, z - half));
+            for (int c = 0; c < Corners; c++)
+            {
+                float a = c / (float)Corners * Mathf.PI * 2f;
 
-            triangles.Add(v); triangles.Add(v + 1); triangles.Add(v + 2);
-            triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 3);
+                int wobble = Mathf.Abs(Hash(tileX * 31 + c, tileZ * 17 - c, worldSeed + 811));
+
+                float reach = half * (Spread + (wobble % 100) / 100f * 0.14f);
+
+                rim[c] = new Vector3(x + Mathf.Cos(a) * reach, ground + Rise, z + Mathf.Sin(a) * reach);
+            }
+
+            // and a crown a touch above the rim, so the top is a low mound
+            // rather than a plate. Two mounds meeting cross at an angle; two
+            // plates at one height argue over which is in front.
+            var crown = new Vector3(x, ground + Rise + 0.035f, z);
+
+            for (int c = 0; c < Corners; c++)
+            {
+                Vector3 one = rim[c];
+                Vector3 two = rim[(c + 1) % Corners];
+
+                // The top. Corners run anticlockwise around the tile, so the
+                // pair goes in backwards -- wound the other way the face looks
+                // at the ground, takes no sun, and snow comes back grey.
+                Face(vertices, triangles, crown, two, one);
+
+                // and the side of it, hanging over the edge of the tile the way
+                // the grass on the other tiles hangs over theirs
+                Vector3 underOne = new Vector3(one.x, ground - Skirt, one.z);
+                Vector3 underTwo = new Vector3(two.x, ground - Skirt, two.z);
+
+                Face(vertices, triangles, one, two, underOne);
+                Face(vertices, triangles, two, underTwo, underOne);
+            }
         }
 
         if (vertices.Count == 0) return null;
 
         var mesh = new Mesh { name = "Snow " + chunkIndex };
+
+        if (vertices.Count > 65000) mesh.indexFormat = IndexFormat.UInt32;
+
         mesh.SetVertices(vertices);
         mesh.SetTriangles(triangles, 0);
         mesh.RecalculateNormals();
@@ -111,12 +145,33 @@ public static class SnowCover
         return mesh;
     }
 
+    /// <summary>
+    /// One triangle with its own three corners. Snow is flat shaded like
+    /// everything else here, and corners shared between faces average their
+    /// normals into a smooth thing that does not match the rest of the world.
+    /// </summary>
+    private static void Face(List<Vector3> vertices, List<int> triangles, Vector3 a, Vector3 b, Vector3 c)
+    {
+        int at = vertices.Count;
+
+        vertices.Add(a);
+        vertices.Add(b);
+        vertices.Add(c);
+
+        triangles.Add(at);
+        triangles.Add(at + 1);
+        triangles.Add(at + 2);
+    }
+
     public static Material CreateMaterial()
     {
         Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
         var m = new Material(lit);
 
-        var colour = new Color(0.93f, 0.95f, 0.97f);
+        // Brighter than it was. Flat sheets took the light square on; a mound
+        // takes it at an angle and comes back grey, and grey snow reads as
+        // stone -- which the ground under it now actually is.
+        var colour = new Color(0.98f, 0.99f, 1f);
 
         m.SetColor("_BaseColor", colour);
         m.color = colour;
