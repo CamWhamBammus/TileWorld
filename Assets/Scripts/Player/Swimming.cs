@@ -55,6 +55,7 @@ public class Swimming : MonoBehaviour
     public static bool Afloat { get; private set; }
 
     private bool swimming;
+    private float settling;
     private float walkSpeed, sprintSpeed;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -129,14 +130,32 @@ public class Swimming : MonoBehaviour
         if (!swimming && depth > enterDepth) Enter();
         else if (swimming && depth < exitDepth) Exit();
 
-        // How deep the water is here, rather than how deep they are in it: to
-        // float, the bottom has to be further down than they sit.
-        int tx = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize);
-        int tz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        // Off the bottom or on it, which is the same question the lift below is
+        // already answering, and so cannot disagree with it.
+        //
+        // It used to be asked as "is the bed a good deal deeper than the float
+        // line", with a margin. But the lift takes them off the bottom the
+        // moment the bed is deeper than that line at all, so inside the margin
+        // they were floating and not counted as afloat -- neither standing nor
+        // swimming, and what played there was the pose for being in mid air.
+        bool off = swimming && controller != null && !controller.isGrounded;
 
-        float bed = WaterSurface.Level - WorldHeight.SurfaceY(tx, tz, world.WorldSeed);
+        if (off == Afloat)
+        {
+            settling = 0f;
+        }
+        else
+        {
+            settling += Time.deltaTime;
 
-        Afloat = swimming && bed > floatDepth + (Afloat ? 0.05f : 0.25f);
+            // held for a moment either way, so a foot brushing the bottom does
+            // not put the stroke on and off again
+            if (settling > 0.15f)
+            {
+                Afloat = off;
+                settling = 0f;
+            }
+        }
 
         if (!swimming) return;
 
