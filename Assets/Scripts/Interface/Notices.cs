@@ -41,6 +41,10 @@ public class Notices : MonoBehaviour
     {
         Debug.Log("[Notice] " + message);
 
+        // not over the arrival page: the first thing anybody reads should not
+        // have the world talking over the top of it
+        if (ScreenState.Current == ScreenState.Screen.Arrival) return;
+
         if (instance != null) instance.Add(message);
     }
 

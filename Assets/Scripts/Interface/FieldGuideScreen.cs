@@ -19,6 +19,8 @@ public class FieldGuideScreen : MonoBehaviour
     private const string Dim = "#8B7860";
     private const string Done = "#4A5B33";
 
+    private static FieldGuideScreen instance;
+
     private ChunkManager world;
     private GameObject panel;
     private TMP_FontAsset font;
@@ -44,8 +46,22 @@ public class FieldGuideScreen : MonoBehaviour
         }
     }
 
+    /// <summary>Open the book without the key, for the first one that lands.</summary>
+    public static void Show()
+    {
+        if (instance == null || instance.panel == null || instance.open) return;
+
+        instance.open = true;
+        instance.page = 0;
+        instance.panel.SetActive(true);
+
+        ScreenState.Open(ScreenState.Screen.Guide);
+        Ambience.Instance?.Click();
+    }
+
     private void Start()
     {
+        instance = this;
         world = FindFirstObjectByType<ChunkManager>();
 
         if (world == null)

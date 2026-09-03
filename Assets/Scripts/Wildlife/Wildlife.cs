@@ -28,6 +28,8 @@ public class Wildlife : MonoBehaviour
     [Tooltip("How close, and how plainly in view, before it counts as seen.")]
     [SerializeField] private float sightRange = 52f;
 
+    private static Wildlife instance;
+
     private ChunkManager world;
     private Transform player;
     private Camera eye;
@@ -46,6 +48,7 @@ public class Wildlife : MonoBehaviour
 
     private void Start()
     {
+        instance = this;
         world = FindFirstObjectByType<ChunkManager>();
 
         if (world == null)
@@ -111,6 +114,58 @@ public class Wildlife : MonoBehaviour
     /// one there. Animals arrive behind you or far enough off not to appear out
     /// of nothing in front of your face.
     /// </summary>
+    /// <summary>
+    /// Puts one animal out in front, near enough to be found. For somebody who
+    /// has never played: the first thing to draw should not be a matter of luck.
+    /// </summary>
+    public static bool BringOneClose()
+    {
+        var it = instance;
+
+        if (it == null || it.player == null || it.world == null) return false;
+
+        int seed = it.world.WorldSeed;
+        float now = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;
+
+        // Two passes. The first asks for something that suits both the ground
+        // and the hour, which is what the country would ordinarily put there.
+        // The second drops the hour: for the one animal that has to be found,
+        // standing somewhere at the wrong time of day beats not being there.
+        for (int pass = 0; pass < 2; pass++)
+        {
+            for (int attempt = 0; attempt < 40; attempt++)
+            {
+                float angle = Random.Range(-70f, 70f);
+                Vector3 at = it.player.position
+                           + Quaternion.Euler(0f, angle, 0f) * it.Facing() * Random.Range(17f, 28f);
+
+                int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
+                int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+
+                FaunaKind? kind = pass == 0 ? it.KindFor(x, z, seed, now) : AnySuiting(x, z, seed);
+
+                if (kind == null) continue;
+                if (!Fauna.Ground(kind.Value, x, z, seed)) continue;
+
+                it.Bring(kind.Value, seed, at);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Any kind at all that would stand on this ground.</summary>
+    private static FaunaKind? AnySuiting(int tileX, int tileZ, int seed)
+    {
+        foreach (FaunaKind kind in System.Enum.GetValues(typeof(FaunaKind)))
+        {
+            if (Fauna.Ground(kind, tileX, tileZ, seed)) return kind;
+        }
+
+        return null;
+    }
+
     private void TryBring(float now)
     {
         int seed = world.WorldSeed;

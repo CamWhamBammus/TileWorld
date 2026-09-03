@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
 public static class ScreenState
 {
-    public enum Screen { None, Map, Journal, Guide, Pause }
+    public enum Screen { None, Map, Journal, Guide, Pause, Arrival }
 
     public static Screen Current { get; private set; } = Screen.None;
 
