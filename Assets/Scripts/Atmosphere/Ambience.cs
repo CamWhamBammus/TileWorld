@@ -84,9 +84,19 @@ public class Ambience : MonoBehaviour
         music.volume = Mathf.MoveTowards(music.volume, target * fade, Time.deltaTime * 0.35f);
     }
 
+    /// <summary>
+    /// How many times a click has been asked for, whether or not one was made.
+    /// Shown on the F3 overlay: a sound heard more often than this counts is a
+    /// sound coming from somewhere else, and a count climbing on its own is a
+    /// caller nobody knows about.
+    /// </summary>
+    public static int Clicks { get; private set; }
+
     /// <summary>A short click, for opening and closing screens.</summary>
     public void Click(float pitch = 1f)
     {
+        Clicks++;
+
         if (effects == null || click == null) return;
 
         // One press should be one click. Screens close each other as they open,

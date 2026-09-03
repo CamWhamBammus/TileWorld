@@ -92,23 +92,7 @@ public class FieldGuideScreen : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(toggleKey))
-        {
-            open = !open;
-            panel.SetActive(open);
-
-            if (open)
-            {
-                page = 0;
-                ScreenState.Open(ScreenState.Screen.Guide);
-            }
-            else
-            {
-                ScreenState.Close(ScreenState.Screen.Guide);
-            }
-
-            Ambience.Instance?.Click();
-        }
+        if (Input.GetKeyDown(toggleKey)) Toggle();
 
         if (!open) return;
 
@@ -116,6 +100,25 @@ public class FieldGuideScreen : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A)) Turn(-1);
 
         Refresh();
+    }
+
+    /// <summary>Opening or shutting the book, as the key does it.</summary>
+    private void Toggle()
+    {
+        open = !open;
+        panel.SetActive(open);
+
+        if (open)
+        {
+            page = 0;
+            ScreenState.Open(ScreenState.Screen.Guide);
+        }
+        else
+        {
+            ScreenState.Close(ScreenState.Screen.Guide);
+        }
+
+        Ambience.Instance?.Click();
     }
 
     private const int PerPage = 8;

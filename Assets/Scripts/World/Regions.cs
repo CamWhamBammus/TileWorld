@@ -98,8 +98,8 @@ public static class Regions
 
         // Dry, low and open: sand. Asked before the fungus, which wants the
         // same low ground but wants it damp.
-        if (relief < 0.34f && wetShare < 0.06f
-            && Hash(cell.x, cell.y, worldSeed + 3391) % 5 == 0) return Character.Desert;
+        if (relief < 0.44f && wetShare < 0.12f
+            && Hash(cell.x, cell.y, worldSeed + 3391) % 3 == 0) return Character.Desert;
 
         // Now and then a low wooded region has gone over to fungus. Rare on
         // purpose: a thing you come across every few regions is somewhere you

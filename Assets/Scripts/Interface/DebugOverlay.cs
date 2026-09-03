@@ -110,6 +110,7 @@ public class DebugOverlay : MonoBehaviour
             "height  " + at.y.ToString("F1") + "m\n" +
             "seed    " + world.WorldSeed
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            + "\n\nui sounds " + Ambience.Clicks
             + "\n\nF8      show the first page again"
             + "\nshift-F8  put this world back to nothing"
 #endif
