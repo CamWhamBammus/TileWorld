@@ -88,6 +88,17 @@ namespace StarterAssets
         private float _targetRotation = 0.0f;
         private float _rotationVelocity;
         private float _verticalVelocity;
+
+        /// <summary>
+        /// Set by anything that wants to decide the vertical for one frame, as
+        /// swimming does. It has to be done here rather than by a Move of its
+        /// own: the controller works out how fast it is already going by
+        /// reading back the velocity of the last Move, and a second Move going
+        /// straight up leaves that reading with nothing across it, so the
+        /// controller starts building its speed again from nothing every frame.
+        /// Cleared as soon as it is used, so it is asked for each time.
+        /// </summary>
+        public float? VerticalOverride { private get; set; }
         private float _terminalVelocity = 53.0f;
 
         // timeout deltatime
@@ -226,7 +237,17 @@ namespace StarterAssets
             if (_input.move == Vector2.zero) targetSpeed = 0.0f;
 
             // a reference to the players current horizontal velocity
-            float currentHorizontalSpeed = new Vector3(_controller.velocity.x, 0.0f, _controller.velocity.z).magnitude;
+            // What it asked for last frame, not what the controller reports.
+            //
+            // Reading it back off the controller means the speed it works up to
+            // depends on the velocity of the last Move the controller was
+            // given, and it is not the only thing giving it moves: swimming
+            // lifts the player to the surface, and that lift left the reading
+            // with nothing across it, so this started again from nothing every
+            // frame and never worked up past a crawl. Swimming at 1.40 came out
+            // at 0.05. Keeping its own count, it gets where it is going whatever
+            // else has been done to the controller in the meantime.
+            float currentHorizontalSpeed = _speed;
 
             float speedOffset = 0.1f;
             float inputMagnitude = _input.analogMovement ? _input.move.magnitude : 1f;
@@ -271,8 +292,11 @@ namespace StarterAssets
             Vector3 targetDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * Vector3.forward;
 
             // move the player
+            float vertical = VerticalOverride ?? _verticalVelocity;
+            VerticalOverride = null;
+
             _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) +
-                             new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+                             new Vector3(0.0f, vertical, 0.0f) * Time.deltaTime);
 
             // update animator if using character
             if (_hasAnimator)

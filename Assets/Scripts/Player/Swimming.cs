@@ -86,6 +86,31 @@ public class Swimming : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// The lift, taken before the controller has its turn.
+    ///
+    /// Which side of the controller this happens is the whole of whether
+    /// swimming works. After it, the last Move of the frame is this one, going
+    /// straight up; the controller reads back the velocity of the last Move to
+    /// see how fast it is already going, finds nothing across, and starts
+    /// building its speed from nothing again every frame -- told to swim at
+    /// 1.40 it made 0.05. Before it, the controller's own Move is the last one,
+    /// the reading is true, and what is left at the end of the frame is a fixed
+    /// step below the line rather than something that changes every frame,
+    /// which the camera behind can follow without shaking.
+    /// </summary>
+    private void Update()
+    {
+        if (!swimming || player == null || movement == null) return;
+
+        // Handed to the controller to carry in its own move rather than moved
+        // separately. How far off the line we are, over how long a frame is,
+        // is the speed that would close it exactly.
+        float lift = (WaterSurface.Level - floatDepth) - player.position.y;
+
+        movement.VerticalOverride = Mathf.Clamp(lift / Mathf.Max(0.0001f, Time.deltaTime), -riseSpeed, riseSpeed);
+    }
+
     private void LateUpdate()
     {
         if (player == null) return;
@@ -103,23 +128,6 @@ public class Swimming : MonoBehaviour
         // of winding gravity up to terminal velocity. Set here, after its
         // Update, so its next frame reads this before its own ground check.
         if (movement != null) movement.Grounded = true;
-
-        // Where the float line actually is, rather than how hard to push
-        // towards it. Pushing was a tug of war: the controller takes itself
-        // down a fixed amount every frame and this pushed back up by as much,
-        // and what was left over after the two of them was a few millimetres a
-        // frame, one way and then the other. Small on the player and much
-        // larger by the time the camera behind him had followed it, which is
-        // what the shaking in the water was.
-        //
-        // This runs after the controller has had its go, so what it corrects is
-        // whatever that left behind, and the frame ends on the line every time.
-        float wanted = WaterSurface.Level - floatDepth;
-        float off = wanted - player.position.y;
-
-        float step = Mathf.Clamp(off, -riseSpeed * Time.deltaTime, riseSpeed * Time.deltaTime);
-
-        controller.Move(Vector3.up * step);
     }
 
     private void Enter()
