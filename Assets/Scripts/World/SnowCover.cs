@@ -74,13 +74,17 @@ public static class SnowCover
 
             if (!IsSnowy(tileX, tileZ, worldSeed)) continue;
 
-            // Just clear of the tile, so it does not fight with the ground --
-            // and each sheet a shade off its neighbours, so that two of them
-            // meeting along an edge are never quite level either. Stepping one
-            // tile changes this by two or three parts in seven, so no sheet
-            // matches any of the eight around it.
-            float y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.04f
-                    + ((tileX * 2 + tileZ * 3) % 7 + 7) % 7 * 0.0006f;
+            // Just clear of the tile, so it does not fight with the ground.
+            //
+            // Nothing is added to set neighbours apart. That was wanted while
+            // the sheets overlapped, and once they were cut back to meeting
+            // edge to edge it was the wrong thing entirely: a sheet a few
+            // thousandths above the one beside it leaves a step along their
+            // shared edge, and a step you can see through draws a hairline
+            // down every seam in the field. Sheets that meet do not overlap,
+            // so there is nothing for them to fight over, and lying at exactly
+            // the same height they meet without a seam at all.
+            float y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.04f;
 
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;
