@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca0ea9664a72d44b0b679f307021e32b, type: 3}
+  m_Name: Structures
+  m_EditorClassIdentifier: Assembly-CSharp::Structures
+  Tower: {fileID: 1967428359117820, guid: 43b12e7add05a6e4d83611d6833d6178, type: 3}
+  Stair: {fileID: 1277937053267174, guid: 1405b7fb08d907b40864a08d029cccdd, type: 3}
+  Fences:
+  - {fileID: 1075598579932658, guid: 05a73ba6dc7497846927486e0ad45cae, type: 3}
+  - {fileID: 1522359268725190, guid: a4bdd3d9cd00f154cb0a6e658a6b2d8d, type: 3}
+  - {fileID: 1784621931425820, guid: aade4ab746f4571489ae3f9f9cdaa7ff, type: 3}
+  - {fileID: 1886164851410466, guid: 1249f4e23d3a43847bf0b04cdc867dfa, type: 3}
+  - {fileID: 1922586398502664, guid: 22a722b66f603c741931611c6ea7ee72, type: 3}
+  Lamp: {fileID: 1650473134205470, guid: 2cdeb64ef44fbb64cbc4a1a504a63989, type: 3}
+  Busts:
+  - {fileID: 1471757734217928, guid: 4bf65bff42053dd44ab43abb891f39b2, type: 3}
+  - {fileID: 1901041929221872, guid: 109102834088dbb42af607422487b438, type: 3}
+  - {fileID: 1117789114009622, guid: 37875200258cf944f9805beb7d3e4bc6, type: 3}
+  - {fileID: 1454512984185206, guid: 814af83709b871841ba21775b1a46be6, type: 3}
+  - {fileID: 1627651206006398, guid: d7e958b3d3fdb904a8e2e0ba482e3e13, type: 3}
+  - {fileID: 1130485644101184, guid: 9203450a505caf54b94336acf9fe660a, type: 3}
+  Boxes:
+  - {fileID: 1407205343337198, guid: 526cc7924a6993c4d8786a8986623ace, type: 3}
+  - {fileID: 1911024488335002, guid: e9f02a9ffad798c4483ae87e1a3175e8, type: 3}
+  - {fileID: 1227742173622836, guid: 806dea423ee8ad44f8f328d10317ea77, type: 3}
+  Chest: {fileID: 1654724706348920, guid: 1d57efb2fd02d9041981592bc0fb6fa5, type: 3}
+  Timber: {fileID: 1598941180920742, guid: 706e80618a6d54741967e8dd015733e4, type: 3}
+  Signboard: {fileID: 1699350973031428, guid: 3ed0f0da2abe03542a3b28cab859dcf8, type: 3}

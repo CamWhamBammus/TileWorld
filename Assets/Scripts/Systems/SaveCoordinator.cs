@@ -64,7 +64,12 @@ public class SaveCoordinator : MonoBehaviour
 
         for (int i = 0; i < data.landmarkChunks.Count && i < data.landmarkKinds.Count; i++)
         {
-            LandmarkLog.Discover(data.landmarkChunks[i], (LandmarkKind)data.landmarkKinds[i]);
+            // The structures were replaced wholesale once, and a save from
+            // before that remembers finding things that are no longer there.
+            var placement = Landmarks.In(data.landmarkChunks[i], data.seed);
+            if (!placement.Exists) continue;
+
+            LandmarkLog.Discover(data.landmarkChunks[i], placement.Kind);
         }
 
         for (int i = 0; i < data.creaturesSeen.Count; i++)

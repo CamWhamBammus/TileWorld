@@ -527,6 +527,13 @@ public class ChunkManager : MonoBehaviour
         }
     }
 
+    /// <summary>A tile by id, for anything that builds out of the same tiles the ground is.</summary>
+    public bool TryTile(int id, out TileDefinition def)
+    {
+        def = null;
+        return tileLibrary != null && tileLibrary.TryGet(id, out def);
+    }
+
     /// <summary>Finds the mesh and material for a tile type, once.</summary>
     private (Mesh, Material) Resolve(int id)
     {

@@ -281,6 +281,10 @@ public class Undergrowth : MonoBehaviour
             // belong there are let through.
             if (character != Regions.Character.Snow && SnowCover.IsSnowy(gx, gz, seed)) continue;
 
+            // nor under a structure: a tree up through the platform is what
+            // the old ruins had
+            if (Landmarks.Occupies(gx, gz, seed)) continue;
+
             // A beach is bare. The sand above the waterline is ground the
             // trees have not taken, and a wood marching right down into the
             // lake is what it looked like before.

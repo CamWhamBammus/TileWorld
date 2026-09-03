@@ -2,43 +2,35 @@ using UnityEngine;
 
 public enum LandmarkKind
 {
-    AbandonedHouse, // roof half gone, chimney still standing
-    RuinedTower,    // a broken stair of stone, tall enough to see over the trees
-    StoneCircle,    // a ring around an altar, older than the forest
-    Watchtower      // timber legs and a platform someone kept watch from
+    ForestersWatch   // a tower on a raised square of ground, deep in the woods
 }
 
 /// <summary>
 /// Where the landmarks are. Like the terrain, this is a pure function of chunk
-/// coordinates and the world seed — nothing is stored, so the same seed always
-/// puts the same ruin on the same hill, and a chunk can be asked about long
+/// coordinates and the world seed -- nothing is stored, so the same seed always
+/// puts the same watch on the same rise, and a chunk can be asked about long
 /// before it is ever loaded.
+///
+/// Each kind belongs to one kind of country, and is only ever found there.
 /// </summary>
 public static class Landmarks
 {
-    /// <summary>One ruin, entire, the same way a creature is.</summary>
+    /// <summary>One structure, entire, the same way a creature is.</summary>
     public struct Kind
     {
         public string Name;
-        public int SurveyRadius;    // how far it charts, in chunks
-        public float SurveyHeight;  // how far up you have to get before it counts
-        public string Country;      // where the guide wants it found
-        public float LabelHeight;   // how far above it the map writes its name
+        public Regions.Character Country;   // the only region it is built in
+        public int SurveyRadius;            // how far it charts, in chunks
+        public float SurveyHeight;          // how far up you have to get before it counts
+        public string Where;                // where the guide wants it found
+        public float LabelHeight;           // how far above it the map writes its name
     }
 
     private static readonly Kind[] kinds =
     {
-        new Kind { Name = "Abandoned House", SurveyRadius = 2, SurveyHeight = 0f,
-                   Country = "down on the low ground", LabelHeight = 10f },
-
-        new Kind { Name = "Ruined Tower", SurveyRadius = 6, SurveyHeight = 8f,
-                   Country = "stands alone, seen from a long way off", LabelHeight = 15f },
-
-        new Kind { Name = "Stone Circle", SurveyRadius = 2, SurveyHeight = 0f,
-                   Country = "out in the open on flat ground", LabelHeight = 7f },
-
-        new Kind { Name = "Watchtower", SurveyRadius = 5, SurveyHeight = 7f,
-                   Country = "up high, built to see from", LabelHeight = 15f }
+        new Kind { Name = "Forester's Watch", Country = Regions.Character.Forest,
+                   SurveyRadius = 5, SurveyHeight = 1.5f,
+                   Where = "in the woods, its tower above the trees", LabelHeight = 9f },
     };
 
     /// <summary>How many kinds there are, so nothing has to be told twice.</summary>
@@ -58,23 +50,25 @@ public static class Landmarks
     public static Kind All(LandmarkKind kind) => kinds[Mathf.Clamp((int)kind, 0, kinds.Length - 1)];
 
     /// <summary>
-    /// Most rolls are rejected by the flatness test below, so this is a ceiling
-    /// rather than the real rate: 12 here yields about 3.2% of chunks, which
-    /// measured out at 106 units apart — roughly twenty seconds of running, so
-    /// you usually have one in view without the horizon being cluttered.
+    /// A ceiling rather than the real rate: most rolls are turned down by the
+    /// ground, which has to be nearly level under the whole footprint, and by
+    /// the country, since each kind is only built in its own.
     /// </summary>
-    private const int ChanceInHundred = 12;
+    private const int ChanceInHundred = 22;
 
     /// <summary>Kept away from chunk edges so a landmark is never cut in half by a seam.</summary>
-    private const int EdgeMargin = 4;
+    private const int EdgeMargin = 5;
 
     /// <summary>
-    /// How flat the ground has to be across the whole footprint. These are
-    /// buildings, not markers: a house is five tiles wide, so checking only the
-    /// tile under its centre would leave corners hanging in the air or buried.
+    /// The platform is three tiles square, and the stair reaches two more to
+    /// one side. The ground under the platform has to be level to within one
+    /// terrace step, which the grass cap's overhang hides; under the stair it
+    /// may fall a little further.
     /// </summary>
-    private const int FootprintTiles = 3;
-    private const float MaxFootprintVariation = 0.8f;
+    public const int PlatformHalf = 1;
+    public const int StairReach = 2;
+    private const float PlatformVariation = 0.26f;
+    private const float ApronVariation = 0.8f;
 
     public struct Placement
     {
@@ -83,6 +77,7 @@ public static class Landmarks
         public Vector3 Position;
         public Vector2Int Chunk;
         public float Yaw;
+        public int TileX, TileZ;
     }
 
     public static Placement In(Vector2Int chunk, int worldSeed)
@@ -91,10 +86,13 @@ public static class Landmarks
 
         int roll = Hash(chunk.x, chunk.y, worldSeed ^ 0x5F3A) % 100;
 
-        if (roll >= ChanceInHundred)
-        {
-            return result;
-        }
+        if (roll >= ChanceInHundred) return result;
+
+        var kind = (LandmarkKind)(Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % kinds.Length);
+
+        // only in its own country -- asked of the chunk's middle, the way the
+        // chunk's name is
+        if (Regions.CharacterAt(chunk, worldSeed) != All(kind).Country) return result;
 
         int span = WorldGrid.TilesPerChunk - EdgeMargin * 2;
         int localX = EdgeMargin + Hash(chunk.x, chunk.y, worldSeed ^ 0x1234) % span;
@@ -103,57 +101,95 @@ public static class Landmarks
         int tileX = chunk.x * WorldGrid.TilesPerChunk + localX;
         int tileZ = chunk.y * WorldGrid.TilesPerChunk + localZ;
 
-        if (FootprintVariation(tileX, tileZ, worldSeed) > MaxFootprintVariation)
-        {
-            return result;   // ground is not flat enough to build on here
-        }
+        // Square to the grid: the tiles it is built from are.
+        int turns = Hash(chunk.x, chunk.y, worldSeed ^ 0xBEEF) % 4;
+
+        if (!Level(tileX, tileZ, PlatformHalf, PlatformVariation, worldSeed)) return result;
+        if (!Level(tileX, tileZ, PlatformHalf + StairReach, ApronVariation, worldSeed)) return result;
+        if (Wet(tileX, tileZ, PlatformHalf + StairReach + 1, worldSeed)) return result;
 
         result.Exists = true;
-        result.Kind = (LandmarkKind)(Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % 4);
-        result.Yaw = Hash(chunk.x, chunk.y, worldSeed ^ 0xBEEF) % 360;
+        result.Kind = kind;
+        result.Yaw = turns * 90f;
+        result.TileX = tileX;
+        result.TileZ = tileZ;
         result.Position = new Vector3(
             tileX * WorldGrid.TileSize,
             WorldHeight.SurfaceY(tileX, tileZ, worldSeed),
-            tileZ * WorldGrid.TileSize
-        );
+            tileZ * WorldGrid.TileSize);
 
         return result;
     }
 
-    /// <summary>Height range across the footprint the structure will stand on.</summary>
-    private static float FootprintVariation(int tileX, int tileZ, int seed)
+    /// <summary>
+    /// Whether a tile is under a structure, so that nothing is planted on it
+    /// and no tile with a tree on it is laid there: a tree up through the
+    /// middle of the platform is what the old ruins had.
+    /// </summary>
+    public static bool Occupies(int tileX, int tileZ, int worldSeed)
     {
-        float lo = float.MaxValue;
-        float hi = float.MinValue;
+        var chunk = new Vector2Int(
+            Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
+            Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
 
-        for (int dx = -FootprintTiles; dx <= FootprintTiles; dx++)
-        for (int dz = -FootprintTiles; dz <= FootprintTiles; dz++)
+        var at = In(chunk, worldSeed);
+        if (!at.Exists) return false;
+
+        int dx = tileX - at.TileX;
+        int dz = tileZ - at.TileZ;
+
+        // the platform, and the strip the stair comes down, which is on the
+        // structure's +x side before it is turned
+        int ahead = Mathf.RoundToInt(at.Yaw) switch
+        {
+            90 => dz,
+            180 => -dx,
+            270 => -dz,
+            _ => dx
+        };
+        int aside = Mathf.RoundToInt(at.Yaw) switch
+        {
+            90 => -dx,
+            180 => -dz,
+            270 => dx,
+            _ => dz
+        };
+
+        if (Mathf.Abs(ahead) <= PlatformHalf && Mathf.Abs(aside) <= PlatformHalf) return true;
+
+        return ahead > PlatformHalf && ahead <= PlatformHalf + StairReach + 1 && Mathf.Abs(aside) <= 1;
+    }
+
+    private static bool Level(int tileX, int tileZ, int half, float allow, int seed)
+    {
+        float lo = float.MaxValue, hi = float.MinValue;
+
+        for (int dx = -half; dx <= half; dx++)
+        for (int dz = -half; dz <= half; dz++)
         {
             float h = WorldHeight.SurfaceY(tileX + dx, tileZ + dz, seed);
             lo = Mathf.Min(lo, h);
             hi = Mathf.Max(hi, h);
         }
 
-        return hi - lo;
+        return hi - lo <= allow;
     }
 
-    /// <summary>
-    /// How far a landmark charts once you have made use of it, in chunks.
-    /// Height is the point: a tower you have to climb shows you far more than
-    /// a ring of stones you can walk into.
-    /// </summary>
+    private static bool Wet(int tileX, int tileZ, int half, int seed)
+    {
+        for (int dx = -half; dx <= half; dx++)
+        for (int dz = -half; dz <= half; dz++)
+            if (WaterSurface.IsUnderwater(tileX + dx, tileZ + dz, seed)) return true;
+
+        return false;
+    }
+
     public static int SurveyRadius(LandmarkKind kind) => All(kind).SurveyRadius;
-
-    /// <summary>
-    /// How high above its base you have to get before it counts. Towers have to
-    /// be climbed; the house and the circle only have to be reached.
-    /// </summary>
     public static float SurveyHeight(LandmarkKind kind) => All(kind).SurveyHeight;
-
     public static string NameOf(LandmarkKind kind) => All(kind).Name;
 
     /// <summary>Where the guide wants it found.</summary>
-    public static string Country(LandmarkKind kind) => All(kind).Country;
+    public static string Country(LandmarkKind kind) => All(kind).Where;
 
     private static int Hash(int x, int y, int seed)
     {

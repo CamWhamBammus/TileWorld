@@ -139,7 +139,7 @@ public class Journal : MonoBehaviour
     /// <summary>The kind recorded for a chunk, for looking its inscription up.</summary>
     private LandmarkKind LandmarkKindOf(Vector2Int chunk)
     {
-        return LandmarkLog.Found.TryGetValue(chunk, out var kind) ? kind : LandmarkKind.AbandonedHouse;
+        return LandmarkLog.Found.TryGetValue(chunk, out var kind) ? kind : LandmarkKind.ForestersWatch;
     }
 
     private void Refresh()

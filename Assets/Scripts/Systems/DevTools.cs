@@ -197,6 +197,46 @@ public class DevTools : MonoBehaviour
         Notices.Show("Dev: found a " + want + " but no bank to stand on.");
     }
 
+    /// <summary>
+    /// The nearest structure of a kind, walking out over chunks. You arrive at
+    /// the foot of its stair, facing it.
+    /// </summary>
+    private void GoToStructure(LandmarkKind want)
+    {
+        if (player == null || body == null) return;
+
+        int seed = world.WorldSeed;
+        var home = WorldGrid.WorldToChunk(player.position);
+
+        for (int r = 0; r < 60; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+
+            var at = Landmarks.In(new Vector2Int(home.x + dx, home.y + dz), seed);
+            if (!at.Exists || at.Kind != want) continue;
+
+            // the stair comes down the structure's +x side, before it is turned
+            Vector3 toFoot = Quaternion.Euler(0f, at.Yaw, 0f) * new Vector3(11f, 0f, 0f);
+            Vector3 stand = at.Position + toFoot;
+
+            int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize);
+            int tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+
+            body.enabled = false;
+            player.position = new Vector3(stand.x, WorldHeight.SurfaceY(tx, tz, seed) + 1.2f, stand.z);
+            player.rotation = Quaternion.LookRotation(-toFoot.normalized, Vector3.up);
+            body.enabled = true;
+
+            Toggle(false);
+            Notices.Show("Dev: the " + Landmarks.NameOf(want) + " in " + Regions.At(at.Chunk, seed).Name);
+            return;
+        }
+
+        Notices.Show("Dev: no " + Landmarks.NameOf(want) + " within sixty chunks.");
+    }
+
     private void GoTo(Regions.Character want)
     {
         if (!Nearest(want, out var chunk, out _) || body == null)
@@ -309,12 +349,12 @@ public class DevTools : MonoBehaviour
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 0.5f);
-        cardRect.sizeDelta = new Vector2(940f, 700f);
+        cardRect.sizeDelta = new Vector2(940f, 800f);
 
-        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 288f), new Vector2(880f, 90f));
+        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 338f), new Vector2(880f, 90f));
         heading.color = new Color(0.85f, 0.87f, 0.90f);
 
-        Label("Go", cardGo.transform, 17f, new Vector2(0f, 228f), new Vector2(880f, 30f))
+        Label("Go", cardGo.transform, 17f, new Vector2(0f, 278f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST";
 
         var kinds = (Regions.Character[])System.Enum.GetValues(typeof(Regions.Character));
@@ -324,13 +364,13 @@ public class DevTools : MonoBehaviour
             var kind = kinds[i];
 
             float x = (i % 3 - 1) * 300f;
-            float y = 180f - (i / 3) * 56f;
+            float y = 230f - (i / 3) * 56f;
 
             labels[kind] = Button(kind.ToString(), cardGo.transform,
                 new Vector2(x, y), new Vector2(285f, 52f), () => GoTo(kind));
         }
 
-        Label("Water", cardGo.transform, 17f, new Vector2(0f, -42f), new Vector2(880f, 30f))
+        Label("Water", cardGo.transform, 17f, new Vector2(0f, 8f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST WATER   (a lake is not a region, it is a thing inside one)";
 
         var bodies = (WaterSurface.Body[])System.Enum.GetValues(typeof(WaterSurface.Body));
@@ -340,14 +380,27 @@ public class DevTools : MonoBehaviour
             var kind = bodies[i];
 
             waters[kind] = Button(kind.ToString(), cardGo.transform,
-                new Vector2((i - 1) * 300f, -84f), new Vector2(285f, 52f), () => GoToWater(kind));
+                new Vector2((i - 1) * 300f, -34f), new Vector2(285f, 52f), () => GoToWater(kind));
         }
 
-        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -146f), new Vector2(880f, 30f))
+        Label("Built", cardGo.transform, 17f, new Vector2(0f, -96f), new Vector2(880f, 30f))
+            .text = "GO TO THE NEAREST STRUCTURE";
+
+        var built = (LandmarkKind[])System.Enum.GetValues(typeof(LandmarkKind));
+
+        for (int i = 0; i < built.Length; i++)
+        {
+            var kind = built[i];
+
+            Button(Landmarks.NameOf(kind), cardGo.transform,
+                new Vector2((i - 1) * 300f, -138f), new Vector2(285f, 52f), () => GoToStructure(kind));
+        }
+
+        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -200f), new Vector2(880f, 30f))
             .text = "THE FIRST FEW MINUTES";
 
         Button("Show the opening again", cardGo.transform,
-            new Vector2(-230f, -196f), new Vector2(430f, 52f), () =>
+            new Vector2(-230f, -250f), new Vector2(430f, 52f), () =>
             {
                 Arrival.Replay();
                 Toggle(false);
@@ -355,9 +408,9 @@ public class DevTools : MonoBehaviour
             });
 
         wipeLabel = Button("Put this world back to nothing", cardGo.transform,
-            new Vector2(230f, -196f), new Vector2(430f, 52f), Wipe);
+            new Vector2(230f, -250f), new Vector2(430f, 52f), Wipe);
 
-        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -262f), new Vector2(880f, 40f))
+        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -318f), new Vector2(880f, 40f))
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
         panel.SetActive(false);

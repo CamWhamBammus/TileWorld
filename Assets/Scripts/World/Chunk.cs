@@ -176,7 +176,7 @@ public class Chunk
 
             // Above the treeline, or under water, swap a treed tile for a bare
             // one of the same shade.
-            if (CarriesTree[id] && (bare > TreelineFraction || submerged))
+            if (CarriesTree[id] && (bare > TreelineFraction || submerged || Landmarks.Occupies(gx, gz, worldSeed)))
             {
                 for (int step = 1; step < VariantsPerCategory; step++)
                 {
