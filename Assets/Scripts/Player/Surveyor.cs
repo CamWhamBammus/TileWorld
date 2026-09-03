@@ -24,6 +24,7 @@ public class Surveyor : MonoBehaviour
     private float step;         // half a step, along the ground, in metres
     private float pace;
     private float drawing;      // how far into holding the glass up
+    private float across, down; // where on the page the pencil is working
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -108,8 +109,14 @@ public class Surveyor : MonoBehaviour
         if (figure.Book != null) figure.Book.gameObject.SetActive(drawing > 0.02f);
         if (figure.Pencil != null) figure.Pencil.gameObject.SetActive(drawing > 0.02f);
 
+        // quick strokes one way, and down the page slowly, the way a hand
+        // works its way over a drawing
+        across = Mathf.Sin(Time.time * 5.5f) * 0.7f + Mathf.Sin(Time.time * 2.3f) * 0.3f;
+        down = Mathf.PingPong(Time.time * 0.21f, 1f) - 0.5f;
+
         Limbs(dt, afoot, grounded);
         Carriage(dt, afoot && grounded);
+        Working();
     }
 
     /// <summary>How far the ankle reaches from the hip. Measured, not assumed.</summary>
@@ -193,13 +200,13 @@ public class Surveyor : MonoBehaviour
             {
                 bool holding = side == 0;
 
-                // the drawing hand works: small, quick, and never quite still
-                float working = holding ? 0f : Mathf.Sin(Time.time * 8.5f) * 2.6f
-                                             + Mathf.Sin(Time.time * 3.1f) * 1.4f;
+                shoulder = Mathf.Lerp(shoulder,
+                    holding ? -40f : -32f + across * 2.5f + down * 5f, drawing);
 
-                shoulder = Mathf.Lerp(shoulder, (holding ? -40f : -34f) + working * 0.5f, drawing);
-                elbow = Mathf.Lerp(elbow, (holding ? -68f : -72f) + working, drawing);
-                roll = Mathf.Lerp(roll, holding ? -16f : 13f, drawing);
+                elbow = Mathf.Lerp(elbow,
+                    holding ? -68f : -66f - down * 8f + across * 1.5f, drawing);
+
+                roll = Mathf.Lerp(roll, holding ? -30f : 28f + across * 5f, drawing);
                 hip = Mathf.Lerp(hip, 0f, drawing);
                 knee = Mathf.Lerp(knee, 0f, drawing);
                 ankle = Mathf.Lerp(ankle, 0f, drawing);
@@ -222,6 +229,110 @@ public class Surveyor : MonoBehaviour
     private float Angle(float along)
     {
         return -Mathf.Asin(Mathf.Clamp(along / Reach, -1f, 1f)) * Mathf.Rad2Deg;
+    }
+
+    /// <summary>
+    /// Puts the pencil where it is doing something. The arm is posed roughly
+    /// and the pencil is then laid from the hand to the page, so the point of
+    /// it is on the paper wherever the arm happens to have got to, working its
+    /// way over the drawing rather than hanging in the air beside it.
+    /// </summary>
+    private void Working()
+    {
+        if (figure.Pencil == null || figure.Book == null || drawing < 0.02f) return;
+
+        float h = height;
+
+        // where on the page the point is
+        var spot = figure.Book.TransformPoint(new Vector3(
+            across * 0.066f * h * 0.55f,
+            0.004f * h + down * 0.085f * h * 1.05f,
+            0.012f * h));
+
+        // Reach the drawing hand to the page rather than posing it by eye and
+        // hoping. Angles alone could never get it there: the page is tilted
+        // back over both hands, so a hand posed by feel sits behind the paper
+        // and the pencil has to reach through the board to touch it.
+        ReachTo(spot + figure.Book.forward * (0.05f * h));
+
+        var hand = figure.Elbows[1].TransformPoint(new Vector3(0f, -0.116f * h, 0.004f * h));
+
+        Vector3 lay = spot - hand;
+        float away = lay.magnitude;
+
+        if (away < 0.0001f) return;
+
+        lay /= away;
+
+        // the pencil runs down its own y, so lay that along the hand-to-page line
+        figure.Pencil.rotation = Quaternion.FromToRotation(Vector3.down, lay);
+
+        // and it is held either way: if the page is further off than the pencil
+        // is long it stays in the hand rather than floating over to meet it
+        float half = 0.048f * h;
+
+        figure.Pencil.position = away > half * 2f ? hand + lay * half : spot - lay * half;
+    }
+
+    /// <summary>
+    /// Puts the drawing hand at a point, by working out the two angles that
+    /// take it there. Which way the elbow folds is not guessed: both are tried
+    /// and the one that lands the hand nearer the mark is kept.
+    /// </summary>
+    private void ReachTo(Vector3 target)
+    {
+        float h = height;
+        float upper = 0.135f * h;
+        float fore = 0.116f * h;
+
+        Transform shoulder = figure.Arms[1];
+        Vector3 out_ = target - shoulder.position;
+
+        float span = Mathf.Clamp(out_.magnitude, Mathf.Abs(upper - fore) + 0.01f, upper + fore - 0.01f);
+
+        if (out_.sqrMagnitude < 0.0001f) return;
+
+        out_.Normalize();
+
+        // the elbow rides out to the side and a little low, the way it does
+        // when somebody is working over a board
+        Vector3 pole = (figure.Root.right * 0.6f - figure.Root.up * 0.8f).normalized;
+        Vector3 axis = Vector3.Cross(out_, pole);
+
+        if (axis.sqrMagnitude < 0.0001f) return;
+
+        axis.Normalize();
+
+        float lift = Mathf.Acos(Mathf.Clamp((upper * upper + span * span - fore * fore)
+                                            / (2f * upper * span), -1f, 1f)) * Mathf.Rad2Deg;
+
+        float fold = 180f - Mathf.Acos(Mathf.Clamp((upper * upper + fore * fore - span * span)
+                                                   / (2f * upper * fore), -1f, 1f)) * Mathf.Rad2Deg;
+
+        Vector3 down = Quaternion.AngleAxis(lift, axis) * out_;
+        Vector3 side = Vector3.Cross(down, target - shoulder.position);
+
+        if (side.sqrMagnitude < 0.0001f) return;
+
+        side.Normalize();
+
+        var turned = Quaternion.LookRotation(Vector3.Cross(side, -down), -down);
+
+        // fold whichever way actually brings the hand to the mark
+        Vector3 elbowAt = shoulder.position + down * upper;
+        float best = 0f, nearest = float.MaxValue;
+
+        foreach (float way in new[] { 1f, -1f })
+        {
+            Vector3 arm = (turned * Quaternion.Euler(way * fold, 0f, 0f)) * Vector3.down;
+            float missed = Vector3.Distance(elbowAt + arm * fore, target);
+
+            if (missed < nearest) { nearest = missed; best = way; }
+        }
+
+        figure.Arms[1].rotation = Quaternion.Slerp(figure.Arms[1].rotation, turned, drawing);
+        figure.Elbows[1].localRotation = Quaternion.Slerp(figure.Elbows[1].localRotation,
+            Quaternion.Euler(best * fold, 0f, 0f), drawing);
     }
 
     private void Carriage(float dt, bool afoot)

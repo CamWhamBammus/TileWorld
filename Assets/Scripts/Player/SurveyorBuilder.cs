@@ -218,7 +218,7 @@ public static class SurveyorBuilder
         }
 
         figure.Book = Held(figure.Elbows[0], "sketchbook",
-            new Vector3(-0.026f * h, -0.148f * h, 0.034f * h),
+            new Vector3(-0.026f * h, -0.132f * h, 0.034f * h),
             new Vector3(-52f, 10f, 12f), Book(h));
 
         figure.Pencil = Held(figure.Elbows[1], "pencil",
@@ -324,11 +324,11 @@ public static class SurveyorBuilder
         var pieces = new List<CreatureMesh.Piece>();
 
         Add(pieces, CoatDark, CreatureMesh.Tube(
-            new[] { new Vector3(0f, 0.034f * h, 0f), new Vector3(0f, -0.020f * h, 0f) },
+            new[] { new Vector3(0f, 0.048f * h, 0f), new Vector3(0f, -0.032f * h, 0f) },
             new[] { 0.007f * h, 0.007f * h }, 5, 1f));
 
         Add(pieces, CoatLight, CreatureMesh.Tube(
-            new[] { new Vector3(0f, -0.020f * h, 0f), new Vector3(0f, -0.034f * h, 0f) },
+            new[] { new Vector3(0f, -0.032f * h, 0f), new Vector3(0f, -0.048f * h, 0f) },
             new[] { 0.007f * h, 0.001f * h }, 5, 1f));
 
         return pieces;
