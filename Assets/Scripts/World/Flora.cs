@@ -28,7 +28,20 @@ public class Flora : ScriptableObject
     public Sprout[] Mushrooms;
     public Sprout[] Cacti;
     public Sprout[] Palms;
+
+    /// <summary>The sand update's stones, which are sand-coloured.</summary>
     public Sprout[] Stones;
+
+    /// <summary>And the pack's own, which are grey.</summary>
+    public Sprout[] Boulders;
+
+    public Sprout[] Trees;
+
+    /// <summary>Bare and leafless, out of the sand update.</summary>
+    public Sprout[] DeadTrees;
+
+    /// <summary>Thin standing poles, for the reedbeds.</summary>
+    public Sprout[] Reeds;
 
     public Material Paint;
 }

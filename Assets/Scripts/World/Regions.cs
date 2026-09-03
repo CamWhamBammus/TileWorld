@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -14,7 +15,7 @@ public static class Regions
     /// <summary>Chunks across one region. About 240 metres, a few minutes' walk.</summary>
     public const int ChunksAcross = 8;
 
-    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert }
+    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed }
 
     public struct Region
     {
@@ -30,6 +31,10 @@ public static class Regions
     private static readonly string[] PeakNouns = { "Heights", "Crags", "Spires", "Roof", "Teeth", "Cairns", "Horns", "Summit" };
     private static readonly string[] FungalNouns = { "Rings", "Caps", "Gills", "Blight", "Hollow", "Rot", "Spores", "Damp" };
     private static readonly string[] DesertNouns = { "Sands", "Dunes", "Waste", "Barrens", "Basin", "Drift", "Scour", "Pan" };
+    private static readonly string[] SnowNouns = { "Snows", "White", "Drifts", "Cold", "Hush", "Frost", "Blanket", "Winter" };
+    private static readonly string[] StoneNouns = { "Stones", "Scree", "Rubble", "Grit", "Shatter", "Flint", "Boulders", "Rake" };
+    private static readonly string[] DeadNouns = { "Deadwood", "Standing", "Bones", "Snags", "Kindling", "Ash", "Widows", "Stumps" };
+    private static readonly string[] ReedNouns = { "Reeds", "Rushes", "Sedge", "Beds", "Whisper", "Quills", "Bows", "Wet" };
 
     // Doubled from sixteen: with five nouns and sixteen adjectives, four in ten
     // regions shared a name with another one.
@@ -48,12 +53,38 @@ public static class Regions
             Mathf.FloorToInt(chunk.y / (float)ChunksAcross));
     }
 
+    // Snow asks for a region's character once per tile, and working one out
+    // samples the ground in a couple of dozen places. Kept, it is a dictionary
+    // lookup instead; unkept, it was the most expensive thing in the world.
+    private static readonly Dictionary<long, Character> remembered = new Dictionary<long, Character>();
+    private static int rememberedFor;
+
+    /// <summary>What a region is like, worked out once and then kept.</summary>
+    public static Character CharacterAt(Vector2Int chunk, int worldSeed)
+    {
+        if (rememberedFor != worldSeed)
+        {
+            remembered.Clear();
+            rememberedFor = worldSeed;
+        }
+
+        Vector2Int cell = CellOf(chunk);
+        long key = ((long)cell.x << 32) ^ (uint)cell.y;
+
+        if (remembered.TryGetValue(key, out var known)) return known;
+
+        var worked = CharacterOf(cell, worldSeed);
+        remembered[key] = worked;
+
+        return worked;
+    }
+
     public static Region At(Vector2Int chunk, int worldSeed)
     {
         Vector2Int cell = CellOf(chunk);
 
         var region = new Region { Cell = cell };
-        region.Character = CharacterOf(cell, worldSeed);
+        region.Character = CharacterAt(chunk, worldSeed);
         region.Name = NameOf(cell, region.Character, worldSeed);
 
         return region;
@@ -78,7 +109,7 @@ public static class Regions
             relief += WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief;
 
             if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) wet++;
-            if (SnowCover.IsSnowy(tileX, tileZ, worldSeed)) snowy++;
+            if (SnowCover.SnowByHeight(tileX, tileZ, worldSeed)) snowy++;
 
             samples++;
         }
@@ -101,7 +132,20 @@ public static class Regions
         // sand was swallowing woods that should have been mushrooms. Rare on
         // purpose all the same: a place you meet every few regions is one you
         // remember, and one you meet constantly is only scenery.
+        // A plain that never thaws, well below the height snow would keep at.
+        if (relief > 0.14f && relief < 0.56f
+            && Hash(cell.x, cell.y, worldSeed + 4441) % 9 == 0) return Character.Snow;
+
+        // Damp ground short of open water, where the reeds stand.
+        if (wetShare > 0.09f && Hash(cell.x, cell.y, worldSeed + 8821) % 3 == 0) return Character.Reed;
+
         if (relief < 0.44f && Hash(cell.x, cell.y, worldSeed + 7717) % 7 == 0) return Character.Fungal;
+
+        // Woods that died standing.
+        if (relief < 0.50f && Hash(cell.x, cell.y, worldSeed + 2237) % 9 == 0) return Character.Dead;
+
+        // Bare rock, where nothing has got a hold.
+        if (relief > 0.22f && Hash(cell.x, cell.y, worldSeed + 6163) % 7 == 0) return Character.Stone;
 
         // And then sand, wherever is low, dry and open enough to take it.
         // There is a good deal of it: somewhere you have to hunt for is not a
@@ -126,6 +170,10 @@ public static class Regions
             Character.Forest => ForestNouns,
             Character.Fungal => FungalNouns,
             Character.Desert => DesertNouns,
+            Character.Snow => SnowNouns,
+            Character.Stone => StoneNouns,
+            Character.Dead => DeadNouns,
+            Character.Reed => ReedNouns,
             _ => LowlandNouns
         };
 
@@ -153,6 +201,10 @@ public static class Regions
             case Character.Forest: return "deep forest";
             case Character.Fungal: return "mushrooms under a dark wood";
             case Character.Desert: return "open sand";
+            case Character.Snow: return "snow that never leaves";
+            case Character.Stone: return "bare rock and scree";
+            case Character.Dead: return "a wood that died standing";
+            case Character.Reed: return "reeds in standing water";
             default: return "open lowland";
         }
     }

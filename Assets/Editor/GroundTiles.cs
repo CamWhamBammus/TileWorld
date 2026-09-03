@@ -3,8 +3,8 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Builds the sand ground out of the pack's sand update and adds it to the tile
-/// library.
+/// Builds the grounds the pack does not hand over ready-made and adds them to
+/// the tile library: sand for the deserts, stone for the barrens.
 ///
 /// The grass tiles come whole, with their grass and their trees baked in. Sand
 /// is supplied in two pieces instead -- a plain block for the body and a
@@ -12,7 +12,7 @@ using UnityEngine;
 /// the world can use one. The body is narrower than the grid and the cap is
 /// wider than it, which is the way round that matters: the cap is what you see.
 /// </summary>
-public static class DesertTiles
+public static class GroundTiles
 {
     private const string Sand = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Update 1 - Sand/Prefabs/Tiles";
     private const string Built = "Assets/Tiles";
@@ -21,12 +21,18 @@ public static class DesertTiles
 
     /// <summary>The first block id the sand takes. Five grass bands own 0 to 24.</summary>
     public const int FirstId = 25;
+
+    /// <summary>And the stone after it.</summary>
+    public const int FirstStoneId = 30;
+
     public const int Variants = 5;
 
-    /// <summary>How much wider than its own size a sand piece is laid.</summary>
-    private const float Spread = 1.14f;
+    private const string Tiles = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Prefabs/Tiles";
 
-    [MenuItem("Tools/Tile World/Build the sand tiles")]
+    /// <summary>How much wider than its own size a sand piece is laid.</summary>
+    private const float Spread = 1.08f;
+
+    [MenuItem("Tools/Tile World/Build the sand and stone tiles")]
     public static void Go()
     {
         if (!AssetDatabase.IsValidFolder(Built)) AssetDatabase.CreateFolder("Assets", "Tiles");
@@ -92,6 +98,36 @@ public static class DesertTiles
             Debug.Log("SAND tile " + id + " from body " + bodies[i] + " and cap " + caps[i]
                 + " | mesh " + (def.MeshGetter() == null ? "none" : def.MeshGetter().vertexCount + " verts")
                 + " | paint " + (def.MaterialGetter() == null ? "none" : def.MaterialGetter().name));
+        }
+
+        // The stone tiles come whole out of the pack, so unlike the sand they
+        // need no assembling -- only a definition each and an id.
+        int[] stones = { 0, 7, 14, 21, 28 };
+
+        for (int i = 0; i < Variants; i++)
+        {
+            var whole = AssetDatabase.LoadAssetAtPath<GameObject>(Tiles + "/Stone Tiles/Stone Tile_" + stones[i] + ".prefab");
+
+            if (whole == null) { Debug.LogError("SAND no Stone Tile_" + stones[i]); continue; }
+
+            int id = FirstStoneId + i;
+
+            var def = AssetDatabase.LoadAssetAtPath<TileDefinition>(Defs + "/T" + id + ".asset");
+            bool fresh = def == null;
+
+            if (fresh) def = ScriptableObject.CreateInstance<TileDefinition>();
+
+            def.blockID = id;
+            def.prefab = whole;
+            def.BuildFromPrefab();
+
+            if (fresh) AssetDatabase.CreateAsset(def, Defs + "/T" + id + ".asset");
+            else EditorUtility.SetDirty(def);
+
+            made.Add(def);
+
+            Debug.Log("SAND stone tile " + id + " from " + whole.name
+                + " | mesh " + (def.MeshGetter() == null ? "none" : def.MeshGetter().vertexCount + " verts"));
         }
 
         // and into the library, without disturbing what is already in it

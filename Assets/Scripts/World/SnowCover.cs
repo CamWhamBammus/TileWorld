@@ -15,7 +15,27 @@ public static class SnowCover
     /// <summary>Fraction by which it is complete, so the edge is ragged rather than a line.</summary>
     public const float FullCoverFraction = 0.86f;
 
+    /// <summary>
+    /// Snow, whether from height or because the whole region is under it.
+    ///
+    /// The two are kept apart because working out a region's character counts
+    /// how much of it lies under snow, so a region asked here would be asking
+    /// itself. Anything deciding what a region *is* wants the height rule
+    /// below; everything else wants this.
+    /// </summary>
     public static bool IsSnowy(int tileX, int tileZ, int worldSeed)
+    {
+        var chunk = new Vector2Int(
+            Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
+            Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
+
+        if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Snow) return true;
+
+        return SnowByHeight(tileX, tileZ, worldSeed);
+    }
+
+    /// <summary>Snow that is there because of how high the ground is, and nothing else.</summary>
+    public static bool SnowByHeight(int tileX, int tileZ, int worldSeed)
     {
         float relief = WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief;
 
@@ -37,7 +57,12 @@ public static class SnowCover
         var vertices = new List<Vector3>();
         var triangles = new List<int>();
 
-        float half = WorldGrid.TileSize * 0.5f;
+        // Wider than the tile it covers. Snow laid exactly tile-sized leaves
+        // the ground showing wherever two tiles sit at different heights --
+        // every step in the land drew a green line across the snowfield. The
+        // overhang hides the step. Two sheets meeting are at different heights
+        // by construction, so overlapping them costs nothing.
+        float half = WorldGrid.TileSize * 0.64f;
 
         for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
         for (int j = 0; j < WorldGrid.TilesPerChunk; j++)

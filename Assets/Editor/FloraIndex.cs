@@ -32,6 +32,13 @@ public static class FloraIndex
         flora.Cacti = FromFolder(Sand + "/Cactus");
         flora.Palms = FromFolder(Sand + "/Palms");
         flora.Stones = FromFolder(Sand + "/Stones");
+        flora.Boulders = FromFolder(Main + "/Stones");
+        flora.Trees = FromFolder(Main + "/Trees");
+        flora.DeadTrees = FromFolder(Sand + "/Sand Tree");
+
+        // The reeds are the pack's thin standing poles. They are filed under
+        // scenery with the boxes and the fences, so they are taken by name.
+        flora.Reeds = FromFolder(Main + "/Environment", "Rarefoot");
         flora.Paint = AssetDatabase.LoadAssetAtPath<Material>(Paint);
 
         if (fresh) AssetDatabase.CreateAsset(flora, Written);
@@ -40,10 +47,12 @@ public static class FloraIndex
         AssetDatabase.SaveAssets();
 
         Debug.Log("FLORA " + flora.Mushrooms.Length + " mushrooms, " + flora.Cacti.Length + " cactus, "
-            + flora.Palms.Length + " palms, " + flora.Stones.Length + " stones"
+            + flora.Palms.Length + " palms, " + flora.Stones.Length + " sand stones, "
+            + flora.Boulders.Length + " boulders, " + flora.Trees.Length + " trees, "
+            + flora.DeadTrees.Length + " dead trees, " + flora.Reeds.Length + " reeds"
             + " | paint " + (flora.Paint == null ? "MISSING" : flora.Paint.name));
 
-        foreach (var set in new[] { flora.Mushrooms, flora.Cacti, flora.Palms, flora.Stones })
+        foreach (var set in new[] { flora.Mushrooms, flora.Boulders, flora.Trees, flora.DeadTrees, flora.Reeds })
         {
             if (set.Length == 0) continue;
 
@@ -53,7 +62,7 @@ public static class FloraIndex
     }
 
     /// <summary>Everything with a mesh in a folder, as something that can be stood up.</summary>
-    private static Flora.Sprout[] FromFolder(string folder)
+    private static Flora.Sprout[] FromFolder(string folder, string named = null)
     {
         var found = new List<Flora.Sprout>();
 
@@ -68,6 +77,7 @@ public static class FloraIndex
             var go = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
 
             if (go == null) continue;
+            if (named != null && !go.name.StartsWith(named)) continue;
 
             var filter = go.GetComponentInChildren<MeshFilter>(true);
 

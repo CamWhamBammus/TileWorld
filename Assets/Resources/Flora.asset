@@ -344,4 +344,324 @@ MonoBehaviour:
     Mesh: {fileID: 4300144, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
     Size: 0.28006026
     Foot: 0.12832405
+  Boulders:
+  - Name: Stone
+    Mesh: {fileID: 4300212, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.831985
+    Foot: 0.48572302
+  - Name: Stone_0
+    Mesh: {fileID: 4300210, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.831985
+    Foot: 0.48572302
+  - Name: Stone_1
+    Mesh: {fileID: 4300208, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.831985
+    Foot: 0.48572302
+  - Name: Stone_10
+    Mesh: {fileID: 4300190, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.756436
+    Foot: 0.35500705
+  - Name: Stone_11
+    Mesh: {fileID: 4300188, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.54112256
+    Foot: 0.2664609
+  - Name: Stone_12
+    Mesh: {fileID: 4300186, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.54112256
+    Foot: 0.2664609
+  - Name: Stone_13
+    Mesh: {fileID: 4300184, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.54112256
+    Foot: 0.2664609
+  - Name: Stone_14
+    Mesh: {fileID: 4300182, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.54112256
+    Foot: 0.2664609
+  - Name: Stone_15
+    Mesh: {fileID: 4300180, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.53953195
+    Foot: 0.29147655
+  - Name: Stone_16
+    Mesh: {fileID: 4300178, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.7520169
+    Foot: 0.39972255
+  - Name: Stone_17
+    Mesh: {fileID: 4300176, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.4378335
+    Foot: 0.20933673
+  - Name: Stone_18
+    Mesh: {fileID: 4300174, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.48509338
+    Foot: 0.27558136
+  - Name: Stone_19
+    Mesh: {fileID: 4300172, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.6906067
+    Foot: 0.37640256
+  - Name: Stone_2
+    Mesh: {fileID: 4300206, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.831985
+    Foot: 0.48572302
+  - Name: Stone_20
+    Mesh: {fileID: 4300170, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.35667083
+    Foot: 0.16862655
+  - Name: Stone_21
+    Mesh: {fileID: 4300168, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.35667083
+    Foot: 0.16862655
+  - Name: Stone_22
+    Mesh: {fileID: 4300166, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.35667083
+    Foot: 0.16862655
+  - Name: Stone_23
+    Mesh: {fileID: 4300164, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.35667083
+    Foot: 0.16862655
+  - Name: Stone_24
+    Mesh: {fileID: 4300162, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.48509338
+    Foot: 0.27558136
+  - Name: Stone_25
+    Mesh: {fileID: 4300160, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.48509338
+    Foot: 0.27558136
+  - Name: Stone_26
+    Mesh: {fileID: 4300158, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.48509338
+    Foot: 0.27558136
+  - Name: Stone_27
+    Mesh: {fileID: 4300156, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.6906067
+    Foot: 0.37640256
+  - Name: Stone_28
+    Mesh: {fileID: 4300154, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.6906067
+    Foot: 0.37640256
+  - Name: Stone_29
+    Mesh: {fileID: 4300152, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.6906067
+    Foot: 0.37640256
+  - Name: Stone_3
+    Mesh: {fileID: 4300204, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3590142
+    Foot: 0.19562249
+  - Name: Stone_30
+    Mesh: {fileID: 4300150, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.4378335
+    Foot: 0.20933673
+  - Name: Stone_30
+    Mesh: {fileID: 4300150, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.4378335
+    Foot: 0.20933673
+  - Name: Stone_31
+    Mesh: {fileID: 4300148, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.4378335
+    Foot: 0.20933673
+  - Name: Stone_32
+    Mesh: {fileID: 4300146, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.4378335
+    Foot: 0.20933673
+  - Name: Stone_33
+    Mesh: {fileID: 4300144, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.7520169
+    Foot: 0.39972255
+  - Name: Stone_34
+    Mesh: {fileID: 4300142, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.7520169
+    Foot: 0.39972255
+  - Name: Stone_34
+    Mesh: {fileID: 4300142, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.7520169
+    Foot: 0.39972255
+  - Name: Stone_35
+    Mesh: {fileID: 4300140, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.7520169
+    Foot: 0.39972255
+  - Name: Stone_36
+    Mesh: {fileID: 4300138, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.53953195
+    Foot: 0.29147655
+  - Name: Stone_37
+    Mesh: {fileID: 4300136, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.53953195
+    Foot: 0.29147655
+  - Name: Stone_38
+    Mesh: {fileID: 4300134, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.53953195
+    Foot: 0.29147655
+  - Name: Stone_4
+    Mesh: {fileID: 4300202, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3590142
+    Foot: 0.19562249
+  - Name: Stone_5
+    Mesh: {fileID: 4300200, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3590142
+    Foot: 0.19562249
+  - Name: Stone_6
+    Mesh: {fileID: 4300198, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3590142
+    Foot: 0.19562249
+  - Name: Stone_7
+    Mesh: {fileID: 4300196, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.756436
+    Foot: 0.35500705
+  - Name: Stone_8
+    Mesh: {fileID: 4300194, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.756436
+    Foot: 0.35500705
+  - Name: Stone_9
+    Mesh: {fileID: 4300192, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.756436
+    Foot: 0.35500705
+  Trees:
+  - Name: Tree
+    Mesh: {fileID: 4300012, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.8194532
+    Foot: 1
+  - Name: Tree_0
+    Mesh: {fileID: 4300010, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2319949
+    Foot: 1
+  - Name: Tree_1
+    Mesh: {fileID: 4300008, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2319949
+    Foot: 1
+  - Name: Tree_10
+    Mesh: {fileID: 4300024, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.9746923
+    Foot: 1
+  - Name: Tree_11
+    Mesh: {fileID: 4300022, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.9746923
+    Foot: 1
+  - Name: Tree_12
+    Mesh: {fileID: 4300020, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.9746923
+    Foot: 1
+  - Name: Tree_13
+    Mesh: {fileID: 4300018, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.839998
+    Foot: 1
+  - Name: Tree_14
+    Mesh: {fileID: 4300016, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.839998
+    Foot: 1
+  - Name: Tree_15
+    Mesh: {fileID: 4300014, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.8194532
+    Foot: 1
+  - Name: Tree_2
+    Mesh: {fileID: 4300006, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2319949
+    Foot: 1
+  - Name: Tree_3
+    Mesh: {fileID: 4300004, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2275665
+    Foot: 1
+  - Name: Tree_4
+    Mesh: {fileID: 4300002, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2275665
+    Foot: 1
+  - Name: Tree_5
+    Mesh: {fileID: 4300000, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2275665
+    Foot: 1
+  - Name: Tree_6
+    Mesh: {fileID: 4300032, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2275665
+    Foot: 1
+  - Name: Tree_7
+    Mesh: {fileID: 4300030, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.2319949
+    Foot: 1
+  - Name: Tree_8
+    Mesh: {fileID: 4300028, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.8194532
+    Foot: 1
+  - Name: Tree_9
+    Mesh: {fileID: 4300026, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 3.839998
+    Foot: 1
+  DeadTrees:
+  - Name: Sand Tree
+    Mesh: {fileID: 4300044, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.0083807
+    Foot: -0.000004529953
+  - Name: Sand Tree_0
+    Mesh: {fileID: 4300046, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7042266
+    Foot: -0.013197541
+  - Name: Sand Tree_1
+    Mesh: {fileID: 4300100, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.6433308
+    Foot: -0.01319468
+  - Name: Sand Tree_10
+    Mesh: {fileID: 4300104, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.8594583
+    Foot: -0.013184428
+  - Name: Sand Tree_11
+    Mesh: {fileID: 4300106, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7042266
+    Foot: -0.013197541
+  - Name: Sand Tree_12
+    Mesh: {fileID: 4300108, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.0083807
+    Foot: -0.000004529953
+  - Name: Sand Tree_13
+    Mesh: {fileID: 4300052, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.6433308
+    Foot: -0.01319468
+  - Name: Sand Tree_2
+    Mesh: {fileID: 4300048, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.8594583
+    Foot: -0.013184428
+  - Name: Sand Tree_3
+    Mesh: {fileID: 4300170, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.0083807
+    Foot: -0.000004529953
+  - Name: Sand Tree_4
+    Mesh: {fileID: 4300050, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.9071097
+    Foot: -0.013194561
+  - Name: Sand Tree_5
+    Mesh: {fileID: 4300172, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7042266
+    Foot: -0.013197541
+  - Name: Sand Tree_6
+    Mesh: {fileID: 4300174, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.8594583
+    Foot: -0.013184428
+  - Name: Sand Tree_7
+    Mesh: {fileID: 4300176, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.9071097
+    Foot: -0.013194561
+  - Name: Sand Tree_8
+    Mesh: {fileID: 4300178, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.6433308
+    Foot: -0.01319468
+  - Name: Sand Tree_9
+    Mesh: {fileID: 4300102, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.9071097
+    Foot: -0.013194561
+  Reeds:
+  - Name: Rarefoot
+    Mesh: {fileID: 4300468, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 1.55076
+    Foot: 1
+  - Name: Rarefoot_0
+    Mesh: {fileID: 4300466, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 1.6898166
+    Foot: 1
+  - Name: Rarefoot_1
+    Mesh: {fileID: 4300464, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 1.5521383
+    Foot: 1
+  - Name: Rarefoot_2
+    Mesh: {fileID: 4300462, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 1.7153776
+    Foot: 1
+  - Name: Rarefoot_3
+    Mesh: {fileID: 4300460, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 1.628513
+    Foot: 1
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}

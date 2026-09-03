@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 6;           // five grass shade bands, then sand
+    private const int Categories = 7;           // five grass bands, then sand, then stone
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -20,6 +20,7 @@ public class Chunk
     private const int BareSteepCategory = 3;   // Big Grass, no trees: steep faces
     private const int MarshCategory = 4;       // Very Dark, no trees: low flat ground
     private const int SandCategory = 5;        // the sand update, for the deserts
+    private const int StoneCategory = 6;       // the pack's stone tiles, for the barrens
 
     // These four tiles carry a tree. Above the treeline they are swapped out,
     // which is what makes a summit read as a summit.
@@ -71,6 +72,11 @@ public class Chunk
 
         bool fungal = character == Regions.Character.Fungal;
         bool desert = character == Regions.Character.Desert;
+        bool stone = character == Regions.Character.Stone;
+
+        // Ground that is dark and wet underfoot: the dead woods and the
+        // reedbeds both stand on it.
+        bool sodden = character == Regions.Character.Dead || character == Regions.Character.Reed;
 
         // Perlin noise mirrors around 0, so a fixed offset keeps the sampled
         // region firmly positive and stops the world repeating across the axes.
@@ -113,6 +119,14 @@ public class Chunk
                 // middle of a desert reads as a patch of somewhere else
                 category = SandCategory;
             }
+            else if (stone)
+            {
+                category = StoneCategory;
+            }
+            else if (sodden)
+            {
+                category = MarshCategory;
+            }
             else if (steep > SteepFraction)
             {
                 category = BareSteepCategory;       // scree on the steep faces
@@ -136,9 +150,21 @@ public class Chunk
                 }
             }
 
+            // The sand tiles are laid wider than the grid so that they meet,
+            // which puts every cap through its neighbours at exactly the same
+            // height. Two surfaces in the same plane leave the depth buffer no
+            // way to choose between them and it picks differently from frame to
+            // frame, which is the flickering across a desert. A few thousandths
+            // of a metre, taken from the tile's own position so it never
+            // changes, is enough to settle the argument and far too little to
+            // see.
+            float settle = category == SandCategory
+                ? (Hash2D(gx, gz, worldSeed + 4093) % 17) * 0.0004f
+                : 0f;
+
             Vector3 position = new Vector3(
                 chunkIndexX() * WorldGrid.ChunkWorldSize + tx * WorldGrid.TileSize,
-                WorldHeight.TileYOffset(gx, gz, worldSeed),
+                WorldHeight.TileYOffset(gx, gz, worldSeed) + settle,
                 chunkIndexZ() * WorldGrid.ChunkWorldSize + tz * WorldGrid.TileSize
             );
 

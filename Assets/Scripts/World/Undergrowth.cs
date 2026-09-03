@@ -38,7 +38,7 @@ public class Undergrowth : MonoBehaviour
     private bool ready;
 
     private Flora.Sprout[] every;
-    private Planting[] fungal, desert, ordinary;
+    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary;
 
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
@@ -72,12 +72,12 @@ public class Undergrowth : MonoBehaviour
             return;
         }
 
-        // All four sorts in one list, so drawing does not care which is which.
+        // Every sort in one list, so drawing does not care which is which.
         var all = new List<Flora.Sprout>();
 
-        Planting Take(Flora.Sprout[] set, float share, float low, float high)
+        Planting Take(Flora.Sprout[] set, float low, float high)
         {
-            var planting = new Planting { From = all.Count, Count = set.Length, Share = share, Low = low, High = high };
+            var planting = new Planting { From = all.Count, Count = set.Length, Share = 0f, Low = low, High = high };
             all.AddRange(set);
             return planting;
         }
@@ -86,18 +86,30 @@ public class Undergrowth : MonoBehaviour
         // multiplier, because the models are nothing like each other: a
         // mushroom out of the pack is a third of a unit and a palm is nearly
         // four, and one number over both would be absurd at one end or the other.
-        var mushrooms = Take(flora.Mushrooms, 0f, 0.45f, 1.25f);
-        var cacti = Take(flora.Cacti, 0f, 1.40f, 2.60f);
-        var palms = Take(flora.Palms, 0f, 3.20f, 5.00f);
-        var stones = Take(flora.Stones, 0f, 0.35f, 0.95f);
+        var mushrooms = Take(flora.Mushrooms, 0.45f, 1.25f);
+        var cacti = Take(flora.Cacti, 1.40f, 2.60f);
+        var palms = Take(flora.Palms, 3.20f, 5.00f);
+        var stones = Take(flora.Stones, 0.35f, 0.95f);
+        var boulders = Take(flora.Boulders, 0.40f, 1.30f);
+        var trees = Take(flora.Trees, 3.00f, 4.60f);
+        var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
+        var reeds = Take(flora.Reeds, 1.10f, 2.10f);
 
         every = all.ToArray();
 
         Planting With(Planting p, float share) { p.Share = share; return p; }
 
-        fungal = new[] { With(mushrooms, 0.50f) };
-        desert = new[] { With(stones, 0.085f), With(cacti, 0.055f), With(palms, 0.014f) };
-        ordinary = new[] { With(mushrooms, 0.006f) };
+        // What each sort of country carries. The order within a set is the
+        // order they get first refusal on a tile, so the rarer things are
+        // listed first and the ground cover last.
+        fungal = new[] { With(deadTrees, 0.035f), With(boulders, 0.04f), With(mushrooms, 0.46f) };
+        desert = new[] { With(palms, 0.014f), With(deadTrees, 0.02f), With(cacti, 0.055f), With(stones, 0.085f) };
+        stone = new[] { With(boulders, 0.34f) };
+        dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.03f), With(boulders, 0.05f) };
+        reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
+        snow = new[] { With(trees, 0.03f), With(boulders, 0.05f) };
+        forest = new[] { With(trees, 0.10f), With(mushrooms, 0.02f), With(boulders, 0.04f) };
+        ordinary = new[] { With(mushrooms, 0.006f), With(boulders, 0.012f) };
 
         flora.Paint.enableInstancing = true;
 
@@ -165,9 +177,17 @@ public class Undergrowth : MonoBehaviour
 
         var character = Regions.At(index, seed).Character;
 
-        Planting[] planting =
-            character == Regions.Character.Fungal ? fungal :
-            character == Regions.Character.Desert ? desert : ordinary;
+        Planting[] planting = character switch
+        {
+            Regions.Character.Fungal => fungal,
+            Regions.Character.Desert => desert,
+            Regions.Character.Stone => stone,
+            Regions.Character.Dead => dead,
+            Regions.Character.Reed => reed,
+            Regions.Character.Snow => snow,
+            Regions.Character.Forest => forest,
+            _ => ordinary
+        };
 
         for (int tx = 0; tx < WorldGrid.TilesPerChunk; tx++)
         for (int tz = 0; tz < WorldGrid.TilesPerChunk; tz++)
@@ -176,7 +196,11 @@ public class Undergrowth : MonoBehaviour
             int gz = index.y * WorldGrid.TilesPerChunk + tz;
 
             if (WaterSurface.IsUnderwater(gx, gz, seed)) continue;
-            if (SnowCover.IsSnowy(gx, gz, seed)) continue;
+
+            // Snow covers what grows under it -- but a snowfield with nothing
+            // standing in it at all is a white sheet, so the few things that
+            // belong there are let through.
+            if (character != Regions.Character.Snow && SnowCover.IsSnowy(gx, gz, seed)) continue;
 
             uint roll = Hash(gx, gz, seed + 5153);
 
@@ -214,9 +238,16 @@ public class Undergrowth : MonoBehaviour
             float acrossX = ((roll >> 13) % 1000) / 1000f - 0.5f;
             float acrossZ = ((roll >> 23) % 1000) / 1000f - 0.5f;
 
+            // A model that reaches a full tile-half below its own origin was
+            // drawn to stand in the tile rather than on it -- the trees and the
+            // reeds are like this, with their feet in the ground. Lifting one
+            // of those by its foot puts it in the air. Everything smaller is
+            // drawn about its middle and does want lifting.
+            float lift = sprout.Foot > 0.9f ? 0f : sprout.Foot * size;
+
             var at = new Vector3(
                 gx * WorldGrid.TileSize + acrossX * WorldGrid.TileSize * 0.7f,
-                WorldHeight.SurfaceY(gx, gz, seed) + sprout.Foot * size,
+                WorldHeight.SurfaceY(gx, gz, seed) + lift,
                 gz * WorldGrid.TileSize + acrossZ * WorldGrid.TileSize * 0.7f);
 
             float turn = (roll >> 3) % 360;
