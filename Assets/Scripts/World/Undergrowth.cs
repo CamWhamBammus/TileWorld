@@ -233,6 +233,10 @@ public class Undergrowth : MonoBehaviour
             {
                 float deep = WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, seed);
 
+                // Nothing green stands in a frozen lake. A snowfield's water
+                // is left bare, the same reason its shore has no sand.
+                if (character == Regions.Character.Snow) continue;
+
                 if (deep > 1.1f || flora.Reeds == null || flora.Reeds.Length == 0) continue;
 
                 if (Hash(gx, gz, seed + 6791) % 100 >= 26) continue;

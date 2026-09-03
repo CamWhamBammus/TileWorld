@@ -86,9 +86,9 @@ public static class FloraIndex
         flora.Trees = FromFolder(Main + "/Trees");
         flora.DeadTrees = FromFolder(Sand + "/Sand Tree");
 
-        // The reeds are the pack's thin standing poles. They are filed under
-        // scenery with the boxes and the fences, so they are taken by name.
-        flora.Reeds = FromFolder(Main + "/Environment", "Rarefoot");
+        // Reeds are built, not taken: see Grown.Reeds for why the pack's poles
+        // would not do.
+        flora.Reeds = new Flora.Sprout[0];
         flora.Paint = AssetDatabase.LoadAssetAtPath<Material>(Paint);
 
         // Snowy trees are made here rather than shipped: the same narrow models
@@ -133,7 +133,7 @@ public static class FloraIndex
         {
             foreach (bool underSnow in new[] { false, true })
             {
-                var mesh = PineTrees.Build(shape, underSnow);
+                var mesh = Grown.Pine(shape, underSnow);
 
                 AssetDatabase.AddObjectToAsset(mesh, flora);
 
@@ -153,6 +153,27 @@ public static class FloraIndex
 
         flora.Pines = pines.ToArray();
         flora.SnowPines = snowPines.ToArray();
+
+        var reeds = new List<Flora.Sprout>();
+
+        for (int shape = 0; shape < 5; shape++)
+        {
+            var mesh = Grown.Reeds(shape);
+
+            AssetDatabase.AddObjectToAsset(mesh, flora);
+
+            reeds.Add(new Flora.Sprout
+            {
+                Name = mesh.name,
+                Mesh = mesh,
+                Size = mesh.bounds.size.y,
+                Wide = mesh.bounds.size.x,
+                Foot = -mesh.bounds.min.y,
+                Colour = new Color(0.36f, 0.55f, 0.15f)
+            });
+        }
+
+        flora.Reeds = reeds.ToArray();
 
         EditorUtility.SetDirty(flora);
         AssetDatabase.SaveAssets();

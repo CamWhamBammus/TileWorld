@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Builds conifers, because the pack has none.
+/// Builds the things the pack does not have: conifers and reeds.
 ///
 /// Measured across all thirty-two of its trees, every one is a round crown on a
 /// stick: widest in the middle and barely narrower at the top. That is a fine
@@ -18,7 +18,7 @@ using UnityEngine;
 /// own, so a pine draws in the same batch as everything else standing on the
 /// ground and costs nothing extra to put in the world.
 /// </summary>
-public static class PineTrees
+public static class Grown
 {
     private const string Sheet = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Texture.png";
 
@@ -133,11 +133,78 @@ public static class PineTrees
     }
 
     /// <summary>
+    /// A clump of reeds, a unit tall.
+    ///
+    /// The pack's thin standing poles were pressed into this job first and they
+    /// are not reeds, they are spikes -- filed under scenery with the boxes and
+    /// the fences, and standing in a lake they look like something driven into
+    /// it. A reed is a handful of blades out of one root, each leaning its own
+    /// way and coming to a point, and that is little enough to build.
+    /// </summary>
+    public static Mesh Reeds(int shape)
+    {
+        var green = Swatch(new Color(0.36f, 0.55f, 0.15f));
+
+        int blades = 5 + shape % 4;
+
+        var points = new List<Vector3>();
+        var uvs = new List<Vector2>();
+        var faces = new List<int>();
+
+        for (int i = 0; i < blades; i++)
+        {
+            // spread round the root, each one leaning out and bending over
+            float turn = (i / (float)blades) * Mathf.PI * 2f + shape * 0.7f;
+            float lean = 0.10f + ((i * 7 + shape * 3) % 10) * 0.022f;
+            float tall = 0.62f + ((i * 5 + shape) % 10) * 0.038f;
+            float wide = 0.030f + ((i * 3) % 4) * 0.006f;
+
+            var root = new Vector3(Mathf.Cos(turn) * 0.05f, 0f, Mathf.Sin(turn) * 0.05f);
+            var tip = root + new Vector3(Mathf.Cos(turn) * lean, tall, Mathf.Sin(turn) * lean);
+
+            // across the blade, square to the way it leans
+            var across = new Vector3(-Mathf.Sin(turn), 0f, Mathf.Cos(turn)) * wide;
+
+            // a blade is a long triangle with a kink, so it is not a flat spike
+            var bend = Vector3.Lerp(root, tip, 0.6f) + new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * lean * 0.35f;
+
+            int at = points.Count;
+
+            points.Add(root - across);
+            points.Add(root + across);
+            points.Add(bend + across * 0.45f);
+            points.Add(bend - across * 0.45f);
+            points.Add(tip);
+
+            for (int k = 0; k < 5; k++) uvs.Add(green);
+
+            // both ways round, so a blade is there from either side
+            faces.Add(at); faces.Add(at + 1); faces.Add(at + 2);
+            faces.Add(at); faces.Add(at + 2); faces.Add(at + 3);
+            faces.Add(at + 3); faces.Add(at + 2); faces.Add(at + 4);
+
+            faces.Add(at + 2); faces.Add(at + 1); faces.Add(at);
+            faces.Add(at + 3); faces.Add(at + 2); faces.Add(at);
+            faces.Add(at + 4); faces.Add(at + 2); faces.Add(at + 3);
+        }
+
+        var reeds = new Mesh { name = "Reeds " + shape };
+
+        reeds.SetVertices(points);
+        reeds.SetUVs(0, uvs);
+        reeds.SetTriangles(faces, 0);
+        reeds.RecalculateNormals();
+        reeds.RecalculateBounds();
+
+        return reeds;
+    }
+
+    /// <summary>
     /// One pine, a unit tall, built from a trunk and a stack of tiers. Under
     /// snow each tier carries a second one just above it in white, which is
     /// what snow on a branch looks like from any distance worth drawing at.
     /// </summary>
-    public static Mesh Build(int shape, bool snowy)
+    public static Mesh Pine(int shape, bool snowy)
     {
         var needle = Swatch(new Color(0.11f, 0.22f, 0.07f));     // deep green
         var bark = Swatch(new Color(0.30f, 0.20f, 0.12f));       // brown

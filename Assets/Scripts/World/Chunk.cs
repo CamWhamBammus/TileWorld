@@ -131,12 +131,16 @@ public class Chunk
                 // Sand in the shallows where the light still reaches, rock
                 // further down. The line between the two is what makes a lake
                 // look as though it has a bottom rather than an edge.
-                category = underBy < DeepWater ? SandCategory : StoneCategory;
+                //
+                // Except under snow, where a sandy shallow makes no sense at
+                // all: that is a frozen lake and its bed is stone.
+                category = underSnow || underBy >= DeepWater ? StoneCategory : SandCategory;
             }
-            else if (-underBy < BeachHeight)
+            else if (-underBy < BeachHeight && !underSnow && !stone)
             {
                 // and a run of sand above the waterline, so the grass does not
-                // simply stop at the water
+                // simply stop at the water. A beach belongs to warm country:
+                // snow does not leave a strand, it comes down to the ice.
                 category = SandCategory;
             }
             else if (desert)
