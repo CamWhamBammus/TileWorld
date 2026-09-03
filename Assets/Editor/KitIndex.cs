@@ -38,6 +38,9 @@ public static class KitIndex
             (Kit.Swatch.Slate,     new Color(0.27f, 0.27f, 0.30f)),
             (Kit.Swatch.Iron,      new Color(0.13f, 0.13f, 0.14f)),
             (Kit.Swatch.Pane,      new Color(0.10f, 0.14f, 0.18f)),
+            (Kit.Swatch.Cloth,     new Color(0.62f, 0.16f, 0.14f)),
+            (Kit.Swatch.WarmStone, new Color(0.60f, 0.56f, 0.50f)),
+            (Kit.Swatch.Water,     new Color(0.25f, 0.45f, 0.60f)),
         };
 
         asset.Where = new Vector2[wanted.Length];
