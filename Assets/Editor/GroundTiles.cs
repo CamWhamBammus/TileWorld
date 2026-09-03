@@ -34,6 +34,17 @@ public static class GroundTiles
     /// <summary>How much wider than its own size a sand piece is laid.</summary>
     private const float Spread = 1.08f;
 
+    /// <summary>
+    /// And a stone. The pack's stone tiles are boulders, widest at the top and
+    /// tapering to a point underneath: measured, the top sits at 0.96 to 0.99
+    /// of the grid half, mid-height at 0.72, the base at 0.2 to 0.4. So laid at
+    /// their own size, two neighbours all but touch at the rim and the gap
+    /// opens into a V beneath -- a crack you look down into, which under a
+    /// lake is a crack you look through. Widened enough that the narrowest
+    /// rim overlaps the next by a few hundredths, the tops roof the V over.
+    /// </summary>
+    private const float StoneSpread = 1.10f;
+
     [MenuItem("Tools/Tile World/Build the sand and stone tiles")]
     public static void Go()
     {
@@ -102,8 +113,8 @@ public static class GroundTiles
                 + " | paint " + (def.MaterialGetter() == null ? "none" : def.MaterialGetter().name));
         }
 
-        // The stone tiles come whole out of the pack, so unlike the sand they
-        // need no assembling -- only a definition each and an id.
+        // The stone tiles come whole out of the pack, so they need no
+        // assembling -- only widening, the way the sand is, and an id each.
         //
         // Which five matters, though. Better than half of the hundred have
         // coloured crystals set into them, and a field of those reads as
@@ -120,6 +131,24 @@ public static class GroundTiles
 
             if (whole == null) { Debug.LogError("SAND no Stone Tile_" + stones[i]); continue; }
 
+            string path = Built + "/Stone Tile " + i + ".prefab";
+
+            var root = new GameObject("Stone Tile " + i);
+
+            var rock = (GameObject)PrefabUtility.InstantiatePrefab(whole);
+            rock.transform.SetParent(root.transform, false);
+
+            // The pack saved these out of a scene, and each prefab's root still
+            // carries where it stood in it -- twenty units off and eleven down.
+            // Parented as they come, that ride along as the child's position
+            // and every stone lands a long way from its tile.
+            rock.transform.localPosition = Vector3.zero;
+            rock.transform.localRotation = Quaternion.identity;
+            rock.transform.localScale = new Vector3(StoneSpread, 1f, StoneSpread);
+
+            var saved = PrefabUtility.SaveAsPrefabAsset(root, path);
+            Object.DestroyImmediate(root);
+
             int id = FirstStoneId + i;
 
             var def = AssetDatabase.LoadAssetAtPath<TileDefinition>(Defs + "/T" + id + ".asset");
@@ -128,7 +157,7 @@ public static class GroundTiles
             if (fresh) def = ScriptableObject.CreateInstance<TileDefinition>();
 
             def.blockID = id;
-            def.prefab = whole;
+            def.prefab = saved;
             def.BuildFromPrefab();
 
             if (fresh) AssetDatabase.CreateAsset(def, Defs + "/T" + id + ".asset");

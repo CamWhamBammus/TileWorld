@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: T33
   m_EditorClassIdentifier: Assembly-CSharp::TileDefinition
   blockID: 33
-  prefab: {fileID: 1029687753486750, guid: 7e6aed5f671f19b458e4ab8023f70aa1, type: 3}
+  prefab: {fileID: 489936006294094732, guid: 259879599401d41b5827719242fd1c6a, type: 3}
   mesh: {fileID: 0}
   material: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}

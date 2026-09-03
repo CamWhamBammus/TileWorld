@@ -198,7 +198,10 @@ public class Chunk
             // tile is ever level with any of the eight around it. Four
             // thousandths of a metre at the widest, which is far too little to
             // see and enough to settle the argument.
-            float settle = category == SandCategory
+            //
+            // The stone is laid wide the same way and for the same reason, so
+            // it takes the same settling.
+            float settle = category == SandCategory || category == StoneCategory
                 ? ((gx * 2 + gz * 3) % 7 + 7) % 7 * 0.0006f
                 : 0f;
 
