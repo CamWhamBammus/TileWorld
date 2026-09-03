@@ -157,15 +157,20 @@ public class Chunk
             }
 
             // The sand tiles are laid wider than the grid so that they meet,
-            // which puts every cap through its neighbours at exactly the same
-            // height. Two surfaces in the same plane leave the depth buffer no
-            // way to choose between them and it picks differently from frame to
-            // frame, which is the flickering across a desert. A few thousandths
-            // of a metre, taken from the tile's own position so it never
-            // changes, is enough to settle the argument and far too little to
-            // see.
+            // which puts every cap through its neighbours. Two surfaces at the
+            // same height leave the depth buffer no way to choose between them
+            // and it picks differently from frame to frame, which is the
+            // flickering across a desert.
+            //
+            // A hash gave each tile one of seventeen heights, which left about
+            // one pair of neighbours in seventeen still level with each other
+            // and still flickering. This is not a hash: stepping one tile in
+            // either direction changes it by two or three parts in seven, so no
+            // tile is ever level with any of the eight around it. Four
+            // thousandths of a metre at the widest, which is far too little to
+            // see and enough to settle the argument.
             float settle = category == SandCategory
-                ? (Hash2D(gx, gz, worldSeed + 4093) % 17) * 0.0004f
+                ? ((gx * 2 + gz * 3) % 7 + 7) % 7 * 0.0006f
                 : 0f;
 
             Vector3 position = new Vector3(

@@ -57,12 +57,14 @@ public static class SnowCover
         var vertices = new List<Vector3>();
         var triangles = new List<int>();
 
-        // Wider than the tile it covers. Snow laid exactly tile-sized leaves
-        // the ground showing wherever two tiles sit at different heights --
-        // every step in the land drew a green line across the snowfield. The
-        // overhang hides the step. Two sheets meeting are at different heights
-        // by construction, so overlapping them costs nothing.
-        float half = WorldGrid.TileSize * 0.64f;
+        // Exactly the tile it covers, so sheets meet edge to edge and never
+        // lie over one another. Widened, they did two wrong things at once:
+        // they hung visibly over the sides of the tiles, and where two of them
+        // overlapped at the same height the depth buffer had no way to choose
+        // between them, so a snowfield flickered even harder than the desert
+        // did -- half the pixels in the frame changing from one frame to the
+        // next.
+        float half = WorldGrid.TileSize * 0.5f;
 
         for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
         for (int j = 0; j < WorldGrid.TilesPerChunk; j++)
@@ -72,8 +74,13 @@ public static class SnowCover
 
             if (!IsSnowy(tileX, tileZ, worldSeed)) continue;
 
-            // just clear of the tile, so it does not fight with the ground
-            float y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.04f;
+            // Just clear of the tile, so it does not fight with the ground --
+            // and each sheet a shade off its neighbours, so that two of them
+            // meeting along an edge are never quite level either. Stepping one
+            // tile changes this by two or three parts in seven, so no sheet
+            // matches any of the eight around it.
+            float y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.04f
+                    + ((tileX * 2 + tileZ * 3) % 7 + 7) % 7 * 0.0006f;
 
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;

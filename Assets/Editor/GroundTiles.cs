@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -102,7 +104,15 @@ public static class GroundTiles
 
         // The stone tiles come whole out of the pack, so unlike the sand they
         // need no assembling -- only a definition each and an id.
-        int[] stones = { 0, 7, 14, 21, 28 };
+        //
+        // Which five matters, though. Better than half of the hundred have
+        // coloured crystals set into them, and a field of those reads as
+        // something growing rather than as rock -- on a snowfield they looked
+        // like mushrooms coming up through the snow. So they are measured
+        // rather than picked by eye: how much of a tile's surface is a colour
+        // rather than a grey, taken off the pack's own palette, and the plain
+        // ones are the ones we lay.
+        int[] stones = PlainStoneTiles();
 
         for (int i = 0; i < Variants; i++)
         {
@@ -159,6 +169,67 @@ public static class GroundTiles
 
         Debug.Log("SAND " + made.Count + " sand tiles in the library, ids " + FirstId
             + " to " + (FirstId + Variants - 1));
+    }
+
+    /// <summary>The five plainest stone tiles, spread across what the pack offers.</summary>
+    private static int[] PlainStoneTiles()
+    {
+        var palette = new Texture2D(2, 2);
+        palette.LoadImage(File.ReadAllBytes(
+            "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Texture.png"));
+
+        var plain = new List<int>();
+
+        for (int i = 0; i < 100; i++)
+        {
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>(Tiles + "/Stone Tiles/Stone Tile_" + i + ".prefab");
+
+            if (go == null) continue;
+
+            double bright = 0, all = 0;
+
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
+            {
+                var mesh = mf.sharedMesh;
+                if (mesh == null) continue;
+
+                var verts = mesh.vertices;
+                var uv = mesh.uv;
+                var tris = mesh.triangles;
+
+                if (uv == null || uv.Length == 0) continue;
+
+                for (int t = 0; t < tris.Length; t += 3)
+                {
+                    int a = tris[t], b = tris[t + 1], c = tris[t + 2];
+
+                    float area = Vector3.Cross(verts[b] - verts[a], verts[c] - verts[a]).magnitude * 0.5f;
+                    if (area < 1e-7f) continue;
+
+                    Vector2 middle = (uv[a] + uv[b] + uv[c]) / 3f;
+                    Color col = palette.GetPixelBilinear(middle.x, middle.y);
+
+                    float most = Mathf.Max(col.r, Mathf.Max(col.g, col.b));
+                    float least = Mathf.Min(col.r, Mathf.Min(col.g, col.b));
+
+                    all += area;
+                    if (most - least > 0.18f) bright += area;
+                }
+            }
+
+            if (all > 0 && bright / all < 0.002) plain.Add(i);
+        }
+
+        Debug.Log("SAND " + plain.Count + " stone tiles carry no colour at all");
+
+        if (plain.Count < Variants) return new[] { 11, 12, 17, 18, 19 };
+
+        // spread across them, so the five are not five of a kind
+        var picked = new int[Variants];
+
+        for (int i = 0; i < Variants; i++) picked[i] = plain[i * plain.Count / Variants];
+
+        return picked;
     }
 
     public static void Batch()

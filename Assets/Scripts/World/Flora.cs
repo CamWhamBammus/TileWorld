@@ -21,6 +21,13 @@ public class Flora : ScriptableObject
         public float Wide;
 
         /// <summary>
+        /// What colour it is, read off the pack's palette. The stones are not
+        /// all stone-coloured: mixed in with the grey ones are bright gems, and
+        /// scattered over a snowfield those read as something growing.
+        /// </summary>
+        public Color Colour;
+
+        /// <summary>
         /// How far to lift it so its foot is on the ground. Some of these models
         /// are drawn about their middle and some stand on their own origin, and
         /// which is which is not something to find out by eye afterwards.

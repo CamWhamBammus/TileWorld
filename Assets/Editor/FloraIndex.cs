@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -19,6 +20,55 @@ public static class FloraIndex
     private const string Sand = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Update 1 - Sand/Prefabs";
     private const string Paint = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Main Material.mat";
     private const string Written = "Assets/Resources/Flora.asset";
+
+    private const string Sheet = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Texture.png";
+
+    private static Texture2D palette;
+
+    /// <summary>
+    /// The pack's palette, loaded from the file itself rather than through the
+    /// importer, so it can be read whatever the import settings say.
+    /// </summary>
+    private static Texture2D Palette()
+    {
+        if (palette != null) return palette;
+
+        palette = new Texture2D(2, 2);
+        palette.LoadImage(File.ReadAllBytes(Sheet));
+
+        return palette;
+    }
+
+    /// <summary>The colour a model mostly is, taken off the palette.</summary>
+    private static Color ColourOf(Mesh mesh)
+    {
+        var uv = mesh.uv;
+        var tris = mesh.triangles;
+        var verts = mesh.vertices;
+
+        if (uv == null || uv.Length == 0) return Color.grey;
+
+        double sumU = 0, sumV = 0, weight = 0;
+
+        for (int t = 0; t < tris.Length; t += 3)
+        {
+            int a = tris[t], b = tris[t + 1], c = tris[t + 2];
+
+            float area = Vector3.Cross(verts[b] - verts[a], verts[c] - verts[a]).magnitude * 0.5f;
+
+            if (area < 1e-7f) continue;
+
+            Vector2 middle = (uv[a] + uv[b] + uv[c]) / 3f;
+
+            sumU += middle.x * area;
+            sumV += middle.y * area;
+            weight += area;
+        }
+
+        if (weight <= 0) return Color.grey;
+
+        return Palette().GetPixelBilinear((float)(sumU / weight), (float)(sumV / weight));
+    }
 
     [MenuItem("Tools/Tile World/Index the pack's flora")]
     public static void Go()
@@ -52,13 +102,23 @@ public static class FloraIndex
             + flora.DeadTrees.Length + " dead trees, " + flora.Reeds.Length + " reeds"
             + " | paint " + (flora.Paint == null ? "MISSING" : flora.Paint.name));
 
-        foreach (var set in new[] { flora.Mushrooms, flora.Boulders, flora.Trees, flora.DeadTrees, flora.Reeds })
-        {
-            if (set.Length == 0) continue;
+        int bright = 0;
 
-            Debug.Log("FLORA  e.g. " + set[0].Name + " tall " + set[0].Size.ToString("F2")
-                + " foot " + set[0].Foot.ToString("F2"));
+        foreach (var one in flora.Boulders)
+        {
+            var c = one.Colour;
+            float most = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+            float least = Mathf.Min(c.r, Mathf.Min(c.g, c.b));
+
+            bool colourful = most - least > 0.16f;
+
+            if (colourful) bright++;
+
+            Debug.Log("FLORA stone " + one.Name + " #" + ColorUtility.ToHtmlStringRGB(c)
+                + (colourful ? "  BRIGHT" : ""));
         }
+
+        Debug.Log("FLORA of " + flora.Boulders.Length + " stones, " + bright + " are bright rather than stone-coloured");
     }
 
     /// <summary>Everything with a mesh in a folder, as something that can be stood up.</summary>
@@ -94,7 +154,8 @@ public static class FloraIndex
 
                 // whatever the model's own idea of its origin is, this is the
                 // lift that puts the bottom of it on the ground
-                Foot = -mesh.bounds.min.y
+                Foot = -mesh.bounds.min.y,
+                Colour = ColourOf(mesh)
             });
         }
 
