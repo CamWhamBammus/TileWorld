@@ -226,12 +226,49 @@ public class Undergrowth : MonoBehaviour
             int gx = index.x * WorldGrid.TilesPerChunk + tx;
             int gz = index.y * WorldGrid.TilesPerChunk + tz;
 
-            if (WaterSurface.IsUnderwater(gx, gz, seed)) continue;
+            // Standing water takes what is planted in it, except in the
+            // shallows: reeds grow out of a lake edge, and nothing says a lake
+            // has an edge like something standing up out of it.
+            if (WaterSurface.IsUnderwater(gx, gz, seed))
+            {
+                float deep = WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, seed);
+
+                if (deep > 1.1f || flora.Reeds == null || flora.Reeds.Length == 0) continue;
+
+                if (Hash(gx, gz, seed + 6791) % 100 >= 26) continue;
+
+                var stalk = flora.Reeds[(int)(Hash(gx, gz, seed + 41) % (uint)flora.Reeds.Length)];
+
+                if (stalk.Mesh == null || stalk.Size < 0.0001f) continue;
+
+                float high = Mathf.Lerp(1.2f, 2.3f, ((Hash(gx, gz, seed + 97) >> 9) % 100) / 100f);
+                float much = high / stalk.Size;
+
+                int slot = System.Array.IndexOf(every, stalk);
+
+                if (slot < 0) continue;
+
+                if (patch.ByKind[slot] == null) patch.ByKind[slot] = new List<Matrix4x4>();
+
+                patch.ByKind[slot].Add(Matrix4x4.TRS(
+                    new Vector3(gx * WorldGrid.TileSize, WorldHeight.SurfaceY(gx, gz, seed),
+                                gz * WorldGrid.TileSize),
+                    Quaternion.Euler(0f, (Hash(gx, gz, seed + 13) % 360), 0f),
+                    Vector3.one * much));
+
+                continue;
+            }
 
             // Snow covers what grows under it -- but a snowfield with nothing
             // standing in it at all is a white sheet, so the few things that
             // belong there are let through.
             if (character != Regions.Character.Snow && SnowCover.IsSnowy(gx, gz, seed)) continue;
+
+            // A beach is bare. The sand above the waterline is ground the
+            // trees have not taken, and a wood marching right down into the
+            // lake is what it looked like before.
+            bool beach = WorldHeight.SurfaceY(gx, gz, seed) - WaterSurface.Level < 0.7f
+                      && character != Regions.Character.Desert;
 
             uint roll = Hash(gx, gz, seed + 5153);
 
@@ -261,6 +298,9 @@ public class Undergrowth : MonoBehaviour
 
             var sprout = every[chosen];
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
+
+            // only stones lie on a shore
+            if (beach && sort.High > 1.5f) continue;
 
             float tall = Mathf.Lerp(sort.Low, sort.High, ((roll >> 17) % 100) / 100f);
             float size = tall / sprout.Size;

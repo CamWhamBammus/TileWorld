@@ -29,6 +29,12 @@ public class Chunk
     private const float TreelineFraction = 0.72f;
     private const float SteepFraction = 0.62f;
     private const float MarshFraction = 0.10f;
+
+    /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
+    private const float DeepWater = 1.6f;
+
+    /// <summary>And how far above the water the sand carries on up the shore.</summary>
+    private const float BeachHeight = 0.7f;
     private const float BlendNoiseScale = 0.09f;
     private const float BlendWeight = 0.22f;
 
@@ -115,9 +121,23 @@ public class Chunk
             // out of the pond, since the water is only a surface over the top.
             bool submerged = WaterSurface.IsUnderwater(gx, gz, worldSeed);
 
+            // How far under, or how far clear. A lake bed was dark grass with
+            // the trees taken out of it, which is a drowned field rather than a
+            // lake: grass does not grow on a lake bottom and the eye knows it.
+            float underBy = WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, worldSeed);
+
             if (submerged)
             {
-                category = MarshCategory;           // riverbed, and no trees in it
+                // Sand in the shallows where the light still reaches, rock
+                // further down. The line between the two is what makes a lake
+                // look as though it has a bottom rather than an edge.
+                category = underBy < DeepWater ? SandCategory : StoneCategory;
+            }
+            else if (-underBy < BeachHeight)
+            {
+                // and a run of sand above the waterline, so the grass does not
+                // simply stop at the water
+                category = SandCategory;
             }
             else if (desert)
             {

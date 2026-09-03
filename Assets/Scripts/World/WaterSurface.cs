@@ -75,10 +75,16 @@ public static class WaterSurface
         Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
         var m = new Material(lit);
 
-        // Opaque enough that the bed reads as being under water rather than
-        // seen through glass. At 0.72 every submerged log and grass tuft was
-        // legible and it looked like a flooded field.
-        var colour = new Color(0.20f, 0.38f, 0.47f, 0.88f);
+        // This used to be nearly opaque, at 0.88, and for a good reason: the
+        // bed was dark grass with the trees taken out of it, so anything you
+        // could see through the water was a submerged field and it read as a
+        // flood rather than a lake.
+        //
+        // The bed is sand in the shallows and rock below that now, which is
+        // worth seeing, so the water is let go a little. Shallow water shows
+        // its bottom and deep water keeps it, which is the whole of why water
+        // looks deep.
+        var colour = new Color(0.20f, 0.40f, 0.50f, 0.72f);
 
         m.SetColor("_BaseColor", colour);
         m.color = colour;
