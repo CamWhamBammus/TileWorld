@@ -16,6 +16,47 @@ public enum LandmarkKind
 /// </summary>
 public static class Landmarks
 {
+    /// <summary>One ruin, entire, the same way a creature is.</summary>
+    public struct Kind
+    {
+        public string Name;
+        public int SurveyRadius;    // how far it charts, in chunks
+        public float SurveyHeight;  // how far up you have to get before it counts
+        public string Country;      // where the guide wants it found
+        public float LabelHeight;   // how far above it the map writes its name
+    }
+
+    private static readonly Kind[] kinds =
+    {
+        new Kind { Name = "Abandoned House", SurveyRadius = 2, SurveyHeight = 0f,
+                   Country = "down on the low ground", LabelHeight = 10f },
+
+        new Kind { Name = "Ruined Tower", SurveyRadius = 6, SurveyHeight = 8f,
+                   Country = "stands alone, seen from a long way off", LabelHeight = 15f },
+
+        new Kind { Name = "Stone Circle", SurveyRadius = 2, SurveyHeight = 0f,
+                   Country = "out in the open on flat ground", LabelHeight = 7f },
+
+        new Kind { Name = "Watchtower", SurveyRadius = 5, SurveyHeight = 7f,
+                   Country = "up high, built to see from", LabelHeight = 15f }
+    };
+
+    /// <summary>How many kinds there are, so nothing has to be told twice.</summary>
+    public static int Count => kinds.Length;
+
+    static Landmarks()
+    {
+        int named = System.Enum.GetValues(typeof(LandmarkKind)).Length;
+
+        if (kinds.Length != named)
+        {
+            Debug.LogError("[Landmarks] " + named + " kinds are named but " + kinds.Length
+                + " are described. Every kind in LandmarkKind needs its entry, in the same order.");
+        }
+    }
+
+    public static Kind All(LandmarkKind kind) => kinds[Mathf.Clamp((int)kind, 0, kinds.Length - 1)];
+
     /// <summary>
     /// Most rolls are rejected by the flatness test below, so this is a ceiling
     /// rather than the real rate: 12 here yields about 3.2% of chunks, which
@@ -101,41 +142,18 @@ public static class Landmarks
     /// Height is the point: a tower you have to climb shows you far more than
     /// a ring of stones you can walk into.
     /// </summary>
-    public static int SurveyRadius(LandmarkKind kind)
-    {
-        switch (kind)
-        {
-            case LandmarkKind.RuinedTower: return 6;
-            case LandmarkKind.Watchtower: return 5;
-            case LandmarkKind.AbandonedHouse: return 2;
-            default: return 2;
-        }
-    }
+    public static int SurveyRadius(LandmarkKind kind) => All(kind).SurveyRadius;
 
     /// <summary>
     /// How high above its base you have to get before it counts. Towers have to
     /// be climbed; the house and the circle only have to be reached.
     /// </summary>
-    public static float SurveyHeight(LandmarkKind kind)
-    {
-        switch (kind)
-        {
-            case LandmarkKind.RuinedTower: return 8f;
-            case LandmarkKind.Watchtower: return 7f;
-            default: return 0f;
-        }
-    }
+    public static float SurveyHeight(LandmarkKind kind) => All(kind).SurveyHeight;
 
-    public static string NameOf(LandmarkKind kind)
-    {
-        switch (kind)
-        {
-            case LandmarkKind.AbandonedHouse: return "Abandoned House";
-            case LandmarkKind.RuinedTower: return "Ruined Tower";
-            case LandmarkKind.StoneCircle: return "Stone Circle";
-            default: return "Watchtower";
-        }
-    }
+    public static string NameOf(LandmarkKind kind) => All(kind).Name;
+
+    /// <summary>Where the guide wants it found.</summary>
+    public static string Country(LandmarkKind kind) => All(kind).Country;
 
     private static int Hash(int x, int y, int seed)
     {

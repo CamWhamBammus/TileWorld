@@ -34,7 +34,13 @@ public static class LandmarkBuilder
             case LandmarkKind.AbandonedHouse: BuildHouse(root.transform, rng); break;
             case LandmarkKind.RuinedTower: BuildTower(root.transform, rng); break;
             case LandmarkKind.StoneCircle: BuildCircle(root.transform, rng); break;
-            default: BuildWatchtower(root.transform, rng); break;
+            case LandmarkKind.Watchtower: BuildWatchtower(root.transform, rng); break;
+
+            default:
+                Debug.LogError("[LandmarkBuilder] nothing to build for " + placement.Kind
+                    + ", standing in a watchtower.");
+                BuildWatchtower(root.transform, rng);
+                break;
         }
 
         return root;
@@ -58,15 +64,7 @@ public static class LandmarkBuilder
         soil = Mat(new Color(0.30f, 0.25f, 0.18f));
     }
 
-    private static Material Mat(Color c)
-    {
-        Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
-        var m = new Material(lit);
-        m.SetColor("_BaseColor", c);
-        m.color = c;
-        m.SetFloat("_Smoothness", 0.05f);
-        return m;
-    }
+    private static Material Mat(Color c) => Paint.Flat(c);
 
     private static float Rand(System.Random r, float a, float b)
     {

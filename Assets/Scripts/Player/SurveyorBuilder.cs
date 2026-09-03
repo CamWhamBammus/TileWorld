@@ -23,7 +23,6 @@ public static class SurveyorBuilder
         public Transform Pencil;
     }
 
-    private static readonly Dictionary<int, Material> materials = new Dictionary<int, Material>();
 
     // out of the same palette the tiles and the animals are painted from
     private const int CoatCoat = 0, CoatLight = 1, CoatDark = 2, CoatSkin = 3;
@@ -416,25 +415,5 @@ public static class SurveyorBuilder
                              new Vector3(1f, by, 1f));
     }
 
-    private static Material Mat(Color c)
-    {
-        int key = c.GetHashCode();
-
-        if (materials.TryGetValue(key, out var cached) && cached != null) return cached;
-
-        var shader = Shaders.First("Universal Render Pipeline/Lit", "Standard");
-
-        if (shader == null) return null;
-
-        var material = new Material(shader);
-        material.SetColor("_BaseColor", c);
-        material.color = c;
-        material.SetFloat("_Smoothness", 0.08f);
-        material.SetFloat("_Metallic", 0f);
-        material.enableInstancing = true;
-
-        materials[key] = material;
-
-        return material;
-    }
+    private static Material Mat(Color c) => Paint.Flat(c);
 }

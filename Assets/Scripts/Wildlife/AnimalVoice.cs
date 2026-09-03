@@ -144,32 +144,11 @@ public static class AnimalVoice
 
         float length, baseHz, glide, vibratoHz, vibratoDepth, rasp, noise, thump;
 
-        switch (kind)
-        {
-            case FaunaKind.Deer:
-                // a short chesty grunt, dropping as it ends
-                length = 0.40f; baseHz = 152f; glide = -0.22f;
-                vibratoHz = 7f; vibratoDepth = 9f; rasp = 0.30f; noise = 0.14f; thump = 0f;
-                break;
+        var voice = Fauna.All(kind).Call;
 
-            case FaunaKind.Rabbit:
-                // rabbits are near enough silent, so this is the foot drumming
-                length = 0.16f; baseHz = 74f; glide = -0.45f;
-                vibratoHz = 0f; vibratoDepth = 0f; rasp = 0f; noise = 0.55f; thump = 1f;
-                break;
-
-            case FaunaKind.Fox:
-                // the bark: high, thin and rough, and it carries a long way
-                length = 0.34f; baseHz = 590f; glide = 0.30f;
-                vibratoHz = 22f; vibratoDepth = 60f; rasp = 0.45f; noise = 0.18f; thump = 0f;
-                break;
-
-            default:
-                // the bleat, which is mostly its wobble
-                length = 0.62f; baseHz = 366f; glide = -0.14f;
-                vibratoHz = 15f; vibratoDepth = 52f; rasp = 0.34f; noise = 0.10f; thump = 0f;
-                break;
-        }
+        length = voice.Length; baseHz = voice.Pitch; glide = voice.Glide;
+        vibratoHz = voice.WobbleRate; vibratoDepth = voice.WobbleDepth;
+        rasp = voice.Rasp; noise = voice.Noise; thump = voice.Thump;
 
         if (alarmed)
         {

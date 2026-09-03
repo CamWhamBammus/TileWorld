@@ -150,22 +150,10 @@ public static class FieldGuide
                 return "read the writing"; 
 
             case Study.Habit:
-                switch (subject.Fauna)
-                {
-                    case FaunaKind.Deer: return "saw one grazing";
-                    case FaunaKind.Rabbit: return "saw one resting";
-                    case FaunaKind.Fox: return "saw one drinking";
-                    default: return "saw one walking";
-                }
+                return "saw one " + global::Fauna.Habit(subject.Fauna);
 
             default:
-                switch (subject.Fauna)
-                {
-                    case FaunaKind.Deer: return "found in the woods at dusk";
-                    case FaunaKind.Rabbit: return "found in the open in daylight";
-                    case FaunaKind.Fox: return "found at night";
-                    default: return "found up high";
-                }
+                return "found " + global::Fauna.Country(subject.Fauna);
         }
     }
 
@@ -211,13 +199,7 @@ public static class FieldGuide
     {
         if (subject.Wild) return Fauna.Describe(subject.Fauna);
 
-        switch (subject.Landmark)
-        {
-            case LandmarkKind.AbandonedHouse: return "down on the low ground";
-            case LandmarkKind.RuinedTower: return "stands alone, seen from a long way off";
-            case LandmarkKind.StoneCircle: return "out in the open on flat ground";
-            default: return "up high, built to see from";
-        }
+        return global::Landmarks.Country(subject.Landmark);
     }
 
     /// <summary>What each study asks for, in the book's own words.</summary>
@@ -244,36 +226,18 @@ public static class FieldGuide
     /// <summary>The behaviour an entry wants seen, which differs by animal.</summary>
     public static string Habit(FaunaKind kind)
     {
-        switch (kind)
-        {
-            case FaunaKind.Deer: return "see one grazing";
-            case FaunaKind.Rabbit: return "see one resting";
-            case FaunaKind.Fox: return "see one drinking";
-            default: return "see one walking";
-        }
+        return "see one " + global::Fauna.Habit(kind);
     }
 
     public static bool Habit(FaunaKind kind, Doing doing)
     {
-        switch (kind)
-        {
-            case FaunaKind.Deer: return doing == Doing.Grazing;
-            case FaunaKind.Rabbit: return doing == Doing.Resting;
-            case FaunaKind.Fox: return doing == Doing.Drinking;
-            default: return doing == Doing.Walking;
-        }
+        return global::Fauna.Habit(kind, doing);
     }
 
     /// <summary>The country an entry wants it found in.</summary>
     public static string Country(FaunaKind kind)
     {
-        switch (kind)
-        {
-            case FaunaKind.Deer: return "find one in the woods at dusk";
-            case FaunaKind.Rabbit: return "find one in the open in daylight";
-            case FaunaKind.Fox: return "find one at night";
-            default: return "find one up high";
-        }
+        return "find one " + global::Fauna.Country(kind);
     }
 
     public static bool Country(FaunaKind kind, Vector3 at, int seed, float hour)
@@ -283,13 +247,7 @@ public static class FieldGuide
 
         float relief = WorldHeight.HeightAt(x, z, seed) / WorldHeight.MaxRelief;
 
-        switch (kind)
-        {
-            case FaunaKind.Deer: return hour > 0.62f && hour < 0.86f;
-            case FaunaKind.Rabbit: return hour > 0.30f && hour < 0.72f && relief < 0.22f;
-            case FaunaKind.Fox: return hour < 0.22f || hour > 0.82f;
-            default: return relief > 0.55f;
-        }
+        return global::Fauna.Proper(kind, hour, relief);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

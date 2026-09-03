@@ -33,10 +33,15 @@ public struct Subject
 
     public static Subject[] All()
     {
-        var all = new Subject[8];
+        // Counted, not written down. Told there were four of each, a fifth
+        // creature would have lived in the world without ever reaching the book.
+        int creatures = global::Fauna.Count;
+        int structures = global::Landmarks.Count;
 
-        for (int i = 0; i < 4; i++) all[i] = Creature((FaunaKind)i);
-        for (int i = 0; i < 4; i++) all[4 + i] = Structure((LandmarkKind)i);
+        var all = new Subject[creatures + structures];
+
+        for (int i = 0; i < creatures; i++) all[i] = Creature((FaunaKind)i);
+        for (int i = 0; i < structures; i++) all[creatures + i] = Structure((LandmarkKind)i);
 
         return all;
     }

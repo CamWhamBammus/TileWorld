@@ -80,13 +80,7 @@ public class WorldLabels : MonoBehaviour
 
     private static float HeightOf(LandmarkKind kind)
     {
-        switch (kind)
-        {
-            case LandmarkKind.RuinedTower: return 15f;
-            case LandmarkKind.Watchtower: return 15f;
-            case LandmarkKind.AbandonedHouse: return 10f;
-            default: return 7f;
-        }
+        return Landmarks.All(kind).LabelHeight;
     }
 
     private TextMeshPro Make(string text)

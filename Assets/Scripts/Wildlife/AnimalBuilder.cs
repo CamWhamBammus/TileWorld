@@ -50,7 +50,6 @@ public static class AnimalBuilder
     }
 
     private static readonly Dictionary<FaunaKind, Kit> kits = new Dictionary<FaunaKind, Kit>();
-    private static readonly Dictionary<int, Material> materials = new Dictionary<int, Material>();
 
     public static Body Build(FaunaKind kind, Transform parent)
     {
@@ -111,7 +110,15 @@ public static class AnimalBuilder
             case FaunaKind.Deer: kit = Deer(traits.Size); break;
             case FaunaKind.Rabbit: kit = Rabbit(traits.Size); break;
             case FaunaKind.Fox: kit = Fox(traits.Size); break;
-            default: kit = Goat(traits.Size); break;
+            case FaunaKind.Goat: kit = Goat(traits.Size); break;
+
+            default:
+                // A shape has to be built, it cannot be described in the table,
+                // so a new kind needs one written. Said out loud, because the
+                // alternative is a creature that is quietly a goat.
+                Debug.LogError("[AnimalBuilder] no shape for " + kind + ", standing in a goat.");
+                kit = Goat(traits.Size);
+                break;
         }
 
         kit.Palette = new[] { Mat(traits.Coat), Mat(traits.Under), Mat(traits.Dark) };
@@ -586,28 +593,5 @@ public static class AnimalBuilder
         return go.transform;
     }
 
-    private static Material Mat(Color c)
-    {
-        int key = c.GetHashCode();
-
-        if (materials.TryGetValue(key, out var cached) && cached != null) return cached;
-
-        Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
-
-        // Without a shader there is no material to make, and a grey animal is
-        // better than an exception part way through building one.
-        if (lit == null) return null;
-
-        var material = new Material(lit);
-        material.SetColor("_BaseColor", c);
-        material.color = c;
-        material.SetFloat("_Smoothness", 0.10f);
-        material.SetFloat("_Metallic", 0f);
-        material.SetFloat("_Glossiness", 0f);
-        material.enableInstancing = true;
-
-        materials[key] = material;
-
-        return material;
-    }
+    private static Material Mat(Color c) => Paint.Flat(c);
 }
