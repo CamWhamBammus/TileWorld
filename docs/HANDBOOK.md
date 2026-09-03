@@ -16,10 +16,12 @@ Keep it current. When a rule changes, change it here in the same commit.
 3. `Tools/build.sh` -- a development player into `Builds/Dev` (ignored by git).
    Minutes, not seconds. Needed for anything `check.sh` cannot see (Editor
    scripts) and for anything that has to be *seen*.
-4. `Tools/run-probe.sh Tools/probe/<Probe>.cs.txt` -- drops a throwaway script
-   into the game, builds, runs it until the probe says `done`, gathers its stage
-   file and screenshots into `Tools/.check/shots/`. Back the saves up first and
-   restore after (below).
+4. `Tools/run-probe.sh Tools/probe/<Probe>.cs.txt [seconds]` -- drops a
+   throwaway script into the game, builds, runs it until the probe says `done`,
+   gathers its stage file and screenshots into `Tools/.check/shots/` (earlier
+   shots are kept; a probe's own overwrite by name). Back the saves up first
+   and restore after (below). `StructureTour` visits every structure kind;
+   `GuideContents` opens the field guide.
 5. Look at the screenshots. Measure rather than eyeball where you can.
 6. Commit as each piece completes, and push.
 
@@ -161,6 +163,12 @@ Snow never lies on a water floor.
 
 ## Structures
 
+Fifteen kinds, one country each: Forester's Watch and Hunter's Hide (Forest);
+Shipwreck and Lighthouse (Water); Sand Gate and Buried Tower (Desert);
+Trapper's Cabin (Snow); Fishing Jetty (Reed); Stepped Altar (Stone);
+Toadstool Ring (Fungal); Charcoal Camp (Dead); Hilltop Beacon (Hills); Summit
+Cairn (Peaks); Wayside Shrine and Standing Stones (Lowland).
+
 `Landmarks.kinds[]` is the whole catalogue: name, the one `Country` it is built
 in, its `Site` (Level ground, a beach's Shallows, a lake's Shore), how it
 surveys, the footprint in tiles (`Behind`, `Ahead`, `Aside`, in its own frame
@@ -186,7 +194,13 @@ The pack lies about some pieces, and the shelf (`Structures`) says so:
 them looks to float; build walls and tiers from sand (pale stone) or grass.
 Pack prefabs' roots can carry a position from the pack's scene (the stone
 tiles' did, twenty units off); always set a placed piece's local transform
-outright. Where a statue would stand, a boulder is stood on end (`Standing`).
+outright. Where a statue would stand, a boulder is stood on end and drawn out tall
+(`Standing`); at its own proportions a boulder on end is still a boulder.
+`Lying` is the same stone as it fell.
+
+Densities are tuned by `Chance` against a count: the tour probe reports how
+many of each kind lie within forty chunks of the player, and a kind with a
+small footprint in common country needs a small chance (the cairn is 6).
 
 To add a kind: add it to `LandmarkKind` and `kinds[]` in the same order; a
 `case` in `LandmarkBuilder.Build` and a method; a line set in `Inscriptions`;
