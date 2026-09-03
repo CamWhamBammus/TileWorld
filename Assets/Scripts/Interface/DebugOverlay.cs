@@ -111,8 +111,7 @@ public class DebugOverlay : MonoBehaviour
             "seed    " + world.WorldSeed
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             + "\n\nui sounds " + Ambience.Clicks
-            + "\n\nF8      show the first page again"
-            + "\nshift-F8  put this world back to nothing"
+            + "\n\nF8      dev tools"
 #endif
             ;
     }

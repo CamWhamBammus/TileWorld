@@ -1,18 +1,36 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
-/// Keys for working on the game rather than playing it. The first few minutes
-/// happen once ever, which makes them the hardest part to look at twice, so
-/// there is a key to run them again and a key to put a world back to nothing.
+/// A panel of things for working on the game rather than playing it: F8 opens
+/// it, and it is compiled into the editor and development builds only, so it
+/// cannot appear in anything shipped.
 ///
-/// Only built into the editor and into development builds.
+/// Mostly it is here to answer "go and look at it": a change to the snowfields
+/// is no use if finding a snowfield is a ten minute walk. Every region in the
+/// world is a button, with how far off the nearest one is written on it.
 /// </summary>
 public class DevTools : MonoBehaviour
 {
-    [SerializeField] private KeyCode replayKey = KeyCode.F8;
+    [SerializeField] private KeyCode openKey = KeyCode.F8;
 
+    private ChunkManager world;
+    private Transform player;
+    private CharacterController body;
+
+    private GameObject panel;
+    private TMP_Text heading;
+    private TMP_FontAsset font;
+
+    private readonly Dictionary<Regions.Character, TMP_Text> labels =
+        new Dictionary<Regions.Character, TMP_Text>();
+
+    private TMP_Text wipeLabel;
     private float askedAt = -99f;
+    private bool open;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -23,37 +41,244 @@ public class DevTools : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        world = FindFirstObjectByType<ChunkManager>();
+
+        if (world == null) { enabled = false; return; }
+
+        font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+
+        Build();
+    }
+
     private void Update()
     {
-        if (!Input.GetKeyDown(replayKey)) return;
+        if (player == null && world != null) player = world.PlayerTransform;
+        if (player != null && body == null) body = player.GetComponent<CharacterController>();
 
-        bool wiping = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        if (Input.GetKeyDown(openKey)) Toggle(!open);
 
-        if (!wiping)
+        if (open && Input.GetKeyDown(KeyCode.Escape)) Toggle(false);
+    }
+
+    private void Toggle(bool on)
+    {
+        open = on;
+
+        if (panel != null) panel.SetActive(on);
+
+        if (on)
         {
-            Arrival.Replay();
-            Notices.Show("Dev: showing the first page again.");
+            ScreenState.Open(ScreenState.Screen.Dev);
+            Refresh();
+        }
+        else
+        {
+            ScreenState.Close(ScreenState.Screen.Dev);
+        }
+    }
+
+    /// <summary>Where the nearest region of a given sort is, and how far.</summary>
+    private bool Nearest(Regions.Character want, out Vector2Int chunk, out float away)
+    {
+        chunk = default;
+        away = 0f;
+
+        if (player == null) return false;
+
+        int seed = world.WorldSeed;
+        var home = WorldGrid.WorldToChunk(player.position);
+
+        for (int r = 0; r < 40; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+
+            var at = new Vector2Int(home.x + dx * Regions.ChunksAcross, home.y + dz * Regions.ChunksAcross);
+
+            if (Regions.CharacterAt(at, seed) != want) continue;
+
+            var cell = Regions.CellOf(at);
+
+            chunk = new Vector2Int(
+                cell.x * Regions.ChunksAcross + Regions.ChunksAcross / 2,
+                cell.y * Regions.ChunksAcross + Regions.ChunksAcross / 2);
+
+            away = Vector3.Distance(player.position, WorldGrid.ChunkCenter(chunk));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void GoTo(Regions.Character want)
+    {
+        if (!Nearest(want, out var chunk, out _) || body == null)
+        {
+            Notices.Show("Dev: no " + want + " within reach.");
             return;
         }
 
-        // Losing a world's drawings cannot be undone, so it is asked for twice.
-        if (Time.time - askedAt > 4f)
+        int seed = world.WorldSeed;
+
+        Vector3 middle = WorldGrid.ChunkCenter(chunk);
+
+        int cx = Mathf.RoundToInt(middle.x / WorldGrid.TileSize);
+        int cz = Mathf.RoundToInt(middle.z / WorldGrid.TileSize);
+
+        // dry ground near the middle of it, so you do not arrive underwater
+        for (int ring = 0; ring < 30; ring++)
+        for (int ox = -ring; ox <= ring; ox++)
+        for (int oz = -ring; oz <= ring; oz++)
         {
-            askedAt = Time.time;
-            Notices.Show("Dev: shift-" + replayKey + " again to wipe this world's findings.");
+            if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oz)) != ring) continue;
+
+            int tx = cx + ox, tz = cz + oz;
+
+            if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            if (WorldHeight.SurfaceY(tx, tz, seed) < WaterSurface.Level + 0.4f) continue;
+
+            body.enabled = false;
+            player.position = new Vector3(tx * WorldGrid.TileSize,
+                WorldHeight.SurfaceY(tx, tz, seed) + 1.4f, tz * WorldGrid.TileSize);
+            body.enabled = true;
+
+            Toggle(false);
+            Notices.Show("You come into " + Regions.At(chunk, seed).Name);
+            return;
+        }
+
+        Notices.Show("Dev: found a " + want + " but nowhere dry to stand in it.");
+    }
+
+    private void Refresh()
+    {
+        if (player == null) return;
+
+        int seed = world.WorldSeed;
+        var here = Regions.At(WorldGrid.WorldToChunk(player.position), seed);
+
+        if (heading != null)
+        {
+            heading.text = "Dev tools\n<size=17>standing in " + here.Name + ", which is "
+                         + Regions.Describe(here.Character) + "</size>";
+        }
+
+        foreach (var pair in labels)
+        {
+            bool found = Nearest(pair.Key, out _, out float away);
+
+            pair.Value.text = found
+                ? pair.Key + "   <size=15>" + Mathf.RoundToInt(away) + " m</size>"
+                : pair.Key + "   <size=15>none near</size>";
+        }
+
+        if (wipeLabel != null) wipeLabel.text = "Put this world back to nothing";
+    }
+
+    private void Build()
+    {
+        var canvasGo = new GameObject("Dev Canvas");
+        canvasGo.transform.SetParent(transform, false);
+
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 700;
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        panel = new GameObject("Panel");
+        panel.transform.SetParent(canvasGo.transform, false);
+
+        var shade = panel.AddComponent<RawImage>();
+        shade.texture = Texture2D.whiteTexture;
+        shade.color = new Color(0f, 0f, 0f, 0.6f);
+
+        var full = panel.GetComponent<RectTransform>();
+        full.anchorMin = Vector2.zero;
+        full.anchorMax = Vector2.one;
+        full.offsetMin = Vector2.zero;
+        full.offsetMax = Vector2.zero;
+
+        var cardGo = new GameObject("Card");
+        cardGo.transform.SetParent(panel.transform, false);
+
+        var card = cardGo.AddComponent<RawImage>();
+        card.texture = Texture2D.whiteTexture;
+
+        // deliberately not the game's parchment: this is not part of the game
+        card.color = new Color(0.11f, 0.12f, 0.14f, 0.97f);
+
+        var cardRect = cardGo.GetComponent<RectTransform>();
+        cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 0.5f);
+        cardRect.sizeDelta = new Vector2(940f, 620f);
+
+        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 248f), new Vector2(880f, 90f));
+        heading.color = new Color(0.85f, 0.87f, 0.90f);
+
+        Label("Go", cardGo.transform, 17f, new Vector2(0f, 186f), new Vector2(880f, 30f))
+            .text = "GO TO THE NEAREST";
+
+        var kinds = (Regions.Character[])System.Enum.GetValues(typeof(Regions.Character));
+
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            var kind = kinds[i];
+
+            float x = (i % 3 - 1) * 300f;
+            float y = 136f - (i / 3) * 58f;
+
+            labels[kind] = Button(kind.ToString(), cardGo.transform,
+                new Vector2(x, y), new Vector2(285f, 52f), () => GoTo(kind));
+        }
+
+        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -110f), new Vector2(880f, 30f))
+            .text = "THE FIRST FEW MINUTES";
+
+        Button("Show the opening again", cardGo.transform,
+            new Vector2(-230f, -166f), new Vector2(430f, 52f), () =>
+            {
+                Arrival.Replay();
+                Toggle(false);
+                Notices.Show("Dev: showing the first page again.");
+            });
+
+        wipeLabel = Button("Put this world back to nothing", cardGo.transform,
+            new Vector2(230f, -166f), new Vector2(430f, 52f), Wipe);
+
+        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -240f), new Vector2(880f, 40f))
+            .text = "F8 or Escape closes this. Editor and development builds only.";
+
+        panel.SetActive(false);
+    }
+
+    private void Wipe()
+    {
+        // losing a world's drawings cannot be undone, so it is asked for twice
+        if (Time.unscaledTime - askedAt > 4f)
+        {
+            askedAt = Time.unscaledTime;
+            wipeLabel.text = "Press again to wipe it";
             return;
         }
 
         askedAt = -99f;
 
-        Wipe();
+        Erase();
 
         Arrival.Replay();
+        Toggle(false);
         Notices.Show("Dev: this world is back to nothing.");
     }
 
     /// <summary>Everything this world has found, out of the save and off the disk.</summary>
-    private static void Wipe()
+    private static void Erase()
     {
         var save = WorldLibrary.Current;
 
@@ -80,7 +305,6 @@ public class DevTools : MonoBehaviour
 
             WorldLibrary.Write(save);
 
-            // the drawings themselves, which live as pictures beside the save
             string drawings = System.IO.Path.Combine(Application.persistentDataPath, "drawings", save.id);
 
             if (System.IO.Directory.Exists(drawings))
@@ -95,6 +319,57 @@ public class DevTools : MonoBehaviour
         SketchBook.Clear();
         SightingLog.Clear();
         Stalking.Clear();
+    }
+
+    private TMP_Text Button(string text, Transform parent, Vector2 at, Vector2 size,
+                            UnityEngine.Events.UnityAction action)
+    {
+        var go = new GameObject(text);
+        go.transform.SetParent(parent, false);
+
+        var image = go.AddComponent<RawImage>();
+        image.texture = Texture2D.whiteTexture;
+        image.color = new Color(0.22f, 0.24f, 0.28f, 1f);
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = size;
+        rect.anchoredPosition = at;
+
+        var button = go.AddComponent<Button>();
+        button.targetGraphic = image;
+        button.onClick.AddListener(action);
+
+        var colours = button.colors;
+        colours.highlightedColor = new Color(1.35f, 1.35f, 1.35f);
+        button.colors = colours;
+
+        var label = Label(text + " label", go.transform, 19f, Vector2.zero, size);
+        label.text = text;
+        label.color = new Color(0.90f, 0.92f, 0.95f);
+
+        return label;
+    }
+
+    private TMP_Text Label(string name, Transform parent, float size, Vector2 at, Vector2 area)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+
+        var text = go.AddComponent<TextMeshProUGUI>();
+        text.font = font;
+        text.fontSize = size;
+        text.color = new Color(0.62f, 0.66f, 0.72f);
+        text.raycastTarget = false;
+        text.alignment = TextAlignmentOptions.Center;
+        text.richText = true;
+
+        var rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = area;
+        rect.anchoredPosition = at;
+
+        return text;
     }
 }
 #endif
