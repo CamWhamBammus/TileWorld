@@ -57,14 +57,15 @@ public static class SnowCover
     private const float Skirt = 0.26f;
 
     /// <summary>How many corners the rim of one tile's snow has.</summary>
-    private const int Corners = 12;
+    private const int PerSide = 3;
+    private const int Corners = PerSide * 4;
 
-    // A ring of corners meets its neighbours at the flat middle of each edge,
-    // not at the corners, and that middle sits at cos(pi/Corners) of the reach.
-    // Reach only as far as the tile edge and the flats fall short of it, which
-    // is a gap of bare rock along every seam. So reach past it by that much
-    // again, and then some, and let the drifts run together.
-    private const float Spread = 1.12f;
+    // The pack's grass cap is a square, not a disc: on Big Grass Tile_45 it
+    // matches a square outline to within 0.18 and sits 1.25 out against the
+    // dirt block's 1.00, while a circle through the same corners would be 1.41
+    // times too wide. So snow is a square too, oversized the same way, with the
+    // rim pushed out here and there rather than rounded off.
+    private const float Spread = 1.06f;
 
     public static Mesh BuildMesh(Vector2Int chunkIndex, int worldSeed)
     {
@@ -89,21 +90,23 @@ public static class SnowCover
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;
 
-            // The rim, as a ring of corners rather than four. Each sits a
-            // little further out or in than the last, which is what the pack's
-            // own tiles do -- their grass is not a square either, and that is
-            // most of why it looks laid on rather than printed on.
+            // The rim: a square, with several points along each side so the
+            // sides need not be straight. A drift that has drifted has an
+            // uneven edge, and that is most of what makes it look laid on
+            // rather than printed on -- but it is still a square.
             var rim = new Vector3[Corners];
 
             for (int c = 0; c < Corners; c++)
             {
-                float a = c / (float)Corners * Mathf.PI * 2f;
+                Vector2 edge = Perimeter(c);
 
                 int wobble = Mathf.Abs(Hash(tileX * 31 + c, tileZ * 17 - c, worldSeed + 811));
 
+                // Outward only. Pulled in, a rim point opens a notch of bare
+                // rock at the seam it shares with the tile next door.
                 float reach = half * (Spread + (wobble % 100) / 100f * 0.14f);
 
-                rim[c] = new Vector3(x + Mathf.Cos(a) * reach, ground + Rise, z + Mathf.Sin(a) * reach);
+                rim[c] = new Vector3(x + edge.x * reach, ground + Rise, z + edge.y * reach);
             }
 
             // and a crown a touch above the rim, so the top is a low mound
@@ -143,6 +146,25 @@ public static class SnowCover
         mesh.RecalculateBounds();
 
         return mesh;
+    }
+
+    /// <summary>
+    /// Corner c of the unit square, walked anticlockwise from the middle of the
+    /// +x edge, with PerSide points along each side. The walk has to turn the
+    /// same way the old ring of angles did, or every face ends up inside out.
+    /// </summary>
+    private static Vector2 Perimeter(int c)
+    {
+        int side = c / PerSide;
+        float t = (c % PerSide) / (float)PerSide * 2f - 1f;
+
+        switch (side)
+        {
+            case 0: return new Vector2(1f, t);
+            case 1: return new Vector2(-t, 1f);
+            case 2: return new Vector2(-1f, -t);
+            default: return new Vector2(t, -1f);
+        }
     }
 
     /// <summary>
