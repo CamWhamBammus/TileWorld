@@ -100,13 +100,16 @@ public class Surveyor : MonoBehaviour
         stance = Mathf.Lerp(0.62f, 0.38f, Mathf.InverseLerp(2f, 5f, pace));
         step = Reach * Mathf.Sin((20f + pace * 7f) * Mathf.Deg2Rad);
 
-        gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
+        if (grounded) gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
         gait -= Mathf.Floor(gait);
 
         drawing = Mathf.MoveTowards(drawing, Sketching.Raised > 0.05f ? 1f : 0f, dt * 4f);
 
+        if (figure.Book != null) figure.Book.gameObject.SetActive(drawing > 0.02f);
+        if (figure.Pencil != null) figure.Pencil.gameObject.SetActive(drawing > 0.02f);
+
         Limbs(dt, afoot, grounded);
-        Carriage(dt, afoot);
+        Carriage(dt, afoot && grounded);
     }
 
     /// <summary>How far the ankle reaches from the hip. Measured, not assumed.</summary>
@@ -124,12 +127,16 @@ public class Surveyor : MonoBehaviour
 
             if (!grounded)
             {
-                // legs gathered under, arms out a little
-                hip = side == 0 ? -18f : 10f;
-                knee = 42f;
-                ankle = 16f;
-                shoulder = -22f;
-                elbow = -28f;
+                float climbing = Mathf.InverseLerp(-2.5f, 3.5f, body != null ? body.velocity.y : 0f);
+                float apart = side == 0 ? 1f : -1f;
+
+                // gathered under on the way up, reaching down on the way back
+                hip = Mathf.Lerp(-5f, -14f, climbing) + apart * 4f;
+                knee = Mathf.Lerp(12f, 46f, climbing) + apart * 5f;
+                ankle = Mathf.Lerp(6f, 16f, climbing);
+
+                shoulder = Mathf.Lerp(-13f, -30f, climbing) - apart * 5f;
+                elbow = Mathf.Lerp(-20f, -34f, climbing);
             }
             else if (afoot)
             {
@@ -186,9 +193,13 @@ public class Surveyor : MonoBehaviour
             {
                 bool holding = side == 0;
 
-                shoulder = Mathf.Lerp(shoulder, holding ? -74f : -52f, drawing);
-                elbow = Mathf.Lerp(elbow, holding ? -104f : -74f, drawing);
-                roll = Mathf.Lerp(roll, (holding ? -26f : -14f) * (side == 0 ? 1f : -1f), drawing);
+                // the drawing hand works: small, quick, and never quite still
+                float working = holding ? 0f : Mathf.Sin(Time.time * 8.5f) * 2.6f
+                                             + Mathf.Sin(Time.time * 3.1f) * 1.4f;
+
+                shoulder = Mathf.Lerp(shoulder, (holding ? -40f : -34f) + working * 0.5f, drawing);
+                elbow = Mathf.Lerp(elbow, (holding ? -68f : -72f) + working, drawing);
+                roll = Mathf.Lerp(roll, holding ? -16f : 13f, drawing);
                 hip = Mathf.Lerp(hip, 0f, drawing);
                 knee = Mathf.Lerp(knee, 0f, drawing);
                 ankle = Mathf.Lerp(ankle, 0f, drawing);
@@ -244,7 +255,7 @@ public class Surveyor : MonoBehaviour
             float about = afoot ? 0f : glance * glance * glance * 14f * (1f - drawing);
 
             figure.Head.localRotation = Quaternion.Slerp(figure.Head.localRotation,
-                Quaternion.Euler(-tip * 0.7f + drawing * 12f, about - twist * 0.85f, -sway * 0.6f),
+                Quaternion.Euler(-tip * 0.7f + drawing * 17f, about - twist * 0.85f, -sway * 0.6f),
                 1f - Mathf.Exp(-7f * dt));
         }
     }

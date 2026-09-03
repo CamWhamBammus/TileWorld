@@ -19,6 +19,8 @@ public static class SurveyorBuilder
         public Transform[] Ankles;
         public Transform[] Arms;     // shoulders
         public Transform[] Elbows;
+        public Transform Book;       // the sketchbook, out only while drawing
+        public Transform Pencil;
     }
 
     private static readonly Dictionary<int, Material> materials = new Dictionary<int, Material>();
@@ -215,6 +217,14 @@ public static class SurveyorBuilder
             Part(figure.Ankles[side], "boot", Leg(h, 2));
         }
 
+        figure.Book = Held(figure.Elbows[0], "sketchbook",
+            new Vector3(-0.026f * h, -0.148f * h, 0.034f * h),
+            new Vector3(-52f, 10f, 12f), Book(h));
+
+        figure.Pencil = Held(figure.Elbows[1], "pencil",
+            new Vector3(0.010f * h, -0.140f * h, 0.020f * h),
+            new Vector3(-58f, 0f, 18f), Pencil(h));
+
         return figure;
     }
 
@@ -279,6 +289,86 @@ public static class SurveyorBuilder
         }
 
         return pieces;
+    }
+
+
+    /// <summary>Something carried in a hand, hidden until it is called for.</summary>
+    private static Transform Held(Transform hand, string name, Vector3 at, Vector3 turned,
+                                  List<CreatureMesh.Piece> pieces)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(hand, false);
+        go.transform.localPosition = at;
+        go.transform.localEulerAngles = turned;
+
+        Part(go.transform, name + " parts", pieces);
+        go.SetActive(false);
+
+        return go.transform;
+    }
+
+    private static List<CreatureMesh.Piece> Book(float h)
+    {
+        var pieces = new List<CreatureMesh.Piece>();
+
+        // a board, and a leaf of paper on top of it a little smaller
+        Add(pieces, CoatDark, Slab(0.150f * h, 0.190f * h, 0.010f * h), Matrix4x4.identity);
+        Add(pieces, CoatLight, Slab(0.132f * h, 0.170f * h, 0.008f * h),
+            Matrix4x4.Translate(new Vector3(0f, 0.004f * h, -0.007f * h)));
+
+        return pieces;
+    }
+
+    private static List<CreatureMesh.Piece> Pencil(float h)
+    {
+        var pieces = new List<CreatureMesh.Piece>();
+
+        Add(pieces, CoatDark, CreatureMesh.Tube(
+            new[] { new Vector3(0f, 0.034f * h, 0f), new Vector3(0f, -0.020f * h, 0f) },
+            new[] { 0.007f * h, 0.007f * h }, 5, 1f));
+
+        Add(pieces, CoatLight, CreatureMesh.Tube(
+            new[] { new Vector3(0f, -0.020f * h, 0f), new Vector3(0f, -0.034f * h, 0f) },
+            new[] { 0.007f * h, 0.001f * h }, 5, 1f));
+
+        return pieces;
+    }
+
+    /// <summary>A flat board. Every face keeps its own corners, so it shades flat.</summary>
+    private static Mesh Slab(float wide, float tall, float thick)
+    {
+        float x = wide * 0.5f, y = tall * 0.5f, z = thick * 0.5f;
+
+        var corners = new[]
+        {
+            new Vector3(-x, -y, -z), new Vector3(x, -y, -z), new Vector3(x, y, -z), new Vector3(-x, y, -z),
+            new Vector3(-x, -y, z), new Vector3(x, -y, z), new Vector3(x, y, z), new Vector3(-x, y, z)
+        };
+
+        int[][] faces =
+        {
+            new[] { 0, 3, 2, 1 }, new[] { 4, 5, 6, 7 }, new[] { 0, 1, 5, 4 },
+            new[] { 2, 3, 7, 6 }, new[] { 1, 2, 6, 5 }, new[] { 0, 4, 7, 3 }
+        };
+
+        var vertices = new List<Vector3>();
+        var triangles = new List<int>();
+
+        foreach (var face in faces)
+        {
+            int a = vertices.Count;
+            foreach (int corner in face) vertices.Add(corners[corner]);
+
+            triangles.Add(a); triangles.Add(a + 1); triangles.Add(a + 2);
+            triangles.Add(a); triangles.Add(a + 2); triangles.Add(a + 3);
+        }
+
+        var mesh = new Mesh();
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+
+        return mesh;
     }
 
     private static Transform Limb(Transform parent, string name, Vector3 at)
