@@ -1,61 +1,37 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Takes the mushrooms out of the tile pack and writes them down where the game
-/// can find them.
+/// Takes the small standing things out of the tile pack and writes them down
+/// where the game can find them.
 ///
-/// The pack holds two hundred and sixty five meshes and the ground uses ninety
-/// two of them; the rest came with it and have never been put to anything. The
-/// names are no help -- everything in there is called Cylinder or Cube and a
-/// number -- so they are picked out by what they are: a couple of hundred
-/// vertices, about a third of a unit tall, and near enough as wide as they are
-/// high. That is a mushroom and nothing else in the pack is.
+/// This used to pick the mushrooms out by shape, because the pack's meshes are
+/// all called Cylinder or Cube and a number and there was nothing else to go
+/// on. The update sorted the whole pack into named folders, so they are simply
+/// read off the shelf now. It also broke the old trick outright: picking by
+/// shape meant skipping any mesh a prefab already used, and the update ships a
+/// prefab for every mushroom, so the old rule found none of them.
 /// </summary>
 public static class FloraIndex
 {
-    private const string Pack = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Isometric Tiles Pack.fbx";
+    private const string Main = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Prefabs";
+    private const string Sand = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Update 1 - Sand/Prefabs";
     private const string Paint = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Main Material.mat";
     private const string Written = "Assets/Resources/Flora.asset";
 
     [MenuItem("Tools/Tile World/Index the pack's flora")]
     public static void Go()
     {
-        var all = AssetDatabase.LoadAllAssetsAtPath(Pack).OfType<Mesh>().ToList();
-
-        var taken = new HashSet<Mesh>();
-
-        foreach (var guid in AssetDatabase.FindAssets("t:Prefab"))
-        {
-            var go = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
-            if (go == null) continue;
-
-            foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
-                if (mf.sharedMesh != null) taken.Add(mf.sharedMesh);
-        }
-
-        var mushrooms = new List<Flora.Sprout>();
-
-        foreach (var mesh in all.Where(m => !taken.Contains(m)).OrderBy(m => m.name))
-        {
-            if (mesh.vertexCount < 150 || mesh.vertexCount > 220) continue;
-
-            var box = mesh.bounds;
-
-            if (box.size.y < 0.25f || box.size.y > 0.50f) continue;
-            if (box.size.x < 0.15f || box.size.x > 0.35f) continue;
-
-            mushrooms.Add(new Flora.Sprout { Name = mesh.name, Mesh = mesh, Size = box.size.y });
-        }
-
         var flora = AssetDatabase.LoadAssetAtPath<Flora>(Written);
         bool fresh = flora == null;
 
         if (fresh) flora = ScriptableObject.CreateInstance<Flora>();
 
-        flora.Mushrooms = mushrooms.ToArray();
+        flora.Mushrooms = FromFolder(Main + "/Mushrooms");
+        flora.Cacti = FromFolder(Sand + "/Cactus");
+        flora.Palms = FromFolder(Sand + "/Palms");
+        flora.Stones = FromFolder(Sand + "/Stones");
         flora.Paint = AssetDatabase.LoadAssetAtPath<Material>(Paint);
 
         if (fresh) AssetDatabase.CreateAsset(flora, Written);
@@ -63,11 +39,59 @@ public static class FloraIndex
 
         AssetDatabase.SaveAssets();
 
-        Debug.Log("FLORA " + mushrooms.Count + " mushrooms taken from the pack: "
-            + string.Join(", ", mushrooms.Select(m => m.Name)));
+        Debug.Log("FLORA " + flora.Mushrooms.Length + " mushrooms, " + flora.Cacti.Length + " cactus, "
+            + flora.Palms.Length + " palms, " + flora.Stones.Length + " stones"
+            + " | paint " + (flora.Paint == null ? "MISSING" : flora.Paint.name));
+
+        foreach (var set in new[] { flora.Mushrooms, flora.Cacti, flora.Palms, flora.Stones })
+        {
+            if (set.Length == 0) continue;
+
+            Debug.Log("FLORA  e.g. " + set[0].Name + " tall " + set[0].Size.ToString("F2")
+                + " foot " + set[0].Foot.ToString("F2"));
+        }
     }
 
-    /// <summary>For running it without opening the editor.</summary>
+    /// <summary>Everything with a mesh in a folder, as something that can be stood up.</summary>
+    private static Flora.Sprout[] FromFolder(string folder)
+    {
+        var found = new List<Flora.Sprout>();
+
+        if (!AssetDatabase.IsValidFolder(folder))
+        {
+            Debug.LogWarning("FLORA no such folder: " + folder);
+            return found.ToArray();
+        }
+
+        foreach (var guid in AssetDatabase.FindAssets("t:Prefab", new[] { folder }))
+        {
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
+
+            if (go == null) continue;
+
+            var filter = go.GetComponentInChildren<MeshFilter>(true);
+
+            if (filter == null || filter.sharedMesh == null) continue;
+
+            var mesh = filter.sharedMesh;
+
+            found.Add(new Flora.Sprout
+            {
+                Name = go.name,
+                Mesh = mesh,
+                Size = mesh.bounds.size.y,
+
+                // whatever the model's own idea of its origin is, this is the
+                // lift that puts the bottom of it on the ground
+                Foot = -mesh.bounds.min.y
+            });
+        }
+
+        found.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
+
+        return found.ToArray();
+    }
+
     public static void Batch()
     {
         Go();

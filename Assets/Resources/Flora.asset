@@ -13,49 +13,335 @@ MonoBehaviour:
   m_Name: Flora
   m_EditorClassIdentifier: Assembly-CSharp::Flora
   Mushrooms:
-  - Name: Cylinder.005
+  - Name: Mushroom
     Mesh: {fileID: 4300248, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
     Size: 0.3861798
-  - Name: Cylinder.007
+    Foot: 0.20674396
+  - Name: Mushroom_0
+    Mesh: {fileID: 4300246, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_0 (1)
+    Mesh: {fileID: 4300246, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_1
     Mesh: {fileID: 4300244, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
     Size: 0.32332075
-  - Name: Cylinder.008
-    Mesh: {fileID: 4300242, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.3861798
-  - Name: Cylinder.009
-    Mesh: {fileID: 4300240, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.3861798
-  - Name: Cylinder.010
-    Mesh: {fileID: 4300238, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.32332075
-  - Name: Cylinder.011
-    Mesh: {fileID: 4300236, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.32332075
-  - Name: Cylinder.012
-    Mesh: {fileID: 4300234, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.3861798
-  - Name: Cylinder.014
-    Mesh: {fileID: 4300230, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.32332075
-  - Name: Cylinder.016
-    Mesh: {fileID: 4300226, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.3861798
-  - Name: Cylinder.017
-    Mesh: {fileID: 4300224, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.3861798
-  - Name: Cylinder.018
-    Mesh: {fileID: 4300222, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.32332075
-  - Name: Cylinder.019
-    Mesh: {fileID: 4300220, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
-    Size: 0.32332075
-  - Name: Cylinder.020
+    Foot: 0.24284905
+  - Name: Mushroom_10
     Mesh: {fileID: 4300218, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
     Size: 0.3861798
-  - Name: Cylinder.021
+    Foot: 0.20674396
+  - Name: Mushroom_10
+    Mesh: {fileID: 4300218, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_11
     Mesh: {fileID: 4300216, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
     Size: 0.3861798
-  - Name: Cylinder.022
+    Foot: 0.20674396
+  - Name: Mushroom_12
     Mesh: {fileID: 4300214, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
     Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_13
+    Mesh: {fileID: 4300240, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_14
+    Mesh: {fileID: 4300238, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_15
+    Mesh: {fileID: 4300236, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_16
+    Mesh: {fileID: 4300234, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_16
+    Mesh: {fileID: 4300234, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_2
+    Mesh: {fileID: 4300242, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_3
+    Mesh: {fileID: 4300232, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_3
+    Mesh: {fileID: 4300232, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_4
+    Mesh: {fileID: 4300230, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_5
+    Mesh: {fileID: 4300228, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_6
+    Mesh: {fileID: 4300226, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_7
+    Mesh: {fileID: 4300224, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+    Foot: 0.20674396
+  - Name: Mushroom_8
+    Mesh: {fileID: 4300222, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  - Name: Mushroom_9
+    Mesh: {fileID: 4300220, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+    Foot: 0.24284905
+  Cacti:
+  - Name: Cactus
+    Mesh: {fileID: 4300042, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7250139
+    Foot: -0.000011086464
+  - Name: Cactus_0
+    Mesh: {fileID: 4300168, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7250139
+    Foot: -0.000011086464
+  - Name: Cactus_1
+    Mesh: {fileID: 4300166, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7197537
+    Foot: -0.000011205673
+  - Name: Cactus_10
+    Mesh: {fileID: 4300118, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.2243917
+    Foot: -0.0000021457672
+  - Name: Cactus_11
+    Mesh: {fileID: 4300160, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.2243917
+    Foot: -0.0000021457672
+  - Name: Cactus_12
+    Mesh: {fileID: 4300162, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.9490757
+    Foot: -0.0000010728836
+  - Name: Cactus_13
+    Mesh: {fileID: 4300164, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.0094805
+    Foot: -0.0000014305115
+  - Name: Cactus_2
+    Mesh: {fileID: 4300036, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.9490757
+    Foot: -0.0000010728836
+  - Name: Cactus_3
+    Mesh: {fileID: 4300038, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.0094805
+    Foot: -0.0000014305115
+  - Name: Cactus_4
+    Mesh: {fileID: 4300040, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7197537
+    Foot: -0.000011205673
+  - Name: Cactus_5
+    Mesh: {fileID: 4300110, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7250139
+    Foot: -0.000011086464
+  - Name: Cactus_6
+    Mesh: {fileID: 4300112, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.7197537
+    Foot: -0.000011205673
+  - Name: Cactus_7
+    Mesh: {fileID: 4300114, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.0094805
+    Foot: -0.0000014305115
+  - Name: Cactus_8
+    Mesh: {fileID: 4300116, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 1.9490757
+    Foot: -0.0000010728836
+  - Name: Cactus_9
+    Mesh: {fileID: 4300034, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 2.2243917
+    Foot: -0.0000021457672
+  Palms:
+  - Name: Palm
+    Mesh: {fileID: 4300182, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.8881226
+    Foot: 0.0000047683716
+  - Name: Palm_0
+    Mesh: {fileID: 4300184, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.3386989
+    Foot: 0.0000042915344
+  - Name: Palm_1
+    Mesh: {fileID: 4300186, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.9437258
+    Foot: 0.011179447
+  - Name: Palm_10
+    Mesh: {fileID: 4300092, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.9437258
+    Foot: 0.011179447
+  - Name: Palm_11
+    Mesh: {fileID: 4300076, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.3386989
+    Foot: 0.0000042915344
+  - Name: Palm_12
+    Mesh: {fileID: 4300078, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.9437258
+    Foot: 0.011179447
+  - Name: Palm_13
+    Mesh: {fileID: 4300080, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.592825
+    Foot: 0.0000052452087
+  - Name: Palm_2
+    Mesh: {fileID: 4300188, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.592825
+    Foot: 0.0000052452087
+  - Name: Palm_3
+    Mesh: {fileID: 4300072, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.8463454
+    Foot: 0.0000047683716
+  - Name: Palm_4
+    Mesh: {fileID: 4300074, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.8881226
+    Foot: 0.0000047683716
+  - Name: Palm_5
+    Mesh: {fileID: 4300096, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.8881226
+    Foot: 0.0000047683716
+  - Name: Palm_6
+    Mesh: {fileID: 4300098, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.8463454
+    Foot: 0.0000047683716
+  - Name: Palm_7
+    Mesh: {fileID: 4300094, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.3386989
+    Foot: 0.0000042915344
+  - Name: Palm_8
+    Mesh: {fileID: 4300090, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.592825
+    Foot: 0.0000052452087
+  - Name: Palm_9
+    Mesh: {fileID: 4300180, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 3.8463454
+    Foot: 0.0000047683716
+  Stones:
+  - Name: Rock
+    Mesh: {fileID: 4300202, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5426744
+    Foot: 0.27821904
+  - Name: Rock 1
+    Mesh: {fileID: 4300202, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5426744
+    Foot: 0.27821904
+  - Name: Rock_0
+    Mesh: {fileID: 4300204, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.43911994
+    Foot: 0.23174113
+  - Name: Rock_1
+    Mesh: {fileID: 4300054, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5691272
+    Foot: 0.29467183
+  - Name: Rock_10
+    Mesh: {fileID: 4300062, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.6645782
+    Foot: 0.32885188
+  - Name: Rock_11
+    Mesh: {fileID: 4300064, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.2800603
+    Foot: 0.12832406
+  - Name: Rock_12
+    Mesh: {fileID: 4300148, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.59645647
+    Foot: 0.32315874
+  - Name: Rock_13
+    Mesh: {fileID: 4300066, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.59645647
+    Foot: 0.3231587
+  - Name: Rock_14
+    Mesh: {fileID: 4300068, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.43672293
+    Foot: 0.22845054
+  - Name: Rock_15
+    Mesh: {fileID: 4300206, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.2800603
+    Foot: 0.12832406
+  - Name: Rock_16
+    Mesh: {fileID: 4300208, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.6645782
+    Foot: 0.32885194
+  - Name: Rock_17
+    Mesh: {fileID: 4300070, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.32782444
+    Foot: 0.16853368
+  - Name: Rock_18
+    Mesh: {fileID: 4300130, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5691272
+    Foot: 0.29467183
+  - Name: Rock_19
+    Mesh: {fileID: 4300132, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.38287118
+    Foot: 0.20170861
+  - Name: Rock_2
+    Mesh: {fileID: 4300056, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.38287118
+    Foot: 0.20170861
+  - Name: Rock_20
+    Mesh: {fileID: 4300134, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5426744
+    Foot: 0.27821904
+  - Name: Rock_21
+    Mesh: {fileID: 4300136, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.43911994
+    Foot: 0.23174113
+  - Name: Rock_22
+    Mesh: {fileID: 4300196, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.32782444
+    Foot: 0.16853368
+  - Name: Rock_23
+    Mesh: {fileID: 4300146, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.6645782
+    Foot: 0.32885194
+  - Name: Rock_24
+    Mesh: {fileID: 4300198, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5691272
+    Foot: 0.29467183
+  - Name: Rock_25
+    Mesh: {fileID: 4300200, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.38287118
+    Foot: 0.20170861
+  - Name: Rock_26
+    Mesh: {fileID: 4300056, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.38287118
+    Foot: 0.20170861
+  - Name: Rock_27
+    Mesh: {fileID: 4300054, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.5691272
+    Foot: 0.29467183
+  - Name: Rock_3
+    Mesh: {fileID: 4300058, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.54267436
+    Foot: 0.278219
+  - Name: Rock_4
+    Mesh: {fileID: 4300060, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.43911994
+    Foot: 0.23174113
+  - Name: Rock_5
+    Mesh: {fileID: 4300194, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.43672293
+    Foot: 0.22845054
+  - Name: Rock_6
+    Mesh: {fileID: 4300138, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.43672293
+    Foot: 0.22845054
+  - Name: Rock_7
+    Mesh: {fileID: 4300140, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.32782444
+    Foot: 0.16853368
+  - Name: Rock_8
+    Mesh: {fileID: 4300142, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.59645647
+    Foot: 0.32315874
+  - Name: Rock_9
+    Mesh: {fileID: 4300144, guid: 45cd0360ea39d4740bde76ad2a1f2b3f, type: 3}
+    Size: 0.28006026
+    Foot: 0.12832405
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}

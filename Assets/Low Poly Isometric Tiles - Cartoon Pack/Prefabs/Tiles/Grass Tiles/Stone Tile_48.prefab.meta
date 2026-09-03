@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: a1fa6059f3b8db845b25e75d8cd09056
+timeCreated: 1530106234
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 121865
+  packageName: Low Poly Isometric Tiles - Cartoon Pack
+  packageVersion: 1.1
+  assetPath: Assets/Low Poly Isometric Tiles - Cartoon Pack/Prefabs/Tiles/Grass Tiles/Stone
+    Tile_48.prefab
+  uploadId: 280265

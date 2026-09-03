@@ -1,0 +1,20 @@
+fileFormatVersion: 2
+guid: ce178dd4e40ef20468e110ee86d9c395
+timeCreated: 1529954263
+licenseType: Store
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 121865
+  packageName: Low Poly Isometric Tiles - Cartoon Pack
+  packageVersion: 1.1
+  assetPath: Assets/Low Poly Isometric Tiles - Cartoon Pack/Scripts/TileGeneratorScript.cs
+  uploadId: 280265

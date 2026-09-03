@@ -7,24 +7,24 @@ using UnityEngine;
 /// The tiles carry their own trees, baked into the tile, which is why the woods
 /// come in whole squares. This is the other way about: small things placed on
 /// top of whatever tile is already there, so a region can be given over to
-/// mushrooms without needing a mushroom version of every tile in the pack.
+/// mushrooms or to cactus without needing a version of every tile in the pack.
 ///
-/// Nothing is stored. Where a mushroom stands is a function of the tile and the
-/// seed, the same as everything else in the world, so the same wood has the
-/// same mushrooms in it every time you walk back into it.
+/// Nothing is stored. Where a thing stands is a function of the tile and the
+/// seed, the same as everything else in this world, so the same ground has the
+/// same things standing on it every time you walk back into it.
 /// </summary>
 public class Undergrowth : MonoBehaviour
 {
     [Tooltip("How far out, in chunks, the small things are worth drawing.")]
     [SerializeField] private int reach = 4;
 
-    [Tooltip("Share of tiles carrying a mushroom where the fungus has taken over.")]
-    [SerializeField, Range(0f, 1f)] private float thick = 0.5f;
-
-    [Tooltip("And in ordinary woods, where they are only an occasional thing.")]
-    [SerializeField, Range(0f, 0.1f)] private float sparse = 0.006f;
-
-    [SerializeField] private float sizeOnTheGround = 2.8f;
+    /// <summary>One sort of thing, and how much of it a region carries.</summary>
+    private struct Planting
+    {
+        public int From, Count;     // where this sort sits in the flattened list
+        public float Share;         // share of tiles carrying one
+        public float Low, High;     // and how tall it should stand, in world units
+    }
 
     private class Patch
     {
@@ -37,8 +37,15 @@ public class Undergrowth : MonoBehaviour
     private RenderParams look;
     private bool ready;
 
+    private Flora.Sprout[] every;
+    private Planting[] fungal, desert, ordinary;
+
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
+
+    private bool shifted = true;
+    private Matrix4x4[][] gathered;
+    private int[] counts;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -58,12 +65,39 @@ public class Undergrowth : MonoBehaviour
         player = world.PlayerTransform;
         flora = Resources.Load<Flora>("Flora");
 
-        if (flora == null || flora.Mushrooms == null || flora.Mushrooms.Length == 0 || flora.Paint == null)
+        if (flora == null || flora.Paint == null)
         {
-            Debug.LogWarning("[Undergrowth] no flora to plant; run Tools/Tile World/Index the pack's flora.");
+            Debug.LogWarning("[Undergrowth] nothing to plant; run Tools/Tile World/Index the pack's flora.");
             enabled = false;
             return;
         }
+
+        // All four sorts in one list, so drawing does not care which is which.
+        var all = new List<Flora.Sprout>();
+
+        Planting Take(Flora.Sprout[] set, float share, float low, float high)
+        {
+            var planting = new Planting { From = all.Count, Count = set.Length, Share = share, Low = low, High = high };
+            all.AddRange(set);
+            return planting;
+        }
+
+        // Sizes are given as how tall the thing should stand rather than as a
+        // multiplier, because the models are nothing like each other: a
+        // mushroom out of the pack is a third of a unit and a palm is nearly
+        // four, and one number over both would be absurd at one end or the other.
+        var mushrooms = Take(flora.Mushrooms, 0f, 0.45f, 1.25f);
+        var cacti = Take(flora.Cacti, 0f, 1.40f, 2.60f);
+        var palms = Take(flora.Palms, 0f, 3.20f, 5.00f);
+        var stones = Take(flora.Stones, 0f, 0.35f, 0.95f);
+
+        every = all.ToArray();
+
+        Planting With(Planting p, float share) { p.Share = share; return p; }
+
+        fungal = new[] { With(mushrooms, 0.50f) };
+        desert = new[] { With(stones, 0.085f), With(cacti, 0.055f), With(palms, 0.014f) };
+        ordinary = new[] { With(mushrooms, 0.006f) };
 
         flora.Paint.enableInstancing = true;
 
@@ -75,7 +109,7 @@ public class Undergrowth : MonoBehaviour
             shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On
         };
 
-        ready = true;
+        ready = every.Length > 0;
     }
 
     private void LateUpdate()
@@ -92,7 +126,6 @@ public class Undergrowth : MonoBehaviour
 
         Vector2Int here = WorldGrid.WorldToChunk(player.position);
 
-        // bring in what is near, and let go of what is not
         for (int dx = -reach; dx <= reach; dx++)
         for (int dz = -reach; dz <= reach; dz++)
         {
@@ -121,8 +154,6 @@ public class Undergrowth : MonoBehaviour
         if (shifted) Gather();
 
         Draw();
-
-
     }
 
     /// <summary>Works out what stands in a chunk, from the ground and the seed.</summary>
@@ -130,12 +161,13 @@ public class Undergrowth : MonoBehaviour
     {
         int seed = world.WorldSeed;
 
-        var patch = new Patch { ByKind = new List<Matrix4x4>[flora.Mushrooms.Length] };
+        var patch = new Patch { ByKind = new List<Matrix4x4>[every.Length] };
 
-        bool fungal = Regions.At(index, seed).Character == Regions.Character.Fungal;
-        float share = fungal ? thick : sparse;
+        var character = Regions.At(index, seed).Character;
 
-        if (share <= 0f) return patch;
+        Planting[] planting =
+            character == Regions.Character.Fungal ? fungal :
+            character == Regions.Character.Desert ? desert : ordinary;
 
         for (int tx = 0; tx < WorldGrid.TilesPerChunk; tx++)
         for (int tz = 0; tz < WorldGrid.TilesPerChunk; tz++)
@@ -148,49 +180,58 @@ public class Undergrowth : MonoBehaviour
 
             uint roll = Hash(gx, gz, seed + 5153);
 
-            if ((roll % 10000) / 10000f > share) continue;
+            float where = (roll % 10000) / 10000f;
+            float upto = 0f;
+
+            int chosen = -1;
+            Planting sort = default;
+
+            foreach (var one in planting)
+            {
+                upto += one.Share;
+
+                if (where < upto && one.Count > 0)
+                {
+                    sort = one;
+                    chosen = one.From + (int)((roll >> 8) % (uint)one.Count);
+                    break;
+                }
+            }
+
+            if (chosen < 0) continue;
 
             // steep ground has nothing to hold them
             float slope = Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, seed) - WorldHeight.SurfaceY(gx, gz, seed));
             if (slope > 0.9f) continue;
 
-            int kind = (int)((roll >> 8) % (uint)flora.Mushrooms.Length);
+            var sprout = every[chosen];
+            if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
 
-            var sprout = flora.Mushrooms[kind];
-            if (sprout.Mesh == null) continue;
+            float tall = Mathf.Lerp(sort.Low, sort.High, ((roll >> 17) % 100) / 100f);
+            float size = tall / sprout.Size;
 
             // Off the middle of the tile, or they stand in rows like a crop.
             float acrossX = ((roll >> 13) % 1000) / 1000f - 0.5f;
             float acrossZ = ((roll >> 23) % 1000) / 1000f - 0.5f;
 
-            float turn = ((roll >> 3) % 360);
-            float size = sizeOnTheGround * (0.7f + ((roll >> 17) % 100) / 100f * 0.7f);
-
-            // The models are drawn about their middle, so placed at the height
-            // of the ground they stand in it up to the cap. Lifted by half of
-            // what they are, they stand on it.
             var at = new Vector3(
                 gx * WorldGrid.TileSize + acrossX * WorldGrid.TileSize * 0.7f,
-                WorldHeight.SurfaceY(gx, gz, seed) + sprout.Size * size * 0.5f,
+                WorldHeight.SurfaceY(gx, gz, seed) + sprout.Foot * size,
                 gz * WorldGrid.TileSize + acrossZ * WorldGrid.TileSize * 0.7f);
 
-            if (patch.ByKind[kind] == null) patch.ByKind[kind] = new List<Matrix4x4>();
+            float turn = (roll >> 3) % 360;
 
-            patch.ByKind[kind].Add(Matrix4x4.TRS(at, Quaternion.Euler(0f, turn, 0f), Vector3.one * size));
+            if (patch.ByKind[chosen] == null) patch.ByKind[chosen] = new List<Matrix4x4>();
 
-
+            patch.ByKind[chosen].Add(Matrix4x4.TRS(at, Quaternion.Euler(0f, turn, 0f), Vector3.one * size));
         }
 
         return patch;
     }
 
-    private bool shifted = true;
-    private Matrix4x4[][] gathered;
-    private int[] counts;
-
     /// <summary>
-    /// Every mushroom of a kind in one array, so a kind is one draw. Done when
-    /// the chunks about us change rather than every frame: it is four thousand
+    /// Every one of a kind in one array, so a kind is one draw. Done when the
+    /// chunks about us change rather than every frame: it is thousands of
     /// matrices, and building that fresh sixty times a second is a quarter of a
     /// megabyte a frame handed to the garbage collector for nothing.
     /// </summary>
@@ -200,11 +241,11 @@ public class Undergrowth : MonoBehaviour
 
         if (gathered == null)
         {
-            gathered = new Matrix4x4[flora.Mushrooms.Length][];
-            counts = new int[flora.Mushrooms.Length];
+            gathered = new Matrix4x4[every.Length][];
+            counts = new int[every.Length];
         }
 
-        for (int kind = 0; kind < flora.Mushrooms.Length; kind++)
+        for (int kind = 0; kind < every.Length; kind++)
         {
             int many = 0;
 
@@ -232,16 +273,13 @@ public class Undergrowth : MonoBehaviour
 
     private void Draw()
     {
-
-        var bounds = new Bounds(player.position, Vector3.one * (WorldGrid.ChunkWorldSize * (reach * 2 + 2)));
-
-        look.worldBounds = bounds;
-
         if (gathered == null) return;
 
-        for (int kind = 0; kind < flora.Mushrooms.Length; kind++)
+        look.worldBounds = new Bounds(player.position, Vector3.one * (WorldGrid.ChunkWorldSize * (reach * 2 + 2)));
+
+        for (int kind = 0; kind < every.Length; kind++)
         {
-            var mesh = flora.Mushrooms[kind].Mesh;
+            var mesh = every[kind].Mesh;
 
             if (mesh == null || counts[kind] == 0) continue;
 

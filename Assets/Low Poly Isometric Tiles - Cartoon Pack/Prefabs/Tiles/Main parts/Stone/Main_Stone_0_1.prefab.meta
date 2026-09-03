@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: c2e59c81c03aa234e953a710a264fe40
+timeCreated: 1529368317
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 121865
+  packageName: Low Poly Isometric Tiles - Cartoon Pack
+  packageVersion: 1.1
+  assetPath: Assets/Low Poly Isometric Tiles - Cartoon Pack/Prefabs/Tiles/Main parts/Stone/Main_Stone_0_1.prefab
+  uploadId: 280265

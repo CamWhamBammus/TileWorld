@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: cecc51a5b20245c458f96685636922ef
+timeCreated: 1530105187
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 121865
+  packageName: Low Poly Isometric Tiles - Cartoon Pack
+  packageVersion: 1.1
+  assetPath: Assets/Low Poly Isometric Tiles - Cartoon Pack/Prefabs/Tiles/Grass Tiles/Big
+    Grass Tile_400.prefab
+  uploadId: 280265

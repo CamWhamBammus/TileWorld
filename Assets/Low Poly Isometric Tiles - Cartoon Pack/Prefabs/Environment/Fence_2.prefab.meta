@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 1249f4e23d3a43847bf0b04cdc867dfa
+timeCreated: 1529368954
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 121865
+  packageName: Low Poly Isometric Tiles - Cartoon Pack
+  packageVersion: 1.1
+  assetPath: Assets/Low Poly Isometric Tiles - Cartoon Pack/Prefabs/Environment/Fence_2.prefab
+  uploadId: 280265

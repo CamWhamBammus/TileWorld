@@ -14,7 +14,7 @@ public static class Regions
     /// <summary>Chunks across one region. About 240 metres, a few minutes' walk.</summary>
     public const int ChunksAcross = 8;
 
-    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal }
+    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert }
 
     public struct Region
     {
@@ -29,6 +29,7 @@ public static class Regions
     private static readonly string[] HillNouns = { "Downs", "Rise", "Fells", "Ridge", "Brow", "Bank", "Scarp", "Shoulder" };
     private static readonly string[] PeakNouns = { "Heights", "Crags", "Spires", "Roof", "Teeth", "Cairns", "Horns", "Summit" };
     private static readonly string[] FungalNouns = { "Rings", "Caps", "Gills", "Blight", "Hollow", "Rot", "Spores", "Damp" };
+    private static readonly string[] DesertNouns = { "Sands", "Dunes", "Waste", "Barrens", "Basin", "Drift", "Scour", "Pan" };
 
     // Doubled from sixteen: with five nouns and sixteen adjectives, four in ten
     // regions shared a name with another one.
@@ -95,6 +96,11 @@ public static class Regions
         if (wetShare > 0.22f) return Character.Water;
         if (snowShare > 0.16f) return Character.Peaks;
 
+        // Dry, low and open: sand. Asked before the fungus, which wants the
+        // same low ground but wants it damp.
+        if (relief < 0.34f && wetShare < 0.06f
+            && Hash(cell.x, cell.y, worldSeed + 3391) % 5 == 0) return Character.Desert;
+
         // Now and then a low wooded region has gone over to fungus. Rare on
         // purpose: a thing you come across every few regions is somewhere you
         // remember, and one you meet constantly is only scenery.
@@ -116,6 +122,7 @@ public static class Regions
             Character.Hills => HillNouns,
             Character.Forest => ForestNouns,
             Character.Fungal => FungalNouns,
+            Character.Desert => DesertNouns,
             _ => LowlandNouns
         };
 
@@ -142,6 +149,7 @@ public static class Regions
             case Character.Hills: return "high ground";
             case Character.Forest: return "deep forest";
             case Character.Fungal: return "mushrooms under a dark wood";
+            case Character.Desert: return "open sand";
             default: return "open lowland";
         }
     }

@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 5;           // shade bands: VeryDark → VeryLight
+    private const int Categories = 6;           // five grass shade bands, then sand
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -19,6 +19,7 @@ public class Chunk
 
     private const int BareSteepCategory = 3;   // Big Grass, no trees: steep faces
     private const int MarshCategory = 4;       // Very Dark, no trees: low flat ground
+    private const int SandCategory = 5;        // the sand update, for the deserts
 
     // These four tiles carry a tree. Above the treeline they are swapped out,
     // which is what makes a summit read as a summit.
@@ -66,7 +67,10 @@ public class Chunk
     {
         // Asked once for the whole chunk rather than per tile: working out a
         // region's character samples it in a couple of dozen places.
-        bool fungal = Regions.At(Index, worldSeed).Character == Regions.Character.Fungal;
+        var character = Regions.At(Index, worldSeed).Character;
+
+        bool fungal = character == Regions.Character.Fungal;
+        bool desert = character == Regions.Character.Desert;
 
         // Perlin noise mirrors around 0, so a fixed offset keeps the sampled
         // region firmly positive and stops the world repeating across the axes.
@@ -102,6 +106,12 @@ public class Chunk
             if (submerged)
             {
                 category = MarshCategory;           // riverbed, and no trees in it
+            }
+            else if (desert)
+            {
+                // sand over the whole of it, steep faces and all: scree in the
+                // middle of a desert reads as a patch of somewhere else
+                category = SandCategory;
             }
             else if (steep > SteepFraction)
             {
