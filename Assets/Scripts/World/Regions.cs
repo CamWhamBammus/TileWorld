@@ -96,15 +96,11 @@ public static class Regions
         if (wetShare > 0.22f) return Character.Water;
         if (snowShare > 0.16f) return Character.Peaks;
 
-        // Dry, low and open: sand. Asked before the fungus, which wants the
-        // same low ground but wants it damp.
-
-        // Now and then a low wooded region has gone over to fungus. Rare on
-        // purpose: a thing you come across every few regions is somewhere you
+        // The fungus is asked before the sand. Both want low ground and the
+        // sand will take a great deal of it, so asked the other way round the
+        // sand was swallowing woods that should have been mushrooms. Rare on
+        // purpose all the same: a place you meet every few regions is one you
         // remember, and one you meet constantly is only scenery.
-        // The fungus is asked first. It is much the rarer of the two and
-        // wants the same low ground the sand does, so asking it second let
-        // the sand take regions that should have been woods.
         if (relief < 0.44f && Hash(cell.x, cell.y, worldSeed + 7717) % 7 == 0) return Character.Fungal;
 
         // And then sand, wherever is low, dry and open enough to take it.
