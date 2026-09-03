@@ -38,13 +38,9 @@ public static class WaterSurface
 
     public static Body BodyAt(int tileX, int tileZ, int worldSeed)
     {
-        var chunk = new Vector2Int(
-            Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
-            Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
-
         // A region wet enough to be named for it is open water, and open water
         // has a shore: that is the one place sand belongs.
-        if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Water) return Body.Beach;
+        if (Regions.CharacterAtTile(tileX, tileZ, worldSeed) == Regions.Character.Water) return Body.Beach;
 
         // Otherwise it is a lake or a pond, and which one is a question of how
         // far down it goes rather than how far across.

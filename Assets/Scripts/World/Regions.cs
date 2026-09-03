@@ -59,8 +59,99 @@ public static class Regions
     private static readonly Dictionary<long, Character> remembered = new Dictionary<long, Character>();
     private static int rememberedFor;
 
-    /// <summary>What a region is like, worked out once and then kept.</summary>
+    /// <summary>
+    /// How far, in tiles, a border wanders either side of the line between two
+    /// cells. Cells are 120 tiles across, so this is a good way short of a
+    /// border ever reaching the middle of one.
+    /// </summary>
+    private const float Wander = 14f;
+
+    /// <summary>
+    /// The band, in tiles, either side of the wandering line in which tiles are
+    /// scattered into the region across it, so the two run into each other
+    /// rather than meeting at an edge.
+    /// </summary>
+    private const float Fray = 7f;
+
+    /// <summary>Tiles across one region.</summary>
+    private const int TilesAcross = ChunksAcross * WorldGrid.TilesPerChunk;
+
+    /// <summary>
+    /// The cell a tile belongs to. Not simply the one it sits in: a region's
+    /// borders were the edges of its cell, dead straight for a hundred and
+    /// twenty tiles, and a snowfield ending on a ruled line looks like a map
+    /// and not like ground. So the tile is first moved by a slow noise, and
+    /// the cell asked for is the one under where it moved to. Every tile asks
+    /// the same question of the same noise, so neighbours agree and the
+    /// border becomes a line that wanders instead of one that is ruled.
+    ///
+    /// With fray, tiles close to that line are then scattered across it by
+    /// hash, most often right on the line and not at all a few tiles back.
+    /// Without, the line is a line -- for things that speak for a whole chunk,
+    /// like its name, and cannot be speckled.
+    /// </summary>
+    public static Vector2Int CellOfTile(int tileX, int tileZ, int worldSeed, bool fray)
+    {
+        float o = 3000f + (worldSeed % 733) * 2.13f;
+        const float scale = 1f / 38f;
+
+        float wx = tileX + (Mathf.PerlinNoise(o + tileX * scale, o + tileZ * scale) - 0.5f) * 2f * Wander;
+        float wz = tileZ + (Mathf.PerlinNoise(o + 77f + tileX * scale, o + 77f + tileZ * scale) - 0.5f) * 2f * Wander;
+
+        int cx = Mathf.FloorToInt(wx / TilesAcross);
+        int cz = Mathf.FloorToInt(wz / TilesAcross);
+
+        if (!fray) return new Vector2Int(cx, cz);
+
+        // how far into the cell the moved tile lies, and so how near an edge
+        float inX = wx - cx * TilesAcross;
+        float inZ = wz - cz * TilesAcross;
+
+        float toX = Mathf.Min(inX, TilesAcross - inX);
+        float toZ = Mathf.Min(inZ, TilesAcross - inZ);
+
+        bool acrossX = toX <= toZ;
+        float near = acrossX ? toX : toZ;
+
+        if (near >= Fray) return new Vector2Int(cx, cz);
+
+        // half the tiles on the line itself, none at the edge of the band
+        float chance = (1f - near / Fray) * 0.5f;
+
+        if ((uint)Hash(tileX, tileZ, worldSeed + 5557) % 1000 >= chance * 1000f)
+            return new Vector2Int(cx, cz);
+
+        if (acrossX) return new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz);
+
+        return new Vector2Int(cx, inZ < TilesAcross - inZ ? cz - 1 : cz + 1);
+    }
+
+    /// <summary>What the ground is like at one tile.</summary>
+    public static Character CharacterAtTile(int tileX, int tileZ, int worldSeed)
+    {
+        return CharacterOfCell(CellOfTile(tileX, tileZ, worldSeed, true), worldSeed);
+    }
+
+    /// <summary>
+    /// What a chunk is like, taken at its middle. Only the middle: the edges of
+    /// a chunk can lie across a border now, and a chunk has to be one thing
+    /// for the sake of everything that names it.
+    /// </summary>
     public static Character CharacterAt(Vector2Int chunk, int worldSeed)
+    {
+        return CharacterOfCell(CellOfChunk(chunk, worldSeed), worldSeed);
+    }
+
+    private static Vector2Int CellOfChunk(Vector2Int chunk, int worldSeed)
+    {
+        return CellOfTile(
+            chunk.x * WorldGrid.TilesPerChunk + WorldGrid.TilesPerChunk / 2,
+            chunk.y * WorldGrid.TilesPerChunk + WorldGrid.TilesPerChunk / 2,
+            worldSeed, false);
+    }
+
+    /// <summary>What a region is like, worked out once and then kept.</summary>
+    private static Character CharacterOfCell(Vector2Int cell, int worldSeed)
     {
         if (rememberedFor != worldSeed)
         {
@@ -68,7 +159,6 @@ public static class Regions
             rememberedFor = worldSeed;
         }
 
-        Vector2Int cell = CellOf(chunk);
         long key = ((long)cell.x << 32) ^ (uint)cell.y;
 
         if (remembered.TryGetValue(key, out var known)) return known;
@@ -81,10 +171,10 @@ public static class Regions
 
     public static Region At(Vector2Int chunk, int worldSeed)
     {
-        Vector2Int cell = CellOf(chunk);
+        Vector2Int cell = CellOfChunk(chunk, worldSeed);
 
         var region = new Region { Cell = cell };
-        region.Character = CharacterAt(chunk, worldSeed);
+        region.Character = CharacterOfCell(cell, worldSeed);
         region.Name = NameOf(cell, region.Character, worldSeed);
 
         return region;

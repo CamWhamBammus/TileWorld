@@ -72,24 +72,6 @@ public class Chunk
 
     private void Generate(int worldSeed)
     {
-        // Asked once for the whole chunk rather than per tile: working out a
-        // region's character samples it in a couple of dozen places.
-        var character = Regions.At(Index, worldSeed).Character;
-
-        bool fungal = character == Regions.Character.Fungal;
-        bool desert = character == Regions.Character.Desert;
-        bool stone = character == Regions.Character.Stone;
-
-        // Under a snowfield goes rock, not grass. The grass tiles carry blades
-        // standing a third of a unit above the block, and the snow is laid on
-        // the block -- so on a grass tile the blades come up through the snow
-        // and draw a green fringe over every tile in the field.
-        bool underSnow = character == Regions.Character.Snow;
-
-        // Ground that is dark and wet underfoot: the dead woods and the
-        // reedbeds both stand on it.
-        bool sodden = character == Regions.Character.Dead || character == Regions.Character.Reed;
-
         // Perlin noise mirrors around 0, so a fixed offset keeps the sampled
         // region firmly positive and stops the world repeating across the axes.
         float offset = 1000f + (worldSeed % 1000) * 7.31f;
@@ -101,6 +83,25 @@ public class Chunk
         {
             int gx = chunkIndexX() * WorldGrid.TilesPerChunk + tx;
             int gz = chunkIndexZ() * WorldGrid.TilesPerChunk + tz;
+
+            // Per tile, not per chunk: a border between two regions runs
+            // through a chunk now rather than round it, and the ground has to
+            // change where the border is and not where the chunk ends.
+            var character = Regions.CharacterAtTile(gx, gz, worldSeed);
+
+            bool fungal = character == Regions.Character.Fungal;
+            bool desert = character == Regions.Character.Desert;
+            bool stone = character == Regions.Character.Stone;
+
+            // Under a snowfield goes rock, not grass. The grass tiles carry
+            // blades standing a third of a unit above the block, and the snow
+            // is laid on the block -- so on a grass tile the blades come up
+            // through the snow and draw a green fringe over every tile.
+            bool underSnow = character == Regions.Character.Snow;
+
+            // Ground that is dark and wet underfoot: the dead woods and the
+            // reedbeds both stand on it.
+            bool sodden = character == Regions.Character.Dead || character == Regions.Character.Reed;
 
             // Height and steepness decide the ground; noise only softens the edge.
             float relief = Mathf.Clamp01(WorldHeight.HeightAt(gx, gz, worldSeed) / WorldHeight.MaxRelief);

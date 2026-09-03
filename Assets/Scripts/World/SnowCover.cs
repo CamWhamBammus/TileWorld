@@ -26,16 +26,12 @@ public static class SnowCover
     /// </summary>
     public static bool IsSnowy(int tileX, int tileZ, int worldSeed)
     {
-        var chunk = new Vector2Int(
-            Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
-            Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
-
         // Not on a lake or pond floor. Snow settles on the ground it can
         // reach, and the bed of a pond is under several feet of water. This
         // asks height alone, so it cannot loop back round through the regions.
         if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) return false;
 
-        if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Snow) return true;
+        if (Regions.CharacterAtTile(tileX, tileZ, worldSeed) == Regions.Character.Snow) return true;
 
         return SnowByHeight(tileX, tileZ, worldSeed);
     }

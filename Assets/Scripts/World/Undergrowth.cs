@@ -206,25 +206,28 @@ public class Undergrowth : MonoBehaviour
 
         var patch = new Patch { ByKind = new List<Matrix4x4>[every.Length] };
 
-        var character = Regions.At(index, seed).Character;
-
-        Planting[] planting = character switch
-        {
-            Regions.Character.Fungal => fungal,
-            Regions.Character.Desert => desert,
-            Regions.Character.Stone => stone,
-            Regions.Character.Dead => dead,
-            Regions.Character.Reed => reed,
-            Regions.Character.Snow => snow,
-            Regions.Character.Forest => forest,
-            _ => ordinary
-        };
-
         for (int tx = 0; tx < WorldGrid.TilesPerChunk; tx++)
         for (int tz = 0; tz < WorldGrid.TilesPerChunk; tz++)
         {
             int gx = index.x * WorldGrid.TilesPerChunk + tx;
             int gz = index.y * WorldGrid.TilesPerChunk + tz;
+
+            // Asked per tile so that what grows follows the border where it
+            // actually runs, and the last few tiles of a wood are scattered
+            // out into the sand rather than stopping on a line.
+            var character = Regions.CharacterAtTile(gx, gz, seed);
+
+            Planting[] planting = character switch
+            {
+                Regions.Character.Fungal => fungal,
+                Regions.Character.Desert => desert,
+                Regions.Character.Stone => stone,
+                Regions.Character.Dead => dead,
+                Regions.Character.Reed => reed,
+                Regions.Character.Snow => snow,
+                Regions.Character.Forest => forest,
+                _ => ordinary
+            };
 
             // Standing water takes what is planted in it, except in the
             // shallows: reeds grow out of a lake edge, and nothing says a lake
