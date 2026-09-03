@@ -22,10 +22,16 @@ public class Swimming : MonoBehaviour
     [SerializeField] private float floatDepth = 1.0f;
 
     [Tooltip("How quickly the surface is reached. Kept low; this is a float, not a launch.")]
-    [SerializeField] private float riseSpeed = 2.6f;
+    [SerializeField] private float riseSpeed = 3.0f;
+
+    [Tooltip("The fall the controller holds itself to while it believes it is grounded.")]
+    [SerializeField] private float settledFall = 2.0f;
 
     [Tooltip("Swimming speed, as a fraction of walking.")]
-    [SerializeField, Range(0.2f, 1f)] private float swimSpeed = 0.55f;
+    [SerializeField, Range(0.2f, 1f)] private float swimSpeed = 0.42f;
+
+    [Tooltip("Swimming hard, also as a fraction of walking. Water does not let you sprint.")]
+    [SerializeField, Range(0.2f, 1.2f)] private float hardSwim = 0.55f;
 
     [Tooltip("Depth at which you are considered in the water, and out of it again.")]
     [SerializeField] private float enterDepth = 0.35f;
@@ -35,6 +41,9 @@ public class Swimming : MonoBehaviour
     private Transform player;
     private CharacterController controller;
     private ThirdPersonController movement;
+
+    /// <summary>Whether the player is in the water, for anything that has to look like it.</summary>
+    public static bool InWater { get; private set; }
 
     private bool swimming;
     private float walkSpeed, sprintSpeed;
@@ -95,8 +104,15 @@ public class Swimming : MonoBehaviour
 
         // A slow approach to the float line. No reading of controller.velocity:
         // this Move feeds into that, and subtracting it was a feedback loop.
+        //
+        // The controller is still taking itself down at a steady rate all the
+        // while, being told it is grounded, and the spring alone never won that
+        // argument: it settled about a fifth of a metre under, which is to say
+        // the whole person was below the water with their hat under it. So the
+        // known fall is cancelled first and the spring works from there, and
+        // the float line is where it says it is.
         float error = depth - floatDepth;
-        float rise = Mathf.Clamp(error * 2f, -riseSpeed, riseSpeed);
+        float rise = settledFall + Mathf.Clamp(error * 3f, -riseSpeed, riseSpeed);
 
         controller.Move(Vector3.up * (rise * Time.deltaTime));
     }
@@ -104,11 +120,14 @@ public class Swimming : MonoBehaviour
     private void Enter()
     {
         swimming = true;
+        InWater = true;
 
         if (movement != null)
         {
+            // Both measured against walking rather than against running: a
+            // sprint key in deep water should be worth something, but not much.
             movement.MoveSpeed = walkSpeed * swimSpeed;
-            movement.SprintSpeed = sprintSpeed * swimSpeed;
+            movement.SprintSpeed = walkSpeed * hardSwim;
         }
 
         Notices.Show("Swimming");
@@ -117,6 +136,7 @@ public class Swimming : MonoBehaviour
     private void Exit()
     {
         swimming = false;
+        InWater = false;
 
         if (movement != null)
         {

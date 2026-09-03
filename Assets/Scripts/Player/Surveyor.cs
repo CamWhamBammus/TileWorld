@@ -19,6 +19,7 @@ public class Surveyor : MonoBehaviour
     private float height = 1.8f;
 
     private float lever = 0.78f; // hip to ankle, measured off the figure itself
+    private float stroke;       // and where we are in a stroke, when swimming
     private float gait;         // where we are in the stride, in whole strides
     private float stance;       // the share of a stride a foot spends on the ground
     private float step;         // half a step, along the ground, in metres
@@ -101,8 +102,15 @@ public class Surveyor : MonoBehaviour
         stance = Mathf.Lerp(0.62f, 0.38f, Mathf.InverseLerp(2f, 5f, pace));
         step = Reach * Mathf.Sin((20f + pace * 7f) * Mathf.Deg2Rad);
 
-        if (grounded) gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
+        bool wet = Swimming.InWater;
+
+        if (grounded && !wet) gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
         gait -= Mathf.Floor(gait);
+
+        // a stroke goes on whether or not they are getting anywhere: standing
+        // still in deep water is treading it, not standing
+        if (wet) stroke += dt * (0.44f + pace * 0.20f);
+        stroke -= Mathf.Floor(stroke);
 
         drawing = Mathf.MoveTowards(drawing, Sketching.Working ? 1f : 0f, dt * 4f);
 
@@ -114,15 +122,15 @@ public class Surveyor : MonoBehaviour
         across = Mathf.Sin(Time.time * 5.5f) * 0.7f + Mathf.Sin(Time.time * 2.3f) * 0.3f;
         down = Mathf.PingPong(Time.time * 0.21f, 1f) - 0.5f;
 
-        Limbs(dt, afoot, grounded);
-        Carriage(dt, afoot && grounded);
+        Limbs(dt, afoot, grounded && !wet, wet);
+        Carriage(dt, afoot && grounded && !wet, wet);
         Working();
     }
 
     /// <summary>How far the ankle reaches from the hip. Measured, not assumed.</summary>
     private float Reach => lever;
 
-    private void Limbs(float dt, bool afoot, bool grounded)
+    private void Limbs(float dt, bool afoot, bool grounded, bool wet)
     {
         for (int side = 0; side < 2; side++)
         {
@@ -131,11 +139,64 @@ public class Surveyor : MonoBehaviour
 
             float hip, knee, shoulder, elbow, ankle;
             float roll = 0f;
+            float legRoll = 0f;
 
-            if (!grounded)
+            float apart = side == 0 ? 1f : -1f;
+
+            if (wet)
+            {
+                // A breaststroke, because of where the water sits: floating
+                // upright leaves only the head and shoulders and whatever the
+                // arms are doing above the surface, and an overarm stroke is
+                // mostly a thing you would not see.
+                float arms = stroke;
+
+                if (arms < 0.42f)
+                {
+                    // the pull: hands go from out in front to out at the sides
+                    float e = Ease(arms / 0.42f);
+
+                    shoulder = Mathf.Lerp(-76f, -14f, e);
+                    elbow = Mathf.Lerp(-10f, -62f, e);
+                    roll = apart * Mathf.Sin(e * Mathf.PI) * 38f;
+                }
+                else
+                {
+                    // and in under the chest to reach out again
+                    float e = Ease((arms - 0.42f) / 0.58f);
+
+                    shoulder = Mathf.Lerp(-14f, -76f, e);
+                    elbow = Mathf.Lerp(-62f, -10f, e);
+                    roll = apart * Mathf.Sin(e * Mathf.PI) * 11f;
+                }
+
+                // the legs answer half a stroke later: knees drawn up and out,
+                // then kicked back together
+                float legs = stroke + 0.5f;
+                legs -= Mathf.Floor(legs);
+
+                if (legs < 0.38f)
+                {
+                    float e = Ease(legs / 0.38f);
+
+                    hip = Mathf.Lerp(6f, -14f, e);
+                    knee = Mathf.Lerp(6f, 62f, e);
+                    legRoll = apart * e * 20f;
+                }
+                else
+                {
+                    float e = Ease((legs - 0.38f) / 0.62f);
+
+                    hip = Mathf.Lerp(-14f, 6f, e);
+                    knee = Mathf.Lerp(62f, 6f, e);
+                    legRoll = apart * (1f - e) * 20f;
+                }
+
+                ankle = 14f;        // toes away, the way they go in water
+            }
+            else if (!grounded)
             {
                 float climbing = Mathf.InverseLerp(-2.5f, 3.5f, body != null ? body.velocity.y : 0f);
-                float apart = side == 0 ? 1f : -1f;
 
                 // gathered under on the way up, reaching down on the way back
                 hip = Mathf.Lerp(-5f, -14f, climbing) + apart * 4f;
@@ -212,9 +273,9 @@ public class Surveyor : MonoBehaviour
                 ankle = Mathf.Lerp(ankle, 0f, drawing);
             }
 
-            Turn(figure.Legs[side], hip, dt, afoot || !grounded);
-            Turn(figure.Knees[side], knee, dt, afoot || !grounded);
-            Turn(figure.Ankles[side], ankle, dt, afoot || !grounded);
+            Turn(figure.Legs[side], hip, dt, afoot || !grounded || wet, legRoll);
+            Turn(figure.Knees[side], knee, dt, afoot || !grounded || wet);
+            Turn(figure.Ankles[side], ankle, dt, afoot || !grounded || wet);
             Turn(figure.Arms[side], shoulder, dt, true, roll);
             Turn(figure.Elbows[side], elbow, dt, true);
         }
@@ -335,11 +396,16 @@ public class Surveyor : MonoBehaviour
             Quaternion.Euler(best * fold, 0f, 0f), drawing);
     }
 
-    private void Carriage(float dt, bool afoot)
+    private static float Ease(float t) => t * t * (3f - 2f * t);
+
+    private void Carriage(float dt, bool afoot, bool wet)
     {
         // rise and fall on the stride, and lean into a run
         float rise = afoot ? Mathf.Abs(Mathf.Sin(gait * Mathf.PI * 2f)) * height * 0.012f
                            : Mathf.Sin(Time.time * 0.9f) * height * 0.004f;
+
+        // rides up on the pull and settles on the reach
+        if (wet) rise = Mathf.Sin(stroke * Mathf.PI * 2f) * height * 0.010f;
 
         float lean = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * height * 0.007f * (1f - drawing) : 0f;
 
@@ -350,9 +416,13 @@ public class Surveyor : MonoBehaviour
 
         float tip = Mathf.Clamp(pace * 1.1f, 0f, 7f) * (1f - drawing);
 
+        if (wet) tip = 15f * (1f - drawing);      // leant into the water
+
         // the shoulders come round with the stride and the hips roll under it,
         // which is most of the difference between walking and being carried
         float twist = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * (2.2f + pace * 1.1f) * (1f - drawing) : 0f;
+
+        if (wet) twist = 0f;
         float sway = afoot ? Mathf.Cos(gait * Mathf.PI * 2f) * (0.4f + pace * 0.22f) * (1f - drawing)
                            : Mathf.Sin(Time.time * 0.55f) * 0.5f;
 
@@ -365,8 +435,11 @@ public class Surveyor : MonoBehaviour
             float glance = Mathf.Sin(Time.time * 0.31f);
             float about = afoot ? 0f : glance * glance * glance * 14f * (1f - drawing);
 
+            // chin up, out of the water
+            if (wet) about = 0f;
+
             figure.Head.localRotation = Quaternion.Slerp(figure.Head.localRotation,
-                Quaternion.Euler(-tip * 0.7f + drawing * 17f, about - twist * 0.85f, -sway * 0.6f),
+                Quaternion.Euler(-tip * (wet ? 1.35f : 0.7f) + drawing * 17f, about - twist * 0.85f, -sway * 0.6f),
                 1f - Mathf.Exp(-7f * dt));
         }
     }

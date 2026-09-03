@@ -68,15 +68,6 @@ public class Arrival : MonoBehaviour
             return;
         }
 
-        // Somebody who has already drawn something does not need telling, but
-        // this is not marked as taught: they may yet start a world of their own
-        // from nothing, and the page belongs at the start of that one.
-        if (FieldGuide.Entries > 0 && !asked)
-        {
-            enabled = false;
-            return;
-        }
-
         FieldGuide.Filled += OnFilled;
     }
 
@@ -102,6 +93,17 @@ public class Arrival : MonoBehaviour
 
                 // let the ground finish arriving before saying anything
                 if (since < 1.2f || ScreenState.Current != ScreenState.Screen.None) return;
+
+                // Somebody who has already drawn something does not need
+                // telling. The save is asked rather than the book in memory:
+                // the shelf reads the save before any of this exists, while
+                // the book fills in at its own pace, and an empty book early
+                // on means nothing has loaded yet rather than nothing drawn.
+                if (!asked && Played())
+                {
+                    enabled = false;
+                    return;
+                }
 
                 Open();
                 break;
@@ -135,6 +137,16 @@ public class Arrival : MonoBehaviour
 
                 break;
         }
+    }
+
+    /// <summary>Has this world been drawn in before?</summary>
+    private static bool Played()
+    {
+        var save = WorldLibrary.Current;
+
+        if (save != null && (save.bookSubjects.Count > 0 || save.drawingKeys.Count > 0)) return true;
+
+        return FieldGuide.Entries > 0;
     }
 
     /// <summary>Is there anything at all within reach, in view or not?</summary>
