@@ -64,6 +64,10 @@ public class Chunk
 
     private void Generate(int worldSeed)
     {
+        // Asked once for the whole chunk rather than per tile: working out a
+        // region's character samples it in a couple of dozen places.
+        bool fungal = Regions.At(Index, worldSeed).Character == Regions.Character.Fungal;
+
         // Perlin noise mirrors around 0, so a fixed offset keeps the sampled
         // region firmly positive and stops the world repeating across the axes.
         float offset = 1000f + (worldSeed % 1000) * 7.31f;
@@ -82,6 +86,10 @@ public class Chunk
 
             float wobble = Mathf.PerlinNoise(offset + gx * BlendNoiseScale, offset + gz * BlendNoiseScale) - 0.5f;
             float bare = Mathf.Clamp01(relief + steep * 0.30f + wobble * BlendWeight);
+
+            // Fungus keeps to the dark and the damp, so the ground under it is
+            // read as lower and wetter than it is and comes out darker for it.
+            if (fungal) bare = Mathf.Clamp01(bare - 0.20f);
 
             int band = Mathf.Clamp(Mathf.FloorToInt(bare * ShadeByHeight.Length), 0, ShadeByHeight.Length - 1);
             int category = ShadeByHeight[band];

@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9cdbd67986db493681dec34bcc9259b, type: 3}
+  m_Name: Flora
+  m_EditorClassIdentifier: Assembly-CSharp::Flora
+  Mushrooms:
+  - Name: Cylinder.005
+    Mesh: {fileID: 4300248, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.007
+    Mesh: {fileID: 4300244, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  - Name: Cylinder.008
+    Mesh: {fileID: 4300242, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.009
+    Mesh: {fileID: 4300240, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.010
+    Mesh: {fileID: 4300238, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  - Name: Cylinder.011
+    Mesh: {fileID: 4300236, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  - Name: Cylinder.012
+    Mesh: {fileID: 4300234, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.014
+    Mesh: {fileID: 4300230, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  - Name: Cylinder.016
+    Mesh: {fileID: 4300226, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.017
+    Mesh: {fileID: 4300224, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.018
+    Mesh: {fileID: 4300222, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  - Name: Cylinder.019
+    Mesh: {fileID: 4300220, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  - Name: Cylinder.020
+    Mesh: {fileID: 4300218, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.021
+    Mesh: {fileID: 4300216, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.3861798
+  - Name: Cylinder.022
+    Mesh: {fileID: 4300214, guid: 73f90bdd5e7539740a292cdd00817d1a, type: 3}
+    Size: 0.32332075
+  Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
