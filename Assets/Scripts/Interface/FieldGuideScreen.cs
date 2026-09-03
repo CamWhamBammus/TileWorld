@@ -55,8 +55,10 @@ public class FieldGuideScreen : MonoBehaviour
         instance.page = 0;
         instance.panel.SetActive(true);
 
+        // No click: nobody pressed anything. The book opening itself is the
+        // game speaking, and the game does not get to use the sound that means
+        // the player did something.
         ScreenState.Open(ScreenState.Screen.Guide);
-        Ambience.Instance?.Click();
     }
 
     private void Start()
