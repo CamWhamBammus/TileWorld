@@ -50,6 +50,14 @@ public class Flora : ScriptableObject
     /// <summary>Bare and leafless, out of the sand update.</summary>
     public Sprout[] DeadTrees;
 
+    /// <summary>
+    /// The narrow trees again, with the green taken out of them: the same
+    /// models, their needles pointed at the white of the pack's palette
+    /// instead of at a green. For the snowfields, where a tree in summer
+    /// colours standing in deep snow looks like a mistake.
+    /// </summary>
+    public Sprout[] SnowTrees;
+
     /// <summary>Thin standing poles, for the reedbeds.</summary>
     public Sprout[] Reeds;
 

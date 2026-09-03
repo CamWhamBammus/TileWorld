@@ -91,9 +91,39 @@ public static class FloraIndex
         flora.Reeds = FromFolder(Main + "/Environment", "Rarefoot");
         flora.Paint = AssetDatabase.LoadAssetAtPath<Material>(Paint);
 
-        if (fresh) AssetDatabase.CreateAsset(flora, Written);
-        else EditorUtility.SetDirty(flora);
+        // Snowy trees are made here rather than shipped: the same narrow models
+        // with their green pointed at the white of the palette. Any made last
+        // time are cleared out first, or they pile up inside the asset.
+        if (!fresh)
+        {
+            foreach (var held in AssetDatabase.LoadAllAssetsAtPath(Written))
+                if (held is Mesh old) Object.DestroyImmediate(old, true);
+        }
 
+        if (fresh) AssetDatabase.CreateAsset(flora, Written);
+
+        var snowy = new List<Flora.Sprout>();
+
+        foreach (var tree in flora.Trees)
+        {
+            if (tree.Mesh == null || tree.Wide > 1.0f) continue;      // the narrow ones
+
+            var white = Whitened(tree.Mesh);
+
+            if (white == null) continue;
+
+            AssetDatabase.AddObjectToAsset(white, flora);
+
+            var under = tree;
+            under.Mesh = white;
+            under.Name = tree.Name + " (snow)";
+
+            snowy.Add(under);
+        }
+
+        flora.SnowTrees = snowy.ToArray();
+
+        EditorUtility.SetDirty(flora);
         AssetDatabase.SaveAssets();
 
         Debug.Log("FLORA " + flora.Mushrooms.Length + " mushrooms, " + flora.Cacti.Length + " cactus, "
@@ -119,6 +149,48 @@ public static class FloraIndex
         }
 
         Debug.Log("FLORA of " + flora.Boulders.Length + " stones, " + bright + " are bright rather than stone-coloured");
+        Debug.Log("FLORA " + flora.SnowTrees.Length + " trees turned to snow");
+    }
+
+    /// <summary>
+    /// The same model with the green taken out of it.
+    ///
+    /// Colour in this pack is not painted on, it is pointed at: every model
+    /// samples one shared palette, and what a face looks like is decided by
+    /// where its corners land on that sheet. So a tree is turned to snow by
+    /// moving the corners that land on a green to the white instead. The trunk
+    /// is left where it is, because trunks are not white.
+    /// </summary>
+    private static Mesh Whitened(Mesh from)
+    {
+        var uv = from.uv;
+
+        if (uv == null || uv.Length == 0) return null;
+
+        // well inside the white of the sheet, clear of every swatch edge
+        var white = new Vector2(0.52f, 0.92f);
+
+        var moved = new Vector2[uv.Length];
+        int changed = 0;
+
+        for (int i = 0; i < uv.Length; i++)
+        {
+            Color c = Palette().GetPixelBilinear(uv[i].x, uv[i].y);
+
+            bool green = c.g > c.r + 0.05f && c.g > c.b + 0.05f;
+
+            moved[i] = green ? white : uv[i];
+
+            if (green) changed++;
+        }
+
+        if (changed == 0) return null;
+
+        var mesh = Object.Instantiate(from);
+        mesh.name = from.name + " Snow";
+        mesh.uv = moved;
+
+        return mesh;
     }
 
     /// <summary>Everything with a mesh in a folder, as something that can be stood up.</summary>

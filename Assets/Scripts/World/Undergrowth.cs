@@ -111,6 +111,11 @@ public class Undergrowth : MonoBehaviour
         var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
 
+        // and the same narrow trees again, under snow
+        var whiteFirs = Take(
+            flora.SnowTrees != null && flora.SnowTrees.Length > 0 ? flora.SnowTrees : narrow.ToArray(),
+            2.60f, 4.20f);
+
         every = all.ToArray();
 
         Planting With(Planting p, float share) { p.Share = share; return p; }
@@ -125,7 +130,7 @@ public class Undergrowth : MonoBehaviour
         stone = new[] { With(boulders, 0.34f) };
         dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
-        snow = new[] { With(firs, 0.05f), With(boulders, 0.05f) };
+        snow = new[] { With(whiteFirs, 0.05f), With(boulders, 0.05f) };
         // Thicker than it was, and with the pack's own trees standing in it
         // rather than only whatever the tiles happen to carry.
         forest = new[] { With(firs, 0.05f), With(trees, 0.13f), With(mushrooms, 0.02f), With(boulders, 0.05f) };
