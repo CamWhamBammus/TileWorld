@@ -16,6 +16,11 @@ using UnityEngine;
 /// vertical velocity to a gentle -2 rather than winding up, and a slow spring
 /// lifts you the rest of the way to the surface.
 /// </summary>
+/// Ordered ahead of anything that watches where the player is. The correction
+/// below happens in LateUpdate, and so does the camera: left to chance the
+/// camera reads the position the controller pulled down and not the one this
+/// put back, and follows an inch of sink and rise every single frame.
+[DefaultExecutionOrder(-50)]
 public class Swimming : MonoBehaviour
 {
     [Tooltip("Where the surface sits relative to the player's feet when floating.")]
@@ -23,9 +28,6 @@ public class Swimming : MonoBehaviour
 
     [Tooltip("How quickly the surface is reached. Kept low; this is a float, not a launch.")]
     [SerializeField] private float riseSpeed = 3.0f;
-
-    [Tooltip("The fall the controller holds itself to while it believes it is grounded.")]
-    [SerializeField] private float settledFall = 2.0f;
 
     [Tooltip("Swimming speed, as a fraction of walking.")]
     [SerializeField, Range(0.2f, 1f)] private float swimSpeed = 0.70f;
@@ -102,19 +104,22 @@ public class Swimming : MonoBehaviour
         // Update, so its next frame reads this before its own ground check.
         if (movement != null) movement.Grounded = true;
 
-        // A slow approach to the float line. No reading of controller.velocity:
-        // this Move feeds into that, and subtracting it was a feedback loop.
+        // Where the float line actually is, rather than how hard to push
+        // towards it. Pushing was a tug of war: the controller takes itself
+        // down a fixed amount every frame and this pushed back up by as much,
+        // and what was left over after the two of them was a few millimetres a
+        // frame, one way and then the other. Small on the player and much
+        // larger by the time the camera behind him had followed it, which is
+        // what the shaking in the water was.
         //
-        // The controller is still taking itself down at a steady rate all the
-        // while, being told it is grounded, and the spring alone never won that
-        // argument: it settled about a fifth of a metre under, which is to say
-        // the whole person was below the water with their hat under it. So the
-        // known fall is cancelled first and the spring works from there, and
-        // the float line is where it says it is.
-        float error = depth - floatDepth;
-        float rise = settledFall + Mathf.Clamp(error * 3f, -riseSpeed, riseSpeed);
+        // This runs after the controller has had its go, so what it corrects is
+        // whatever that left behind, and the frame ends on the line every time.
+        float wanted = WaterSurface.Level - floatDepth;
+        float off = wanted - player.position.y;
 
-        controller.Move(Vector3.up * (rise * Time.deltaTime));
+        float step = Mathf.Clamp(off, -riseSpeed * Time.deltaTime, riseSpeed * Time.deltaTime);
+
+        controller.Move(Vector3.up * step);
     }
 
     private void Enter()
