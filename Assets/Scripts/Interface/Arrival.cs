@@ -18,6 +18,8 @@ public class Arrival : MonoBehaviour
 
     private enum Step { Waiting, Reading, Looking, Drawing, Done }
 
+    private static bool asked;      // run again because somebody asked, not because it is new
+
     private ChunkManager world;
     private Transform player;
     private Camera eye;
@@ -39,6 +41,23 @@ public class Arrival : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Show the whole thing again from the top, whatever has been played and
+    /// whatever has already been taught. For seeing it a second time, since it
+    /// is the one part of the game that ordinarily happens only once.
+    /// </summary>
+    public static void Replay()
+    {
+        PlayerPrefs.DeleteKey(TaughtKey);
+        PlayerPrefs.Save();
+
+        foreach (var old in FindObjectsByType<Arrival>(FindObjectsSortMode.None)) Destroy(old.gameObject);
+
+        asked = true;
+
+        new GameObject("Arrival (runtime)").AddComponent<Arrival>();
+    }
+
     private void Start()
     {
         world = FindFirstObjectByType<ChunkManager>();
@@ -52,7 +71,7 @@ public class Arrival : MonoBehaviour
         // Somebody who has already drawn something does not need telling, but
         // this is not marked as taught: they may yet start a world of their own
         // from nothing, and the page belongs at the start of that one.
-        if (FieldGuide.Entries > 0)
+        if (FieldGuide.Entries > 0 && !asked)
         {
             enabled = false;
             return;

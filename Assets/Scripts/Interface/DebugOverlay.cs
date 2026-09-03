@@ -108,6 +108,11 @@ public class DebugOverlay : MonoBehaviour
             "verts   ~" + (stats.instances * 3861 / 1000000f).ToString("F1") + " M\n\n" +
             "grid    " + chunk.x + ", " + chunk.y + "\n" +
             "height  " + at.y.ToString("F1") + "m\n" +
-            "seed    " + world.WorldSeed;
+            "seed    " + world.WorldSeed
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            + "\n\nF8      show the first page again"
+            + "\nshift-F8  put this world back to nothing"
+#endif
+            ;
     }
 }
