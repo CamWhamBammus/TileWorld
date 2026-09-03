@@ -103,7 +103,7 @@ public class Surveyor : MonoBehaviour
         if (grounded) gait += pace * stance / Mathf.Max(0.05f, 2f * step) * dt;
         gait -= Mathf.Floor(gait);
 
-        drawing = Mathf.MoveTowards(drawing, Sketching.Raised > 0.05f ? 1f : 0f, dt * 4f);
+        drawing = Mathf.MoveTowards(drawing, Sketching.Working ? 1f : 0f, dt * 4f);
 
         if (figure.Book != null) figure.Book.gameObject.SetActive(drawing > 0.02f);
         if (figure.Pencil != null) figure.Pencil.gameObject.SetActive(drawing > 0.02f);

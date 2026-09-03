@@ -50,6 +50,14 @@ public class Sketching : MonoBehaviour
     /// <summary>How far into the glass we are, for anything that cares — the camera does.</summary>
     public static float Raised { get; private set; }
 
+    /// <summary>
+    /// Whether the glass is actually up. <see cref="Raised"/> is how far the
+    /// view has narrowed, which is a ratio against the resting view: wind the
+    /// wheel out far enough and it goes to nothing while the glass is still
+    /// very much up. Anything asking "are they drawing" wants this instead.
+    /// </summary>
+    public static bool Working { get; private set; }
+
     private float zoom = 20f;
     private float restingView = -1f;
 
@@ -109,6 +117,11 @@ public class Sketching : MonoBehaviour
         font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
 
         BuildUi();
+    }
+
+    private void OnDisable()
+    {
+        Working = false;
     }
 
     private void Update()
@@ -630,6 +643,8 @@ public class Sketching : MonoBehaviour
     /// </summary>
     private void Glass(bool up)
     {
+        Working = up;
+
         var camera = Eye();
 
         if (camera == null) return;

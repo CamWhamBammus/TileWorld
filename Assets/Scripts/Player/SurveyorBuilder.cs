@@ -314,7 +314,7 @@ public static class SurveyorBuilder
         // a board, and a leaf of paper on top of it a little smaller
         Add(pieces, CoatDark, Slab(0.150f * h, 0.190f * h, 0.010f * h), Matrix4x4.identity);
         Add(pieces, CoatLight, Slab(0.132f * h, 0.170f * h, 0.008f * h),
-            Matrix4x4.Translate(new Vector3(0f, 0.004f * h, -0.007f * h)));
+            Matrix4x4.Translate(new Vector3(0f, 0.004f * h, 0.007f * h)));
 
         return pieces;
     }
