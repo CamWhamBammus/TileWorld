@@ -26,8 +26,8 @@ public static class WaterSurface
     /// </summary>
     public enum Body
     {
-        /// <summary>Open water, of a region named for being under it.</summary>
-        Shore,
+        /// <summary>Open water, of a region named for being under it: a coast.</summary>
+        Beach,
 
         /// <summary>Inland water with some depth to it.</summary>
         Lake,
@@ -44,7 +44,7 @@ public static class WaterSurface
 
         // A region wet enough to be named for it is open water, and open water
         // has a shore: that is the one place sand belongs.
-        if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Water) return Body.Shore;
+        if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Water) return Body.Beach;
 
         // Otherwise it is a lake or a pond, and which one is a question of how
         // far down it goes rather than how far across.

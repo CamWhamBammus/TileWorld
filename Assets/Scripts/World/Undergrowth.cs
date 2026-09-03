@@ -244,7 +244,7 @@ public class Undergrowth : MonoBehaviour
                 // is why a beach with reeds down it looks wrong.
                 var body = WaterSurface.BodyAt(gx, gz, seed);
 
-                if (body == WaterSurface.Body.Shore) continue;
+                if (body == WaterSurface.Body.Beach) continue;
 
                 // thicker round a pond than round a lake, a pond being all edge
                 int thickness = body == WaterSurface.Body.Pond ? 38 : 22;

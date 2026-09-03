@@ -28,6 +28,9 @@ public class DevTools : MonoBehaviour
     private readonly Dictionary<Regions.Character, TMP_Text> labels =
         new Dictionary<Regions.Character, TMP_Text>();
 
+    private readonly Dictionary<WaterSurface.Body, TMP_Text> waters =
+        new Dictionary<WaterSurface.Body, TMP_Text>();
+
     private TMP_Text wipeLabel;
     private float askedAt = -99f;
     private bool open;
@@ -114,6 +117,86 @@ public class DevTools : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// The nearest water of a given sort.
+    ///
+    /// Regions are found by walking out over regions, but a lake is not a
+    /// region -- it is a thing inside one, and a pond is smaller still. So this
+    /// walks out over tiles instead, asking the cheap question first: whether a
+    /// tile is under water at all costs one look at the ground, and only the
+    /// wet ones are then asked what sort of water they are.
+    /// </summary>
+    private bool NearestWater(WaterSurface.Body want, out Vector2Int tile, out float away)
+    {
+        tile = default;
+        away = 0f;
+
+        if (player == null) return false;
+
+        int seed = world.WorldSeed;
+
+        int fromX = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize);
+        int fromZ = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+
+        const int Step = 3;
+        const int Rings = 90;
+
+        for (int r = 0; r < Rings; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+
+            int tx = fromX + dx * Step, tz = fromZ + dz * Step;
+
+            if (!WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            if (WaterSurface.BodyAt(tx, tz, seed) != want) continue;
+
+            tile = new Vector2Int(tx, tz);
+            away = Vector2.Distance(new Vector2(fromX, fromZ), new Vector2(tx, tz)) * WorldGrid.TileSize;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void GoToWater(WaterSurface.Body want)
+    {
+        if (!NearestWater(want, out var tile, out _) || body == null)
+        {
+            Notices.Show("Dev: no " + want + " within reach.");
+            return;
+        }
+
+        int seed = world.WorldSeed;
+
+        // stand on the bank and look out over it
+        for (int step = 1; step < 40; step++)
+        for (int side = 0; side < 8; side++)
+        {
+            float a = side / 8f * Mathf.PI * 2f;
+
+            int dx = tile.x + Mathf.RoundToInt(Mathf.Cos(a) * step);
+            int dz = tile.y + Mathf.RoundToInt(Mathf.Sin(a) * step);
+
+            if (WaterSurface.IsUnderwater(dx, dz, seed)) continue;
+
+            body.enabled = false;
+            player.position = new Vector3(dx * WorldGrid.TileSize,
+                WorldHeight.SurfaceY(dx, dz, seed) + 1.4f, dz * WorldGrid.TileSize);
+            player.rotation = Quaternion.LookRotation(
+                new Vector3(tile.x - dx, 0f, tile.y - dz).normalized);
+            body.enabled = true;
+
+            Toggle(false);
+            Notices.Show("Dev: on the bank of a " + want.ToString().ToLowerInvariant());
+            return;
+        }
+
+        Notices.Show("Dev: found a " + want + " but no bank to stand on.");
+    }
+
     private void GoTo(Regions.Character want)
     {
         if (!Nearest(want, out var chunk, out _) || body == null)
@@ -176,6 +259,15 @@ public class DevTools : MonoBehaviour
                 : pair.Key + "   <size=15>none near</size>";
         }
 
+        foreach (var pair in waters)
+        {
+            bool found = NearestWater(pair.Key, out _, out float away);
+
+            pair.Value.text = found
+                ? pair.Key + "   <size=15>" + Mathf.RoundToInt(away) + " m</size>"
+                : pair.Key + "   <size=15>none near</size>";
+        }
+
         if (wipeLabel != null) wipeLabel.text = "Put this world back to nothing";
     }
 
@@ -217,12 +309,12 @@ public class DevTools : MonoBehaviour
 
         var cardRect = cardGo.GetComponent<RectTransform>();
         cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 0.5f);
-        cardRect.sizeDelta = new Vector2(940f, 620f);
+        cardRect.sizeDelta = new Vector2(940f, 700f);
 
-        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 248f), new Vector2(880f, 90f));
+        heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 288f), new Vector2(880f, 90f));
         heading.color = new Color(0.85f, 0.87f, 0.90f);
 
-        Label("Go", cardGo.transform, 17f, new Vector2(0f, 186f), new Vector2(880f, 30f))
+        Label("Go", cardGo.transform, 17f, new Vector2(0f, 228f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST";
 
         var kinds = (Regions.Character[])System.Enum.GetValues(typeof(Regions.Character));
@@ -232,17 +324,30 @@ public class DevTools : MonoBehaviour
             var kind = kinds[i];
 
             float x = (i % 3 - 1) * 300f;
-            float y = 136f - (i / 3) * 58f;
+            float y = 180f - (i / 3) * 56f;
 
             labels[kind] = Button(kind.ToString(), cardGo.transform,
                 new Vector2(x, y), new Vector2(285f, 52f), () => GoTo(kind));
         }
 
-        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -110f), new Vector2(880f, 30f))
+        Label("Water", cardGo.transform, 17f, new Vector2(0f, -42f), new Vector2(880f, 30f))
+            .text = "GO TO THE NEAREST WATER   (a lake is not a region, it is a thing inside one)";
+
+        var bodies = (WaterSurface.Body[])System.Enum.GetValues(typeof(WaterSurface.Body));
+
+        for (int i = 0; i < bodies.Length; i++)
+        {
+            var kind = bodies[i];
+
+            waters[kind] = Button(kind.ToString(), cardGo.transform,
+                new Vector2((i - 1) * 300f, -84f), new Vector2(285f, 52f), () => GoToWater(kind));
+        }
+
+        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -146f), new Vector2(880f, 30f))
             .text = "THE FIRST FEW MINUTES";
 
         Button("Show the opening again", cardGo.transform,
-            new Vector2(-230f, -166f), new Vector2(430f, 52f), () =>
+            new Vector2(-230f, -196f), new Vector2(430f, 52f), () =>
             {
                 Arrival.Replay();
                 Toggle(false);
@@ -250,9 +355,9 @@ public class DevTools : MonoBehaviour
             });
 
         wipeLabel = Button("Put this world back to nothing", cardGo.transform,
-            new Vector2(230f, -166f), new Vector2(430f, 52f), Wipe);
+            new Vector2(230f, -196f), new Vector2(430f, 52f), Wipe);
 
-        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -240f), new Vector2(880f, 40f))
+        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -262f), new Vector2(880f, 40f))
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
         panel.SetActive(false);

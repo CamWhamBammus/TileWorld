@@ -135,12 +135,12 @@ public class Chunk
                 // bottom rather than an edge. A lake or a pond inland is soft
                 // dark mud, because that is what is under one.
                 category = underSnow ? StoneCategory
-                         : body != WaterSurface.Body.Shore ? MarshCategory
+                         : body != WaterSurface.Body.Beach ? MarshCategory
                          : underBy >= DeepWater ? StoneCategory
                          : SandCategory;
             }
             else if (-underBy < BeachHeight && !underSnow && !stone
-                     && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Shore)
+                     && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Beach)
             {
                 // A strand of sand above the waterline, so the grass does not
                 // stop dead at the water -- but only on an open shore. A pond
