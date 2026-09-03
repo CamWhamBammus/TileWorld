@@ -30,6 +30,11 @@ public static class SnowCover
             Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
             Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
 
+        // Not on a lake or pond floor. Snow settles on the ground it can
+        // reach, and the bed of a pond is under several feet of water. This
+        // asks height alone, so it cannot loop back round through the regions.
+        if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) return false;
+
         if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Snow) return true;
 
         return SnowByHeight(tileX, tileZ, worldSeed);
@@ -56,16 +61,16 @@ public static class SnowCover
     /// <summary>And how far it hangs down over the edge of the tile.</summary>
     private const float Skirt = 0.26f;
 
-    /// <summary>How many corners the rim of one tile's snow has.</summary>
-    private const int PerSide = 3;
-    private const int Corners = PerSide * 4;
-
-    // The pack's grass cap is a square, not a disc: on Big Grass Tile_45 it
-    // matches a square outline to within 0.18 and sits 1.25 out against the
-    // dirt block's 1.00, while a circle through the same corners would be 1.41
-    // times too wide. So snow is a square too, oversized the same way, with the
-    // rim pushed out here and there rather than rounded off.
+    // How far snow reaches past the edge of its tile, where there is nothing
+    // to meet. The pack's grass cap does the same: on Big Grass Tile_45 it
+    // sits 1.25 out against the dirt block's 1.00.
     private const float Spread = 1.06f;
+
+    private static readonly Vector2Int[] Sides =
+    {
+        new Vector2Int(1, 0), new Vector2Int(-1, 0),
+        new Vector2Int(0, 1), new Vector2Int(0, -1),
+    };
 
     public static Mesh BuildMesh(Vector2Int chunkIndex, int worldSeed)
     {
@@ -90,48 +95,45 @@ public static class SnowCover
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;
 
-            // The rim: a square, with several points along each side so the
-            // sides need not be straight. A drift that has drifted has an
-            // uneven edge, and that is most of what makes it look laid on
-            // rather than printed on -- but it is still a square.
-            var rim = new Vector3[Corners];
+            int terrace = WorldHeight.TerraceAt(tileX, tileZ, worldSeed);
 
-            for (int c = 0; c < Corners; c++)
+            // How far the snow reaches on each side. Where the tile next door
+            // is snow at the same height, it stops exactly on the shared edge
+            // so the two surfaces meet and the seam disappears. Anywhere else
+            // -- open ground, or a step up or down -- it reaches past and hangs
+            // over, the way the grass cap does on the tiles below.
+            var reach = new float[4];
+            var hangs = new bool[4];
+
+            for (int d = 0; d < 4; d++)
             {
-                Vector2 edge = Perimeter(c);
+                int nx = tileX + Sides[d].x;
+                int nz = tileZ + Sides[d].y;
 
-                int wobble = Mathf.Abs(Hash(tileX * 31 + c, tileZ * 17 - c, worldSeed + 811));
+                bool flush = IsSnowy(nx, nz, worldSeed)
+                    && WorldHeight.TerraceAt(nx, nz, worldSeed) == terrace;
 
-                // Outward only. Pulled in, a rim point opens a notch of bare
-                // rock at the seam it shares with the tile next door.
-                float reach = half * (Spread + (wobble % 100) / 100f * 0.14f);
-
-                rim[c] = new Vector3(x + edge.x * reach, ground + Rise, z + edge.y * reach);
+                hangs[d] = !flush;
+                reach[d] = flush ? half : half * Spread;
             }
 
-            // and a crown a touch above the rim, so the top is a low mound
-            // rather than a plate. Two mounds meeting cross at an angle; two
-            // plates at one height argue over which is in front.
-            var crown = new Vector3(x, ground + Rise + 0.035f, z);
+            float top = ground + Rise;
+            float low = ground - Skirt;
 
-            for (int c = 0; c < Corners; c++)
-            {
-                Vector3 one = rim[c];
-                Vector3 two = rim[(c + 1) % Corners];
+            // corners, named by which way they lie: A is +x +z, and round.
+            var a = new Vector3(x + reach[0], top, z + reach[2]);
+            var b = new Vector3(x - reach[1], top, z + reach[2]);
+            var c = new Vector3(x - reach[1], top, z - reach[3]);
+            var d2 = new Vector3(x + reach[0], top, z - reach[3]);
 
-                // The top. Corners run anticlockwise around the tile, so the
-                // pair goes in backwards -- wound the other way the face looks
-                // at the ground, takes no sun, and snow comes back grey.
-                Face(vertices, triangles, crown, two, one);
+            Face(vertices, triangles, a, c, b);
+            Face(vertices, triangles, a, d2, c);
 
-                // and the side of it, hanging over the edge of the tile the way
-                // the grass on the other tiles hangs over theirs
-                Vector3 underOne = new Vector3(one.x, ground - Skirt, one.z);
-                Vector3 underTwo = new Vector3(two.x, ground - Skirt, two.z);
-
-                Face(vertices, triangles, one, two, underOne);
-                Face(vertices, triangles, two, underTwo, underOne);
-            }
+            // and a wall down each side that meets nothing
+            if (hangs[0]) Wall(vertices, triangles, a, d2, low);
+            if (hangs[1]) Wall(vertices, triangles, c, b, low);
+            if (hangs[2]) Wall(vertices, triangles, b, a, low);
+            if (hangs[3]) Wall(vertices, triangles, d2, c, low);
         }
 
         if (vertices.Count == 0) return null;
@@ -148,23 +150,20 @@ public static class SnowCover
         return mesh;
     }
 
-    /// <summary>
-    /// Corner c of the unit square, walked anticlockwise from the middle of the
-    /// +x edge, with PerSide points along each side. The walk has to turn the
-    /// same way the old ring of angles did, or every face ends up inside out.
-    /// </summary>
-    private static Vector2 Perimeter(int c)
-    {
-        int side = c / PerSide;
-        float t = (c % PerSide) / (float)PerSide * 2f - 1f;
 
-        switch (side)
-        {
-            case 0: return new Vector2(1f, t);
-            case 1: return new Vector2(-t, 1f);
-            case 2: return new Vector2(-1f, -t);
-            default: return new Vector2(t, -1f);
-        }
+    /// <summary>
+    /// A vertical wall hanging from the top edge p-q down to lowY. Which of p
+    /// and q comes first decides which way the wall faces: the outward normal
+    /// works out as (-dz, 0, dx) for d = q - p, so the pair goes clockwise
+    /// round the tile seen from above.
+    /// </summary>
+    private static void Wall(List<Vector3> vertices, List<int> triangles, Vector3 p, Vector3 q, float lowY)
+    {
+        var pl = new Vector3(p.x, lowY, p.z);
+        var ql = new Vector3(q.x, lowY, q.z);
+
+        Face(vertices, triangles, p, ql, q);
+        Face(vertices, triangles, p, pl, ql);
     }
 
     /// <summary>
