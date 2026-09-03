@@ -21,6 +21,7 @@ public class Ambience : MonoBehaviour
 
     private AudioSource music;
     private AudioSource effects;
+    private float lastClick = -99f;
     private AudioClip click;
     private float fade;
 
@@ -87,6 +88,14 @@ public class Ambience : MonoBehaviour
     public void Click(float pitch = 1f)
     {
         if (effects == null || click == null) return;
+
+        // One press should be one click. Screens close each other as they open,
+        // and a single key can reach more than one of them in the same frame,
+        // so anything landing on top of a click this recent is the same press
+        // being heard twice.
+        if (Time.unscaledTime - lastClick < 0.12f) return;
+
+        lastClick = Time.unscaledTime;
 
         effects.pitch = pitch;
         effects.PlayOneShot(click, 0.6f);

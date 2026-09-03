@@ -76,10 +76,15 @@ public class SimpleFollowCamera : MonoBehaviour
         // inside the hill. A ray from the player cannot help here — on a slope
         // it starts inside the ground already and hits nothing on the way out —
         // so the ground is asked directly how high it is under the camera.
-        int cx = Mathf.RoundToInt(desiredPosition.x / WorldGrid.TileSize);
-        int cz = Mathf.RoundToInt(desiredPosition.z / WorldGrid.TileSize);
+        // Asked between the tiles rather than at the nearest one. Rounding to
+        // the nearest tile meant the height this clamps to changed in steps as
+        // the camera crossed from one tile to the next, and beside water, where
+        // a bank drops away sharply, those steps are most of a metre: the whole
+        // view jumped every time it crossed a line on the ground.
+        float floor = GroundUnder(desiredPosition) + clearance;
 
-        float floor = WorldHeight.SurfaceY(cx, cz, world != null ? world.WorldSeed : 0) + clearance;
+        // and it does not follow you under the water
+        if (Swimming.InWater) floor = Mathf.Max(floor, WaterSurface.Level + clearance);
 
         if (desiredPosition.y < floor) desiredPosition.y = floor;
 
@@ -95,5 +100,25 @@ public class SimpleFollowCamera : MonoBehaviour
         // where it is aiming, and at the top of its travel it is looking well
         // over the player's head rather than at it.
         transform.LookAt(pivot + Vector3.up * (raised * lift));
+    }
+
+    /// <summary>How high the ground is here, between the tiles rather than at one.</summary>
+    private float GroundUnder(Vector3 at)
+    {
+        int seed = world != null ? world.WorldSeed : 0;
+
+        float fx = at.x / WorldGrid.TileSize;
+        float fz = at.z / WorldGrid.TileSize;
+
+        int x = Mathf.FloorToInt(fx);
+        int z = Mathf.FloorToInt(fz);
+
+        float alongX = fx - x;
+        float alongZ = fz - z;
+
+        float near = Mathf.Lerp(WorldHeight.SurfaceY(x, z, seed), WorldHeight.SurfaceY(x + 1, z, seed), alongX);
+        float far = Mathf.Lerp(WorldHeight.SurfaceY(x, z + 1, seed), WorldHeight.SurfaceY(x + 1, z + 1, seed), alongX);
+
+        return Mathf.Lerp(near, far, alongZ);
     }
 }

@@ -28,10 +28,10 @@ public class Swimming : MonoBehaviour
     [SerializeField] private float settledFall = 2.0f;
 
     [Tooltip("Swimming speed, as a fraction of walking.")]
-    [SerializeField, Range(0.2f, 1f)] private float swimSpeed = 0.42f;
+    [SerializeField, Range(0.2f, 1f)] private float swimSpeed = 0.70f;
 
     [Tooltip("Swimming hard, also as a fraction of walking. Water does not let you sprint.")]
-    [SerializeField, Range(0.2f, 1.2f)] private float hardSwim = 0.55f;
+    [SerializeField, Range(0.2f, 1.2f)] private float hardSwim = 0.95f;
 
     [Tooltip("Depth at which you are considered in the water, and out of it again.")]
     [SerializeField] private float enterDepth = 0.35f;
