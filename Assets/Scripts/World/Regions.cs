@@ -98,13 +98,20 @@ public static class Regions
 
         // Dry, low and open: sand. Asked before the fungus, which wants the
         // same low ground but wants it damp.
-        if (relief < 0.44f && wetShare < 0.12f
-            && Hash(cell.x, cell.y, worldSeed + 3391) % 3 == 0) return Character.Desert;
 
         // Now and then a low wooded region has gone over to fungus. Rare on
         // purpose: a thing you come across every few regions is somewhere you
         // remember, and one you meet constantly is only scenery.
+        // The fungus is asked first. It is much the rarer of the two and
+        // wants the same low ground the sand does, so asking it second let
+        // the sand take regions that should have been woods.
         if (relief < 0.44f && Hash(cell.x, cell.y, worldSeed + 7717) % 7 == 0) return Character.Fungal;
+
+        // And then sand, wherever is low, dry and open enough to take it.
+        // There is a good deal of it: somewhere you have to hunt for is not a
+        // biome, it is a rumour.
+        if (relief < 0.52f && wetShare < 0.16f
+            && Hash(cell.x, cell.y, worldSeed + 3391) % 2 == 0) return Character.Desert;
         if (relief > 0.44f) return Character.Hills;
         if (relief > 0.22f) return Character.Forest;
 
