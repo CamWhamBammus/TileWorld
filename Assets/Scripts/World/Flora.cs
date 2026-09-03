@@ -58,6 +58,12 @@ public class Flora : ScriptableObject
     /// </summary>
     public Sprout[] SnowTrees;
 
+    /// <summary>Conifers, built rather than shipped: the pack has none.</summary>
+    public Sprout[] Pines;
+
+    /// <summary>And the same under snow.</summary>
+    public Sprout[] SnowPines;
+
     /// <summary>Thin standing poles, for the reedbeds.</summary>
     public Sprout[] Reeds;
 

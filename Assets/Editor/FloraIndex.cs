@@ -123,6 +123,37 @@ public static class FloraIndex
 
         flora.SnowTrees = snowy.ToArray();
 
+        // Conifers, built here because the pack has none. Their corners are
+        // pointed at the same sheet as everything else, so they draw in the
+        // same batch as the models that came with it.
+        var pines = new List<Flora.Sprout>();
+        var snowPines = new List<Flora.Sprout>();
+
+        for (int shape = 0; shape < 5; shape++)
+        {
+            foreach (bool underSnow in new[] { false, true })
+            {
+                var mesh = PineTrees.Build(shape, underSnow);
+
+                AssetDatabase.AddObjectToAsset(mesh, flora);
+
+                var one = new Flora.Sprout
+                {
+                    Name = mesh.name,
+                    Mesh = mesh,
+                    Size = mesh.bounds.size.y,
+                    Wide = mesh.bounds.size.x,
+                    Foot = -mesh.bounds.min.y,
+                    Colour = underSnow ? Color.white : new Color(0.11f, 0.22f, 0.07f)
+                };
+
+                (underSnow ? snowPines : pines).Add(one);
+            }
+        }
+
+        flora.Pines = pines.ToArray();
+        flora.SnowPines = snowPines.ToArray();
+
         EditorUtility.SetDirty(flora);
         AssetDatabase.SaveAssets();
 
@@ -149,7 +180,12 @@ public static class FloraIndex
         }
 
         Debug.Log("FLORA of " + flora.Boulders.Length + " stones, " + bright + " are bright rather than stone-coloured");
-        Debug.Log("FLORA " + flora.SnowTrees.Length + " trees turned to snow");
+        Debug.Log("FLORA " + flora.SnowTrees.Length + " trees turned to snow, "
+            + flora.Pines.Length + " pines built and " + flora.SnowPines.Length + " of them snowed on"
+            + (flora.Pines.Length > 0
+                ? " | a pine is " + flora.Pines[0].Size.ToString("F2") + " tall and "
+                  + flora.Pines[0].Mesh.vertexCount + " corners"
+                : ""));
     }
 
     /// <summary>
