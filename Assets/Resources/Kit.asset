@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f9462279dffb4948801b4444a78d871, type: 3}
+  m_Name: Kit
+  m_EditorClassIdentifier: Assembly-CSharp::Kit
+  Where:
+  - {x: 0.12597656, y: 0.87597656}
+  - {x: 0.9716797, y: 0.26660156}
+  - {x: 0.12597656, y: 0.93847656}
+  - {x: 0.18847656, y: 0.81347656}
+  - {x: 0.81347656, y: 0.91308594}
+  - {x: 0.99902344, y: 0.29785156}
+  - {x: 0.81347656, y: 0.74121094}
+  - {x: 0.18847656, y: 0.75097656}
+  - {x: 0.12597656, y: 0.93847656}
+  - {x: 0.81347656, y: 0.7294922}
+  - {x: 0.97558594, y: 0.12011719}
+  - {x: 0.6455078, y: 0.14160156}

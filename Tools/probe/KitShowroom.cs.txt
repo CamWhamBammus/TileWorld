@@ -1,0 +1,167 @@
+// A probe: lays every part of the building kit out on level ground near the
+// player, labelled, and photographs the lot from two heights.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void Label(Transform parent, Vector3 at, string text)
+    {
+        var go = new GameObject("Label");
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = at;
+        go.transform.localRotation = Quaternion.Euler(60f, 0f, 0f);
+        var tmp = go.AddComponent<TMPro.TextMeshPro>();
+        tmp.text = text;
+        tmp.fontSize = 5f;
+        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+        tmp.color = new Color(0.1f, 0.08f, 0.05f);
+        var rect = tmp.GetComponent<RectTransform>();
+        rect.sizeDelta = new Vector2(5f, 1.2f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>())
+            if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        // Open, nearly level, dry ground near the player: the desert first,
+        // where nothing grows to stand in front of the parts, then the
+        // snowfields, then anywhere.
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int at = home; bool found = false; float top = 0f;
+        foreach (var want in new Regions.Character?[] { Regions.Character.Desert, Regions.Character.Snow, null })
+        {
+            for (int r = 0; r < 400 && !found; r += 2)
+            for (int dx = -r; dx <= r && !found; dx += 2)
+            for (int dz = -r; dz <= r && !found; dz += 2)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                int cx = home.x + dx, cz = home.y + dz;
+                if (want.HasValue && Regions.CharacterAtTile(cx, cz, seed) != want.Value) continue;
+                float lo = float.MaxValue, hi = float.MinValue; bool wet = false;
+                for (int i = -9; i <= 9; i++) for (int j = -7; j <= 7; j++)
+                {
+                    float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+                    if (WaterSurface.IsUnderwater(cx + i, cz + j, seed)) wet = true;
+                }
+                if (!wet && hi - lo < 0.26f) { at = new Vector2Int(cx, cz); found = true; top = hi; }
+            }
+            if (found) break;
+        }
+        Mark("level ground " + found + " at " + at);
+
+        var origin = new Vector3(at.x * WorldGrid.TileSize, (found ? top : WorldHeight.SurfaceY(at.x, at.y, seed)) + 0.3f, at.y * WorldGrid.TileSize);
+        body.enabled = false;
+        player.position = origin + new Vector3(0f, 0.6f, -16f);
+        body.enabled = true;
+        yield return new WaitForSecondsRealtime(5f);
+
+        var flora = Resources.Load<Flora>("Flora");
+        var root = new GameObject("Showroom").transform;
+        root.position = origin;
+
+        // a floor so the parts are seen against one thing
+        var floor = new Kit.Builder(1);
+        floor.Block(new Vector3(0f, -0.3f, 0f), new Vector3(34f, 0.6f, 26f), Kit.Swatch.Mortar);
+        floor.Pavers(new Vector3(0f, 0f, 0f), 34f, 26f, 1.0f);
+        floor.Finish("Floor", root, Vector3.zero, flora.Paint);
+
+        string[] names =
+        {
+            "log wall (corner)", "stone wall", "timber frame wall", "plank wall",
+            "plank roof + gable", "thatch roof", "slate roof", "chimney",
+            "door", "window", "post + railing", "steps",
+            "pavers", "log", "stone block", "gable (plaster)"
+        };
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            int col = i % 4, row = i / 4;
+            var at2 = new Vector3((col - 1.5f) * 8.0f, 0.12f, (1.5f - row) * 6.4f);
+            var k = new Kit.Builder(100 + i);
+
+            switch (i)
+            {
+                case 0: k.LogWall(new Vector3(-1.4f, 0f, 0f), new Vector3(1.4f, 0f, 0f), 2.0f); k.LogWall(new Vector3(1.4f, 0f, 0f), new Vector3(1.4f, 0f, 2.0f), 2.0f, 0.16f); break;
+                case 1: k.StoneWall(new Vector3(-1.5f, 0f, 0f), new Vector3(1.5f, 0f, 0f), 2.0f); break;
+                case 2: k.FrameWall(new Vector3(-1.5f, 0f, 0f), new Vector3(1.5f, 0f, 0f), 2.0f); break;
+                case 3: k.PlankWall(new Vector3(-1.5f, 0f, 0f), new Vector3(1.5f, 0f, 0f), 1.8f); break;
+                case 4: k.Roof(new Vector3(0f, 1.2f, 0f), 2.8f, 2.6f, 32f, Kit.Builder.RoofStyle.Plank); k.GableEnd(new Vector3(0f, 1.2f, 0f), 2.8f, 32f, -1.3f, Kit.Swatch.Plaster); k.GableEnd(new Vector3(0f, 1.2f, 0f), 2.8f, 32f, 1.3f, Kit.Swatch.Plaster); k.Post(new Vector3(-1.3f, 0f, -1.2f), 1.2f); k.Post(new Vector3(1.3f, 0f, -1.2f), 1.2f); k.Post(new Vector3(-1.3f, 0f, 1.2f), 1.2f); k.Post(new Vector3(1.3f, 0f, 1.2f), 1.2f); break;
+                case 5: k.Roof(new Vector3(0f, 1.2f, 0f), 2.8f, 2.6f, 40f, Kit.Builder.RoofStyle.Thatch); k.GableEnd(new Vector3(0f, 1.2f, 0f), 2.8f, 40f, -1.3f, Kit.Swatch.Plaster); k.GableEnd(new Vector3(0f, 1.2f, 0f), 2.8f, 40f, 1.3f, Kit.Swatch.Plaster); k.Post(new Vector3(-1.3f, 0f, -1.2f), 1.2f); k.Post(new Vector3(1.3f, 0f, -1.2f), 1.2f); k.Post(new Vector3(-1.3f, 0f, 1.2f), 1.2f); k.Post(new Vector3(1.3f, 0f, 1.2f), 1.2f); break;
+                case 6: k.Roof(new Vector3(0f, 1.2f, 0f), 2.8f, 2.6f, 36f, Kit.Builder.RoofStyle.Slate); k.GableEnd(new Vector3(0f, 1.2f, 0f), 2.8f, 36f, -1.3f, Kit.Swatch.Stone); k.GableEnd(new Vector3(0f, 1.2f, 0f), 2.8f, 36f, 1.3f, Kit.Swatch.Stone); k.Post(new Vector3(-1.3f, 0f, -1.2f), 1.2f); k.Post(new Vector3(1.3f, 0f, -1.2f), 1.2f); k.Post(new Vector3(-1.3f, 0f, 1.2f), 1.2f); k.Post(new Vector3(1.3f, 0f, 1.2f), 1.2f); break;
+                case 7: k.Chimney(Vector3.zero, 2.6f); break;
+                case 8: k.StoneWall(new Vector3(-1.2f, 0f, 0.2f), new Vector3(1.2f, 0f, 0.2f), 2.3f); k.Door(new Vector3(0f, 0f, 0f), Vector3.back); break;
+                case 9: k.FrameWall(new Vector3(-1.2f, 0f, 0.15f), new Vector3(1.2f, 0f, 0.15f), 2.0f); k.Window(new Vector3(0f, 1.15f, 0f), Vector3.back); break;
+                case 10: k.Railing(new Vector3(-1.4f, 0f, 0f), new Vector3(1.4f, 0f, 0f)); k.Post(new Vector3(0f, 0f, 1.2f), 2.4f, 0.14f); break;
+                case 11: k.Steps(new Vector3(0f, 0f, -1.2f), Vector3.forward, 5, 0.22f, 0.4f, 1.6f); break;
+                case 12: k.Pavers(new Vector3(0f, 0.1f, 0f), 3f, 2.4f, 0.7f); break;
+                case 13: k.Log(new Vector3(-1.4f, 0.25f, 0f), new Vector3(1.4f, 0.25f, 0f), 0.25f); k.Log(new Vector3(-1.0f, 0.62f, 0.1f), new Vector3(1.0f, 0.62f, 0.1f), 0.17f); break;
+                case 14: k.Block(new Vector3(-0.6f, 0.3f, 0f), new Vector3(1.0f, 0.6f, 0.6f), Kit.Swatch.Stone, 0.02f); k.Block(new Vector3(0.6f, 0.3f, 0f), new Vector3(0.9f, 0.6f, 0.6f), Kit.Swatch.DarkStone, 0.02f); break;
+                case 15: k.Gable(new Vector3(0f, 0f, 0f), 2.6f, 1.2f, 0.3f, Quaternion.identity, Kit.Swatch.Plaster); k.Block(new Vector3(0f, -0.1f, 0f), new Vector3(2.6f, 0.2f, 0.3f), Kit.Swatch.DarkWood); break;
+            }
+
+            k.Finish(names[i], root, at2, flora.Paint);
+            Label(root, at2 + new Vector3(0f, 0.2f, -2.6f), names[i]);
+        }
+
+        Mark("showroom built, tris " + root.childCount);
+        yield return new WaitForSecondsRealtime(2f);
+
+        string dir = Application.persistentDataPath;
+        cam.fieldOfView = 34f;
+        cam.transform.position = origin + new Vector3(0f, 26f, -40f);
+        cam.transform.rotation = Quaternion.LookRotation((origin + Vector3.up * 0.5f) - cam.transform.position, Vector3.up);
+        yield return new WaitForSecondsRealtime(1.5f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-kit-all.png"));
+        yield return new WaitForSecondsRealtime(1.5f);
+
+        // closer, on each row
+        for (int row = 0; row < 4; row++)
+        {
+            var focus = origin + new Vector3(0f, 0.9f, (1.5f - row) * 6.4f);
+            cam.transform.position = focus + new Vector3(0f, 9f, -19f);
+            cam.transform.rotation = Quaternion.LookRotation(focus - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(1.2f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-kit-row" + row + ".png"));
+            yield return new WaitForSecondsRealtime(1.2f);
+        }
+
+        Mark("done");
+    }
+}
