@@ -91,7 +91,23 @@ public class Undergrowth : MonoBehaviour
         var palms = Take(flora.Palms, 3.20f, 5.00f);
         var stones = Take(flora.Stones, 0.35f, 0.95f);
         var boulders = Take(flora.Boulders, 0.40f, 1.30f);
-        var trees = Take(flora.Trees, 3.00f, 4.60f);
+        // The pack's trees run from narrow to broad. The narrow ones read as
+        // conifers, which is what belongs on a snowfield; the broad ones are
+        // what a warm wood is made of.
+        var narrow = new List<Flora.Sprout>();
+        var broad = new List<Flora.Sprout>();
+
+        foreach (var tree in flora.Trees)
+        {
+            if (tree.Wide <= 1.0f) narrow.Add(tree);
+            else broad.Add(tree);
+        }
+
+        if (narrow.Count == 0) narrow.AddRange(flora.Trees);
+        if (broad.Count == 0) broad.AddRange(flora.Trees);
+
+        var trees = Take(broad.ToArray(), 3.00f, 4.60f);
+        var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
 
@@ -102,13 +118,17 @@ public class Undergrowth : MonoBehaviour
         // What each sort of country carries. The order within a set is the
         // order they get first refusal on a tile, so the rarer things are
         // listed first and the ground cover last.
-        fungal = new[] { With(deadTrees, 0.035f), With(boulders, 0.04f), With(mushrooms, 0.46f) };
+        // A mushroom wood is not only mushrooms: what makes it read is the
+        // dead standing timber they are growing out of.
+        fungal = new[] { With(deadTrees, 0.075f), With(boulders, 0.05f), With(mushrooms, 0.46f) };
         desert = new[] { With(palms, 0.014f), With(deadTrees, 0.02f), With(cacti, 0.055f), With(stones, 0.085f) };
         stone = new[] { With(boulders, 0.34f) };
-        dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.03f), With(boulders, 0.05f) };
+        dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
-        snow = new[] { With(trees, 0.03f), With(boulders, 0.05f) };
-        forest = new[] { With(trees, 0.10f), With(mushrooms, 0.02f), With(boulders, 0.04f) };
+        snow = new[] { With(firs, 0.05f), With(boulders, 0.05f) };
+        // Thicker than it was, and with the pack's own trees standing in it
+        // rather than only whatever the tiles happen to carry.
+        forest = new[] { With(firs, 0.05f), With(trees, 0.13f), With(mushrooms, 0.02f), With(boulders, 0.05f) };
         ordinary = new[] { With(mushrooms, 0.006f), With(boulders, 0.012f) };
 
         flora.Paint.enableInstancing = true;

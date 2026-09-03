@@ -74,6 +74,12 @@ public class Chunk
         bool desert = character == Regions.Character.Desert;
         bool stone = character == Regions.Character.Stone;
 
+        // Under a snowfield goes rock, not grass. The grass tiles carry blades
+        // standing a third of a unit above the block, and the snow is laid on
+        // the block -- so on a grass tile the blades come up through the snow
+        // and draw a green fringe over every tile in the field.
+        bool underSnow = character == Regions.Character.Snow;
+
         // Ground that is dark and wet underfoot: the dead woods and the
         // reedbeds both stand on it.
         bool sodden = character == Regions.Character.Dead || character == Regions.Character.Reed;
@@ -119,7 +125,7 @@ public class Chunk
                 // middle of a desert reads as a patch of somewhere else
                 category = SandCategory;
             }
-            else if (stone)
+            else if (stone || underSnow)
             {
                 category = StoneCategory;
             }

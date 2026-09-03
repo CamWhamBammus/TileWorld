@@ -17,6 +17,9 @@ public class Flora : ScriptableObject
         /// <summary>How tall the model is in its own units.</summary>
         public float Size;
 
+        /// <summary>And how broad. A narrow tree is a conifer; a wide one is not.</summary>
+        public float Wide;
+
         /// <summary>
         /// How far to lift it so its foot is on the ground. Some of these models
         /// are drawn about their middle and some stand on their own origin, and

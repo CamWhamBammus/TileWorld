@@ -90,6 +90,7 @@ public static class FloraIndex
                 Name = go.name,
                 Mesh = mesh,
                 Size = mesh.bounds.size.y,
+                Wide = mesh.bounds.size.x,
 
                 // whatever the model's own idea of its origin is, this is the
                 // lift that puts the bottom of it on the ground
