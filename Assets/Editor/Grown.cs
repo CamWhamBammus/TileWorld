@@ -168,24 +168,37 @@ public static class Grown
             // a blade is a long triangle with a kink, so it is not a flat spike
             var bend = Vector3.Lerp(root, tip, 0.6f) + new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * lean * 0.35f;
 
-            int at = points.Count;
+            // Each blade is put in twice, once facing each way, with its own
+            // corners both times. Sharing them and only reversing the winding
+            // looks like it ought to work and does not: the two sets of faces
+            // have opposite normals, averaging them at a shared corner cancels
+            // them to nothing, and a blade lit by a normal of zero length comes
+            // out blank white. That is what the white sticks in the water were.
+            for (int face = 0; face < 2; face++)
+            {
+                int at = points.Count;
 
-            points.Add(root - across);
-            points.Add(root + across);
-            points.Add(bend + across * 0.45f);
-            points.Add(bend - across * 0.45f);
-            points.Add(tip);
+                points.Add(root - across);
+                points.Add(root + across);
+                points.Add(bend + across * 0.45f);
+                points.Add(bend - across * 0.45f);
+                points.Add(tip);
 
-            for (int k = 0; k < 5; k++) uvs.Add(green);
+                for (int k = 0; k < 5; k++) uvs.Add(green);
 
-            // both ways round, so a blade is there from either side
-            faces.Add(at); faces.Add(at + 1); faces.Add(at + 2);
-            faces.Add(at); faces.Add(at + 2); faces.Add(at + 3);
-            faces.Add(at + 3); faces.Add(at + 2); faces.Add(at + 4);
-
-            faces.Add(at + 2); faces.Add(at + 1); faces.Add(at);
-            faces.Add(at + 3); faces.Add(at + 2); faces.Add(at);
-            faces.Add(at + 4); faces.Add(at + 2); faces.Add(at + 3);
+                if (face == 0)
+                {
+                    faces.Add(at); faces.Add(at + 1); faces.Add(at + 2);
+                    faces.Add(at); faces.Add(at + 2); faces.Add(at + 3);
+                    faces.Add(at + 3); faces.Add(at + 2); faces.Add(at + 4);
+                }
+                else
+                {
+                    faces.Add(at + 2); faces.Add(at + 1); faces.Add(at);
+                    faces.Add(at + 3); faces.Add(at + 2); faces.Add(at);
+                    faces.Add(at + 4); faces.Add(at + 2); faces.Add(at + 3);
+                }
+            }
         }
 
         var reeds = new Mesh { name = "Reeds " + shape };

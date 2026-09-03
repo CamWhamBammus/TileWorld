@@ -239,7 +239,17 @@ public class Undergrowth : MonoBehaviour
 
                 if (deep > 1.1f || flora.Reeds == null || flora.Reeds.Length == 0) continue;
 
-                if (Hash(gx, gz, seed + 6791) % 100 >= 26) continue;
+                // Reeds are a lake plant. On an open shore the water is moving
+                // and the bottom is sand, and nothing stands up in it -- which
+                // is why a beach with reeds down it looks wrong.
+                var body = WaterSurface.BodyAt(gx, gz, seed);
+
+                if (body == WaterSurface.Body.Shore) continue;
+
+                // thicker round a pond than round a lake, a pond being all edge
+                int thickness = body == WaterSurface.Body.Pond ? 38 : 22;
+
+                if (Hash(gx, gz, seed + 6791) % 100 >= thickness) continue;
 
                 var stalk = flora.Reeds[(int)(Hash(gx, gz, seed + 41) % (uint)flora.Reeds.Length)];
 

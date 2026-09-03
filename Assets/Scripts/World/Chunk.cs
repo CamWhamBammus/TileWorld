@@ -128,19 +128,23 @@ public class Chunk
 
             if (submerged)
             {
-                // Sand in the shallows where the light still reaches, rock
-                // further down. The line between the two is what makes a lake
-                // look as though it has a bottom rather than an edge.
-                //
-                // Except under snow, where a sandy shallow makes no sense at
-                // all: that is a frozen lake and its bed is stone.
-                category = underSnow || underBy >= DeepWater ? StoneCategory : SandCategory;
+                var body = WaterSurface.BodyAt(gx, gz, worldSeed);
+
+                // A frozen lake is stone under the ice. An open shore is sand
+                // in the shallows and rock below, which is what gives water a
+                // bottom rather than an edge. A lake or a pond inland is soft
+                // dark mud, because that is what is under one.
+                category = underSnow ? StoneCategory
+                         : body != WaterSurface.Body.Shore ? MarshCategory
+                         : underBy >= DeepWater ? StoneCategory
+                         : SandCategory;
             }
-            else if (-underBy < BeachHeight && !underSnow && !stone)
+            else if (-underBy < BeachHeight && !underSnow && !stone
+                     && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Shore)
             {
-                // and a run of sand above the waterline, so the grass does not
-                // simply stop at the water. A beach belongs to warm country:
-                // snow does not leave a strand, it comes down to the ice.
+                // A strand of sand above the waterline, so the grass does not
+                // stop dead at the water -- but only on an open shore. A pond
+                // in a wood has grass to its edge, not a beach.
                 category = SandCategory;
             }
             else if (desert)

@@ -19,6 +19,50 @@ public static class WaterSurface
 
     public static float Level => WorldHeight.BaseSurfaceY + DepthAboveBase;
 
+    /// <summary>
+    /// What sort of water this is. They want different things of the ground
+    /// and of what grows in them: sand belongs on an open shore and nowhere
+    /// else, and reeds belong anywhere but.
+    /// </summary>
+    public enum Body
+    {
+        /// <summary>Open water, of a region named for being under it.</summary>
+        Shore,
+
+        /// <summary>Inland water with some depth to it.</summary>
+        Lake,
+
+        /// <summary>Inland water with none.</summary>
+        Pond
+    }
+
+    public static Body BodyAt(int tileX, int tileZ, int worldSeed)
+    {
+        var chunk = new Vector2Int(
+            Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
+            Mathf.FloorToInt(tileZ / (float)WorldGrid.TilesPerChunk));
+
+        // A region wet enough to be named for it is open water, and open water
+        // has a shore: that is the one place sand belongs.
+        if (Regions.CharacterAt(chunk, worldSeed) == Regions.Character.Water) return Body.Shore;
+
+        // Otherwise it is a lake or a pond, and which one is a question of how
+        // far down it goes rather than how far across.
+        float deepest = Level - WorldHeight.SurfaceY(tileX, tileZ, worldSeed);
+
+        for (int i = 0; i < 6; i++)
+        {
+            float a = i / 6f * Mathf.PI * 2f;
+
+            int ox = Mathf.RoundToInt(Mathf.Cos(a) * 5f);
+            int oz = Mathf.RoundToInt(Mathf.Sin(a) * 5f);
+
+            deepest = Mathf.Max(deepest, Level - WorldHeight.SurfaceY(tileX + ox, tileZ + oz, worldSeed));
+        }
+
+        return deepest > 2.2f ? Body.Lake : Body.Pond;
+    }
+
     public static bool IsUnderwater(int tileX, int tileZ, int seed)
     {
         return WorldHeight.SurfaceY(tileX, tileZ, seed) < Level;
