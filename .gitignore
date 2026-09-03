@@ -32,3 +32,5 @@ sysinfo.txt
 *.apk
 *.aab
 *.unitypackage
+# Working files of the command line tools
+Tools/.check/

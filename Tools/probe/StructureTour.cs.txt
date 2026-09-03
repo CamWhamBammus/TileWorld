@@ -1,0 +1,134 @@
+// A probe: dropped into the game by Tools/run-probe.sh, never committed.
+// This one visits the nearest structure of every kind, photographs each from
+// two sides with the camera carried by hand, and counts how many of each
+// kind lie within forty chunks. Its stage marks go to a file, not the Unity
+// log: the log is buffered and loses the tail when the player is killed.
+//
+// Things learned the hard way, all handled below:
+//  - a standalone player pauses when it is not the front app unless
+//    Application.runInBackground is set;
+//  - WaitForSeconds does not elapse while the game is held at timescale 0,
+//    so waits are in real time;
+//  - the follow camera (SimpleFollowCamera) re-places the camera every frame,
+//    so it is switched off before the camera is moved by hand;
+//  - the clock runs on between runs, so daylight is set before shooting.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+
+        // daylight, whatever the clock says; the shots are for looking at
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.38f);
+
+        // the book's view of the structures
+        string book = "";
+        foreach (var subject in Subject.All())
+            if (!subject.Wild) book += subject.Name + " [" + FieldGuide.Where(subject) + "] ";
+        Mark("field guide structures: " + book);
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>())
+            if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        int n = Landmarks.Count;
+        var counts = new int[n];
+        for (int dx = -40; dx <= 40; dx++)
+        for (int dz = -40; dz <= 40; dz++)
+        {
+            var p = Landmarks.In(new Vector2Int(dx, dz), seed);
+            if (p.Exists) counts[(int)p.Kind]++;
+        }
+        string tally = "";
+        for (int k = 0; k < n; k++) tally += Landmarks.NameOf((LandmarkKind)k) + " " + counts[k] + ", ";
+        Mark("within 40 chunks: " + tally);
+
+        string dir = Application.persistentDataPath;
+        var home = WorldGrid.WorldToChunk(player.position);
+
+        for (int k = 0; k < n; k++)
+        {
+            var want = (LandmarkKind)k;
+            Landmarks.Placement at = default;
+            bool found = false;
+
+            for (int r = 0; r < 90 && !found; r++)
+            for (int dx = -r; dx <= r && !found; dx++)
+            for (int dz = -r; dz <= r && !found; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                var p = Landmarks.In(new Vector2Int(home.x + dx, home.y + dz), seed);
+                if (p.Exists && p.Kind == want) { at = p; found = true; }
+            }
+
+            if (!found) { Mark(want + ": none within 90 chunks"); continue; }
+
+            var turn = Quaternion.Euler(0f, at.Yaw, 0f);
+            var about = Landmarks.All(want);
+
+            Vector3 stand = at.Position + turn * new Vector3(about.Ahead * 2f + 4f, 0f, 3f);
+            int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+            float y = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level) + 0.3f;
+
+            body.enabled = false;
+            player.position = new Vector3(stand.x, y, stand.z);
+            body.enabled = true;
+
+            yield return new WaitForSecondsRealtime(7f);
+
+            bool built = false;
+            foreach (var tag in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None)) if (tag.Kind == want) built = true;
+            Mark(want + " at " + at.Position + " yaw " + at.Yaw + " built " + built);
+
+            float reach = about.Ahead * 2f + about.Behind * 2f + 6f;
+            Vector3 focus = at.Position + Vector3.up * 2f;
+
+            cam.transform.position = at.Position + turn * new Vector3(reach + 4f, reach * 0.55f + 3f, reach * 0.6f);
+            cam.transform.rotation = Quaternion.LookRotation(focus - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(1.5f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-s" + k + "-a.png"));
+            yield return new WaitForSecondsRealtime(1.5f);
+
+            cam.transform.position = at.Position + turn * new Vector3(-reach * 0.6f, reach * 0.5f + 2f, -reach * 0.9f);
+            cam.transform.rotation = Quaternion.LookRotation(focus - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(1.5f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-s" + k + "-b.png"));
+            yield return new WaitForSecondsRealtime(1.5f);
+        }
+
+        Mark("done");
+    }
+}

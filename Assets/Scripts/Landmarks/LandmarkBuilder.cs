@@ -186,7 +186,7 @@ public static class LandmarkBuilder
     /// <summary>
     /// Two towers on sand plinths a tile apart, the pack's bridge laid across
     /// their tops for a walk between them, and a gap below to pass through.
-    /// Busts stand at both approaches; a gate leans, off its hinges.
+    /// Standing stones flank both approaches; a gate leans, off its hinges.
     /// </summary>
     private static void Gate(Job b)
     {

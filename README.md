@@ -136,3 +136,7 @@ Scripts are grouped under `Assets/Scripts`:
 - `Wildlife/` - what lives where, how it is built, and what it does when it sees you
 - `Atmosphere/` - the day cycle and weather, wind, birdsong, music, rain, stars and fireflies
 - `Systems/` - what has been found, the library of saved worlds, and what is kept between sessions
+
+## Working on it
+
+How the code is organised, what must stay true, and how to check work from the command line without opening the editor: see [docs/HANDBOOK.md](docs/HANDBOOK.md). The scripts it refers to are in `Tools/`.
