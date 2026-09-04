@@ -90,7 +90,8 @@ public class Noticing : MonoBehaviour
             AtWater = ByWater(player.position, seed),
             NearSign = Tracks.Near(player.position, 2.5f, out var signSort, out var signOf),
             Sign = signSort,
-            SignOf = signOf
+            SignOf = signOf,
+            RingSeen = Tracks.Near(player.position, 14f, out var ringSort, out _) && ringSort == Tracks.Sort.Ring
         };
 
         sight.Animal = Seen();

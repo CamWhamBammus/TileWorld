@@ -37,6 +37,7 @@ public class Animal : MonoBehaviour
                 case State.Drink: return Doing.Drinking;
                 case State.Rest: return Doing.Resting;
                 case State.Alert: return Doing.Watching;
+                case State.Stand when roosting: return Doing.Resting;
                 case State.Flee: return Doing.Fleeing;
                 case State.Hidden: return gesture == Gesture.Rise ? Doing.Walking : Doing.Fleeing;
                 case State.Wander:
@@ -198,6 +199,19 @@ public class Animal : MonoBehaviour
 
     /// <summary>A young one: small, and kept close to whoever leads it.</summary>
     public bool Young { get; private set; }
+
+    // A bird out of its hours does not vanish the way the rest do: it roosts
+    // where it is, head drawn in, until its hours come round again.
+    private bool roosting;
+
+    public void Roost(bool on)
+    {
+        if (roosting == on) return;
+        roosting = on;
+        gesture = Gesture.None;
+        if (on) { state = State.Stand; until = Time.time + 100000f; }
+        else Graze();
+    }
 
     /// <summary>Whether it has its head up calling -- a howl, a bellow.</summary>
     public bool Calling => gesture == Gesture.Howl;
@@ -362,6 +376,13 @@ public class Animal : MonoBehaviour
             if (state == State.Alert) { Graze(); threatened = false; }      // you backed off
         }
 
+        // Roosting: nothing happens until its hours, except being frightened
+        if (roosting && state == State.Stand)
+        {
+            if (distance < traits.Bolts * Stalking.Wariness) { roosting = false; Flee(); }
+            return;
+        }
+
         // The hunt, kept up every frame: the quarry moves, so the target does.
         if (state == State.Hunt)
         {
@@ -431,6 +452,7 @@ public class Animal : MonoBehaviour
                     gestureUntil = Time.time + Random.Range(2.4f, 4f);
                     until = gestureUntil + Random.Range(7f, 22f);
                     Speak(false);
+                    Tracks.Ring(new Vector3(transform.position.x, WaterSurface.Level, transform.position.z));
                 }
                 if (gesture == Gesture.Rise && distance < traits.Bolts * Stalking.Wariness) { gesture = Gesture.None; until = Time.time + Random.Range(10f, 25f); }
                 return;
@@ -1356,6 +1378,17 @@ public class Animal : MonoBehaviour
                 break;
         }
 
+        // a roosting bird draws its head in and holds it
+        if (roosting && state == State.Stand)
+        {
+            body.Head.localPosition = Vector3.Lerp(body.Head.localPosition, neckAt - Vector3.forward * traits.Size * 0.10f - Vector3.up * traits.Size * 0.06f, dt * 3f);
+            dip = 26f; turn = 0f;
+        }
+        else if (Fauna.Flies(Kind) && !Fauna.All(Kind).Withdraws)
+        {
+            body.Head.localPosition = Vector3.Lerp(body.Head.localPosition, neckAt, dt * 3f);
+        }
+
         // a tortoise pulls its head into the shell rather than watching you
         if (Fauna.All(Kind).Withdraws)
         {
@@ -1520,8 +1553,24 @@ public class Animal : MonoBehaviour
         Speak(state == State.Alert);
     }
 
-    private void Speak(bool alarmed)
+    private void Speak(bool alarmed) => Speak(alarmed, false);
+
+    /// <summary>An answer to another's call: the same call, a moment later, and it does not ask for one back.</summary>
+    public void SpeakBack(float delay) { StartCoroutine(SpeakBackLater(delay)); }
+
+    private System.Collections.IEnumerator SpeakBackLater(float delay)
     {
+        yield return new WaitForSeconds(delay);
+        if (state != State.Flee && state != State.Hidden) Speak(false, true);
+    }
+
+    private void Speak(bool alarmed, bool reply)
+    {
+        // a call, unalarmed, is answered by the nearest of its kind in earshot
+        // -- once, so two of them do not go on all night
+        if (!alarmed && !reply && Fauna.All(Kind).Call.Thump <= 0f && !Fauna.All(Kind).Chorus)
+            Wildlife.Answer(this, 70f, Random.Range(1.2f, 3f));
+
         if (voice == null || !AnimalVoice.Ready) return;
 
         voice.pitch = Random.Range(0.92f, 1.10f);

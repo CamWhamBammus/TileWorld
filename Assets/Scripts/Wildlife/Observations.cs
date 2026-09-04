@@ -47,6 +47,7 @@ public static class Observations
         public bool NearSign;       // a sign underfoot: prints, rooting, a feather
         public Tracks.Sort Sign;
         public FaunaKind SignOf;
+        public bool RingSeen;       // a ring on the water, within sight
 
         public Vector2Int Chunk;
     }
@@ -213,6 +214,15 @@ public static class Observations
 
         Add("heron-catch", "a heron with a fish",
             s => s.Kind == FaunaKind.Heron && s.HasCatch);
+
+        Add("bird-roost", "a bird roosting",
+            s => s.Animal != null && Fauna.Flies(s.Kind) && s.Doing == Doing.Resting);
+
+        Add("call-answered", "a call, and an answer to it",
+            s => s.Company >= 2 && s.Doing == Doing.Standing && s.Hour > 0.6f);
+
+        Add("ring-seen", "a ring on the water where something rose",
+            s => s.RingSeen, false);
 
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);

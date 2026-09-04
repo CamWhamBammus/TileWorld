@@ -14,7 +14,7 @@ using UnityEngine;
 /// </summary>
 public class Tracks : MonoBehaviour
 {
-    public enum Sort { SnowPrint, SandPrint, Rooting, PaleFeather, DarkFeather, Trail }
+    public enum Sort { SnowPrint, SandPrint, Rooting, PaleFeather, DarkFeather, Trail, Ring }
 
     private struct Mark
     {
@@ -32,7 +32,7 @@ public class Tracks : MonoBehaviour
     private readonly List<Mark> marks = new List<Mark>(1024);
     private readonly Dictionary<Sort, List<Matrix4x4>> batches = new Dictionary<Sort, List<Matrix4x4>>();
     private readonly Dictionary<Sort, Material> paints = new Dictionary<Sort, Material>();
-    private Mesh oval, feather;
+    private Mesh oval, feather, ring;
 
     // trails: how often each tile has been crossed lately
     private readonly Dictionary<long, float> worn = new Dictionary<long, float>();
@@ -52,6 +52,7 @@ public class Tracks : MonoBehaviour
         instance = this;
         oval = Oval(8, 1f, 0.7f);
         feather = Oval(6, 1f, 0.28f);
+        ring = Annulus(16, 0.5f, 0.42f);
 
         paints[Sort.SnowPrint] = Paint.Flat(new Color(0.58f, 0.64f, 0.76f));
         paints[Sort.SandPrint] = Paint.Flat(new Color(0.60f, 0.48f, 0.30f));
@@ -59,6 +60,7 @@ public class Tracks : MonoBehaviour
         paints[Sort.PaleFeather] = Paint.Flat(new Color(0.90f, 0.90f, 0.87f));
         paints[Sort.DarkFeather] = Paint.Flat(new Color(0.09f, 0.09f, 0.11f));
         paints[Sort.Trail] = Paint.Flat(new Color(0.38f, 0.32f, 0.20f));
+        paints[Sort.Ring] = Paint.Flat(new Color(0.86f, 0.92f, 0.97f));
 
         foreach (Sort s in System.Enum.GetValues(typeof(Sort))) batches[s] = new List<Matrix4x4>(256);
     }
@@ -99,6 +101,13 @@ public class Tracks : MonoBehaviour
     {
         if (instance == null) return;
         instance.Leave(new Mark { Sort = pale ? Sort.PaleFeather : Sort.DarkFeather, At = at + Vector3.up * 0.014f, Yaw = Random.Range(0f, 360f), Size = 0.34f, Made = Time.time, Lasts = 1200f });
+    }
+
+    /// <summary>A ring on the water where a fish rose, spreading and fading.</summary>
+    public static void Ring(Vector3 at)
+    {
+        if (instance == null) return;
+        instance.Leave(new Mark { Sort = Sort.Ring, At = at + Vector3.up * 0.03f, Yaw = 0f, Size = 2.4f, Made = Time.time, Lasts = 4.5f });
     }
 
     /// <summary>An animal crossing a tile: enough crossings and the tile wears to a trail.</summary>
@@ -147,6 +156,7 @@ public class Tracks : MonoBehaviour
             float age = (now - m.Made) / m.Lasts;
             float shrink = age > 0.8f ? Mathf.InverseLerp(1f, 0.8f, age) : 1f;
             float s = m.Size * shrink;
+            if (m.Sort == Sort.Ring) s = m.Size * Mathf.Lerp(0.15f, 1f, Mathf.Sqrt(age));   // a ring spreads, and thins as it goes
             batches[m.Sort].Add(Matrix4x4.TRS(m.At, Quaternion.Euler(0f, m.Yaw, 0f), new Vector3(s, 1f, s)));
         }
 
@@ -172,10 +182,32 @@ public class Tracks : MonoBehaviour
         {
             if (pair.Value.Count == 0 || paints[pair.Key] == null) continue;
             var rp = new RenderParams(paints[pair.Key]) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = true };
-            var mesh = pair.Key == Sort.PaleFeather || pair.Key == Sort.DarkFeather ? feather : oval;
+            var mesh = pair.Key == Sort.PaleFeather || pair.Key == Sort.DarkFeather ? feather : pair.Key == Sort.Ring ? ring : oval;
             for (int from = 0; from < pair.Value.Count; from += 1000)
                 Graphics.RenderMeshInstanced(rp, mesh, 0, pair.Value, Mathf.Min(1000, pair.Value.Count - from), from);
         }
+    }
+
+    /// <summary>A flat ring, lying in the ground plane, a unit across.</summary>
+    private static Mesh Annulus(int sides, float outer, float inner)
+    {
+        var verts = new Vector3[sides * 2];
+        var norms = new Vector3[sides * 2];
+        var tris = new int[sides * 6];
+        for (int i = 0; i < sides; i++)
+        {
+            float a = i / (float)sides * Mathf.PI * 2f;
+            verts[i * 2] = new Vector3(Mathf.Cos(a) * inner, 0f, Mathf.Sin(a) * inner);
+            verts[i * 2 + 1] = new Vector3(Mathf.Cos(a) * outer, 0f, Mathf.Sin(a) * outer);
+            norms[i * 2] = norms[i * 2 + 1] = Vector3.up;
+            int j = (i + 1) % sides;
+            tris[i * 6] = i * 2; tris[i * 6 + 1] = j * 2 + 1; tris[i * 6 + 2] = i * 2 + 1;
+            tris[i * 6 + 3] = i * 2; tris[i * 6 + 4] = j * 2; tris[i * 6 + 5] = j * 2 + 1;
+        }
+        var m = new Mesh { name = "ring" };
+        m.vertices = verts; m.normals = norms; m.triangles = tris;
+        m.RecalculateBounds();
+        return m;
     }
 
     /// <summary>A flat oval, lying in the ground plane, a unit long.</summary>

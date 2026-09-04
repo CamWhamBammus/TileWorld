@@ -93,6 +93,11 @@ public class Wildlife : MonoBehaviour
             bool gone = animal.DistanceTo(player.position) > forget;
             bool bedded = !Fauna.Awake(animal.Kind, now);
 
+            // A bird on the ground out of its hours roosts where it stands
+            // rather than vanishing; the rest go, as they always did.
+            bool roosts = Fauna.Flies(animal.Kind) && !Fauna.All(animal.Kind).Airborne;
+            if (roosts && !gone) { animal.Roost(bedded); continue; }
+
             if (gone || bedded)
             {
                 living.RemoveAt(i);
@@ -257,6 +262,20 @@ public class Wildlife : MonoBehaviour
             if (Vector3.Distance(other.transform.position, from.transform.position) > reach) continue;
             other.Startle(threat, run, Random.Range(0.1f, 0.6f));
         }
+    }
+
+    /// <summary>A call answered: the nearest other of its kind within earshot calls back, once.</summary>
+    public static void Answer(Animal from, float reach, float delay)
+    {
+        if (instance == null) return;
+        Animal nearest = null; float closest = reach;
+        foreach (var other in instance.living)
+        {
+            if (other == null || other == from || other.Kind != from.Kind || !other.Visible) continue;
+            float d = Vector3.Distance(other.transform.position, from.transform.position);
+            if (d < closest) { closest = d; nearest = other; }
+        }
+        if (nearest != null) nearest.SpeakBack(delay);
     }
 
     /// <summary>One wolf's howl is taken up by the others within earshot, a moment apart.</summary>
