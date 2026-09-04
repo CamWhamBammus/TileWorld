@@ -104,7 +104,7 @@ Nineteen kinds, each keeping to its own country and its own hours, so which one 
 | Hare | snowfields | day | goes flat and still when it sees you, then bolts faster than anything |
 | Scorpion | desert sand | night | raises its sting at you; goes under the sand |
 
-![An eagle circling](docs/images/eagle.png)
+![An eagle circling](docs/images/eagle-circling.png)
 
 They move properly. Each leg is two bones bent to put its foot on the ground under it, so a planted foot stays where it was set down while the body passes over it, and an animal across a hillside stands with its uphill legs folded and its downhill legs straight. Ears and tails lag the head and body on springs. No two of a kind are the same size or the same shade, and herds have this year's young in them, small and kept close.
 
@@ -135,8 +135,6 @@ Hold F and the view narrows to what will fit on the page, scroll to zoom. Get cl
 The book also notes things it sees on its own, like three deer together, a fox out at night, or still water after dark. There are about forty of these, none required. When it runs out it tells you what it's curious about, which usually means going out at a time of day you haven't tried.
 
 The first few minutes, on a brand new save only, walk you through this with one animal placed in front of you and a couple of prompts.
-
-![The Summit Cairn](docs/images/cairn.png)
 
 ## The map
 
