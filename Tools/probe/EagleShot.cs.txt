@@ -80,9 +80,11 @@ public class _Probe : MonoBehaviour
 
         // from a little below and behind, so the wings are against the country, not the sky
         var back = -(an.transform.forward);
-        cam.fieldOfView = 42f;
-        cam.transform.position = p + back * 7f + Vector3.up * 1.2f + an.transform.right * 3f;
-        cam.transform.rotation = Quaternion.LookRotation((p + an.transform.forward * 3f - Vector3.up * 1.5f) - cam.transform.position, Vector3.up);
+        // from above and behind, looking well down: the frame is country, and
+        // the edge of the drawn world never comes into it
+        cam.fieldOfView = 44f;
+        cam.transform.position = p + back * 5.5f + Vector3.up * 4.8f + an.transform.right * 2.2f;
+        cam.transform.rotation = Quaternion.LookRotation((p + an.transform.forward * 1.5f - Vector3.up * 2.2f) - cam.transform.position, Vector3.up);
         yield return null;
         ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-eagle.png"));
         yield return new WaitForSecondsRealtime(1.2f);

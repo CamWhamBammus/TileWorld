@@ -4,6 +4,10 @@ A third person exploration game in Unity. You play a surveyor in an abandoned wo
 
 ![Two Forester's Watches on a reed lake](docs/images/hero.png)
 
+*Two Forester's Watches on a reed lake.*
+
+**Contents:** [The world](#the-world) · [Structures](#structures) · [Animals](#animals) · [The sketchbook](#the-sketchbook) · [The map](#the-map) · [Worlds and saving](#worlds-and-saving) · [Controls](#controls) · [Running it](#running-it) · [Code layout](#code-layout)
+
 ## The world
 
 Everything comes from the seed and a position. Terrain height, which tile goes where, which region you're in, where the structures are and even which planks have fallen off them are all recalculated whenever they're needed. A save file is just the seed plus where you've been and what you've found. The same seed always gives you the same world.
@@ -11,6 +15,8 @@ Everything comes from the seed and a position. Terrain height, which tile goes w
 The ground is a grid of tiles from a low poly tile pack, streamed in chunks of 15x15 and drawn with GPU instancing. Heights come from layered noise (a large scale mask picks where the mountains go, ridged noise shapes the ranges, smaller noise rolls the ground in between) and snap to steps so the tiles stay flat. A separate collision mesh ramps between the steps so you can walk up a hill instead of catching on every ledge.
 
 ![A jetty and a lighthouse at dawn](docs/images/lake.png)
+
+*A jetty and a lighthouse at dawn.*
 
 ### Regions
 
@@ -32,6 +38,8 @@ The world is split into regions about 240m across. Each one gets a character bas
 
 ![The Sand Gate next to an oasis](docs/images/desert.png)
 
+*The Sand Gate next to an oasis.*
+
 ### Water
 
 Water sits at one level across the whole world, and what kind of water it is depends on where you are. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under.
@@ -41,6 +49,8 @@ Water sits at one level across the whole world, and what kind of water it is dep
 Snow covers the ground above the snowline and all of a snowfield, with a ragged edge instead of a clean contour. It's a thick layer that hangs over the edges of the tiles like the grass does on the normal ones, and it has no collider, so you wade through it about a boot deep. Snow-covered trees and pines come with it.
 
 ![The Trapper's Cabin, with the desert in the distance](docs/images/snow.png)
+
+*The Trapper's Cabin, with the desert in the distance.*
 
 ### Time and weather
 
@@ -66,21 +76,29 @@ There are fifteen kinds of structure and each belongs to one kind of region, so 
 
 ![The Toadstool Ring](docs/images/fungal.png)
 
+*The Toadstool Ring.*
+
 They're built from a kit of parts: log walls, stone walls, timber framing, plank/thatch/slate roofs, doors, windows, round towers, battlements, piers, and a pile of props. All of it is generated geometry that takes its colours from the tile pack's palette texture, so the buildings use the same material as the ground.
 
 Every structure is a ruin. Each one has a decay value from 0 (intact) to 1 (about to fall over) and every part of the kit reacts to it: wall tops crumble, roofs lose sections, doors hang open or fall off, railings break, windows lose their glass, grass grows through the floor, wood goes grey. On top of that the biome adds its own wear. Vines and moss in the forest, snow on the roofs and drifted against the walls, sand piled up against the gate, char where the camp burned down. Each structure also has its own specific damage, like a hide with one stilt gone that hangs at an angle, a breached wall, a snapped mast, or a lighthouse with the light out.
 
 ![The Lighthouse at dusk](docs/images/dusk.png)
 
+*The Lighthouse at dusk.*
+
 Walk up to a structure and it gets added to your map with its name, and there's something written at each one. Climb the tall ones and you survey the area around them, which fills in a chunk of the map without having to walk it. Once it's dark you can rest at any structure you've found and skip to morning.
 
 ![The Buried Tower](docs/images/ruin.png)
 
+*The Buried Tower.*
+
 ## Animals
+
+Nineteen kinds, each keeping to its own country and its own hours, so which one you meet is a question of where you're standing and what time it is.
 
 ![A deer walking](docs/images/deer.png)
 
-Nineteen kinds, each keeping to its own country and its own hours, so which one you meet is a question of where you're standing and what time it is.
+*A deer walking.*
 
 | Animal | Where | When | What it does |
 | --- | --- | --- | --- |
@@ -104,27 +122,39 @@ Nineteen kinds, each keeping to its own country and its own hours, so which one 
 | Hare | snowfields | day | goes flat and still when it sees you, then bolts faster than anything |
 | Scorpion | desert sand | night | raises its sting at you; goes under the sand |
 
-![An eagle circling](docs/images/eagle-circling.png)
+![An eagle circling](docs/images/eagle-over-the-snow.png)
+
+*An eagle circling.*
 
 They move properly. Each leg is two bones bent to put its foot on the ground under it, so a planted foot stays where it was set down while the body passes over it, and an animal across a hillside stands with its uphill legs folded and its downhill legs straight. Ears and tails lag the head and body on springs. No two of a kind are the same size or the same shade, and herds have this year's young in them, small and kept close.
 
 ![A hare gone flat](docs/images/hare.png)
 
+*A hare gone flat.*
+
 They react to each other, not just to you. An alarm carries: whatever puts one animal to flight sends everything within earshot off too, a beat later, so a herd goes in a wave and one marmot's whistle empties the slope. Foxes hunt rabbits and wolves hunt hares. The quarry runs, the hunter lunges at the last stride and misses, and the chase is the thing worth watching. Groups have a leader the rest keep up with, a wolf's howl gets taken up by the pair, a call gets an answer, and birds roost at night rather than disappearing.
 
 ![A fox after a rabbit](docs/images/chase.png)
+
+*A fox after a rabbit.*
 
 They leave signs. Prints in snow and sand that fade over a few minutes, ground turned over where a boar has been rooting, a feather where a bird went up, a ring where a fish rose, and trails worn where animals keep passing. You can find an animal by what it left.
 
 ![Tracks in the snow](docs/images/prints.png)
 
+*Tracks in the snow.*
+
 How close they let you get depends on how you move. Run at them and they're gone; walk, or stand still, and they settle. Some never run at all: a tortoise shuts its shell, a hedgehog curls up, a scorpion puts its sting up.
 
 ![A scorpion with its sting up](docs/images/scorpion.png)
 
+*A scorpion with its sting up.*
+
 ## The sketchbook
 
 ![The sketchbook's contents](docs/images/sketchbook.png)
+
+*The sketchbook's contents.*
 
 Press G. This is the main point of the game.
 
