@@ -1,0 +1,129 @@
+// A probe: every land animal walked and then run on open ground, and the
+// gait measured -- footfalls a second, how far planted feet slide, how
+// jerky the hip is -- so the odd one out shows as a number.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateField = typeof(Animal).GetField("state", flags);
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var targetField = typeof(Animal).GetField("target", flags);
+        var manager = FindFirstObjectByType<Wildlife>();
+        foreach (var wild in FindObjectsByType<Animal>(FindObjectsSortMode.None)) Destroy(wild.gameObject);
+        manager.enabled = false;
+
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int flat = home; bool found = false;
+        for (int r = 2; r < 500 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int cx = home.x + dx, cz = home.y + dz;
+            float lo = float.MaxValue, hi = float.MinValue; bool ok = true;
+            for (int i = -14; i <= 14 && ok; i++) for (int j = -3; j <= 3 && ok; j++)
+            {
+                float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+                if (WaterSurface.IsUnderwater(cx + i, cz + j, seed)) ok = false;
+            }
+            if (ok && hi - lo < 0.01f) { flat = new Vector2Int(cx, cz); found = true; }
+        }
+        var origin = new Vector3(flat.x * WorldGrid.TileSize, WorldHeight.SurfaceY(flat.x, flat.y, seed), flat.y * WorldGrid.TileSize);
+        body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -80f); body.enabled = true;
+        yield return new WaitForSecondsRealtime(5f);
+
+        var kinds = new[] { FaunaKind.Deer, FaunaKind.Fox, FaunaKind.Wolf, FaunaKind.Boar, FaunaKind.Goat, FaunaKind.Rabbit, FaunaKind.Hare,
+                            FaunaKind.Marmot, FaunaKind.Hedgehog, FaunaKind.Tortoise, FaunaKind.Heron, FaunaKind.Raven, FaunaKind.Crab, FaunaKind.Scorpion, FaunaKind.Frog };
+
+        Mark("SWEEP kind | walk: m/s steps/s slip% hipjerk(rev/s, worst deg/frame) | run: the same");
+
+        foreach (var kind in kinds)
+        {
+            string line = kind.ToString().PadRight(9);
+            for (int mode = 0; mode < 2; mode++)
+            {
+                var go = new GameObject("probe " + kind);
+                var an = go.AddComponent<Animal>();
+                an.Settle(kind, seed, player, origin + new Vector3(-12f, 0f, 0f), 1f);
+                typeof(Animal).GetField("yaw", flags).SetValue(an, 90f);
+                go.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+                yield return new WaitForSecondsRealtime(0.4f);
+                if (mode == 0) { stateField.SetValue(an, System.Enum.Parse(stateType, "Wander")); targetField.SetValue(an, origin + new Vector3(60f, 0f, 0f)); untilField.SetValue(an, Time.time + 1000f); }
+                else an.Startle(origin + new Vector3(-60f, 0f, 0f), true);
+                yield return new WaitForSecondsRealtime(mode == 0 ? 1.5f : 0.8f);
+
+                // a leg that is a leg: the first non-wing hip
+                Transform hip = null;
+                foreach (var t in an.GetComponentsInChildren<Transform>()) if (t.name == "foreleg" || (t.name == "hindleg" && hip == null)) { hip = t; if (t.name == "foreleg") break; }
+
+                float travel = 0f, slip = 0f; int steps = 0; var was = new bool[4]; var last = new Vector3[4]; var lastRoot = an.transform.position;
+                float lastAngle = hip != null ? hip.localEulerAngles.x : 0f, lastVel = 0f, worst = 0f; int reversals = 0;
+                float began = Time.realtimeSinceStartup; float span = 3f;
+                while (Time.realtimeSinceStartup - began < span)
+                {
+                    yield return null;
+                    var p = an.transform.position;
+                    travel += Vector3.Distance(new Vector3(p.x, 0f, p.z), new Vector3(lastRoot.x, 0f, lastRoot.z)); lastRoot = p;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (an.Planted[i] && !was[i]) steps++;
+                        if (an.Planted[i] && was[i] && last[i] != Vector3.zero) slip += Vector3.Distance(new Vector3(an.Feet[i].x, 0f, an.Feet[i].z), new Vector3(last[i].x, 0f, last[i].z));
+                        was[i] = an.Planted[i]; last[i] = an.Feet[i];
+                    }
+                    if (hip != null)
+                    {
+                        float a = hip.localEulerAngles.x; float signed = Mathf.DeltaAngle(lastAngle, a); lastAngle = a;
+                        worst = Mathf.Max(worst, Mathf.Abs(signed));
+                        if (Mathf.Abs(signed) > 0.05f) { if (Mathf.Sign(signed) != Mathf.Sign(lastVel) && lastVel != 0f) reversals++; lastVel = signed; }
+                    }
+                }
+                string st = stateField.GetValue(an).ToString();
+                line += string.Format(" | {0}: {1:F1} m/s {2:F1} st/s slip {3:F0}% jerk {4:F1}/s worst {5:F1} [{6}]",
+                    mode == 0 ? "walk" : "run", travel / span, steps / span, 100f * slip / Mathf.Max(0.01f, travel), reversals / span, worst, st);
+                Destroy(go);
+                yield return new WaitForSecondsRealtime(0.3f);
+            }
+            Mark("SWEEP " + line);
+        }
+
+        Mark("done");
+    }
+}

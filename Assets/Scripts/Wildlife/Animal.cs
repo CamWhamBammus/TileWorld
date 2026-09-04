@@ -1115,7 +1115,29 @@ public class Animal : MonoBehaviour
         // at both ends of the stance and the body outran it.
         float u = Mathf.Repeat(turn, Mathf.PI * 2f);
         float along, lift;
-        if (u < Mathf.PI)
+        if (walk.Bounds && stride > 0.5f)
+        {
+            // The body is up while sin(gait) is positive -- that is the bounce
+            // in Carriage -- and the feet go with it, tucked and swinging
+            // forward to land; on the ground they go back at one speed.
+            // The first half of the cycle is the air, the second the ground:
+            // exactly halves, or the two joined with a jump where the phase
+            // wrapped and the legs snapped round.
+            float phaseOfBody = Mathf.Repeat(gait, Mathf.PI * 2f);
+            if (phaseOfBody < Mathf.PI)
+            {
+                float p = phaseOfBody / Mathf.PI;
+                along = Mathf.Lerp(-half, half, p);
+                lift = Mathf.Sin(p * Mathf.PI) * reach * 0.30f * stride;
+            }
+            else
+            {
+                float p = (phaseOfBody - Mathf.PI) / Mathf.PI;
+                along = half * (1f - 2f * p);
+                lift = 0f;
+            }
+        }
+        else if (u < Mathf.PI)
         {
             float p = u / Mathf.PI;
             along = -Mathf.Cos(p * Mathf.PI) * half;
@@ -1196,7 +1218,16 @@ public class Animal : MonoBehaviour
         // legs went round nine times a second. A walk keeps a foot on the
         // ground, and a stride much past half the leg has it stretched.
         bool free = walk.Bounds || running;
-        return free ? asked : Mathf.Min(asked, reach * 0.48f);
+        float half = free ? Mathf.Min(asked, reach * 0.85f) : Mathf.Min(asked, reach * 0.48f);
+
+        // and never so short that the legs blur: about three cycles a second
+        // at most. For a small thing at speed that means a stride longer than
+        // its leg, with the body in the air between and the feet reaching at
+        // the ends -- a stretched gallop, which is what a sprint looks like,
+        // and better than a whir.
+        float slowest = pace / (12f * worldScale);
+        float most = reach * (walk.Bounds ? 2.0f : free ? 1.4f : 1.2f);
+        return Mathf.Min(Mathf.Max(half, slowest), most);
     }
 
     /// <summary>Radians of cycle per metre travelled, so the stance foot goes back at the body's speed.</summary>
