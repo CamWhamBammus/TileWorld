@@ -287,7 +287,7 @@ public class Animal : MonoBehaviour
         if (Fauna.All(Kind).Airborne)
         {
             Wander();
-            until = Time.time + Random.Range(1.5f, 4f);
+            until = Time.time + (Fauna.All(Kind).Soars ? Random.Range(6f, 14f) : Random.Range(1.5f, 4f));
             return;
         }
 
@@ -338,6 +338,9 @@ public class Animal : MonoBehaviour
                 FaunaKind.Frog => new[] { Gesture.Shake },
                 FaunaKind.Hedgehog => new[] { Gesture.Shake, Gesture.Scratch },
                 FaunaKind.Bat => new Gesture[0],
+                FaunaKind.Eagle => new Gesture[0],
+                FaunaKind.Scorpion => new Gesture[0],
+                FaunaKind.Hare => new[] { Gesture.SitUp, Gesture.Scratch, Gesture.Shake, Gesture.Groom },
                 FaunaKind.Fish => new Gesture[0],
                 _ => new[] { Gesture.Stamp, Gesture.Shake, Gesture.Groom }
             };
@@ -430,8 +433,10 @@ public class Animal : MonoBehaviour
 
         Face(to, dt, state == State.Flee ? 7f : 2.5f);
 
-        // a bat's flight is all jinks: the heading wavers on its own
-        if (Fauna.All(Kind).Airborne) yaw += Mathf.Sin(Time.time * 5.3f + phase) * 90f * dt + Mathf.Sin(Time.time * 11f + phase * 2f) * 40f * dt;
+        // a bat's flight is all jinks: the heading wavers on its own; an
+        // eagle's is one long slow circle
+        if (Fauna.All(Kind).Soars) yaw += 24f * dt * (Mathf.Repeat(phase, 1f) > 0.5f ? 1f : -1f);
+        else if (Fauna.All(Kind).Airborne) yaw += Mathf.Sin(Time.time * 5.3f + phase) * 90f * dt + Mathf.Sin(Time.time * 11f + phase * 2f) * 40f * dt;
 
         Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
 
@@ -483,7 +488,8 @@ public class Animal : MonoBehaviour
 
         // a flier climbs while it is getting away and comes down once it has
         if (state == State.Flee) perched = false;
-        float wantAltitude = Fauna.All(Kind).Airborne ? traits.Size * 9f + Mathf.Sin(Time.time * 0.7f + phase) * traits.Size * 2.5f
+        float wantAltitude = Fauna.All(Kind).Soars ? traits.Size * 22f + Mathf.Sin(Time.time * 0.25f + phase) * traits.Size * 4f
+                           : Fauna.All(Kind).Airborne ? traits.Size * 9f + Mathf.Sin(Time.time * 0.7f + phase) * traits.Size * 2.5f
                            : Fauna.Flies(Kind) && state == State.Flee ? traits.Size * 5.5f : (perched ? perchHeight : 0f);
         altitude = Mathf.MoveTowards(altitude, wantAltitude, dt * traits.Size * (wantAltitude > altitude ? 3.2f : 2.6f));
 
@@ -554,6 +560,7 @@ public class Animal : MonoBehaviour
                 default: forward = moving ? 4f : 0f; splay = 8f; break;
             }
             if (gesture == Gesture.SitUp) { forward = -18f; splay = -6f; }
+            if (Fauna.All(Kind).Freezes && state == State.Alert) { forward = 62f; splay = -8f; }   // laid flat along the back
             if (Kind == FaunaKind.Goat) splay += 30f;     // carried out and down whatever it is doing
 
             // the flick: a quick lay-back and return, when its clock comes round
@@ -616,6 +623,16 @@ public class Animal : MonoBehaviour
                 swing = Mathf.Sin(Time.time * 6f + phase) * 25f;
                 break;
 
+            case FaunaKind.Scorpion:
+                // curled over the back, and higher, quivering, when it is at bay
+                lift = state == State.Alert ? -60f + Mathf.Sin(Time.time * 14f) * 5f : -20f;
+                break;
+
+            case FaunaKind.Eagle:
+                lift = Flying ? 2f : 6f;
+                swing = Flying ? (Mathf.Repeat(phase, 1f) > 0.5f ? 10f : -10f) : 0f;
+                break;
+
             case FaunaKind.Bat:
                 lift = 10f;
                 break;
@@ -662,7 +679,14 @@ public class Animal : MonoBehaviour
             {
                 float side = i == 0 ? 1f : -1f;
                 Quaternion wing;
-                if (flying)
+                if (flying && Fauna.All(Kind).Soars && state != State.Flee)
+                {
+                    // set wings, held a little up, with a few slow beats now and then
+                    bool beating = Mathf.Sin(Time.time * 0.23f + phase) > 0.75f;
+                    float beat = beating ? Mathf.Sin(Time.time * 3.2f) * 22f : 6f + Mathf.Sin(Time.time * 0.9f + phase) * 3f;
+                    wing = Quaternion.AngleAxis(side * beat, Vector3.forward) * Quaternion.AngleAxis(-side * 88f, Vector3.up);
+                }
+                else if (flying)
                 {
                     float beat = Mathf.Sin(Time.time * (traits.Size < 0.3f ? 18f : 8.5f) + phase) * 34f - 8f;
                     wing = Quaternion.AngleAxis(side * beat, Vector3.forward) * Quaternion.AngleAxis(-side * 86f, Vector3.up);
@@ -693,9 +717,9 @@ public class Animal : MonoBehaviour
                 hip = 70f;
                 knee = -15f;
             }
-            else if (Fauna.All(Kind).Withdraws && state == State.Alert)
+            else if ((Fauna.All(Kind).Withdraws || Fauna.All(Kind).Freezes) && state == State.Alert)
             {
-                // tucked in under it
+                // tucked in under it, or folded flat to the ground
                 hip = fore ? 50f : -50f;
                 knee = fore ? -70f : 70f;
             }
@@ -804,12 +828,13 @@ public class Animal : MonoBehaviour
             // up, nose a little high, with the slow lift and fall of the beat
             rise = altitude + Mathf.Sin(Time.time * 8.5f + phase + 1.2f) * traits.Size * 0.04f;
             pitch = state == State.Flee ? -6f : 8f;
-            if (Fauna.All(Kind).Airborne) { pitch = -4f; roll = Mathf.Sin(Time.time * 5.3f + phase) * 30f; }
+            if (Fauna.All(Kind).Soars) { pitch = -2f; roll = (Mathf.Repeat(phase, 1f) > 0.5f ? -1f : 1f) * 18f; }
+            else if (Fauna.All(Kind).Airborne) { pitch = -4f; roll = Mathf.Sin(Time.time * 5.3f + phase) * 30f; }
         }
-        else if (Fauna.All(Kind).Withdraws && state == State.Alert)
+        else if ((Fauna.All(Kind).Withdraws || Fauna.All(Kind).Freezes) && state == State.Alert)
         {
-            // down onto the sand, and stays there
-            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.12f, dt * 4f);
+            // down onto the sand, or flat to the snow, and stays there
+            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * (Fauna.All(Kind).Freezes ? 0.24f : 0.12f), dt * 4f);
         }
         else if (state == State.Rest)
         {
@@ -940,6 +965,12 @@ public class Animal : MonoBehaviour
             dip = -4f;
         }
         if (Kind == FaunaKind.Owl && state == State.Alert) { turn = Mathf.Clamp(turn, -120f, 120f); }
+
+        // a hare gone flat keeps its head down, and its eye on you
+        if (Fauna.All(Kind).Freezes && state == State.Alert) { dip = 14f; turn = Mathf.Clamp(turn, -40f, 40f); }
+
+        // a scorpion's pincers come up with its sting
+        if (Kind == FaunaKind.Scorpion) { dip = state == State.Alert ? -30f : 2f; turn = 0f; }
 
         // a crab's claws come up when it is stood at bay
         if (Kind == FaunaKind.Crab)

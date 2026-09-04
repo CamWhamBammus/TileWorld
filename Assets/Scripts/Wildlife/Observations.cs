@@ -151,6 +151,21 @@ public static class Observations
         Add("fish-rise", "a fish rising",
             s => s.Kind == FaunaKind.Fish && s.Doing == Doing.Walking);
 
+        Add("eagle-high", "an eagle circling",
+            s => s.Kind == FaunaKind.Eagle);
+
+        Add("hare-snow", "a hare on the snow",
+            s => s.Kind == FaunaKind.Hare && s.Snow);
+
+        Add("hare-flat", "a hare lying flat, hoping",
+            s => s.Kind == FaunaKind.Hare && s.Doing == Doing.Watching);
+
+        Add("scorpion-night", "a scorpion on the sand",
+            s => s.Kind == FaunaKind.Scorpion && Night(s));
+
+        Add("scorpion-sting", "a scorpion with its sting up",
+            s => s.Kind == FaunaKind.Scorpion && s.Doing == Doing.Watching);
+
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 

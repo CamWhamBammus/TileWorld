@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot, Crab, Owl, Frog, Bat, Hedgehog, Fish }
+public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot, Crab, Owl, Frog, Bat, Hedgehog, Fish, Eagle, Hare, Scorpion }
 
 /// <summary>
 /// What lives where. Like everything else in the world this is a function of
@@ -98,6 +98,8 @@ public static class Fauna
         public bool Airborne;       // never on the ground at all
         public float WadesLeast;    // the shallowest water it will have, for what lives under it
         public bool Surfaces;       // lives out of sight below the water and rises now and then
+        public bool Soars;          // airborne high up, circling on set wings
+        public bool Freezes;        // goes flat and still when it sees you, before it goes
 
         // When it is about. A window whose start is later than its end runs
         // through midnight; no windows at all means it keeps no hours.
@@ -688,6 +690,109 @@ public static class Fauna
                                WobbleDepth = 0f, Rasp = 0f, Noise = 0.9f, Thump = 1f },
 
             ProperHours = new Vector2(0.62f, 0.86f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // eagle: over the peaks and the high ground by day, circling on set
+        // wings a long way up; the one thing you draw by looking up
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "eagle",
+                Coat = new Color(0.361f, 0.271f, 0.180f),
+                Under = new Color(0.851f, 0.780f, 0.620f),
+                Dark = new Color(0.180f, 0.141f, 0.098f),
+                Size = 0.80f, WalkSpeed = 4.2f, RunSpeed = 9f,
+                Notices = 30f, Bolts = 14f, Settles = 70f
+            },
+            Lowest = 0.3f, Highest = 1f,
+            Countries = new[] { Regions.Character.Peaks, Regions.Character.Hills, Regions.Character.Stone },
+            Wades = 99f,
+            Flies = true, Airborne = true, Soars = true,
+            Hours = new[] { new Vector2(0.20f, 0.80f) },
+            Company = 1, Crowd = 2,
+
+            Walk = new Gait { Cadence = 1f, Swing = 0f, Knee = 0f, Bounce = 0f, Pitch = 0f, Roll = 0f, Bounds = false },
+            Run = new Gait { Cadence = 1f, Swing = 0f, Knee = 0f, Bounce = 0f, Pitch = 0f, Roll = 0f, Bounds = false },
+
+            Found = "over the high ground by day, a long way up",
+            Country = "over the peaks",
+            Habit = "circling", Doing = Doing.Walking,
+
+            // a thin cry, falling
+            Call = new Voice { Length = 0.7f, Pitch = 1400f, Glide = -0.35f, WobbleRate = 6f,
+                               WobbleDepth = 30f, Rasp = 0.1f, Noise = 0.06f, Thump = 0f },
+
+            ProperHours = new Vector2(0f, 0f), ProperLowest = 0.3f, ProperHighest = 1f
+        },
+
+        // hare: the snowfields by day, white on the white; it goes flat and
+        // still when it sees you, and then it is the fastest thing there is
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "hare",
+                Coat = new Color(0.922f, 0.929f, 0.941f),
+                Under = new Color(0.851f, 0.851f, 0.878f),
+                Dark = new Color(0.149f, 0.149f, 0.169f),
+                Size = 0.52f, WalkSpeed = 1.3f, RunSpeed = 9.5f,
+                Notices = 18f, Bolts = 7f, Settles = 40f
+            },
+            Lowest = 0f, Highest = 0.9f,
+            Countries = new[] { Regions.Character.Snow },
+            Freezes = true,
+            Hours = new[] { new Vector2(0.18f, 0.84f) },
+            Company = 1, Crowd = 4,
+
+            Walk = new Gait { Cadence = 3.0f, Swing = 36f, Knee = 60f, Bounce = 0.30f,
+                              Pitch = 12f, Roll = 0f, Bounds = true },
+            Run = new Gait { Cadence = 2.0f, Swing = 58f, Knee = 62f, Bounce = 0.5f,
+                             Pitch = 14f, Roll = 0f, Bounds = true },
+
+            Found = "the snowfields by day, white on the white",
+            Country = "on the snow in daylight",
+            Habit = "lying flat", Doing = Doing.Watching,
+
+            Call = new Voice { Length = 0.14f, Pitch = 80f, Glide = -0.4f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0f, Noise = 0.5f, Thump = 1f },
+
+            ProperHours = new Vector2(0.30f, 0.72f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // scorpion: the sand after dark; pincers, a sting up over its back,
+        // and under the sand when you come near
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "scorpion",
+                Coat = new Color(0.451f, 0.302f, 0.118f),
+                Under = new Color(0.600f, 0.451f, 0.200f),
+                Dark = new Color(0.118f, 0.078f, 0.039f),
+                Size = 0.22f, WalkSpeed = 0.7f, RunSpeed = 2.4f,
+                Notices = 5f, Bolts = 2.6f, Settles = 4f
+            },
+            Lowest = 0f, Highest = 0.7f,
+            Countries = new[] { Regions.Character.Desert },
+            Burrows = true,
+            Hours = new[] { new Vector2(0.72f, 0.24f) },
+            Company = 1, Crowd = 4,
+
+            Walk = new Gait { Cadence = 10f, Swing = 22f, Knee = 16f, Bounce = 0.01f,
+                              Pitch = 0f, Roll = 2f, Bounds = false },
+            Run = new Gait { Cadence = 8f, Swing = 30f, Knee = 20f, Bounce = 0.02f,
+                             Pitch = 0f, Roll = 2f, Bounds = false },
+
+            Found = "the sand after dark",
+            Country = "on the sand after dark",
+            Habit = "with its sting up", Doing = Doing.Watching,
+
+            // a dry scrape
+            Call = new Voice { Length = 0.1f, Pitch = 500f, Glide = 0f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0.9f, Noise = 0.9f, Thump = 0.5f },
+
+            ProperHours = new Vector2(0.78f, 0.20f), ProperLowest = 0f, ProperHighest = 1f
         }
     };
 
