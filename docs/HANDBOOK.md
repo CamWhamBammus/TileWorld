@@ -218,6 +218,20 @@ outright. Where a statue would stand, a boulder is stood on end and drawn out ta
 pack's stones include bright gems, and one of those on end was a white pole
 eight high.
 
+**Weathering.** Every structure is a ruin. A `Kit.Builder` carries a `Decay`
+(nought kept, one barely standing) and a `Weathering` (what the country does
+to a place left to it: Vines, Snow, Sand, Char, or None on bare rock), and
+every part consults them: a part with fragility f is gone when
+`random < f * Decay`; walls crumble, roofs come down a section at a time,
+doors hang, rails break, glass goes, floors grass over, wood greys or chars.
+`LandmarkBuilder.WeatherAt` picks the weather from the ground the footprint
+actually stands on (snow if most of it is snowy, sand on beaches and deserts,
+char in the dead woods). Decay is set per kind in its builder, 0.6 to 0.85;
+the collapse particular to each -- a fallen stilt, a breached wall, a snapped
+mast -- is written into that builder by hand. To see one, run the structure
+tour for its kind. Nothing about the world sets decay yet; making it come
+from the placement seed, with a rare kept place, is the obvious next step.
+
 Densities are tuned by `Chance` against a count: the tour probe reports how
 many of each kind lie within forty chunks of the player, and a kind with a
 small footprint in common country needs a small chance (the cairn is 6).
