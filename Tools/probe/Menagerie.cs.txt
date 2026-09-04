@@ -132,6 +132,9 @@ public class _Probe : MonoBehaviour
                 FaunaKind.Tortoise => new[] { "Stand", "Wander", "Alert", "Alert" },
                 FaunaKind.Wolf => new[] { "Stand", "Alert", ":Howl", "Rest" },
                 FaunaKind.Heron => new[] { "Stand", "Graze", ":Stretch", "Flee", "Flee" },
+                FaunaKind.Boar => new[] { "Stand", "Graze", "Alert", ":Stamp", "Rest" },
+                FaunaKind.Raven => new[] { "Stand", "Graze", ":Stretch", "Flee", "Flee" },
+                FaunaKind.Marmot => new[] { "Stand", ":SitUp", "Alert", "Flee", "Hidden" },
                 FaunaKind.Rabbit => new[] { "Stand", "Alert", ":SitUp", ":Scratch", "Rest" },
                 FaunaKind.Fox => new[] { "Stand", "Alert", ":Groom", ":Pounce", "Rest" },
                 FaunaKind.Goat => new[] { "Stand", "Alert", ":Groom", ":Shake", "Rest" },
@@ -153,7 +156,7 @@ public class _Probe : MonoBehaviour
                     if (pose == "Wander") typeof(Animal).GetField("target", flags).SetValue(a, a.transform.position + Vector3.right * 6f);
                 }
 
-                float wait = pose == "Flee" ? (shot == 3 ? 1.2f : 1.6f) : pose == ":Stamp" ? 0.45f : pose == ":Pounce" ? 1.05f : pose == "Rest" ? 2.2f : 1.3f;
+                float wait = pose == "Flee" ? (shot == 3 ? 1.2f : 1.6f) : pose == "Hidden" ? 1.6f : pose == ":Stamp" ? 0.45f : pose == ":Pounce" ? 1.05f : pose == "Rest" ? 2.2f : 1.3f;
                 yield return new WaitForSecondsRealtime(wait);
 
                 float up = altitudeField != null ? (float)altitudeField.GetValue(a) : 0f;
@@ -161,7 +164,11 @@ public class _Probe : MonoBehaviour
                 cam.transform.position = p + new Vector3(sz * 2.2f, sz * 0.9f, -sz * 2.9f);
                 cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * sz * 0.5f) - cam.transform.position, Vector3.up);
                 HideInterface();
-                yield return new WaitForSecondsRealtime(0.15f);
+                yield return null;
+                up = altitudeField != null ? (float)altitudeField.GetValue(a) : 0f;
+                p = a.transform.position + Vector3.up * up;
+                cam.transform.position = p + new Vector3(sz * 2.2f, sz * 0.9f, -sz * 2.9f);
+                cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * sz * 0.5f) - cam.transform.position, Vector3.up);
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + name + "-" + shot + "-" + pose.Trim(':').ToLower() + ".png"));
                 yield return new WaitForSecondsRealtime(0.4f);
                 shot++;

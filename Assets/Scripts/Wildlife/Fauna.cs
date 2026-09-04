@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron }
+public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot }
 
 /// <summary>
 /// What lives where. Like everything else in the world this is a function of
@@ -90,6 +90,8 @@ public static class Fauna
         public bool Flies;          // gets away through the air, not over the ground
         public bool Withdraws;      // pulls in and sits tight rather than running
         public bool Howls;          // a call with its head up, in the dark
+        public bool Burrows;        // goes to ground when it bolts, and comes back up later
+        public bool Roots;          // feeds with its snout in the ground, not its teeth in the grass
 
         // When it is about. A window whose start is later than its end runs
         // through midnight; no windows at all means it keeps no hours.
@@ -364,6 +366,113 @@ public static class Fauna
                                WobbleDepth = 0f, Rasp = 0.6f, Noise = 0.3f, Thump = 0f },
 
             ProperHours = new Vector2(0f, 0f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // boar: the dead woods and the mushroom woods, in a sounder of a few,
+        // rooting. It faces you and stamps before it goes.
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "boar",
+                Coat = new Color(0.322f, 0.278f, 0.220f),
+                Under = new Color(0.769f, 0.694f, 0.561f),
+                Dark = new Color(0.118f, 0.098f, 0.078f),
+                Size = 0.78f, WalkSpeed = 1.3f, RunSpeed = 6.8f,
+                Notices = 18f, Bolts = 9f, Settles = 30f
+            },
+            Lowest = 0f, Highest = 0.7f,
+            Countries = new[] { Regions.Character.Dead, Regions.Character.Fungal },
+            Roots = true,
+            Hours = new[] { new Vector2(0.10f, 0.50f), new Vector2(0.60f, 0.96f) },
+            Company = 3, Crowd = 6,
+
+            // a busy trot, low to the ground; a flat-out run
+            Walk = new Gait { Cadence = 3.8f, Swing = 22f, Knee = 34f, Bounce = 0.03f,
+                              Pitch = 1.5f, Roll = 3f, Bounds = false },
+            Run = new Gait { Cadence = 2.6f, Swing = 40f, Knee = 40f, Bounce = 0.12f,
+                             Pitch = 3f, Roll = 2f, Bounds = false },
+
+            Found = "the dead wood, rooting",
+            Country = "in the dead wood",
+            Habit = "rooting", Doing = Doing.Grazing,
+
+            // a grunt, low and rough
+            Call = new Voice { Length = 0.32f, Pitch = 108f, Glide = -0.12f, WobbleRate = 9f,
+                               WobbleDepth = 6f, Rasp = 0.55f, Noise = 0.30f, Thump = 0f },
+
+            ProperHours = new Vector2(0f, 0f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // raven: the dead wood, on the ground, hopping and pecking, off by air
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "raven",
+                Coat = new Color(0.098f, 0.098f, 0.118f),
+                Under = new Color(0.251f, 0.251f, 0.290f),
+                Dark = new Color(0.051f, 0.051f, 0.059f),
+                Size = 0.36f, WalkSpeed = 0.7f, RunSpeed = 7.2f,
+                Notices = 16f, Bolts = 8f, Settles = 48f
+            },
+            Lowest = 0f, Highest = 1f,
+            Countries = new[] { Regions.Character.Dead, Regions.Character.Lowland, Regions.Character.Stone },
+            Flies = true,
+            Hours = new[] { new Vector2(0.15f, 0.85f) },
+            Company = 2, Crowd = 5,
+
+            // a hop, both feet together
+            Walk = new Gait { Cadence = 4.2f, Swing = 20f, Knee = 30f, Bounce = 0.25f,
+                              Pitch = 6f, Roll = 0f, Bounds = true },
+            Run = new Gait { Cadence = 1.2f, Swing = 10f, Knee = 20f, Bounce = 0f,
+                             Pitch = 0f, Roll = 0f, Bounds = false },
+
+            Found = "the dead wood, on the ground",
+            Country = "in the dead wood",
+            Habit = "pecking at the ground", Doing = Doing.Grazing,
+
+            // a croak
+            Call = new Voice { Length = 0.30f, Pitch = 175f, Glide = -0.18f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0.7f, Noise = 0.35f, Thump = 0f },
+
+            ProperHours = new Vector2(0f, 0f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // marmot: the bare rock, sitting up to keep watch; a whistle, a
+        // short dash, and gone to ground
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "marmot",
+                Coat = new Color(0.620f, 0.502f, 0.322f),
+                Under = new Color(0.851f, 0.753f, 0.549f),
+                Dark = new Color(0.251f, 0.200f, 0.149f),
+                Size = 0.40f, WalkSpeed = 0.9f, RunSpeed = 4.6f,
+                Notices = 20f, Bolts = 12f, Settles = 10f
+            },
+            Lowest = 0.15f, Highest = 1f,
+            Countries = new[] { Regions.Character.Stone, Regions.Character.Peaks },
+            Burrows = true,
+            Hours = new[] { new Vector2(0.20f, 0.80f) },
+            Company = 3, Crowd = 6,
+
+            // a waddle, and a bounding dash
+            Walk = new Gait { Cadence = 4.6f, Swing = 26f, Knee = 40f, Bounce = 0.06f,
+                              Pitch = 2f, Roll = 4f, Bounds = false },
+            Run = new Gait { Cadence = 3.0f, Swing = 40f, Knee = 50f, Bounce = 0.22f,
+                             Pitch = 8f, Roll = 0f, Bounds = true },
+
+            Found = "the bare rock, sitting up",
+            Country = "on the bare rock",
+            Habit = "keeping watch", Doing = Doing.Standing,
+
+            // the whistle
+            Call = new Voice { Length = 0.26f, Pitch = 2100f, Glide = -0.08f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0f, Noise = 0.04f, Thump = 0f },
+
+            ProperHours = new Vector2(0f, 0f), ProperLowest = 0.15f, ProperHighest = 1f
         }
     };
 

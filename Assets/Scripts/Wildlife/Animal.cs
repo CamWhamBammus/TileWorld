@@ -13,7 +13,7 @@ using UnityEngine;
 /// </summary>
 public class Animal : MonoBehaviour
 {
-    private enum State { Stand, Graze, Look, Wander, ToWater, Drink, Rest, Alert, Flee }
+    private enum State { Stand, Graze, Look, Wander, ToWater, Drink, Rest, Alert, Flee, Hidden }
 
     /// <summary>
     /// The small things an animal does between one thing and the next, laid
@@ -37,7 +37,8 @@ public class Animal : MonoBehaviour
                 case State.Drink: return Doing.Drinking;
                 case State.Rest: return Doing.Resting;
                 case State.Alert: return Doing.Watching;
-                case State.Flee: return Doing.Fleeing;
+                case State.Flee:
+                case State.Hidden: return Doing.Fleeing;
                 case State.Wander:
                 case State.ToWater: return Doing.Walking;
                 default: return Doing.Standing;
@@ -152,7 +153,7 @@ public class Animal : MonoBehaviour
     private void Think(float distance)
     {
         // Being seen matters more than whatever it was doing.
-        if (state != State.Flee)
+        if (state != State.Flee && state != State.Hidden)
         {
             float wariness = Stalking.Wariness;
 
@@ -174,7 +175,7 @@ public class Animal : MonoBehaviour
 
                 // the forefoot stamp of something that has seen you and is
                 // not yet sure what to do about it
-                if ((Kind == FaunaKind.Deer || Kind == FaunaKind.Goat) && gesture == Gesture.None && Time.time > nextGesture && Random.value < 0.02f)
+                if ((Kind == FaunaKind.Deer || Kind == FaunaKind.Goat || Kind == FaunaKind.Boar) && gesture == Gesture.None && Time.time > nextGesture && Random.value < (Kind == FaunaKind.Boar ? 0.05f : 0.02f))
                 {
                     Begin(Gesture.Stamp, 0.8f);
                     nextGesture = Time.time + Random.Range(3f, 7f);
@@ -190,6 +191,14 @@ public class Animal : MonoBehaviour
             if (state == State.Alert) Graze();      // you backed off
         }
 
+        // Gone to ground: it comes back up when its time is done and you are
+        // not standing over the hole.
+        if (state == State.Hidden)
+        {
+            if (Time.time > until && distance > traits.Notices * 0.8f) { state = State.Stand; until = Time.time + 1f; }
+            return;
+        }
+
         if (Time.time < until) return;
 
         // Getting up is a thing in itself: a stretch, or a shake.
@@ -202,6 +211,13 @@ public class Animal : MonoBehaviour
         switch (state)
         {
             case State.Flee:
+                if (Fauna.All(Kind).Burrows)
+                {
+                    // a short dash and down the hole
+                    state = State.Hidden;
+                    until = Time.time + Random.Range(14f, 36f);
+                    break;
+                }
                 if (distance > traits.Settles) Graze();
                 else Flee();
                 break;
@@ -255,6 +271,9 @@ public class Animal : MonoBehaviour
                 FaunaKind.Wolf => dark ? new[] { Gesture.Howl, Gesture.Howl, Gesture.Groom, Gesture.Shake } : new[] { Gesture.Groom, Gesture.Scratch, Gesture.Shake },
                 FaunaKind.Tortoise => new[] { Gesture.Shake },
                 FaunaKind.Heron => new[] { Gesture.Groom, Gesture.Shake, Gesture.Stretch },
+                FaunaKind.Boar => new[] { Gesture.Shake, Gesture.Scratch, Gesture.Stamp },
+                FaunaKind.Raven => new[] { Gesture.Stretch, Gesture.Shake, Gesture.Groom },
+                FaunaKind.Marmot => new[] { Gesture.SitUp, Gesture.SitUp, Gesture.SitUp, Gesture.Scratch, Gesture.Groom },
                 _ => new[] { Gesture.Stamp, Gesture.Shake, Gesture.Groom }
             };
             var pick = could[Random.Range(0, could.Length)];
@@ -318,7 +337,7 @@ public class Animal : MonoBehaviour
     {
         if (state != State.Wander && state != State.Flee && state != State.ToWater)
         {
-            if (state == State.Alert && !Fauna.All(Kind).Withdraws) Face(player.position - transform.position, dt, 4f);
+            if (state == State.Alert && !Fauna.All(Kind).Withdraws) Face(player.position - transform.position, dt, Fauna.All(Kind).Roots ? 7f : 4f);
 
             pace = Mathf.MoveTowards(pace, 0f, 8f * dt);
             return;
@@ -512,7 +531,18 @@ public class Animal : MonoBehaviour
                 break;
 
             case FaunaKind.Heron:
+            case FaunaKind.Raven:
                 lift = Flying ? -10f : 4f;
+                break;
+
+            case FaunaKind.Boar:
+                lift = state == State.Alert || moving ? -40f : 10f;
+                swing = Mathf.Sin(Time.time * 4f + phase) * 14f;
+                break;
+
+            case FaunaKind.Marmot:
+                lift = state == State.Alert ? -30f : 10f;
+                swing = state == State.Alert ? Mathf.Sin(Time.time * 12f) * 15f : 0f;
                 break;
 
             default:
@@ -664,7 +694,12 @@ public class Animal : MonoBehaviour
 
         float t = GestureT;
 
-        if (Flying)
+        if (state == State.Hidden)
+        {
+            // down the hole: the whole animal goes under the ground
+            rise = Mathf.MoveTowards(body.Frame.localPosition.y, -traits.Size * 1.6f, dt * traits.Size * 4f);
+        }
+        else if (Flying)
         {
             // up, nose a little high, with the slow lift and fall of the beat
             rise = altitude + Mathf.Sin(Time.time * 8.5f + phase + 1.2f) * traits.Size * 0.04f;
@@ -796,8 +831,23 @@ public class Animal : MonoBehaviour
             if (shut) { dip = 12f; turn = 0f; }
         }
 
+        // a boar rooting: snout in the ground, worked side to side
+        if (Fauna.All(Kind).Roots && state == State.Graze)
+        {
+            dip = 46f + Mathf.Sin(Time.time * 5f + phase) * 4f;
+            turn = Mathf.Sin(Time.time * 2.6f + phase) * 16f;
+        }
+
+        // a raven pecking: quick stabs at the ground between looks about
+        if (Kind == FaunaKind.Raven && state == State.Graze)
+        {
+            float peck = Mathf.Sin(Time.time * 4f + phase);
+            dip = peck > 0.6f ? 62f : 14f;
+            turn = Mathf.Sin(Time.time * 0.7f + phase) * 40f;
+        }
+
         // a heron fishing: head over the water, then the spear, then up again
-        if (Fauna.Flies(Kind) && (state == State.Graze || state == State.Drink))
+        if (Kind == FaunaKind.Heron && (state == State.Graze || state == State.Drink))
         {
             float jab = Mathf.Sin(Time.time * 0.55f + phase);
             dip = jab > 0.96f ? 75f : 38f + jab * 6f;
@@ -1041,13 +1091,13 @@ public class Animal : MonoBehaviour
 
             target = at;
             state = State.Flee;
-            until = Time.time + 5f;
+            until = Time.time + (Fauna.All(Kind).Burrows ? 1.1f : 5f);
             return;
         }
 
         target = transform.position + away * 20f;
         state = State.Flee;
-        until = Time.time + 5f;
+        until = Time.time + (Fauna.All(Kind).Burrows ? 1.1f : 5f);
     }
 
     private bool Walkable(Vector3 at)

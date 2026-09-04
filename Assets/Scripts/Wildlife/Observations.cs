@@ -103,6 +103,24 @@ public static class Observations
         Add("heron-flight", "a heron taking flight",
             s => s.Kind == FaunaKind.Heron && s.Doing == Doing.Fleeing);
 
+        Add("boar-root", "a boar rooting",
+            s => s.Kind == FaunaKind.Boar && s.Doing == Doing.Grazing);
+
+        Add("boar-sounder", "a sounder of boar",
+            s => s.Kind == FaunaKind.Boar && s.Company >= 3);
+
+        Add("raven-ground", "a raven on the ground",
+            s => s.Kind == FaunaKind.Raven);
+
+        Add("raven-flight", "a raven taking flight",
+            s => s.Kind == FaunaKind.Raven && s.Doing == Doing.Fleeing);
+
+        Add("marmot-watch", "a marmot sitting up on the rock",
+            s => s.Kind == FaunaKind.Marmot && s.Doing == Doing.Standing);
+
+        Add("marmot-gone", "a marmot gone to ground",
+            s => s.Kind == FaunaKind.Marmot && s.Doing == Doing.Fleeing);
+
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 
