@@ -109,7 +109,7 @@ public static class LandmarkBuilder
     {
         const float Y = 0.45f;  // the yard, a court of packed earth
         const float B = 1.5f;   // the plinth top
-        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.65f, Weathering = Kit.Builder.Weather.Vines };
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.85f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-9.8f, 0f, -6.6f), new Vector3(8.4f, 0f, 7.8f), Y, 1.4f, 1, false);
         Foundation(b, k, new Vector3(-3.3f, 0f, -3.3f), new Vector3(3.3f, 0f, 3.3f), B, B - Y + 0.2f);
@@ -140,14 +140,23 @@ public static class LandmarkBuilder
         // the lookout: an open deck, posts, a railing, a plank roof over
         float f2 = f1 + 0.2f + 2.6f;
         k.Block(new Vector3(0f, f2 + 0.1f, 0f), new Vector3(6.4f, 0.2f, 6.4f), Kit.Swatch.Plank, 0f, true);
+        // one corner of the lookout has gone: its post lies on the deck,
+        // the rails there are gone, and the roof over it came down with it
         foreach (float x in new[] { -2.9f, 2.9f }) foreach (float z in new[] { -2.9f, 2.9f })
+        {
+            if (x > 0f && z > 0f) { k.Log(new Vector3(2.6f, f2 + 0.3f, 2.4f), new Vector3(0.4f, f2 + 0.3f, 0.8f), 0.13f, Kit.Swatch.OldWood, 7); continue; }
             k.Post(new Vector3(x, f2 + 0.2f, z), 2.6f, 0.13f, Kit.Swatch.Wood);
+        }
         k.Railing(new Vector3(-3.1f, f2 + 0.2f, -3.1f), new Vector3(3.1f, f2 + 0.2f, -3.1f), 1.0f);
-        k.Railing(new Vector3(3.1f, f2 + 0.2f, -3.1f), new Vector3(3.1f, f2 + 0.2f, 3.1f), 1.0f);
-        k.Railing(new Vector3(3.1f, f2 + 0.2f, 3.1f), new Vector3(-3.1f, f2 + 0.2f, 3.1f), 1.0f);
+        k.Railing(new Vector3(3.1f, f2 + 0.2f, -3.1f), new Vector3(3.1f, f2 + 0.2f, 0.4f), 1.0f);
+        k.Railing(new Vector3(0.2f, f2 + 0.2f, 3.1f), new Vector3(-3.1f, f2 + 0.2f, 3.1f), 1.0f);
         k.Railing(new Vector3(-3.1f, f2 + 0.2f, 3.1f), new Vector3(-3.1f, f2 + 0.2f, -3.1f), 1.0f);
         var eave = new Vector3(0f, f2 + 2.8f, 0f);
         k.Roof(eave, 6.2f, 6.2f, 28f, Kit.Builder.RoofStyle.Plank, 0.5f);
+        // the fallen quarter of it, on the deck and over the edge
+        k.Block(new Vector3(2.2f, f2 + 0.9f, 2.0f), new Vector3(2.6f, 0.1f, 2.4f), Quaternion.Euler(-22f, 15f, 30f), Kit.Swatch.OldWood);
+        k.Block(new Vector3(4.0f, Y + 0.5f, 3.6f), new Vector3(2.2f, 0.1f, 1.8f), Quaternion.Euler(12f, -30f, 8f), Kit.Swatch.OldWood);
+        k.Debris(new Vector3(3.6f, Y, 3.0f), 1.6f, 5);
         k.Block(eave + Vector3.down * 0.35f, new Vector3(0.28f, 0.34f, 0.28f), Kit.Swatch.Pane);
         k.Block(eave + Vector3.down * 0.16f, new Vector3(0.34f, 0.05f, 0.34f), Kit.Swatch.Iron);
         k.Banner(eave + new Vector3(0f, 1.9f, 0f), 2.6f, 0f);
@@ -374,7 +383,7 @@ public static class LandmarkBuilder
         // The foundation stands clear of the snow, which lies 0.17 above the
         // ground: anything lower and the snow comes up through the floor.
         const float B = 0.30f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-4.6f, 0f, -4.4f), new Vector3(4.6f, 0f, 4.4f), B);
 
@@ -413,6 +422,8 @@ public static class LandmarkBuilder
             k.Block(new Vector3(3.55f, B + 2.68f, z), new Vector3(2.2f, 0.05f, 0.1f), Quaternion.Euler(0f, 0f, 16f), Kit.Swatch.DarkWood);
         k.Log(new Vector3(4.3f, B + 2.3f, -3.0f), new Vector3(4.3f, B + 2.3f, 2.8f), 0.07f, Kit.Swatch.DarkWood, 6);
         k.Block(new Vector3(3.5f, B + 0.05f, -0.1f), new Vector3(1.9f, 0.1f, 6.0f), Kit.Swatch.Plank);
+        k.Debris(new Vector3(6.4f, B, -1.2f), 2.0f, 5);
+        k.Rubble(new Vector3(-3.0f, B, 4.0f), 1.0f, 4);
         k.Bench(new Vector3(3.6f, B + 0.1f, 1.9f), 1.3f);
         k.Barrel(new Vector3(3.5f, B + 0.1f, -2.6f), 0.3f, 0.85f);
         k.Crate(new Vector3(3.6f, B + 0.1f, -1.7f), 0.6f);
@@ -1063,6 +1074,26 @@ public static class LandmarkBuilder
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /// <summary>
+    /// What the country does to a place left to it, from the ground the place
+    /// actually stands on: snow if the site is snowy, whatever the kind, since
+    /// a forest can climb above the snowline; sand in the desert; char in the
+    /// dead woods; nothing but moss on bare rock; vines everywhere green.
+    /// </summary>
+    private static Kit.Builder.Weather WeatherAt(Job b)
+    {
+        if (SnowCover.IsSnowy(b.At.TileX, b.At.TileZ, b.Seed)) return Kit.Builder.Weather.Snow;
+
+        switch (Regions.CharacterAtTile(b.At.TileX, b.At.TileZ, b.Seed, false))
+        {
+            case Regions.Character.Desert: return Kit.Builder.Weather.Sand;
+            case Regions.Character.Dead: return Kit.Builder.Weather.Char;
+            case Regions.Character.Stone:
+            case Regions.Character.Peaks: return Kit.Builder.Weather.None;
+            default: return Kit.Builder.Weather.Vines;
+        }
+    }
 
     /// <summary>
     /// A stone foundation from one corner to the other, its top at a height
