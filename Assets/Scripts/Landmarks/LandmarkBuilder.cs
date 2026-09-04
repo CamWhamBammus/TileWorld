@@ -1211,17 +1211,22 @@ public static class LandmarkBuilder
     /// </summary>
     private static void Buried(Job b)
     {
-        var tower = new Kit.Builder(b.Rng.Next());
+        var weather = WeatherAt(b);
+        var tower = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = weather };
         tower.RoundTower(new Vector3(0f, -6.5f, 0f), 2.8f, 13f, true, Kit.Builder.RoofStyle.Slate, 0.5f);
         var stood = tower.Finish("Tower", b.Root, new Vector3(0f, 0f, 0f), b.Flora.Paint);
         stood.transform.localRotation = Quaternion.Euler(0f, b.Rng.Next(360), 11f);
 
-        var fallen = new Kit.Builder(b.Rng.Next());
+        var fallen = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = weather };
         fallen.RoundTower(Vector3.zero, 2.2f, 4.5f, false, Kit.Builder.RoofStyle.Slate, 0.5f);
         var lying = fallen.Finish("Fallen", b.Root, new Vector3(3.8f, -0.6f, 5.6f), b.Flora.Paint);
         lying.transform.localRotation = Quaternion.Euler(0f, 40f, 72f);
 
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = weather };
+        k.Drift(new Vector3(-3.6f, Ground, 1.2f), 3.0f, 0.8f);
+        k.Drift(new Vector3(4.6f, Ground, -3.0f), 2.6f, 0.7f);
+        k.Drift(new Vector3(1.4f, Ground, 5.0f), 2.2f, 0.5f);
+        k.Rubble(new Vector3(2.6f, Ground, -2.2f), 1.6f, 7);
         k.StoneWall(new Vector3(-8.5f, -1.4f, -3.2f), new Vector3(-3.2f, -1.4f, -3.2f), 2.6f, 1.0f);
         k.MerlonsAlong(new Vector3(-8.5f, 1.2f, -3.2f), new Vector3(-3.2f, 1.2f, -3.2f), 1.0f);
         k.StoneWall(new Vector3(3.2f, -1.8f, -3.2f), new Vector3(7.5f, -1.8f, -3.2f), 2.6f, 1.0f);
