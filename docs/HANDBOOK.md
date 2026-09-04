@@ -169,6 +169,24 @@ Trapper's Cabin (Snow); Fishing Jetty (Reed); Stepped Altar (Stone);
 Toadstool Ring (Fungal); Charcoal Camp (Dead); Hilltop Beacon (Hills); Summit
 Cairn (Peaks); Wayside Shrine and Standing Stones (Lowland).
 
+All fifteen are built from the **kit** (`Kit.cs`): flat-shaded geometry made
+here -- log, stone, timber-frame and plank walls; plank, thatch and slate
+roofs with gable ends; doors, windows, chimneys, posts and rails, steps and
+pavers; round towers with battlements or a cone; props (barrels, crates,
+tables, lanterns, troughs, signs, wells, woodpiles, hay, banners, ladders,
+cart wheels). Colour comes from the pack's palette: `KitIndex` finds the
+nearest swatch to each colour wanted and writes `Resources/Kit.asset`. A
+`Kit.Builder` gathers a structure into one mesh with a box collider per
+solid part; `Finish` hands back the object. `Tools/probe/KitShowroom*.cs.txt`
+lay every part out labelled for looking at.
+
+Every structure stands on a **foundation** (`LandmarkBuilder.Foundation`): a
+slab, flagged or packed earth, with a skirt of coursed stone down to well
+below the ground and a flight of steps on the side asked. The ground under
+a big footprint steps by a terrace or two and the skirt swallows it -- which
+is what lets footprints be big -- and a raised court buries the ground
+tiles' own rocks and logs, which no planting rule can keep out of a yard.
+
 `Landmarks.kinds[]` is the whole catalogue: name, the one `Country` it is built
 in, its `Site` (Level ground, a beach's Shallows, a lake's Shore), how it
 surveys, the footprint in tiles (`Behind`, `Ahead`, `Aside`, in its own frame
@@ -196,16 +214,21 @@ Pack prefabs' roots can carry a position from the pack's scene (the stone
 tiles' did, twenty units off); always set a placed piece's local transform
 outright. Where a statue would stand, a boulder is stood on end and drawn out tall
 (`Standing`); at its own proportions a boulder on end is still a boulder.
-`Lying` is the same stone as it fell.
+`Lying` is the same stone as it fell. Both pick only the grey boulders: the
+pack's stones include bright gems, and one of those on end was a white pole
+eight high.
 
 Densities are tuned by `Chance` against a count: the tour probe reports how
 many of each kind lie within forty chunks of the player, and a kind with a
 small footprint in common country needs a small chance (the cairn is 6).
 
 To add a kind: add it to `LandmarkKind` and `kinds[]` in the same order; a
-`case` in `LandmarkBuilder.Build` and a method; a line set in `Inscriptions`;
-run `Tools/unity.sh -executeMethod StructureIndex.Go` if the shelf changed;
-then `run-probe.sh` with the structure tour and look at it from both sides.
+`case` in `LandmarkBuilder.Build` and a method that builds it with a
+`Kit.Builder` on a `Foundation`; a line set in `Inscriptions`; then
+`Tools/run-probe.sh Tools/probe/StructureTour.cs.txt 240 <kind index>` and
+look at it from both sides. Heights in a builder are from the root on the
+walking surface; put the foundation top above 0.17 in snow country or the
+snow comes up through the floor.
 
 ## Snow, planting, tiles
 
