@@ -426,7 +426,7 @@ public class Kit : ScriptableObject
         }
 
         /// <summary>Steps climbing away from a foot, in stone.</summary>
-        public void Steps(Vector3 foot, Vector3 direction, int count, float rise, float run, float width)
+        public void Steps(Vector3 foot, Vector3 direction, int count, float rise, float run, float width, bool wooden = false)
         {
             var dir = new Vector3(direction.x, 0f, direction.z).normalized;
             var turn = Quaternion.LookRotation(dir, Vector3.up);
@@ -436,7 +436,8 @@ public class Kit : ScriptableObject
                 var centre = foot + dir * (run * (i + 0.5f)) + Vector3.up * (rise * (i + 0.5f) + rise * i * 0f);
                 // each tread is a block from its own top down to the ground, so the flight is solid
                 float tall = rise * (i + 1);
-                Block(foot + dir * (run * (i + 0.5f)) + Vector3.up * tall * 0.5f, new Vector3(width, tall, run), turn, i % 2 == 0 ? Swatch.Stone : Swatch.DarkStone, 0.01f, true);
+                var shade = wooden ? (i % 2 == 0 ? Swatch.Wood : Swatch.Plank) : (i % 2 == 0 ? Swatch.Stone : Swatch.DarkStone);
+                Block(foot + dir * (run * (i + 0.5f)) + Vector3.up * tall * 0.5f, new Vector3(width, tall, run), turn, shade, wooden ? 0f : 0.01f, true);
             }
         }
 

@@ -73,10 +73,10 @@ public static class Landmarks
                    Where = "in the woods, its tower above the trees",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
-        new Kind { Chance = 30, Name = "Shipwreck", Country = Regions.Character.Water, Site = Site.Shallows,
+        new Kind { Chance = 18, Name = "Shipwreck", Country = Regions.Character.Water, Site = Site.Shallows,
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
-                   Where = "broken on a beach, its bow out of the water",
-                   Behind = 3, Ahead = 4, Aside = 2, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+                   Where = "broken on a beach, her bow to the shore and her side stove in",
+                   Behind = 5, Ahead = 6, Aside = 4, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
 
         new Kind { Chance = 9, Name = "Sand Gate", Country = Regions.Character.Desert, Site = Site.Level,
                    SurveyRadius = 5, SurveyHeight = 0f, LabelHeight = 13f,
@@ -108,25 +108,25 @@ public static class Landmarks
                    Where = "in the dead woods, the burner's clamps and the wood cut for them",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
-        new Kind { Chance = 10, Name = "Hilltop Beacon", Country = Regions.Character.Hills, Site = Site.Level,
-                   SurveyRadius = 6, SurveyHeight = 0f, LabelHeight = 12f,
-                   Where = "on the hills, a tower on a plinth with a light kept on top",
-                   Behind = 2, Ahead = 2, Aside = 2, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.9f },
+        new Kind { Chance = 6, Name = "Hilltop Beacon", Country = Regions.Character.Hills, Site = Site.Level,
+                   SurveyRadius = 6, SurveyHeight = 2.2f, LabelHeight = 16f,
+                   Where = "on the hills, a stone tower with a fire kept burning on its top",
+                   Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.2f },
 
         new Kind { Chance = 6, Name = "Summit Cairn", Country = Regions.Character.Peaks, Site = Site.Level,
                    SurveyRadius = 7, SurveyHeight = 0f, LabelHeight = 5f,
-                   Where = "on a peak, a heap of stones and a pole",
-                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 1.3f },
+                   Where = "on a peak, a great cairn with a banner over it",
+                   Behind = 3, Ahead = 4, Aside = 3, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.6f },
 
         new Kind { Chance = 7, Name = "Wayside Shrine", Country = Regions.Character.Lowland, Site = Site.Level,
                    SurveyRadius = 2, SurveyHeight = 0f, LabelHeight = 5f,
-                   Where = "on the low ground by the way, a stone on a plinth",
-                   Behind = 1, Ahead = 2, Aside = 1, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.6f },
+                   Where = "on the low ground by the way, a roofed shrine with a well",
+                   Behind = 3, Ahead = 4, Aside = 3, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 0.8f },
 
         new Kind { Chance = 30, Name = "Standing Stones", Country = Regions.Character.Lowland, Site = Site.Level,
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
-                   Where = "out on the open low ground, a ring of stones on end",
-                   Behind = 3, Ahead = 3, Aside = 3, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
+                   Where = "out on the open low ground, a great ring of stones with an avenue to it",
+                   Behind = 5, Ahead = 11, Aside = 5, CoreHalf = 3, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
         new Kind { Chance = 20, Name = "Lighthouse", Country = Regions.Character.Water, Site = Site.BeachShore,
                    SurveyRadius = 7, SurveyHeight = 0.8f, LabelHeight = 16f,
@@ -134,14 +134,14 @@ public static class Landmarks
                    Behind = 5, Ahead = 2, Aside = 3, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
 
         new Kind { Chance = 14, Name = "Hunter's Hide", Country = Regions.Character.Forest, Site = Site.Level,
-                   SurveyRadius = 3, SurveyHeight = 1.5f, LabelHeight = 6f,
-                   Where = "in the woods, a small platform up a stair",
-                   Behind = 1, Ahead = 3, Aside = 1, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.8f },
+                   SurveyRadius = 3, SurveyHeight = 3.0f, LabelHeight = 8f,
+                   Where = "in the woods, a hide up on stilts with a stair to it",
+                   Behind = 3, Ahead = 6, Aside = 3, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
         new Kind { Chance = 10, Name = "Buried Tower", Country = Regions.Character.Desert, Site = Site.Level,
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
-                   Where = "in the sand, a tower sunk to its shoulders and leaning",
-                   Behind = 2, Ahead = 2, Aside = 2, CoreHalf = 0, CoreVariation = 0.26f, ApronVariation = 0.6f },
+                   Where = "in the sand, the ruin of a keep sunk to its shoulders and leaning",
+                   Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
     };
 
     /// <summary>How many kinds there are, so nothing has to be told twice.</summary>

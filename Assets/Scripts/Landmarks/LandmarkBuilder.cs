@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -193,62 +194,92 @@ public static class LandmarkBuilder
     // -------------------------------------------------------------- Shipwreck
 
     /// <summary>
-    /// A hull in the shallows, its bow toward the shore and out of the water,
-    /// its stern under. The deck is planks, tilted the way it settled; timber
-    /// ribs stand up out of the water where the sides have gone; the mast is
-    /// two logs, snapped. What was in it is up on the beach.
+    /// A ship broken on the beach, bow to the shore: a keel and ribs, plank
+    /// sides in a curve, a deck with a stern cabin on it, the mast snapped
+    /// over with the yard and a torn sail hanging, all heeled over the way
+    /// she settled. What was in her is up on the sand.
     /// </summary>
     private static void Wreck(Job b)
     {
         float water = WaterSurface.Level - b.At.Position.y;
+        var k = new Kit.Builder(b.Rng.Next());
 
-        // the hull, as one tilted frame everything on deck hangs from
-        var hull = new GameObject("Hull").transform;
-        hull.SetParent(b.Root, false);
-        hull.localPosition = new Vector3(0f, water - 0.35f, 0f);
-        hull.localRotation = Quaternion.Euler(9f, 0f, -16f);
+        // the hull in her own frame: x runs bow to stern, +x the bow
+        float length = 14f, beam = 4.6f, depth = 2.2f;
+        int ribs = 11;
 
-        // deck: two plank slabs end to end, a walkable box over the pair
-        Slab(b, hull, new Vector3(-1.5f, 0f, 0f), 90f);
-        Slab(b, hull, new Vector3(1.5f, 0f, 0f), 90f);
-
-        var walk = hull.gameObject.AddComponent<BoxCollider>();
-        walk.center = new Vector3(0f, 0.83f, 0f);
-        walk.size = new Vector3(6f, 0.3f, 2.08f);
-
-        // a rail along one side of the bow, the other side gone
-        for (float x = 0.5f; x <= 2.6f; x += 0.86f)
-            Under(b, hull, Pick(b.Shelf.Fences, b), new Vector3(x, 0.98f + FenceUp, 1.0f), 0f);
-
-        // what is left of the cabin: a door standing at the stern
-        Under(b, hull, b.Shelf.Doors, new Vector3(-2.2f, 0.98f + DoorUp, 0.2f), 0f);
-
-        // the mast, in two pieces, the top one snapped over
-        Under(b, hull, Pick(b.Shelf.Poles, b), new Vector3(0.4f, 0.98f + 1.0f, 0f), 0f, new Vector3(0f, 0f, 6f));
-        Under(b, hull, Pick(b.Shelf.Poles, b), new Vector3(0.55f, 0.98f + 2.4f, 0.05f), 0f, new Vector3(0f, 0f, -38f));
-
-        // cargo still lashed on deck
-        Under(b, hull, Pick(b.Shelf.Boxes, b), new Vector3(1.6f, 0.98f + BoxUp, -0.55f), Turn(b));
-        Under(b, hull, b.Shelf.Chest, new Vector3(-0.6f, 0.98f + ChestUp, 0.5f), 90f);
-
-        // ribs standing out of the water along both sides
-        for (int i = 0; i < 5; i++)
+        k.Log(new Vector3(-length * 0.5f, 0f, 0f), new Vector3(length * 0.5f + 0.8f, 0.6f, 0f), 0.2f, Kit.Swatch.DarkWood, 7);
+        for (int i = 0; i < ribs; i++)
         {
-            float x = -2.8f + i * 1.3f;
-            Piece(b, Pick(b.Shelf.Poles, b), new Vector3(x, Ground + 1.0f, 1.35f), 0f, Vector3.zero, Vector3.zero, new Vector3(-32f, 0f, 8f - i * 6f));
-            Piece(b, Pick(b.Shelf.Poles, b), new Vector3(x + 0.4f, Ground + 1.0f, -1.35f), 0f, Vector3.zero, Vector3.zero, new Vector3(32f, 0f, 4f + i * 5f));
+            float x = -length * 0.5f + 0.8f + i * (length - 1.6f) / (ribs - 1);
+            float t = Mathf.Abs(x) / (length * 0.5f);
+            float half = beam * 0.5f * Mathf.Sqrt(Mathf.Max(0.05f, 1f - t * t * 0.85f));
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var foot = new Vector3(x, 0.1f, 0f);
+                var top = new Vector3(x, depth, side * half);
+                k.Log(foot, top, 0.11f, Kit.Swatch.DarkWood, 6);
+            }
         }
 
-        // and what washed up, on the first dry ground ahead
+        // the planking: strakes along the hull, each a run of blocks following the curve
+        for (int strake = 0; strake < 5; strake++)
+        {
+            float y = 0.45f + strake * 0.42f;
+            for (int i = 0; i < ribs - 1; i++)
+            {
+                float x0 = -length * 0.5f + 0.8f + i * (length - 1.6f) / (ribs - 1);
+                float x1 = x0 + (length - 1.6f) / (ribs - 1);
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    float h0 = beam * 0.5f * Mathf.Sqrt(Mathf.Max(0.05f, 1f - Mathf.Pow(x0 / (length * 0.5f), 2f) * 0.85f)) * (y / depth * 0.35f + 0.65f);
+                    float h1 = beam * 0.5f * Mathf.Sqrt(Mathf.Max(0.05f, 1f - Mathf.Pow(x1 / (length * 0.5f), 2f) * 0.85f)) * (y / depth * 0.35f + 0.65f);
+                    var p0 = new Vector3(x0, y, side * h0); var p1 = new Vector3(x1, y, side * h1);
+                    if (strake == 4 && i > 2 && i < 5 && side > 0f) continue;   // the hole in her side
+                    var mid = (p0 + p1) * 0.5f;
+                    var along = (p1 - p0).normalized;
+                    var facing = Vector3.Cross(along, Vector3.up) * side;
+                    k.Block(mid, new Vector3(Vector3.Distance(p0, p1) + 0.04f, 0.4f, 0.1f), Quaternion.LookRotation(facing, Vector3.up), strake % 2 == 0 ? Kit.Swatch.Wood : Kit.Swatch.Plank);
+                }
+            }
+        }
+
+        // the deck, the cabin at the stern, the mast and its yard and sail
+        k.Block(new Vector3(0.4f, depth - 0.05f, 0f), new Vector3(length - 2.4f, 0.12f, beam - 0.9f), Kit.Swatch.Plank, 0f, true);
+        k.Railing(new Vector3(-4.0f, depth, beam * 0.5f - 0.6f), new Vector3(4.5f, depth, beam * 0.5f - 0.6f), 0.9f);
+        k.Railing(new Vector3(-4.0f, depth, -beam * 0.5f + 0.6f), new Vector3(1.0f, depth, -beam * 0.5f + 0.6f), 0.9f);
+        k.PlankWall(new Vector3(-5.6f, depth, -1.5f), new Vector3(-5.6f, depth, 1.5f), 1.7f, 0.08f);
+        k.PlankWall(new Vector3(-5.6f, depth, 1.5f), new Vector3(-3.2f, depth, 1.5f), 1.7f, 0.08f);
+        k.PlankWall(new Vector3(-3.2f, depth, -1.5f), new Vector3(-5.6f, depth, -1.5f), 1.7f, 0.08f);
+        k.Door(new Vector3(-3.2f, depth, 0f), Vector3.right, 0.9f, 1.6f);
+        k.Block(new Vector3(-4.4f, depth + 1.75f, 0f), new Vector3(2.8f, 0.1f, 3.4f), Kit.Swatch.DarkWood);
+        k.Log(new Vector3(1.2f, depth - 0.2f, 0f), new Vector3(1.6f, depth + 5.2f, 0.3f), 0.17f, Kit.Swatch.DarkWood, 8);
+        k.Log(new Vector3(1.6f, depth + 5.2f, 0.3f), new Vector3(4.6f, depth + 3.2f, 2.6f), 0.13f, Kit.Swatch.DarkWood, 7);
+        k.Log(new Vector3(2.0f, depth + 4.4f, -2.2f), new Vector3(1.4f, depth + 4.6f, 2.4f), 0.09f, Kit.Swatch.DarkWood, 6);
+        k.Block(new Vector3(1.3f, depth + 3.2f, -0.6f), new Vector3(0.04f, 2.4f, 3.0f), Quaternion.Euler(0f, 0f, 8f), Kit.Swatch.Plaster);
+        k.Block(new Vector3(1.4f, depth + 2.1f, -1.6f), new Vector3(0.04f, 1.2f, 1.2f), Quaternion.Euler(0f, 10f, -12f), Kit.Swatch.Plaster);
+        k.Barrel(new Vector3(3.6f, depth + 0.02f, -1.2f), 0.3f, 0.85f);
+        k.Crate(new Vector3(-1.6f, depth + 0.02f, 1.2f), 0.6f);
+
+        // heeled over as she settled, and set so her keel is on the bed
+        var hull = k.Finish("Hull", b.Root, new Vector3(0f, Ground + 0.1f, 0f), b.Flora.Paint);
+        hull.transform.localRotation = Quaternion.Euler(14f, 0f, -6f);
+
+        // what washed up, on the first dry ground ahead
         int shore = 1;
         while (shore < 5 && WaterSurface.IsUnderwater(b.At.TileX + Dir(b).x * shore, b.At.TileZ + Dir(b).y * shore, b.Seed)) shore++;
+        float sx = shore * Tile + 4f;
 
-        float sx = shore * Tile;
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(sx + 0.3f, GroundAt(b, sx + 0.3f, -1.4f) + BoxUp, -1.4f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(sx + 1.4f, GroundAt(b, sx + 1.4f, -0.9f) + BoxUp, -0.9f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
-        Piece(b, b.Shelf.Chest, new Vector3(sx + 0.8f, GroundAt(b, sx + 0.8f, 1.5f) + ChestUp, 1.5f), 200f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
-        Piece(b, b.Shelf.Timber, new Vector3(sx + 2.2f, GroundAt(b, sx + 2.2f, 2.4f) + TimberUp, 2.4f), 70f);
-        Piece(b, b.Shelf.Signboard, new Vector3(sx + 1.6f, GroundAt(b, sx + 1.6f, -2.6f) + SignUp, -2.6f), 180f);
+        var beach = new Kit.Builder(b.Rng.Next());
+        beach.Barrel(new Vector3(sx + 0.3f, GroundAt(b, sx + 0.3f, -2.4f) + 0.1f, -2.4f), 0.32f, 0.9f);
+        beach.Barrel(new Vector3(sx + 1.2f, GroundAt(b, sx + 1.2f, -1.8f) + 0.1f, -1.8f), 0.28f, 0.8f);
+        beach.Crate(new Vector3(sx + 0.6f, GroundAt(b, sx + 0.6f, 1.6f) + 0.1f, 1.6f), 0.7f);
+        beach.Crate(new Vector3(sx + 1.6f, GroundAt(b, sx + 1.6f, 2.4f) + 0.1f, 2.4f), 0.55f);
+        beach.Log(new Vector3(sx + 2.4f, GroundAt(b, sx + 2.4f, 3.4f) + 0.3f, 3.4f), new Vector3(sx + 4.6f, GroundAt(b, sx + 4.6f, 4.0f) + 0.3f, 4.0f), 0.2f, Kit.Swatch.DarkWood, 7);
+        beach.Cartwheel(new Vector3(sx + 3.0f, GroundAt(b, sx + 3.0f, -3.2f) + 0.1f, -3.2f), 0.5f, 40f);
+        beach.HangingSign(new Vector3(sx + 2.2f, GroundAt(b, sx + 2.2f, -0.2f) + 0.1f, -0.2f), 2.6f, 180f);
+        beach.Lantern(new Vector3(sx + 3.6f, GroundAt(b, sx + 3.6f, 1.0f) + 0.1f, 1.0f), 2.2f, 180f);
+        beach.Finish("Beach", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // -------------------------------------------------------------- Sand Gate
@@ -664,101 +695,198 @@ public static class LandmarkBuilder
     // -------------------------------------------------------- Hilltop Beacon
 
     /// <summary>
-    /// The tower on a plinth two tiles high, a lamp burning on its top, a ring
-    /// of fence round the foot and lamps at the quarters: a light to steer by
-    /// from a long way off.
+    /// A round stone tower twelve high on a flagged plinth with a great
+    /// brazier burning on its top, a stone stair up a buttress to a landing
+    /// and a door a storey up, the keeper's stone hut, the fuel for the fire
+    /// stacked about, and banners: a light to steer by from a long way off.
     /// </summary>
     private static void Beacon(Job b)
     {
-        GroundTile(b, GrassTiles, new Vector3(0f, Stack(1), 0f));
-        GroundTile(b, GrassTiles, new Vector3(0f, Stack(2), 0f));
-        Piece(b, b.Shelf.Tower, new Vector3(0f, Deck2, 0f), 0f, new Vector3(2.1f, 3.5f, 2.1f), new Vector3(0f, 1.75f, 0f));
-        Piece(b, b.Shelf.Lamp, new Vector3(0f, Deck2 + 3.5f + LampUp, 0f), Turn(b));
+        const float B = 0.8f;
+        var k = new Kit.Builder(b.Rng.Next());
 
-        for (int i = 0; i < 14; i++)
-        {
-            float a = i / 14f * Mathf.PI * 2f;
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(Mathf.Cos(a) * 3.6f, Ground + FenceUp, Mathf.Sin(a) * 3.6f), -a * Mathf.Rad2Deg + 90f);
-        }
+        Foundation(b, k, new Vector3(-7.5f, 0f, -6.5f), new Vector3(5.5f, 0f, 6.5f), B, 1.8f, 1);
 
-        foreach (float x in new[] { -2.2f, 2.2f })
-        foreach (float z in new[] { -2.2f, 2.2f })
-            Piece(b, b.Shelf.Lamp, new Vector3(x, Ground + LampUp, z), x < 0f ? 0f : 180f);
+        float radius = 2.4f, height = 12f;
+        var foot = new Vector3(-1.0f, B, 0f);
+        k.RoundTower(foot, radius, height, true, Kit.Builder.RoofStyle.Slate, 0.5f);
 
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(1.5f, Ground + BoxUp, 0.4f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
-        Piece(b, b.Shelf.Chest, new Vector3(-1.5f, Ground + ChestUp, -0.6f), 90f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
-        Piece(b, b.Shelf.Signboard, new Vector3(4.6f, Ground + SignUp, -1.2f), 0f);
+        // the fire on top: an iron bowl on a stone pier, flame and embers
+        var top = foot + Vector3.up * (height + 0.12f);
+        k.Block(top + Vector3.up * 0.4f, new Vector3(1.4f, 0.8f, 1.4f), Kit.Swatch.DarkStone, 0.01f);
+        k.Ring(top + Vector3.up * 1.1f, 0.9f, 0.6f, 0.08f, 10, Kit.Swatch.Iron);
+        k.Block(top + Vector3.up * 1.3f, new Vector3(1.3f, 0.5f, 1.3f), Kit.Swatch.Thatch, 0.08f);
+        k.Block(top + Vector3.up * 1.85f, new Vector3(0.8f, 0.9f, 0.8f), Kit.Swatch.Cloth, 0.08f);
+        k.Block(top + Vector3.up * 2.5f, new Vector3(0.4f, 0.6f, 0.4f), Kit.Swatch.Cloth, 0.1f);
+
+        // the stair up a buttress to the door, a storey up
+        float landing = B + 2.6f;
+        k.Block(new Vector3(foot.x + radius + 0.9f, (B + landing) * 0.5f, 0f), new Vector3(2.0f, landing - B, 2.4f), Kit.Swatch.Mortar, 0f, true);
+        k.StoneWall(new Vector3(foot.x + radius - 0.1f, B, -1.2f), new Vector3(foot.x + radius + 1.9f, B, -1.2f), landing - B, 0.3f);
+        k.StoneWall(new Vector3(foot.x + radius + 1.9f, B, -1.2f), new Vector3(foot.x + radius + 1.9f, B, 1.2f), landing - B, 0.3f);
+        k.Pavers(new Vector3(foot.x + radius + 0.9f, landing, 0f), 2.0f, 2.4f, 0.6f);
+        int flight = Mathf.CeilToInt((landing - B) / 0.2f);
+        k.Steps(new Vector3(foot.x + radius + 1.9f, B, 0f), Vector3.right, flight, (landing - B) / flight, 0.34f, 2.0f);
+        k.Railing(new Vector3(foot.x + radius + 1.9f, B, 1.1f), new Vector3(foot.x + radius + 1.9f + flight * 0.34f, B, 1.1f), 0.9f);
+        k.Railing(new Vector3(foot.x + radius + 1.9f, landing, 1.2f), new Vector3(foot.x + radius + 1.9f, landing, -1.2f), 0.9f);
+        k.Door(foot + new Vector3(radius - 0.06f, landing - B, 0f), Vector3.right, 1.0f, 2.0f);
+        k.Door(foot + new Vector3(0f, 0f, -radius - 0.06f), Vector3.back, 1.0f, 2.0f);
+
+        // the keeper's hut
+        var s0 = new Vector3(-7.0f, B, 2.2f); var s1 = new Vector3(-3.6f, B, 2.2f);
+        var s2 = new Vector3(-3.6f, B, 5.8f); var s3 = new Vector3(-7.0f, B, 5.8f);
+        k.StoneWall(s0, s1, 2.5f, 0.4f); k.StoneWall(s1, s2, 2.5f, 0.4f); k.StoneWall(s2, s3, 2.5f, 0.4f); k.StoneWall(s3, s0, 2.5f, 0.4f);
+        k.Door(new Vector3(-5.3f, B, 2.2f - 0.22f), Vector3.back, 1.0f, 1.9f);
+        k.Window(new Vector3(-3.6f + 0.22f, B + 1.5f, 4.0f), Vector3.right, 0.8f, 0.8f);
+        var hutEave = new Vector3(-5.3f, B + 2.5f, 4.0f);
+        k.GableEnd(hutEave, 3.4f + 0.4f, 34f, -1.8f - 0.2f, Kit.Swatch.Stone, 0.4f);
+        k.GableEnd(hutEave, 3.4f + 0.4f, 34f, 1.8f + 0.2f, Kit.Swatch.Stone, 0.4f);
+        k.Roof(hutEave, 3.4f + 0.4f, 3.6f + 0.4f, 34f, Kit.Builder.RoofStyle.Slate, 0.45f);
+        k.Chimney(new Vector3(-7.0f - 0.22f - 0.36f, B, 4.8f), 4.6f, 0.7f);
+
+        // fuel and the rest
+        k.Woodpile(new Vector3(-5.6f, B + 0.1f, -4.6f), 2.2f, 5, 0f);
+        k.Woodpile(new Vector3(-2.6f, B + 0.1f, -4.9f), 1.8f, 4, 0f);
+        k.Barrel(new Vector3(3.2f, B + 0.1f, -4.4f), 0.32f, 0.9f);
+        k.Barrel(new Vector3(3.9f, B + 0.1f, -3.9f), 0.28f, 0.8f);
+        k.Crate(new Vector3(3.4f, B + 0.1f, -5.3f), 0.65f);
+        k.Lantern(new Vector3(4.6f, B + 0.1f, 5.4f), 2.6f, 180f);
+        k.Lantern(new Vector3(-6.6f, B + 0.1f, -5.6f), 2.4f, 0f);
+        k.Banner(new Vector3(4.6f, B + 0.1f, -5.6f), 3.4f, 180f);
+        k.Banner(new Vector3(-6.8f, B + 0.1f, 0.4f), 3.4f, 0f);
+        k.Bench(new Vector3(-1.0f, B + 0.1f, 5.2f), 1.4f);
+        k.HangingSign(new Vector3(7.0f, Ground, -2.2f), 2.7f, 180f);
+        k.Railing(new Vector3(-7.5f, B + 0.1f, -6.5f), new Vector3(5.5f, B + 0.1f, -6.5f), 0.9f);
+        k.Railing(new Vector3(-7.5f, B + 0.1f, 6.5f), new Vector3(5.5f, B + 0.1f, 6.5f), 0.9f);
+
+        k.Finish("Beacon", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // ----------------------------------------------------------- Summit Cairn
 
     /// <summary>
-    /// A heap of the pack's boulders, one on end at the top, with a pole
-    /// beside it for whoever comes up to see from below.
+    /// On a flagged base, a great heap of the pack's boulders with a standing
+    /// stone on top and a banner over it; a windbreak of coursed stone on
+    /// the weather side with a plank lean-to against it, a stone bench, and
+    /// a lantern for whoever comes up after dark.
     /// </summary>
     private static void Cairn(Job b)
     {
-        Standing(b, new Vector3(0f, Ground + 0.5f, 0f), 1.5f);
+        const float B = 0.4f;
+        var k = new Kit.Builder(b.Rng.Next());
 
-        for (int i = 0; i < 6; i++)
-        {
-            float a = i / 6f * Mathf.PI * 2f + 0.3f;
-            Lying(b, new Vector3(Mathf.Cos(a) * 0.95f, Ground, Mathf.Sin(a) * 0.95f), 0.8f + (float)b.Rng.NextDouble() * 0.3f);
-        }
-        for (int i = 0; i < 5; i++)
-        {
-            float a = i / 5f * Mathf.PI * 2f;
-            Lying(b, new Vector3(Mathf.Cos(a) * 1.7f, Ground, Mathf.Sin(a) * 1.7f), 0.45f + (float)b.Rng.NextDouble() * 0.25f);
-        }
+        Foundation(b, k, new Vector3(-5.0f, 0f, -5.0f), new Vector3(5.0f, 0f, 5.0f), B, 1.6f, 1);
 
-        Piece(b, Pick(b.Shelf.Poles, b), new Vector3(0.55f, Ground + 1.0f + 0.5f, -0.4f), 0f, Vector3.zero, Vector3.zero, new Vector3(0f, 0f, -7f));
-        Piece(b, b.Shelf.Signboard, new Vector3(2.4f, Ground + SignUp, -1.5f), 20f);
+        // the heap: rings of lying stones, each ring higher and tighter
+        for (int ring = 0; ring < 4; ring++)
+        {
+            float rad = 2.6f - ring * 0.65f;
+            int count = 10 - ring * 2;
+            for (int i = 0; i < count; i++)
+            {
+                float a = i / (float)count * Mathf.PI * 2f + ring * 0.4f;
+                Lying(b, new Vector3(Mathf.Cos(a) * rad, B + ring * 0.55f, Mathf.Sin(a) * rad), 0.9f + (float)b.Rng.NextDouble() * 0.5f - ring * 0.08f);
+            }
+        }
+        k.Block(new Vector3(0f, B + 1.0f, 0f), new Vector3(3.0f, 2.0f, 3.0f), Kit.Swatch.Mortar, 0f, true);
+        Standing(b, new Vector3(0f, B + 2.15f, 0f), 2.8f);
+        k.Banner(new Vector3(0.9f, B + 2.0f, -0.6f), 4.6f, 0f);
+
+        // the windbreak and the lean-to
+        k.StoneWall(new Vector3(-4.6f, B, -4.4f), new Vector3(-4.6f, B, 4.4f), 2.0f, 0.5f);
+        k.StoneWall(new Vector3(-4.6f, B, -4.4f), new Vector3(-1.4f, B, -4.4f), 2.0f, 0.5f);
+        foreach (float z in new[] { -0.2f, 1.6f, 3.4f }) k.Post(new Vector3(-2.4f, B, z), 1.6f, 0.1f, Kit.Swatch.Wood);
+        k.Block(new Vector3(-3.4f, B + 1.95f, 1.6f), new Vector3(2.5f, 0.1f, 4.2f), Quaternion.Euler(0f, 0f, -14f), Kit.Swatch.Wood);
+        k.Log(new Vector3(-2.4f, B + 1.55f, -0.4f), new Vector3(-2.4f, B + 1.55f, 3.6f), 0.07f, Kit.Swatch.DarkWood, 6);
+        k.Woodpile(new Vector3(-3.6f, B, 3.2f), 1.2f, 3, 90f);
+        k.Barrel(new Vector3(-3.2f, B, 0.3f), 0.28f, 0.8f);
+        k.Block(new Vector3(2.8f, B + 0.25f, 3.6f), new Vector3(1.8f, 0.5f, 0.6f), Kit.Swatch.Stone, 0.015f);
+        k.Lantern(new Vector3(3.8f, B, -3.6f), 2.4f, 90f);
+        k.HangingSign(new Vector3(6.2f, Ground, -1.4f), 2.6f, 180f);
+
+        k.Finish("Cairn", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // --------------------------------------------------------- Wayside Shrine
 
     /// <summary>
-    /// A stone on end on one raised tile, a lamp kept by it, a fence on three
-    /// sides and bushes at the back; the sort of thing left where paths met.
+    /// A roofed shrine by the way: a stone plinth under a slate roof on four
+    /// posts, a standing stone in it with a fire before it, a low wall on
+    /// three sides, a bench, a lantern kept lit, and a well beside for
+    /// whoever stops.
     /// </summary>
     private static void Shrine(Job b)
     {
-        GroundTile(b, GrassTiles, new Vector3(0f, Stack(1), 0f));
-        Standing(b, new Vector3(0f, Deck1, 0f), 1.5f);
+        const float B = 0.5f;
+        var k = new Kit.Builder(b.Rng.Next());
 
-        foreach (float along in new[] { -0.45f, 0.45f })
-        {
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Ground + FenceUp, -1.7f), 0f);
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Ground + FenceUp, 1.7f), 0f);
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(-1.7f, Ground + FenceUp, along), 90f);
-        }
+        Foundation(b, k, new Vector3(-4.5f, 0f, -4.0f), new Vector3(3.5f, 0f, 4.0f), B, 1.3f, 1);
 
-        Piece(b, b.Shelf.Lamp, new Vector3(2.0f, Ground + LampUp, 1.4f), 180f);
-        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(-2.1f, Ground + BustUp, 1.3f), Turn(b));
-        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(-2.1f, Ground + BustUp, -1.3f), Turn(b));
-        Piece(b, b.Shelf.Chest, new Vector3(2.0f, Ground + ChestUp, -1.3f), 270f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
-        Piece(b, b.Shelf.Signboard, new Vector3(3.4f, Ground + SignUp, 0.4f), 0f);
+        // the shrine
+        k.Block(new Vector3(-1.5f, B + 0.25f, 0f), new Vector3(3.6f, 0.5f, 3.6f), Kit.Swatch.DarkStone, 0.01f, true);
+        k.Pavers(new Vector3(-1.5f, B + 0.5f, 0f), 3.4f, 3.4f, 0.55f);
+        Standing(b, new Vector3(-2.0f, B + 0.5f, 0f), 2.4f);
+        k.Block(new Vector3(-0.6f, B + 0.75f, 0f), new Vector3(0.6f, 0.5f, 0.6f), Kit.Swatch.Stone, 0.01f);
+        k.Block(new Vector3(-0.6f, B + 1.1f, 0f), new Vector3(0.4f, 0.24f, 0.4f), Kit.Swatch.Cloth, 0.05f);
+        foreach (float x in new[] { -3.2f, 0.2f }) foreach (float z in new[] { -1.7f, 1.7f })
+            k.Post(new Vector3(x, B + 0.5f, z), 2.6f, 0.12f, Kit.Swatch.DarkWood);
+        var eave = new Vector3(-1.5f, B + 3.1f, 0f);
+        k.Roof(eave, 3.8f, 3.8f, 34f, Kit.Builder.RoofStyle.Slate, 0.5f);
+        k.StoneWall(new Vector3(-3.4f, B, -2.0f), new Vector3(-3.4f, B, 2.0f), 1.1f, 0.4f);
+        k.StoneWall(new Vector3(-3.4f, B, -2.0f), new Vector3(0.4f, B, -2.0f), 1.1f, 0.4f);
+        k.StoneWall(new Vector3(-3.4f, B, 2.0f), new Vector3(0.4f, B, 2.0f), 1.1f, 0.4f);
+
+        k.Well(new Vector3(1.8f, B + 0.1f, 2.4f));
+        k.Bench(new Vector3(1.6f, B + 0.1f, -2.6f), 1.4f);
+        k.Lantern(new Vector3(2.6f, B + 0.1f, -0.2f), 2.5f, 270f);
+        k.Trough(new Vector3(-3.6f, B + 0.1f, -3.2f), 1.5f, 0f);
+        k.HangingSign(new Vector3(4.6f, Ground, 1.8f), 2.6f, 180f);
+        k.Pavers(new Vector3(5.6f, Ground + 0.02f, 0f), 3.0f, 1.4f, 0.6f);
+
+        k.Finish("Shrine", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // -------------------------------------------------------- Standing Stones
 
     /// <summary>
-    /// Seven stones on end in a ring, one fallen, one lying flat in the
-    /// middle. Nothing else: no lamp, no fence, nobody keeps it.
+    /// A great ring of stones on end on a raised court of earth, a trilithon
+    /// at its entrance, a flat stone with a fire in the middle, and an
+    /// avenue of lesser stones leading out. Nobody keeps it.
     /// </summary>
     private static void Stones(Job b)
     {
-        for (int i = 0; i < 7; i++)
-        {
-            float a = i / 7f * Mathf.PI * 2f + 0.2f;
-            var foot = new Vector3(Mathf.Cos(a) * 4.6f, Ground, Mathf.Sin(a) * 4.6f);
+        const float M = 0.5f;
+        var k = new Kit.Builder(b.Rng.Next());
 
-            if (i == 4) Lying(b, foot, 1.3f);
-            else Standing(b, foot, 2.2f + (float)b.Rng.NextDouble() * 0.9f);
+        Foundation(b, k, new Vector3(-9.5f, 0f, -9.5f), new Vector3(9.5f, 0f, 9.5f), M, 1.3f, 1, false);
+
+        for (int i = 1; i < 10; i++)
+        {
+            float a = i / 10f * Mathf.PI * 2f;
+            var foot = new Vector3(Mathf.Cos(a) * 7.8f, M, Mathf.Sin(a) * 7.8f);
+            if (i == 6) Lying(b, foot, 1.6f);
+            else Standing(b, foot, 3.2f + (float)b.Rng.NextDouble() * 1.2f);
         }
 
-        Lying(b, new Vector3(0f, Ground, 0f), 1.2f);
-        Piece(b, b.Shelf.Signboard, new Vector3(6.4f, Ground + SignUp, 0.8f), 0f);
+        // the trilithon at the entrance, on +x
+        Standing(b, new Vector3(7.8f, M, -1.5f), 4.2f);
+        Standing(b, new Vector3(7.8f, M, 1.5f), 4.2f);
+        k.Block(new Vector3(7.8f, M + 4.35f, 0f), new Vector3(1.1f, 0.7f, 4.2f), Kit.Swatch.DarkStone, 0.02f);
+
+        k.Block(new Vector3(0f, M + 0.35f, 0f), new Vector3(2.8f, 0.7f, 1.8f), Kit.Swatch.Stone, 0.015f, true);
+        k.Block(new Vector3(0f, M + 0.9f, 0f), new Vector3(0.8f, 0.4f, 0.7f), Kit.Swatch.Thatch, 0.06f);
+        k.Block(new Vector3(0f, M + 1.2f, 0f), new Vector3(0.45f, 0.35f, 0.4f), Kit.Swatch.Cloth, 0.05f);
+
+        for (int i = 0; i < 4; i++)
+        {
+            float x = 11.5f + i * 2.4f;
+            Standing(b, new Vector3(x, Ground, -2.2f), 1.3f + (i % 2) * 0.3f);
+            Standing(b, new Vector3(x, Ground, 2.2f), 1.3f + ((i + 1) % 2) * 0.3f);
+        }
+        k.Pavers(new Vector3(14.5f, Ground + 0.02f, 0f), 9.0f, 1.6f, 0.7f);
+        k.HangingSign(new Vector3(20.4f, Ground, 2.6f), 2.6f, 180f);
+
+        k.Finish("Stones", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // ------------------------------------------------------------ Lighthouse
@@ -834,53 +962,96 @@ public static class LandmarkBuilder
     // ---------------------------------------------------------- Hunter's Hide
 
     /// <summary>
-    /// One tile up, fenced on three sides, a stair up the fourth; somewhere
-    /// to wait above the eyeline of whatever comes by.
+    /// A hide up on log stilts, plank-walled under a plank roof, a wooden
+    /// stair up to it; below, a fire ring, a drying rack, the woodpile and
+    /// the hunter's things, and a pen.
     /// </summary>
     private static void Hide(Job b)
     {
-        GroundTile(b, GrassTiles, new Vector3(0f, Stack(1), 0f));
+        const float Y = 0.4f, H = 3.6f;
+        var k = new Kit.Builder(b.Rng.Next());
 
-        float edge = 0.5f * Tile;
-        Stair(b, new Vector3(edge + 2.0f, Deck1 + StairUp, 0f), 90f);
+        Foundation(b, k, new Vector3(-5.0f, 0f, -5.5f), new Vector3(4.0f, 0f, 5.5f), Y, 1.3f, 1, false);
 
-        foreach (float along in new[] { -0.45f, 0.45f })
+        // the stilts, the platform, the walls and the roof
+        foreach (float x in new[] { -2.4f, 1.0f }) foreach (float z in new[] { -2.0f, 2.0f })
         {
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Deck1 + FenceUp, edge - 0.12f), 0f);
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(along, Deck1 + FenceUp, -edge + 0.12f), 0f);
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(-edge + 0.12f, Deck1 + FenceUp, along), 90f);
+            k.Log(new Vector3(x, Y, z), new Vector3(x, Y + H + 0.1f, z), 0.16f, Kit.Swatch.DarkWood, 7);
+            k.Log(new Vector3(x, Y + 1.2f, z), new Vector3(x + (x < 0f ? 1f : -1f) * 1.1f, Y + H - 0.2f, z), 0.06f, Kit.Swatch.DarkWood, 5);
         }
+        k.Block(new Vector3(-0.7f, Y + H, 0f), new Vector3(4.6f, 0.16f, 5.2f), Kit.Swatch.Plank, 0f, true);
+        k.PlankWall(new Vector3(-3.0f, Y + H + 0.08f, -2.6f), new Vector3(1.6f, Y + H + 0.08f, -2.6f), 1.15f);
+        k.PlankWall(new Vector3(1.6f, Y + H + 0.08f, 2.6f), new Vector3(-3.0f, Y + H + 0.08f, 2.6f), 1.15f);
+        k.PlankWall(new Vector3(-3.0f, Y + H + 0.08f, 2.6f), new Vector3(-3.0f, Y + H + 0.08f, -2.6f), 1.15f);
+        k.Railing(new Vector3(1.6f, Y + H + 0.08f, -2.6f), new Vector3(1.6f, Y + H + 0.08f, -0.7f), 1.0f);
+        k.Railing(new Vector3(1.6f, Y + H + 0.08f, 0.7f), new Vector3(1.6f, Y + H + 0.08f, 2.6f), 1.0f);
+        foreach (float x in new[] { -2.8f, 1.4f }) foreach (float z in new[] { -2.4f, 2.4f })
+            k.Post(new Vector3(x, Y + H + 0.16f, z), 2.2f, 0.1f, Kit.Swatch.Wood);
+        var eave = new Vector3(-0.7f, Y + H + 2.3f, 0f);
+        k.Roof(eave, 5.0f, 5.6f, 26f, Kit.Builder.RoofStyle.Plank, 0.5f);
+        k.Bench(new Vector3(-2.2f, Y + H + 0.16f, 0f), 1.3f);
+        k.Crate(new Vector3(-2.5f, Y + H + 0.16f, 1.9f), 0.5f);
 
-        Piece(b, b.Shelf.Lamp, new Vector3(-0.55f, Deck1 + LampUp, 0.55f), 0f);
-        Piece(b, b.Shelf.Chest, new Vector3(0.3f, Deck1 + ChestUp, -0.5f), 180f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+        // the stair, wooden, from the court to the platform's open side
+        int flight = Mathf.CeilToInt(H / 0.2f);
+        k.Steps(new Vector3(1.8f, Y, 0f), Vector3.right, flight, H / flight, 0.32f, 1.4f, true);
+        k.Railing(new Vector3(1.8f, Y, 0.75f), new Vector3(1.8f + flight * 0.32f, Y, 0.75f), 0.9f);
 
-        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(edge + 4.6f, Ground + BustUp, 1.3f), Turn(b));
-        Piece(b, Pick(b.Shelf.Bushes, b), new Vector3(edge + 4.6f, Ground + BustUp, -1.3f), Turn(b));
-        Piece(b, b.Shelf.Signboard, new Vector3(edge + 3.6f, Ground + SignUp, -2.2f), 0f);
+        // below: the fire, the rack, the pile, the pen
+        k.Ring(new Vector3(-0.7f, Y + 0.15f, 0f), 0.7f, 0.3f, 0.3f, 8, Kit.Swatch.DarkStone, true);
+        k.Block(new Vector3(-0.7f, Y + 0.25f, 0f), new Vector3(0.7f, 0.35f, 0.7f), Kit.Swatch.Thatch, 0.06f);
+        k.Block(new Vector3(-0.7f, Y + 0.5f, 0f), new Vector3(0.4f, 0.3f, 0.4f), Kit.Swatch.Cloth, 0.05f);
+        k.Post(new Vector3(-4.2f, Y, -1.4f), 2.0f, 0.07f); k.Post(new Vector3(-4.2f, Y, 1.4f), 2.0f, 0.07f);
+        k.Log(new Vector3(-4.2f, Y + 1.85f, -1.5f), new Vector3(-4.2f, Y + 1.85f, 1.5f), 0.04f, Kit.Swatch.Wood, 5);
+        foreach (float z in new[] { -0.9f, -0.2f, 0.6f })
+            k.Block(new Vector3(-4.2f, Y + 1.35f, z), new Vector3(0.06f, 0.9f, 0.4f), Kit.Swatch.Plaster);
+        k.Woodpile(new Vector3(-3.8f, Y, 4.2f), 1.6f, 4, 0f);
+        k.Barrel(new Vector3(3.0f, Y, -4.2f), 0.3f, 0.85f);
+        k.Crate(new Vector3(2.2f, Y, -4.6f), 0.6f);
+        k.Lantern(new Vector3(3.4f, Y, 4.6f), 2.4f, 180f);
+        k.HayBale(new Vector3(-0.2f, Y, -4.2f), 30f);
+        k.Railing(new Vector3(-5.0f, Y, -5.5f), new Vector3(4.0f, Y, -5.5f), 1.0f);
+        k.Railing(new Vector3(-5.0f, Y, 5.5f), new Vector3(4.0f, Y, 5.5f), 1.0f);
+        k.Railing(new Vector3(-5.0f, Y, -5.5f), new Vector3(-5.0f, Y, 5.5f), 1.0f);
+        k.HangingSign(new Vector3(9.0f, Ground, -1.6f), 2.6f, 180f);
+
+        k.Finish("Hide", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // ---------------------------------------------------------- Buried Tower
 
     /// <summary>
-    /// The tower sunk to its shoulders in the sand and leaning, what was
-    /// round it half buried with it. The sand is winning.
+    /// The ruin of a keep, mostly under the sand: a great round tower sunk
+    /// to its shoulders and leaning, a second fallen and lying broken beside
+    /// it, a run of curtain wall drifted over, and a stair that once led up
+    /// to something. The sand is winning.
     /// </summary>
     private static void Buried(Job b)
     {
-        Piece(b, b.Shelf.Tower, new Vector3(0f, Ground - 1.9f, 0f), Turn(b), new Vector3(2.1f, 3.5f, 2.1f), new Vector3(0f, 1.75f, 0f), new Vector3(0f, 0f, 14f));
+        var tower = new Kit.Builder(b.Rng.Next());
+        tower.RoundTower(new Vector3(0f, -6.5f, 0f), 2.8f, 13f, true, Kit.Builder.RoofStyle.Slate, 0.5f);
+        var stood = tower.Finish("Tower", b.Root, new Vector3(0f, 0f, 0f), b.Flora.Paint);
+        stood.transform.localRotation = Quaternion.Euler(0f, b.Rng.Next(360), 11f);
 
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(2.3f, Ground + BoxUp - 0.32f, 1.1f), Turn(b));
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(-1.9f, Ground + BoxUp - 0.2f, -1.6f), Turn(b));
-        Piece(b, b.Shelf.Chest, new Vector3(1.6f, Ground + ChestUp - 0.3f, -2.2f), 120f);
+        var fallen = new Kit.Builder(b.Rng.Next());
+        fallen.RoundTower(Vector3.zero, 2.2f, 4.5f, false, Kit.Builder.RoofStyle.Slate, 0.5f);
+        var lying = fallen.Finish("Fallen", b.Root, new Vector3(3.8f, -0.6f, 5.6f), b.Flora.Paint);
+        lying.transform.localRotation = Quaternion.Euler(0f, 40f, 72f);
 
-        // the gate, flat on the sand and half under it
-        Piece(b, b.Shelf.Doors, new Vector3(-2.6f, Ground + 0.02f, 0.9f), Turn(b), Vector3.zero, Vector3.zero, new Vector3(0f, 0f, 90f));
-
-        for (int i = 0; i < 3; i++)
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(3.2f + i * 0.86f, Ground + FenceUp - 0.12f * i, 0.2f), 0f);
-
-        Standing(b, new Vector3(2.9f, Ground - 0.3f, 2.6f), 1.3f);
-        Piece(b, b.Shelf.Signboard, new Vector3(3.8f, Ground + SignUp - 0.2f, -2.4f), 0f, Vector3.zero, Vector3.zero, new Vector3(0f, 0f, 12f));
+        var k = new Kit.Builder(b.Rng.Next());
+        k.StoneWall(new Vector3(-8.5f, -1.4f, -3.2f), new Vector3(-3.2f, -1.4f, -3.2f), 2.6f, 1.0f);
+        k.MerlonsAlong(new Vector3(-8.5f, 1.2f, -3.2f), new Vector3(-3.2f, 1.2f, -3.2f), 1.0f);
+        k.StoneWall(new Vector3(3.2f, -1.8f, -3.2f), new Vector3(7.5f, -1.8f, -3.2f), 2.6f, 1.0f);
+        k.Steps(new Vector3(-5.2f, -0.4f, 2.0f), Vector3.forward, 5, 0.2f, 0.34f, 1.6f);
+        k.Barrel(new Vector3(4.4f, Ground - 0.35f, -0.4f), 0.32f, 0.9f);
+        k.Crate(new Vector3(-3.4f, Ground - 0.3f, 2.4f), 0.7f);
+        k.Crate(new Vector3(5.6f, Ground - 0.45f, 1.6f), 0.6f);
+        k.Cartwheel(new Vector3(6.6f, Ground - 0.25f, -1.4f), 0.55f, 60f);
+        k.Post(new Vector3(-6.4f, Ground - 0.1f, 4.4f), 3.2f, 0.09f, Kit.Swatch.DarkWood);
+        k.Block(new Vector3(-6.4f, Ground + 2.5f, 4.8f), new Vector3(0.03f, 1.0f, 0.7f), Kit.Swatch.Cloth);
+        k.HangingSign(new Vector3(8.6f, Ground - 0.15f, -1.6f), 2.5f, 180f);
+        Standing(b, new Vector3(7.4f, Ground - 0.4f, 3.6f), 1.6f);
+        k.Finish("Ruin", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -943,11 +1114,39 @@ public static class LandmarkBuilder
     /// on end. The pack has no statues; a stone stood up where a statue would
     /// be says the same thing.
     /// </summary>
+    /// <summary>
+    /// The boulders that are actually stone-coloured. The pack's stones are
+    /// not all grey: mixed in with them are bright gems, and one of those
+    /// stood on end and drawn out tall is a white pole eight high -- which
+    /// is what was standing in the middle of the stone circle, and on a
+    /// good many hills.
+    /// </summary>
+    private static Flora.Sprout[] GreyStones(Flora flora)
+    {
+        if (greyStones != null && greyStonesFrom == flora) return greyStones;
+
+        var grey = new List<Flora.Sprout>();
+        foreach (var stone in flora.Boulders)
+        {
+            float most = Mathf.Max(stone.Colour.r, Mathf.Max(stone.Colour.g, stone.Colour.b));
+            float least = Mathf.Min(stone.Colour.r, Mathf.Min(stone.Colour.g, stone.Colour.b));
+            if (most - least < 0.12f && most < 0.8f) grey.Add(stone);
+        }
+
+        greyStonesFrom = flora;
+        greyStones = grey.Count > 0 ? grey.ToArray() : flora.Boulders;
+        return greyStones;
+    }
+
+    private static Flora.Sprout[] greyStones;
+    private static Flora greyStonesFrom;
+
     private static void Standing(Job b, Vector3 foot, float tall)
     {
         if (b.Flora == null || b.Flora.Boulders == null || b.Flora.Boulders.Length == 0) return;
 
-        var stone = b.Flora.Boulders[b.Rng.Next(b.Flora.Boulders.Length)];
+        var stones = GreyStones(b.Flora);
+        var stone = stones[b.Rng.Next(stones.Length)];
         if (stone.Mesh == null || stone.Size < 0.0001f) return;
 
         // Stood on end, and drawn out along its height: a boulder is about as
@@ -976,7 +1175,8 @@ public static class LandmarkBuilder
     {
         if (b.Flora == null || b.Flora.Boulders == null || b.Flora.Boulders.Length == 0) return;
 
-        var stone = b.Flora.Boulders[b.Rng.Next(b.Flora.Boulders.Length)];
+        var stones = GreyStones(b.Flora);
+        var stone = stones[b.Rng.Next(stones.Length)];
         if (stone.Mesh == null || stone.Size < 0.0001f) return;
 
         float size = tall / stone.Size;
