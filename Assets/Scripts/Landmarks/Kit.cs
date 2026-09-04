@@ -874,15 +874,34 @@ public class Kit : ScriptableObject
                     }
                     break;
 
+                // A drift is a wedge with its ridge at the wall face, sloping
+                // away down to the ground: the gable's width runs across the
+                // wall, its length along it. LookRotation at 'along' already
+                // puts the gable's length along the wall; a quarter turn added
+                // to that laid the wedges flat on the ground, the same mistake
+                // the tower's blocks had.
                 case Weather.Snow:
                     Block(from + along * length * 0.5f + Vector3.up * (height + 0.08f), new Vector3(length + 0.2f, 0.16f, thickness + 0.2f), Quaternion.LookRotation(across, Vector3.up), Swatch.Snow, 0.02f);
+                    // drifts hug the foot of the wall: low, not wide, in a few
+                    // lengths rather than one slab the length of the wall
                     foreach (float side in new[] { -1f, 1f })
-                        Gable(from + along * length * 0.5f + across * side * (thickness * 0.5f + 0.3f), 0.8f, 0.45f * (0.5f + Decay), length, Quaternion.LookRotation(along, Vector3.up) * Quaternion.Euler(0f, 90f, 0f), Swatch.Snow);
+                        for (float x = Rand(0f, 1.5f); x < length; x += Rand(1.5f, 3.5f))
+                        {
+                            float run = Mathf.Min(Rand(0.8f, 2.2f), length - x);
+                            if (run < 0.4f) continue;
+                            Gable(from + along * (x + run * 0.5f) + across * side * (thickness * 0.5f), 1.1f, Rand(0.3f, 0.5f) * (0.5f + Decay), run, Quaternion.LookRotation(along, Vector3.up), Swatch.Snow);
+                        }
                     break;
 
                 case Weather.Sand:
                     foreach (float side in new[] { -1f, 1f })
-                        Gable(from + along * length * 0.5f + across * side * (thickness * 0.5f + 0.5f), 1.2f, 0.7f * (0.4f + Decay), length * Rand(0.6f, 1f), Quaternion.LookRotation(along, Vector3.up) * Quaternion.Euler(0f, 90f, 0f), Swatch.Sand);
+                        for (float x = Rand(0f, 2f); x < length; x += Rand(2f, 4f))
+                        {
+                            if (Gone(0.5f) == false && Decay < 0.3f) continue;
+                            float run = Mathf.Min(Rand(1.0f, 2.4f), length - x);
+                            if (run < 0.5f) continue;
+                            Gable(from + along * (x + run * 0.5f) + across * side * (thickness * 0.5f), 1.3f, Rand(0.35f, 0.6f) * (0.4f + Decay), run, Quaternion.LookRotation(along, Vector3.up), Swatch.Sand);
+                        }
                     break;
             }
         }
@@ -907,6 +926,7 @@ public class Kit : ScriptableObject
         {
             for (int i = 0; i < count; i++)
             {
+                if (swatch == Swatch.Pane && Gone(0.6f)) continue;   // glass goes first
                 float a = (i + turnBy) / count * Mathf.PI * 2f;
                 var at = centre + new Vector3(Mathf.Cos(a) * radius, 0f, Mathf.Sin(a) * radius);
                 var facing = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
@@ -1002,9 +1022,22 @@ public class Kit : ScriptableObject
         {
             var uv = At(swatch);
             var apex = baseCentre + Vector3.up * height;
+
+            // left long enough a cone loses a wedge, the boards under one run
+            // of it gone, and the rafters of it are what is left there
+            int gapFrom = -1, gapLen = 0;
+            if (Decay > 0.4f && rng.NextDouble() < Decay) { gapFrom = rng.Next(sides); gapLen = 2 + rng.Next(Mathf.Max(1, (int)(sides * Decay * 0.3f))); }
+
             for (int i = 0; i < sides; i++)
             {
                 float a0 = i / (float)sides * Mathf.PI * 2f, a1 = (i + 1) / (float)sides * Mathf.PI * 2f;
+                bool inGap = gapFrom >= 0 && ((i - gapFrom + sides) % sides) < gapLen;
+                if (inGap)
+                {
+                    var rim0 = baseCentre + new Vector3(Mathf.Cos(a0) * radius, 0f, Mathf.Sin(a0) * radius);
+                    Log(rim0 + Vector3.up * 0.02f, apex, 0.05f, Swatch.OldWood, 4);
+                    continue;
+                }
                 var p0 = baseCentre + new Vector3(Mathf.Cos(a0) * radius, 0f, Mathf.Sin(a0) * radius);
                 var p1 = baseCentre + new Vector3(Mathf.Cos(a1) * radius, 0f, Mathf.Sin(a1) * radius);
                 Tri(p0, p1, apex, (p0 + p1) * 0.5f - baseCentre + Vector3.up * radius * 0.5f, uv);

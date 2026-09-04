@@ -918,7 +918,7 @@ public static class LandmarkBuilder
     private static void Lighthouse(Job b)
     {
         const float B = 0.9f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-8.5f, 0f, -4.5f), new Vector3(3.5f, 0f, 4.5f), B, 2.4f, -1);
 
@@ -946,7 +946,10 @@ public static class LandmarkBuilder
             float a = i / 8f * Mathf.PI * 2f;
             k.Post(lantern + new Vector3(Mathf.Cos(a) * (radius - 0.45f), 0f, Mathf.Sin(a) * (radius - 0.45f)), 1.6f, 0.05f, Kit.Swatch.Iron);
         }
-        k.Block(lantern + Vector3.up * 0.85f, new Vector3(0.7f, 0.7f, 0.7f), Kit.Swatch.Thatch);
+        // the light: dark these many years, the lamp itself rusted
+        k.Block(lantern + Vector3.up * 0.85f, new Vector3(0.7f, 0.7f, 0.7f), Kit.Swatch.Iron, 0.02f);
+        k.Debris(new Vector3(-1.4f, B + 0.1f, 2.4f), 2.2f, 5);
+        k.Rubble(new Vector3(-2.6f, B + 0.1f, -3.2f), 1.2f, 5);
         k.Block(lantern + Vector3.up * 1.65f, new Vector3(radius * 2f - 0.6f, 0.12f, radius * 2f - 0.6f), Kit.Swatch.Iron);
         k.Cone(lantern + Vector3.up * 1.7f, radius - 0.1f, 1.6f, Kit.Swatch.Slate, 12);
 
@@ -1087,7 +1090,8 @@ public static class LandmarkBuilder
 
         switch (Regions.CharacterAtTile(b.At.TileX, b.At.TileZ, b.Seed, false))
         {
-            case Regions.Character.Desert: return Kit.Builder.Weather.Sand;
+            case Regions.Character.Desert:
+            case Regions.Character.Water: return Kit.Builder.Weather.Sand;
             case Regions.Character.Dead: return Kit.Builder.Weather.Char;
             case Regions.Character.Stone:
             case Regions.Character.Peaks: return Kit.Builder.Weather.None;
