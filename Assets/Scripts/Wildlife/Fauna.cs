@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot }
+public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot, Crab, Owl, Frog }
 
 /// <summary>
 /// What lives where. Like everything else in the world this is a function of
@@ -92,6 +92,9 @@ public static class Fauna
         public bool Howls;          // a call with its head up, in the dark
         public bool Burrows;        // goes to ground when it bolts, and comes back up later
         public bool Roots;          // feeds with its snout in the ground, not its teeth in the grass
+        public bool Sideways;       // travels side on to the way it faces, as a crab does
+        public bool Perches;        // sits up on a ruin if there is one to sit on
+        public bool Chorus;         // calls a great deal more after dark
 
         // When it is about. A window whose start is later than its end runs
         // through midnight; no windows at all means it keeps no hours.
@@ -473,6 +476,113 @@ public static class Fauna
                                WobbleDepth = 0f, Rasp = 0f, Noise = 0.04f, Thump = 0f },
 
             ProperHours = new Vector2(0f, 0f), ProperLowest = 0.15f, ProperHighest = 1f
+        },
+
+        // crab: the beaches, the strand and the shallows; sideways, claws up
+        // at you, and under the sand
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "crab",
+                Coat = new Color(0.749f, 0.322f, 0.180f),
+                Under = new Color(0.902f, 0.749f, 0.600f),
+                Dark = new Color(0.290f, 0.118f, 0.078f),
+                Size = 0.24f, WalkSpeed = 0.9f, RunSpeed = 3.2f,
+                Notices = 7f, Bolts = 3.5f, Settles = 5f
+            },
+            Lowest = 0f, Highest = 0.5f,
+            Countries = new[] { Regions.Character.Water },
+            Wades = 0.4f,
+            Sideways = true, Burrows = true,
+            Hours = null,
+            Company = 3, Crowd = 8,
+
+            Walk = new Gait { Cadence = 9f, Swing = 24f, Knee = 20f, Bounce = 0.02f,
+                              Pitch = 0f, Roll = 3f, Bounds = false },
+            Run = new Gait { Cadence = 7f, Swing = 34f, Knee = 24f, Bounce = 0.03f,
+                             Pitch = 0f, Roll = 3f, Bounds = false },
+
+            Found = "the strand and the shallows of the shore",
+            Country = "on the shore",
+            Habit = "standing its ground", Doing = Doing.Watching,
+
+            // a click
+            Call = new Voice { Length = 0.08f, Pitch = 900f, Glide = -0.3f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0.8f, Noise = 0.5f, Thump = 0.6f },
+
+            ProperHours = new Vector2(0f, 0f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // owl: the low woods after dark, up on whatever was built there
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "owl",
+                Coat = new Color(0.502f, 0.420f, 0.322f),
+                Under = new Color(0.851f, 0.800f, 0.702f),
+                Dark = new Color(0.180f, 0.141f, 0.098f),
+                Size = 0.42f, WalkSpeed = 0.4f, RunSpeed = 6.5f,
+                Notices = 20f, Bolts = 9f, Settles = 50f
+            },
+            Lowest = 0f, Highest = 0.6f,
+            Countries = new[] { Regions.Character.Lowland, Regions.Character.Forest, Regions.Character.Dead },
+            Flies = true, Perches = true,
+            Hours = new[] { new Vector2(0.72f, 0.22f) },
+            Company = 1, Crowd = 3,
+
+            Walk = new Gait { Cadence = 4f, Swing = 16f, Knee = 20f, Bounce = 0.05f,
+                              Pitch = 2f, Roll = 2f, Bounds = true },
+            Run = new Gait { Cadence = 1.2f, Swing = 10f, Knee = 20f, Bounce = 0f,
+                             Pitch = 0f, Roll = 0f, Bounds = false },
+
+            Found = "the low woods after dark, up on the ruins",
+            Country = "on a ruin after dark",
+            Habit = "watching", Doing = Doing.Watching,
+
+            // the hoot: soft, low, in two
+            Call = new Voice { Length = 0.55f, Pitch = 370f, Glide = -0.06f, WobbleRate = 3.5f,
+                               WobbleDepth = 24f, Rasp = 0f, Noise = 0.03f, Thump = 0f },
+
+            ProperHours = new Vector2(0.80f, 0.16f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // frog: the shallows of ponds and lakes; a chorus after dark; under
+        // the water the moment you come near
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "frog",
+                Coat = new Color(0.349f, 0.549f, 0.251f),
+                Under = new Color(0.800f, 0.851f, 0.549f),
+                Dark = new Color(0.149f, 0.251f, 0.118f),
+                Size = 0.17f, WalkSpeed = 0.8f, RunSpeed = 3.0f,
+                Notices = 6f, Bolts = 3.2f, Settles = 4f
+            },
+            Lowest = 0f, Highest = 0.6f,
+            KeepsOffSnow = true,
+            Countries = new[] { Regions.Character.Lowland, Regions.Character.Forest, Regions.Character.Reed, Regions.Character.Fungal, Regions.Character.Hills },
+            Wades = 0.35f, WadesOnly = true,
+            Burrows = true, Chorus = true,
+            Hours = null,
+            Company = 4, Crowd = 10,
+
+            Walk = new Gait { Cadence = 4f, Swing = 40f, Knee = 70f, Bounce = 0.5f,
+                              Pitch = 16f, Roll = 0f, Bounds = true },
+            Run = new Gait { Cadence = 3f, Swing = 55f, Knee = 70f, Bounce = 0.7f,
+                             Pitch = 16f, Roll = 0f, Bounds = true },
+
+            Found = "the shallows of the ponds",
+            Country = "at the edge of a pond",
+            Habit = "calling", Doing = Doing.Standing,
+
+            // the croak
+            Call = new Voice { Length = 0.36f, Pitch = 135f, Glide = 0.05f, WobbleRate = 26f,
+                               WobbleDepth = 22f, Rasp = 0.6f, Noise = 0.12f, Thump = 0f },
+
+            ProperHours = new Vector2(0.72f, 0.22f), ProperLowest = 0f, ProperHighest = 1f
         }
     };
 

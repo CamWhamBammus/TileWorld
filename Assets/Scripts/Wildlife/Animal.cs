@@ -75,6 +75,8 @@ public class Animal : MonoBehaviour
     private float nextNibble;
 
     private float altitude;          // how far off the ground, for what flies
+    private float perchHeight;       // how high up the ruin it is sitting, if it is
+    private bool perched;
     private Vector3 neckAt;          // where the head hangs when it is out
 
     private Gesture gesture;
@@ -101,6 +103,25 @@ public class Animal : MonoBehaviour
         thirst = Random.Range(0f, 1f);
 
         transform.position = Ground(at);
+
+        // An owl sits up on a ruin if there is one close. The perch is the
+        // structure's own place, a way up it; the ruin's collider is not
+        // consulted, so it sits at about roof height.
+        if (Fauna.All(kind).Perches)
+        {
+            var chunk = WorldGrid.WorldToChunk(at);
+            for (int dx = -1; dx <= 1 && !perched; dx++)
+            for (int dz = -1; dz <= 1 && !perched; dz++)
+            {
+                var placed = Landmarks.In(new Vector2Int(chunk.x + dx, chunk.y + dz), worldSeed);
+                if (!placed.Exists || Vector3.Distance(placed.Position, at) > 60f) continue;
+                float up = Landmarks.All(placed.Kind).LabelHeight * 0.55f;
+                transform.position = Ground(placed.Position + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)));
+                perchHeight = Mathf.Max(1.5f, placed.Position.y + up - transform.position.y);
+                altitude = perchHeight;
+                perched = true;
+            }
+        }
 
         yaw = Random.Range(0f, 360f);
         transform.rotation = Quaternion.Euler(0f, yaw, 0f);
@@ -241,6 +262,15 @@ public class Animal : MonoBehaviour
     {
         float roll = Random.value;
 
+        // up on its perch there is nothing to do but look, one way and then the other
+        if (perched)
+        {
+            state = roll < 0.6f ? State.Look : State.Stand;
+            until = Time.time + Random.Range(3f, 8f);
+            if (roll > 0.92f && Time.time > nextGesture) { Begin(Gesture.Stretch, 1.6f); nextGesture = Time.time + 20f; }
+            return;
+        }
+
         // Wet weather and the small hours are for sitting still. An animal
         // that grazed its way through a downpour exactly as it does through a
         // clear morning is one that has not noticed the weather at all.
@@ -274,6 +304,9 @@ public class Animal : MonoBehaviour
                 FaunaKind.Boar => new[] { Gesture.Shake, Gesture.Scratch, Gesture.Stamp },
                 FaunaKind.Raven => new[] { Gesture.Stretch, Gesture.Shake, Gesture.Groom },
                 FaunaKind.Marmot => new[] { Gesture.SitUp, Gesture.SitUp, Gesture.SitUp, Gesture.Scratch, Gesture.Groom },
+                FaunaKind.Crab => new[] { Gesture.Shake },
+                FaunaKind.Owl => new[] { Gesture.Stretch, Gesture.Shake, Gesture.Groom },
+                FaunaKind.Frog => new[] { Gesture.Shake },
                 _ => new[] { Gesture.Stamp, Gesture.Shake, Gesture.Groom }
             };
             var pick = could[Random.Range(0, could.Length)];
@@ -374,7 +407,7 @@ public class Animal : MonoBehaviour
     }
 
     /// <summary>Whether it is in the air, which only a flier ever is.</summary>
-    private bool Flying => Fauna.Flies(Kind) && (state == State.Flee || altitude > 0.05f);
+    private bool Flying => Fauna.Flies(Kind) && (state == State.Flee || (altitude > 0.05f && !perched));
 
     /// <summary>
     /// Puts the animal on the ground and lies it along the hill.
@@ -413,7 +446,8 @@ public class Animal : MonoBehaviour
         var tilt = Flying ? Quaternion.identity : Quaternion.FromToRotation(Vector3.up, slope);
 
         // a flier climbs while it is getting away and comes down once it has
-        float wantAltitude = Fauna.Flies(Kind) && state == State.Flee ? traits.Size * 5.5f : 0f;
+        if (state == State.Flee) perched = false;
+        float wantAltitude = Fauna.Flies(Kind) && state == State.Flee ? traits.Size * 5.5f : (perched ? perchHeight : 0f);
         altitude = Mathf.MoveTowards(altitude, wantAltitude, dt * traits.Size * (wantAltitude > altitude ? 3.2f : 2.6f));
 
         lastYaw = Mathf.LerpAngle(lastYaw, yaw, 1f - Mathf.Exp(-3f * dt));
@@ -532,7 +566,12 @@ public class Animal : MonoBehaviour
 
             case FaunaKind.Heron:
             case FaunaKind.Raven:
+            case FaunaKind.Owl:
                 lift = Flying ? -10f : 4f;
+                break;
+
+            case FaunaKind.Crab:
+            case FaunaKind.Frog:
                 break;
 
             case FaunaKind.Boar:
@@ -831,6 +870,30 @@ public class Animal : MonoBehaviour
             if (shut) { dip = 12f; turn = 0f; }
         }
 
+        // an owl looks right round, and holds each look
+        if (Kind == FaunaKind.Owl && (state == State.Look || state == State.Stand))
+        {
+            float cycle = Mathf.Sin(Time.time * 0.45f + phase);
+            turn = Mathf.Clamp(cycle * 1.6f, -1f, 1f) * 120f;
+            dip = -4f;
+        }
+        if (Kind == FaunaKind.Owl && state == State.Alert) { turn = Mathf.Clamp(turn, -120f, 120f); }
+
+        // a crab's claws come up when it is stood at bay
+        if (Kind == FaunaKind.Crab)
+        {
+            dip = state == State.Alert ? -48f + Mathf.Sin(Time.time * 6f) * 6f : 4f;
+            turn = 0f;
+        }
+
+        // a frog's croak: the throat lifts with each one
+        if (Kind == FaunaKind.Frog)
+        {
+            float pulse = Mathf.Max(0f, Mathf.Sin(Time.time * 3.2f + phase));
+            dip = state == State.Alert ? -8f : -pulse * 10f;
+            turn = 0f;
+        }
+
         // a boar rooting: snout in the ground, worked side to side
         if (Fauna.All(Kind).Roots && state == State.Graze)
         {
@@ -924,9 +987,11 @@ public class Animal : MonoBehaviour
     {
         if (Time.time < nextCall) return;
 
-        nextCall = Time.time + Random.Range(14f, 46f);
+        float hourNow = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;
+        bool chorus = Fauna.All(Kind).Chorus && (hourNow > 0.72f || hourNow < 0.22f);
+        nextCall = Time.time + (chorus ? Random.Range(2.5f, 7f) : Random.Range(14f, 46f));
 
-        if (state == State.Flee || state == State.Rest) return;
+        if (state == State.Flee || state == State.Rest || state == State.Hidden) return;
 
         Speak(state == State.Alert);
     }
@@ -938,7 +1003,7 @@ public class Animal : MonoBehaviour
         voice.pitch = Random.Range(0.92f, 1.10f);
         voice.PlayOneShot(AnimalVoice.Call(Kind, alarmed), alarmed ? 0.75f : 0.5f);
 
-        nextCall = Mathf.Max(nextCall, Time.time + 9f);
+        nextCall = Mathf.Max(nextCall, Time.time + (Fauna.All(Kind).Chorus ? 2f : 9f));
     }
 
     /// <summary>Turns towards something. Only the yaw: the tilt is the hill's business.</summary>
@@ -949,6 +1014,11 @@ public class Animal : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f) return;
 
         float want = Quaternion.LookRotation(direction).eulerAngles.y;
+
+        // a crab goes side on: it faces a right angle from the way it travels,
+        // and it does not turn round to do it
+        if (Fauna.All(Kind).Sideways && (state == State.Wander || state == State.Flee || state == State.ToWater))
+            want += Mathf.DeltaAngle(yaw, want + 90f) < Mathf.DeltaAngle(yaw, want - 90f) ? 90f : -90f;
 
         yaw = Mathf.LerpAngle(yaw, want, 1f - Mathf.Exp(-speed * dt));
     }

@@ -121,6 +121,24 @@ public static class Observations
         Add("marmot-gone", "a marmot gone to ground",
             s => s.Kind == FaunaKind.Marmot && s.Doing == Doing.Fleeing);
 
+        Add("crab-shore", "a crab on the shore",
+            s => s.Kind == FaunaKind.Crab);
+
+        Add("crab-claws", "a crab with its claws up",
+            s => s.Kind == FaunaKind.Crab && s.Doing == Doing.Watching);
+
+        Add("owl-night", "an owl abroad in the dark",
+            s => s.Kind == FaunaKind.Owl && Night(s));
+
+        Add("owl-ruin", "an owl up on a ruin",
+            s => s.Kind == FaunaKind.Owl && s.NearRuin);
+
+        Add("frog-pond", "a frog at the water",
+            s => s.Kind == FaunaKind.Frog && s.ByWater);
+
+        Add("frog-chorus", "frogs calling after dark",
+            s => s.Kind == FaunaKind.Frog && Night(s) && s.Company >= 2);
+
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 

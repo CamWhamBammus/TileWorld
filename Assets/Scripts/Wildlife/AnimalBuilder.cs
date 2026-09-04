@@ -146,6 +146,9 @@ public static class AnimalBuilder
             case FaunaKind.Boar: kit = Boar(traits.Size); break;
             case FaunaKind.Raven: kit = Raven(traits.Size); break;
             case FaunaKind.Marmot: kit = Marmot(traits.Size); break;
+            case FaunaKind.Crab: kit = Crab(traits.Size); break;
+            case FaunaKind.Owl: kit = Owl(traits.Size); break;
+            case FaunaKind.Frog: kit = Frog(traits.Size); break;
 
             default:
                 // A shape has to be built, it cannot be described in the table,
@@ -1040,6 +1043,215 @@ public static class AnimalBuilder
         Add(tail, 2, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.055f * h, -0.19f * h), new Vector3(0f, -0.07f * h, -0.24f * h) },
             new[] { 0.035f * h, 0.015f * h }, 6, 1f));
+        kit.Tail = Wrap(tail);
+
+        return kit;
+    }
+
+    private static Kit Crab(float h)
+    {
+        // A carapace, wider than it is long, on legs set well out to the
+        // sides; two claws in front on the head pivot, so they can come up;
+        // eyes on stalks.
+        var kit = new Kit
+        {
+            Neck = new Vector3(0f, 0.30f * h, 0.34f * h),
+            Shoulder = new Vector3(0.44f * h, 0.28f * h, 0.16f * h),
+            Hip = new Vector3(0.44f * h, 0.28f * h, -0.16f * h),
+            Rump = new Vector3(0f, 0.26f * h, -0.36f * h)
+        };
+
+        var pieces = new List<CreatureMesh.Piece>();
+
+        // the shell, swept across so it is wide, and a pale underside
+        Add(pieces, 0, CreatureMesh.Tube(
+            new[]
+            {
+                new Vector3(-0.50f * h, 0.32f * h, 0f),
+                new Vector3(-0.30f * h, 0.38f * h, 0f),
+                new Vector3(0f, 0.42f * h, 0f),
+                new Vector3(0.30f * h, 0.38f * h, 0f),
+                new Vector3(0.50f * h, 0.32f * h, 0f)
+            },
+            new[] { 0.14f * h, 0.26f * h, 0.30f * h, 0.26f * h, 0.14f * h }, 10, 0.5f));
+        Add(pieces, 1, CreatureMesh.Tube(
+            new[] { new Vector3(-0.44f * h, 0.24f * h, 0f), new Vector3(0f, 0.24f * h, 0f), new Vector3(0.44f * h, 0.24f * h, 0f) },
+            new[] { 0.16f * h, 0.28f * h, 0.16f * h }, 10, 0.22f));
+
+        // the eyes, up on stalks at the front
+        foreach (float side in new[] { 1f, -1f })
+        {
+            Add(pieces, 0, CreatureMesh.Tube(
+                new[] { new Vector3(0.12f * h * side, 0.40f * h, 0.26f * h), new Vector3(0.13f * h * side, 0.56f * h, 0.30f * h) },
+                new[] { 0.03f * h, 0.025f * h }, 5, 1f));
+            Add(pieces, 2, CreatureMesh.Tube(
+                new[] { new Vector3(0.13f * h * side, 0.56f * h, 0.30f * h), new Vector3(0.13f * h * side, 0.62f * h, 0.31f * h) },
+                new[] { 0.04f * h, 0.03f * h }, 6, 1f));
+        }
+
+        kit.Trunk = Wrap(pieces);
+
+        // the claws, on the head pivot: an arm out and forward, a pincer on it
+        var head = new List<CreatureMesh.Piece>();
+        foreach (float side in new[] { 1f, -1f })
+        {
+            Add(head, 0, CreatureMesh.Tube(
+                new[] { new Vector3(0.10f * h * side, 0f, 0f), new Vector3(0.26f * h * side, 0.02f * h, 0.14f * h), new Vector3(0.30f * h * side, 0.04f * h, 0.30f * h) },
+                new[] { 0.05f * h, 0.055f * h, 0.045f * h }, 7, 1f));
+            Add(head, 0, CreatureMesh.Tube(
+                new[] { new Vector3(0.30f * h * side, 0.04f * h, 0.30f * h), new Vector3(0.34f * h * side, 0.06f * h, 0.42f * h), new Vector3(0.30f * h * side, 0.04f * h, 0.56f * h) },
+                new[] { 0.06f * h, 0.09f * h, 0.03f * h }, 7, 0.7f));
+            Add(head, 1, CreatureMesh.Tube(
+                new[] { new Vector3(0.24f * h * side, 0.02f * h, 0.42f * h), new Vector3(0.20f * h * side, 0.02f * h, 0.56f * h) },
+                new[] { 0.035f * h, 0.012f * h }, 5, 0.7f));
+        }
+        kit.Head = Wrap(head);
+
+        Leg(kit, true, h, 0.30f, 0.045f, 0.035f, 0.025f, 0.02f, 0f, 2);
+        Leg(kit, false, h, 0.30f, 0.045f, 0.035f, 0.025f, -0.02f, 0f, 2);
+
+        var tail = new List<CreatureMesh.Piece>();
+        Add(tail, 0, CreatureMesh.Tube(new[] { Vector3.zero, new Vector3(0f, -0.01f * h, -0.04f * h) }, new[] { 0.03f * h, 0.015f * h }, 5, 0.5f));
+        kit.Tail = Wrap(tail);
+
+        return kit;
+    }
+
+    private static Kit Owl(float h)
+    {
+        // A bird that is mostly head: a round body, a big flat face with the
+        // eyes on the front of it, ear tufts, a hooked beak; short legs.
+        var kit = new Kit
+        {
+            Winged = true,
+            Neck = new Vector3(0f, 0.74f * h, 0.14f * h),
+            Shoulder = new Vector3(0.16f * h, 0.62f * h, 0.06f * h),
+            Hip = new Vector3(0.07f * h, 0.36f * h, 0f),
+            Rump = new Vector3(0f, 0.46f * h, -0.30f * h)
+        };
+
+        var pieces = new List<CreatureMesh.Piece>();
+
+        Add(pieces, 0, CreatureMesh.Tube(
+            new[]
+            {
+                new Vector3(0f, 0.44f * h, -0.30f * h),
+                new Vector3(0f, 0.50f * h, -0.16f * h),
+                new Vector3(0f, 0.56f * h, 0f),
+                new Vector3(0f, 0.60f * h, 0.12f * h),
+                new Vector3(0f, 0.68f * h, 0.18f * h)
+            },
+            new[] { 0.08f * h, 0.20f * h, 0.24f * h, 0.22f * h, 0.14f * h }, 12, 1.1f));
+
+        // the pale front, barred
+        Add(pieces, 1, CreatureMesh.Tube(
+            new[] { new Vector3(0f, 0.40f * h, 0.10f * h), new Vector3(0f, 0.52f * h, 0.20f * h), new Vector3(0f, 0.64f * h, 0.22f * h) },
+            new[] { 0.10f * h, 0.14f * h, 0.10f * h }, 10, 0.55f));
+        for (int i = 0; i < 3; i++)
+            Add(pieces, 2, CreatureMesh.Tube(
+                new[] { new Vector3(-0.08f * h, (0.44f + i * 0.08f) * h, 0.26f * h), new Vector3(0.08f * h, (0.44f + i * 0.08f) * h, 0.26f * h) },
+                new[] { 0.012f * h, 0.012f * h }, 4, 0.5f));
+
+        kit.Trunk = Wrap(pieces);
+
+        var head = new List<CreatureMesh.Piece>();
+
+        Add(head, 0, CreatureMesh.Tube(
+            new[] { new Vector3(0f, 0f, -0.12f * h), new Vector3(0f, 0.02f * h, 0f), new Vector3(0f, 0f, 0.10f * h) },
+            new[] { 0.14f * h, 0.20f * h, 0.16f * h }, 10, 1f));
+
+        // the face: a pale disc, the eyes set into it, the beak between
+        Add(head, 1, CreatureMesh.Tube(
+            new[] { new Vector3(0f, 0f, 0.06f * h), new Vector3(0f, 0f, 0.16f * h) },
+            new[] { 0.19f * h, 0.15f * h }, 12, 1.05f));
+        foreach (float side in new[] { 1f, -1f })
+            Add(head, 2, CreatureMesh.Tube(
+                new[] { new Vector3(0.08f * h * side, 0.03f * h, 0.14f * h), new Vector3(0.08f * h * side, 0.03f * h, 0.19f * h) },
+                new[] { 0.055f * h, 0.045f * h }, 8, 1f));
+        Add(head, 2, CreatureMesh.Taper(new Vector3(0f, -0.02f * h, 0.15f * h), new Vector3(0f, -0.09f * h, 0.20f * h), 0.03f * h, 0.006f * h, 5));
+
+        // the tufts
+        Ears(kit, h, 0.11f, 0.14f, -0.02f, 0.17f, 0.30f, -0.06f, 0.05f, 0);
+
+        kit.Head = Wrap(head);
+
+        var wing = new List<CreatureMesh.Piece>();
+        Add(wing, 0, CreatureMesh.Tube(
+            new[]
+            {
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0.02f * h, 0f, -0.18f * h),
+                new Vector3(0.01f * h, -0.04f * h, -0.36f * h),
+                new Vector3(0f, -0.08f * h, -0.46f * h)
+            },
+            new[] { 0.07f * h, 0.11f * h, 0.08f * h, 0.03f * h }, 8, 0.22f));
+        kit.ForeThigh = Wrap(wing);
+        kit.ForeShin = default;
+
+        Leg(kit, false, h, 0.30f, 0.040f, 0.028f, 0.022f, 0.02f, -0.01f, 2, 0f, 2);
+
+        var tail = new List<CreatureMesh.Piece>();
+        Add(tail, 0, CreatureMesh.Tube(
+            new[] { Vector3.zero, new Vector3(0f, -0.04f * h, -0.10f * h), new Vector3(0f, -0.10f * h, -0.20f * h) },
+            new[] { 0.08f * h, 0.08f * h, 0.05f * h }, 6, 0.3f));
+        kit.Tail = Wrap(tail);
+
+        return kit;
+    }
+
+    private static Kit Frog(float h)
+    {
+        // Squat, all head and haunch: a wide flat body, the eyes up on top,
+        // long hind legs folded under it, no tail to speak of.
+        var kit = new Kit
+        {
+            Neck = new Vector3(0f, 0.50f * h, 0.34f * h),
+            Shoulder = new Vector3(0.22f * h, 0.30f * h, 0.22f * h),
+            Hip = new Vector3(0.28f * h, 0.36f * h, -0.20f * h),
+            Rump = new Vector3(0f, 0.36f * h, -0.48f * h)
+        };
+
+        var pieces = new List<CreatureMesh.Piece>();
+
+        Add(pieces, 0, CreatureMesh.Tube(
+            new[]
+            {
+                new Vector3(0f, 0.36f * h, -0.48f * h),
+                new Vector3(0f, 0.48f * h, -0.30f * h),
+                new Vector3(0f, 0.54f * h, -0.06f * h),
+                new Vector3(0f, 0.52f * h, 0.20f * h),
+                new Vector3(0f, 0.50f * h, 0.36f * h)
+            },
+            new[] { 0.10f * h, 0.30f * h, 0.36f * h, 0.34f * h, 0.24f * h }, 12, 0.7f));
+        Add(pieces, 1, CreatureMesh.Tube(
+            new[] { new Vector3(0f, 0.26f * h, -0.30f * h), new Vector3(0f, 0.24f * h, 0f), new Vector3(0f, 0.26f * h, 0.30f * h) },
+            new[] { 0.24f * h, 0.30f * h, 0.20f * h }, 10, 0.3f));
+
+        // the eyes, up and out on top
+        foreach (float side in new[] { 1f, -1f })
+        {
+            Add(pieces, 0, CreatureMesh.Tube(
+                new[] { new Vector3(0.20f * h * side, 0.60f * h, 0.30f * h), new Vector3(0.22f * h * side, 0.72f * h, 0.30f * h) },
+                new[] { 0.09f * h, 0.07f * h }, 8, 1f));
+            Add(pieces, 2, CreatureMesh.Tube(
+                new[] { new Vector3(0.22f * h * side, 0.74f * h, 0.30f * h), new Vector3(0.23f * h * side, 0.80f * h, 0.32f * h) },
+                new[] { 0.055f * h, 0.03f * h }, 6, 1f));
+        }
+
+        kit.Trunk = Wrap(pieces);
+
+        // the mouth end, on the head pivot, so a croak can lift it
+        var head = new List<CreatureMesh.Piece>();
+        Add(head, 0, CreatureMesh.Tube(
+            new[] { new Vector3(0f, 0f, -0.06f * h), new Vector3(0f, -0.02f * h, 0.10f * h), new Vector3(0f, -0.05f * h, 0.22f * h) },
+            new[] { 0.22f * h, 0.20f * h, 0.10f * h }, 10, 0.6f));
+        kit.Head = Wrap(head);
+
+        Leg(kit, true, h, 0.30f, 0.045f, 0.032f, 0.026f, 0.04f, 0.02f);
+        Leg(kit, false, h, 0.36f, 0.11f, 0.06f, 0.03f, -0.22f, 0.26f, 0, 0.26f);
+
+        var tail = new List<CreatureMesh.Piece>();
+        Add(tail, 0, CreatureMesh.Tube(new[] { Vector3.zero, new Vector3(0f, -0.01f * h, -0.03f * h) }, new[] { 0.03f * h, 0.015f * h }, 5, 0.5f));
         kit.Tail = Wrap(tail);
 
         return kit;
