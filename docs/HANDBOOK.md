@@ -41,6 +41,10 @@ copy a backup wholesale over a newer save; that wiped real progress once.
 
 ### Probes
 
+Every probe sets `AudioListener.volume = 0f` in its `Boot`: a probe runs beside
+whatever else is going on and must not be heard. Keep that line in new ones.
+
+
 A probe is a `MonoBehaviour` with a `[RuntimeInitializeOnLoadMethod]` boot,
 copied to `Assets/Scripts/_Probe.cs` for one build and removed. Never commit
 one. `Tools/probe/StructureTour.cs.txt` is the model; it embodies everything

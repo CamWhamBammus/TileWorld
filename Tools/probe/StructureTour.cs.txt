@@ -24,6 +24,7 @@ public class _Probe : MonoBehaviour
     private static void Boot()
     {
         Application.runInBackground = true;
+        AudioListener.volume = 0f;   // a probe runs beside other work; it has no business being heard
         Mark("boot");
         var go = new GameObject("_Probe");
         DontDestroyOnLoad(go);

@@ -1,0 +1,125 @@
+// A probe: the four animals in a row on level ground, photographed side on
+// and close, a few seconds apart so their movement shows.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        AudioListener.volume = 0f;   // a probe runs beside other work; it has no business being heard
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var t in FindObjectsByType<TMPro.TextMeshPro>(FindObjectsSortMode.None)) t.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>())
+            if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        cam.fieldOfView = 40f;
+
+        // level dry ground near the player
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int at = home; bool found = false;
+        for (int r = 0; r < 300 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int cx = home.x + dx, cz = home.y + dz;
+            float lo = float.MaxValue, hi = float.MinValue; bool wet = false;
+            for (int i = -8; i <= 8; i++) for (int j = -5; j <= 5; j++)
+            {
+                float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+                if (WaterSurface.IsUnderwater(cx + i, cz + j, seed)) wet = true;
+            }
+            if (!wet && hi - lo < 0.01f && !SnowCover.IsSnowy(cx, cz, seed)) { at = new Vector2Int(cx, cz); found = true; }
+        }
+        Mark("level ground " + found + " at " + at);
+
+        var origin = new Vector3(at.x * WorldGrid.TileSize, WorldHeight.SurfaceY(at.x, at.y, seed), at.y * WorldGrid.TileSize);
+        body.enabled = false;
+        player.position = origin + new Vector3(0f, 0.3f, -40f);   // far enough that nothing bolts
+        body.enabled = true;
+        yield return new WaitForSecondsRealtime(5f);
+
+        // one of each, side by side, all facing +x so the camera sees a flank
+        var kinds = new[] { FaunaKind.Deer, FaunaKind.Goat, FaunaKind.Fox, FaunaKind.Rabbit };
+        float[] xs = { -5.2f, -1.6f, 1.6f, 4.2f };
+        var animals = new Animal[kinds.Length];
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            var go = new GameObject("probe " + kinds[i]);
+            var a = go.AddComponent<Animal>();
+            a.Settle(kinds[i], seed, player, origin + new Vector3(xs[i], 0f, 0f));
+            animals[i] = a;
+        }
+        Mark("spawned " + kinds.Length);
+
+        string dir = Application.persistentDataPath;
+        yield return new WaitForSecondsRealtime(1f);
+        HideInterface();
+
+        // the row, side on
+        cam.transform.position = origin + new Vector3(0f, 1.5f, -9.5f);
+        cam.transform.rotation = Quaternion.LookRotation((origin + Vector3.up * 0.7f) - cam.transform.position, Vector3.up);
+        for (int shot = 0; shot < 3; shot++)
+        {
+            yield return new WaitForSecondsRealtime(shot == 0 ? 0.5f : 4f);
+            HideInterface();
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-row" + shot + ".png"));
+            yield return new WaitForSecondsRealtime(0.5f);
+        }
+
+        // each close, three quarter front
+        for (int i = 0; i < animals.Length; i++)
+        {
+            if (animals[i] == null) continue;
+            var p = animals[i].transform.position;
+            float s = Fauna.Of(kinds[i]).Size;
+            cam.transform.position = p + new Vector3(s * 2.4f, s * 1.1f, -s * 2.2f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * s * 0.55f) - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(0.6f);
+            HideInterface();
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + kinds[i].ToString().ToLower() + ".png"));
+            yield return new WaitForSecondsRealtime(0.5f);
+        }
+
+        Mark("done");
+    }
+}
