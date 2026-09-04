@@ -162,6 +162,10 @@ The book has an entry for every animal and every kind of structure. An animal's 
 
 Hold F and the view narrows to what will fit on the page, scroll to zoom. Get close enough, keep it in frame and stand still and the drawing fills in over a few seconds. Moving ruins it. The book grades the result (how much of the page it fills, whether it's cut off, whether you got the side or just the back of it walking away) relative to what's actually possible for that subject, and keeps your best one. The drawing is real: it captures the subject as it was, from where you stood, and renders it as ink on the map paper.
 
+![Three drawings from the book: the Toadstool Ring, the Hilltop Beacon, the Fishing Jetty](docs/images/drawings.png)
+
+*Three pages from the book, as the game drew them: the Toadstool Ring, the Hilltop Beacon and the Fishing Jetty, each from where the player stood.*
+
 The book also notes things it sees on its own, like three deer together, a fox out at night, or still water after dark. There are about forty of these, none required. When it runs out it tells you what it's curious about, which usually means going out at a time of day you haven't tried.
 
 The first few minutes, on a brand new save only, walk you through this with one animal placed in front of you and a couple of prompts.
