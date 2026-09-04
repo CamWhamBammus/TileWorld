@@ -122,6 +122,23 @@ public class Animal : MonoBehaviour
         else { state = State.Alert; until = Time.time + Random.Range(2.5f, 6f); }
     }
 
+    /// <summary>Another of its kind has its head up: this one joins in, a moment later.</summary>
+    public void Answer(float delay)
+    {
+        if (gesture != Gesture.None || state == State.Flee || state == State.Hidden || state == State.Hunt || state == State.Rest) return;
+        StartCoroutine(AnswerLater(delay));
+    }
+
+    private System.Collections.IEnumerator AnswerLater(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (gesture == Gesture.None && state != State.Flee && state != State.Hidden)
+        {
+            gesture = Gesture.Howl; gestureFrom = Time.time; gestureUntil = Time.time + Random.Range(2.2f, 3.2f);
+            Speak(false);
+        }
+    }
+
     private System.Collections.IEnumerator StartleLater(Vector3 from, bool run, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -179,13 +196,26 @@ public class Animal : MonoBehaviour
     /// <summary>How far through the gesture, nought to one.</summary>
     private float GestureT => Mathf.Clamp01((Time.time - gestureFrom) / Mathf.Max(0.05f, gestureUntil - gestureFrom));
 
-    public void Settle(FaunaKind kind, int worldSeed, Transform watching, Vector3 at)
+    /// <summary>A young one: small, and kept close to whoever leads it.</summary>
+    public bool Young { get; private set; }
+
+    /// <summary>Whether it has its head up calling -- a howl, a bellow.</summary>
+    public bool Calling => gesture == Gesture.Howl;
+
+    /// <summary>Whether it has something in its beak.</summary>
+    public bool HasCatch => caught != null;
+
+    private Transform caught;
+    private float caughtUntil;
+
+    public void Settle(FaunaKind kind, int worldSeed, Transform watching, Vector3 at, float scale = 0f, bool young = false)
     {
         Kind = kind;
         seed = worldSeed;
         player = watching;
         traits = Fauna.Of(kind);
-        body = AnimalBuilder.Build(kind, transform);
+        Young = young;
+        body = AnimalBuilder.Build(kind, transform, scale);
         neckAt = body.Head != null ? body.Head.localPosition : Vector3.zero;
 
         phase = Random.Range(0f, 10f);
@@ -380,7 +410,7 @@ public class Animal : MonoBehaviour
         // Left behind: one that came with a leader goes after it when the
         // leader has got more than a dozen metres off, whatever its clock says.
         if (Leader != null && Leader != this && (state == State.Graze || state == State.Stand || state == State.Look)
-            && Vector3.Distance(Leader.transform.position, transform.position) > 12f && Time.time > nextFollow)
+            && Vector3.Distance(Leader.transform.position, transform.position) > (Young ? 6f : 12f) && Time.time > nextFollow)
         {
             nextFollow = Time.time + 4f;
             Wander();
@@ -508,6 +538,7 @@ public class Animal : MonoBehaviour
                 FaunaKind.Fox => new[] { Gesture.Groom, Gesture.Pounce, Gesture.Scratch, Gesture.Shake },
                 FaunaKind.Goat => new[] { Gesture.Groom, Gesture.Stamp, Gesture.Shake },
                 FaunaKind.Wolf => dark ? new[] { Gesture.Howl, Gesture.Howl, Gesture.Groom, Gesture.Shake } : new[] { Gesture.Groom, Gesture.Scratch, Gesture.Shake },
+                FaunaKind.Deer => hour > 0.64f && hour < 0.86f && !Young ? new[] { Gesture.Howl, Gesture.Stamp, Gesture.Shake, Gesture.Groom } : new[] { Gesture.Stamp, Gesture.Shake, Gesture.Groom },
                 FaunaKind.Tortoise => new[] { Gesture.Shake },
                 FaunaKind.Heron => new[] { Gesture.Groom, Gesture.Shake, Gesture.Stretch },
                 FaunaKind.Boar => new[] { Gesture.Shake, Gesture.Scratch, Gesture.Stamp },
@@ -1393,6 +1424,21 @@ public class Animal : MonoBehaviour
             float jab = Mathf.Sin(Time.time * 0.55f + phase);
             dip = jab > 0.96f ? 75f : 38f + jab * 6f;
             turn = Mathf.Sin(Time.time * 0.3f + phase) * 12f;
+
+            // and now and then the spear comes up with something in it, held
+            // crossways in the beak for a few seconds, head up, then gone
+            if (Kind == FaunaKind.Heron && caught == null && jab > 0.99f && Time.time > caughtUntil && Random.value < 0.06f)
+            {
+                caught = AnimalBuilder.FishInBeak(body.Head);
+                caught.localPosition = new Vector3(0f, 0.44f * traits.Size, 0.30f * traits.Size);
+                caught.localRotation = Quaternion.Euler(0f, 90f, 20f);
+                caughtUntil = Time.time + 3.5f;
+            }
+        }
+        if (caught != null)
+        {
+            dip = -12f; turn = Mathf.Sin(Time.time * 3f) * 6f;
+            if (Time.time > caughtUntil) { Destroy(caught.gameObject); caught = null; caughtUntil = Time.time + Random.Range(30f, 90f); }
         }
         if (Flying) { dip = -4f; turn = 0f; }
 
@@ -1514,7 +1560,12 @@ public class Animal : MonoBehaviour
         gestureFrom = Time.time;
         gestureUntil = Time.time + length;
 
-        if (what == Gesture.Howl) Speak(false);
+        if (what == Gesture.Howl)
+        {
+            Speak(false);
+            // the others of its kind within earshot take it up, a moment apart
+            if (Kind == FaunaKind.Wolf) Wildlife.Chorus(this, 45f);
+        }
 
         if (state != State.Alert)
         {
@@ -1538,8 +1589,8 @@ public class Animal : MonoBehaviour
 
         // one that came with a leader keeps with the leader, wherever the
         // leader has got to, rather than with whichever of its kind is nearest
-        if (Leader != null && Leader != this && Vector3.Distance(Leader.transform.position, transform.position) > 7f)
-            pull = Leader.transform.position + new Vector3(Random.Range(-3f, 3f), 0f, Random.Range(-3f, 3f));
+        if (Leader != null && Leader != this && Vector3.Distance(Leader.transform.position, transform.position) > (Young ? 3.5f : 7f))
+            pull = Leader.transform.position + new Vector3(Random.Range(-2f, 2f), 0f, Random.Range(-2f, 2f)) * (Young ? 0.6f : 1.5f);
 
         for (int attempt = 0; attempt < 6; attempt++)
         {

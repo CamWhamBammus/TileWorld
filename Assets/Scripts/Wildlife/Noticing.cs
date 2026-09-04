@@ -102,6 +102,9 @@ public class Noticing : MonoBehaviour
             sight.Kind = sight.Animal.Kind;
             sight.Doing = sight.Animal.Busy;
             sight.Scale = sight.Animal.Scale;
+            sight.Young = sight.Animal.Young;
+            sight.Calling = sight.Animal.Calling;
+            sight.HasCatch = sight.Animal.HasCatch;
             sight.Distance = Vector3.Distance(player.position, at);
 
             foreach (var other in FindObjectsByType<Animal>(FindObjectsSortMode.None))

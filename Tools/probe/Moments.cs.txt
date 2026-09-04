@@ -1,0 +1,180 @@
+// A probe: five deer for their five shades and a young one with its
+// leader; two wolves, one set howling, and whether the other answers; a
+// heron given a fish to hold.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateField = typeof(Animal).GetField("state", flags);
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var gestureType = typeof(Animal).GetNestedType("Gesture", System.Reflection.BindingFlags.NonPublic);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var begin = typeof(Animal).GetMethod("Begin", flags);
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        var manager = FindFirstObjectByType<Wildlife>();
+        var living = (List<Animal>)typeof(Wildlife).GetField("living", flags).GetValue(manager);
+        foreach (var wild in living.ToArray()) if (wild != null) Destroy(wild.gameObject);
+        living.Clear();
+        manager.enabled = false;
+
+        // level ground, player far off
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int flat = home; bool found = false;
+        for (int r = 2; r < 400 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int cx = home.x + dx, cz = home.y + dz;
+            float lo = float.MaxValue, hi = float.MinValue; bool wet = false;
+            for (int i = -8; i <= 8; i++) for (int j = -4; j <= 4; j++)
+            {
+                float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+                if (WaterSurface.IsUnderwater(cx + i, cz + j, seed)) wet = true;
+            }
+            var kind = Regions.CharacterAtTile(cx, cz, seed);
+            bool open = kind == Regions.Character.Lowland || kind == Regions.Character.Desert || kind == Regions.Character.Stone;
+            if (!wet && open && hi - lo < 0.3f) { flat = new Vector2Int(cx, cz); found = true; }
+        }
+        var origin = new Vector3(flat.x * WorldGrid.TileSize, WorldHeight.SurfaceY(flat.x, flat.y, seed), flat.y * WorldGrid.TileSize);
+        body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -75f); body.enabled = true;
+        yield return new WaitForSecondsRealtime(5f);
+        HideInterface();
+
+        Animal Make(FaunaKind kind, Vector3 at, float scale = 0f, bool young = false)
+        {
+            var go = new GameObject("probe " + kind);
+            var an = go.AddComponent<Animal>();
+            an.Settle(kind, seed, player, at, scale, young);
+            living.Add(an);
+            return an;
+        }
+
+        // 1. five deer: their shades, and a young one by the leader
+        {
+            var deer = new List<Animal>();
+            var shades = new HashSet<Material>();
+            for (int i = 0; i < 5; i++)
+            {
+                var d = Make(FaunaKind.Deer, origin + new Vector3((i - 2) * 2.4f, 0f, 0f));
+                stateField.SetValue(d, System.Enum.Parse(stateType, "Stand")); untilField.SetValue(d, Time.time + 100f);
+                typeof(Animal).GetField("yaw", flags).SetValue(d, 90f); d.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+                deer.Add(d);
+                var trunk = d.transform.Find("frame/trunk");
+                if (trunk != null) shades.Add(trunk.GetComponent<MeshRenderer>().sharedMaterials[0]);
+            }
+            var young = Make(FaunaKind.Deer, origin + new Vector3(1.2f, 0f, 1.6f), 0.6f, true);
+            young.Leader = deer[2];
+            stateField.SetValue(young, System.Enum.Parse(stateType, "Stand")); untilField.SetValue(young, Time.time + 100f);
+            typeof(Animal).GetField("yaw", flags).SetValue(young, 90f); young.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            yield return new WaitForSecondsRealtime(1.5f);
+            string sizes = ""; foreach (var d in deer) sizes += d.Scale.ToString("F2") + " ";
+            Mark("DEER: " + shades.Count + " distinct coat materials among five; sizes " + sizes + "| young " + young.Young + " at " + young.Scale.ToString("F2"));
+            cam.transform.position = origin + new Vector3(0f, 1.4f, -9f);
+            cam.transform.rotation = Quaternion.LookRotation((origin + Vector3.up * 0.8f) - cam.transform.position, Vector3.up);
+            HideInterface(); yield return new WaitForSecondsRealtime(0.3f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-mm-herd.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            foreach (var d in deer) Destroy(d.gameObject); Destroy(young.gameObject); living.Clear();
+        }
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        // 2. two wolves: one howls, does the other answer
+        {
+            var a = Make(FaunaKind.Wolf, origin + new Vector3(-2f, 0f, 0f));
+            var b = Make(FaunaKind.Wolf, origin + new Vector3(2.5f, 0f, 1f));
+            foreach (var w in new[] { a, b }) { stateField.SetValue(w, System.Enum.Parse(stateType, "Stand")); untilField.SetValue(w, Time.time + 100f); }
+            yield return new WaitForSecondsRealtime(1f);
+            begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, "Howl"), 3f });
+            string when = "";
+            for (int t = 0; t < 12; t++)
+            {
+                yield return new WaitForSecondsRealtime(0.25f);
+                when += (a.Calling ? "A" : "a") + (b.Calling ? "B " : "b ");
+            }
+            Mark("WOLVES: over three seconds (upper case = head up calling): " + when);
+            var p = (a.transform.position + b.transform.position) * 0.5f;
+            cam.transform.position = p + new Vector3(0f, 1.2f, -5.5f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 0.7f) - cam.transform.position, Vector3.up);
+            begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, "Howl"), 3f });
+            yield return new WaitForSecondsRealtime(1.6f);
+            HideInterface();
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-mm-howl.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            Destroy(a.gameObject); Destroy(b.gameObject); living.Clear();
+        }
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        // 3. a heron given its fish
+        {
+            var h = Make(FaunaKind.Heron, origin);
+            stateField.SetValue(h, System.Enum.Parse(stateType, "Graze")); untilField.SetValue(h, Time.time + 100f);
+            yield return new WaitForSecondsRealtime(1f);
+            var head = h.transform.Find("frame/head");
+            var fish = AnimalBuilder.FishInBeak(head);
+            fish.localPosition = new Vector3(0f, 0.44f * 1.05f, 0.30f * 1.05f);
+            fish.localRotation = Quaternion.Euler(0f, 90f, 20f);
+            typeof(Animal).GetField("caught", flags).SetValue(h, fish);
+            typeof(Animal).GetField("caughtUntil", flags).SetValue(h, Time.time + 6f);
+            yield return new WaitForSecondsRealtime(1.2f);
+            Mark("HERON: has catch " + h.HasCatch);
+            var p = h.transform.position;
+            cam.transform.position = p + new Vector3(1.8f, 1.5f, -2.2f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 1.2f) - cam.transform.position, Vector3.up);
+            HideInterface(); yield return new WaitForSecondsRealtime(0.3f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-mm-fish.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            Destroy(h.gameObject);
+        }
+
+        Mark("done");
+    }
+}

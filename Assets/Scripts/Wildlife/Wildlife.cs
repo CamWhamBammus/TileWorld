@@ -218,7 +218,10 @@ public class Wildlife : MonoBehaviour
                     if (!Fauna.Ground(kind.Value, cx, cz, seed)) continue;
                 }
 
-                var one = Bring(kind.Value, seed, spot);
+                // some of the company are this year's young, small and kept
+                // close, on the kinds that keep company at all
+                bool young = leader != null && Fauna.Company(kind.Value) >= 3 && Random.value < 0.35f;
+                var one = Bring(kind.Value, seed, spot, young);
                 if (leader == null) leader = one; else one.Leader = leader;
             }
 
@@ -226,13 +229,13 @@ public class Wildlife : MonoBehaviour
         }
     }
 
-    private Animal Bring(FaunaKind kind, int seed, Vector3 at)
+    private Animal Bring(FaunaKind kind, int seed, Vector3 at, bool young = false)
     {
         var go = new GameObject(Fauna.Of(kind).Name);
         go.transform.SetParent(transform, false);
 
         var animal = go.AddComponent<Animal>();
-        animal.Settle(kind, seed, player, at);
+        animal.Settle(kind, seed, player, at, young ? Random.Range(0.55f, 0.68f) : 0f, young);
 
         living.Add(animal);
         return animal;
@@ -253,6 +256,20 @@ public class Wildlife : MonoBehaviour
             if (Fauna.Hunts(other.Kind)) continue;
             if (Vector3.Distance(other.transform.position, from.transform.position) > reach) continue;
             other.Startle(threat, run, Random.Range(0.1f, 0.6f));
+        }
+    }
+
+    /// <summary>One wolf's howl is taken up by the others within earshot, a moment apart.</summary>
+    public static void Chorus(Animal from, float reach)
+    {
+        if (instance == null) return;
+        float delay = 0.6f;
+        foreach (var other in instance.living)
+        {
+            if (other == null || other == from || other.Kind != from.Kind) continue;
+            if (Vector3.Distance(other.transform.position, from.transform.position) > reach) continue;
+            other.Answer(delay);
+            delay += Random.Range(0.4f, 1.1f);
         }
     }
 

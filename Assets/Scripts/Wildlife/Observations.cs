@@ -25,6 +25,9 @@ public static class Observations
 
         public float Distance;      // from the player
         public float Scale;         // how big it is against its kind
+        public bool Young;          // one of this year's
+        public bool Calling;        // head up, calling
+        public bool HasCatch;       // something in its beak
         public int Company;         // others of its kind close by
         public bool Mixed;          // another kind close by as well
         public FaunaKind Other;
@@ -198,6 +201,18 @@ public static class Observations
 
         Add("feather-found", "a feather on the ground",
             s => s.NearSign && (s.Sign == Tracks.Sort.PaleFeather || s.Sign == Tracks.Sort.DarkFeather), false);
+
+        Add("young-one", "a young one keeping close",
+            s => s.Young);
+
+        Add("wolf-chorus", "wolves howling together",
+            s => s.Kind == FaunaKind.Wolf && s.Calling && s.Company >= 2);
+
+        Add("stag-bellow", "a stag bellowing at dusk",
+            s => s.Kind == FaunaKind.Deer && s.Calling && Dusk(s));
+
+        Add("heron-catch", "a heron with a fish",
+            s => s.Kind == FaunaKind.Heron && s.HasCatch);
 
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);

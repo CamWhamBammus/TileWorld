@@ -62,7 +62,7 @@ public static class AnimalBuilder
 
     private static readonly Dictionary<FaunaKind, Kit> kits = new Dictionary<FaunaKind, Kit>();
 
-    public static Body Build(FaunaKind kind, Transform parent)
+    public static Body Build(FaunaKind kind, Transform parent, float scale = 0f)
     {
         var kit = KitFor(kind);
 
@@ -71,16 +71,24 @@ public static class AnimalBuilder
 
         // No two animals of a kind are the same size: most near the middle,
         // the odd one a good deal bigger or smaller, so a big fox is a thing
-        // you can meet. Two rolls averaged, for the middle to be the common case.
-        frameGo.transform.localScale = Vector3.one * Mathf.Lerp(0.76f, 1.26f, (Random.value + Random.value) * 0.5f);
+        // you can meet. Two rolls averaged, for the middle to be the common
+        // case; or the size asked for, which is how a young one is made.
+        frameGo.transform.localScale = Vector3.one * (scale > 0f ? scale : Mathf.Lerp(0.76f, 1.26f, (Random.value + Random.value) * 0.5f));
+
+        // Nor the same colour: the coat a shade darker or paler, in one of
+        // five steps so five animals share five materials and not fifty.
+        var traits = Fauna.Of(kind);
+        int shade = Random.Range(0, 5);
+        float tint = Mathf.Lerp(0.86f, 1.12f, shade / 4f);
+        var palette = new[] { Mat(Tint(traits.Coat, tint)), Mat(Tint(traits.Under, Mathf.Lerp(1f, tint, 0.5f))), kit.Palette[2] };
 
         var body = new Body { Frame = frameGo.transform };
         var frame = frameGo.transform;
 
-        Part(frame, "trunk", kit.Trunk, kit.Palette, Vector3.zero);
+        Part(frame, "trunk", kit.Trunk, palette, Vector3.zero);
 
         body.Head = Pivot(frame, "head", kit.Neck);
-        Part(body.Head, "skull", kit.Head, kit.Palette, Vector3.zero);
+        Part(body.Head, "skull", kit.Head, palette, Vector3.zero);
 
         body.Legs = new Transform[4];
         body.Knees = new Transform[4];
@@ -101,7 +109,7 @@ public static class AnimalBuilder
             if (kit.Winged && fore)
             {
                 body.Legs[i] = Pivot(frame, "wing", at);
-                Part(body.Legs[i], "feathers", kit.ForeThigh, kit.Palette, Vector3.zero);
+                Part(body.Legs[i], "feathers", kit.ForeThigh, palette, Vector3.zero);
                 body.Knees[i] = null;
                 continue;
             }
@@ -109,17 +117,17 @@ public static class AnimalBuilder
             // Hip carries the whole leg; the knee below it carries the lower
             // half, which is what stops a walk looking like a swinging stick.
             body.Legs[i] = Pivot(frame, fore ? "foreleg" : "hindleg", at);
-            Part(body.Legs[i], "thigh", fore ? kit.ForeThigh : kit.HindThigh, kit.Palette, Vector3.zero);
+            Part(body.Legs[i], "thigh", fore ? kit.ForeThigh : kit.HindThigh, palette, Vector3.zero);
 
             body.Knees[i] = Pivot(body.Legs[i], "knee", fore ? kit.ForeKnee : kit.HindKnee);
-            Part(body.Knees[i], "shin", fore ? kit.ForeShin : kit.HindShin, kit.Palette, Vector3.zero);
+            Part(body.Knees[i], "shin", fore ? kit.ForeShin : kit.HindShin, palette, Vector3.zero);
 
             body.Thigh[i] = fore ? kit.ForeKnee : kit.HindKnee;
             body.Shin[i] = fore ? kit.ForeFoot : kit.HindFoot;
         }
 
         body.Tail = Pivot(frame, "tail", kit.Rump);
-        Part(body.Tail, "brush", kit.Tail, kit.Palette, Vector3.zero);
+        Part(body.Tail, "brush", kit.Tail, palette, Vector3.zero);
 
         // Ears on their own pivots at the root, so they can be moved: an ear
         // baked into the skull is a horn. They point up and out from the root.
@@ -127,9 +135,9 @@ public static class AnimalBuilder
         {
             body.Ears = new Transform[2];
             body.Ears[0] = Pivot(body.Head, "ear", kit.EarRootLeft);
-            Part(body.Ears[0], "flap", kit.EarLeft, kit.Palette, Vector3.zero);
+            Part(body.Ears[0], "flap", kit.EarLeft, palette, Vector3.zero);
             body.Ears[1] = Pivot(body.Head, "ear", kit.EarRootRight);
-            Part(body.Ears[1], "flap", kit.EarRight, kit.Palette, Vector3.zero);
+            Part(body.Ears[1], "flap", kit.EarRight, palette, Vector3.zero);
         }
 
         return body;
@@ -1808,4 +1816,18 @@ public static class AnimalBuilder
     }
 
     private static Material Mat(Color c) => Paint.Flat(c);
+
+    private static Color Tint(Color c, float by) => new Color(Mathf.Clamp01(c.r * by), Mathf.Clamp01(c.g * by), Mathf.Clamp01(c.b * by), 1f);
+
+    /// <summary>A small fish, for a beak: the fish's own body, a third the size.</summary>
+    public static Transform FishInBeak(Transform beak)
+    {
+        var kit = KitFor(FaunaKind.Fish);
+        var go = new GameObject("catch");
+        go.transform.SetParent(beak, false);
+        go.transform.localScale = Vector3.one * 0.32f;
+        Part(go.transform, "fish", kit.Trunk, kit.Palette, Vector3.zero);
+        if (kit.Tail.Mesh != null) Part(go.transform, "fishtail", kit.Tail, kit.Palette, kit.Rump);
+        return go.transform;
+    }
 }
