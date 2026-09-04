@@ -22,6 +22,8 @@ public static class AnimalBuilder
         public Transform Tail;
         public Transform[] Ears;         // which swivel, flick, and go flat when it runs
         public bool Winged;              // the fore pair are wings, not legs
+        public Vector3[] Thigh;          // hip to knee, per leg, in the frame's units
+        public Vector3[] Shin;           // knee to the sole, per leg
     }
 
     /// <summary>A mesh with the materials that go on it, in submesh order.</summary>
@@ -47,6 +49,8 @@ public static class AnimalBuilder
 
         public Vector3 ForeKnee;         // where the joint sits below the hip
         public Vector3 HindKnee;
+        public Vector3 ForeFoot;         // and where the sole is, below the knee
+        public Vector3 HindFoot;
         public Material[] Palette;
 
         public Vector3 Neck;             // where the head hangs from
@@ -80,6 +84,8 @@ public static class AnimalBuilder
 
         body.Legs = new Transform[4];
         body.Knees = new Transform[4];
+        body.Thigh = new Vector3[4];
+        body.Shin = new Vector3[4];
 
         body.Winged = kit.Winged;
 
@@ -107,6 +113,9 @@ public static class AnimalBuilder
 
             body.Knees[i] = Pivot(body.Legs[i], "knee", fore ? kit.ForeKnee : kit.HindKnee);
             Part(body.Knees[i], "shin", fore ? kit.ForeShin : kit.HindShin, kit.Palette, Vector3.zero);
+
+            body.Thigh[i] = fore ? kit.ForeKnee : kit.HindKnee;
+            body.Shin[i] = fore ? kit.ForeFoot : kit.HindFoot;
         }
 
         body.Tail = Pivot(frame, "tail", kit.Rump);
@@ -1643,7 +1652,11 @@ public static class AnimalBuilder
     private static void Leg(Kit kit, bool fore, float h, float length, float top, float middle,
                             float ankle, float kneeZ, float footZ, int shinCoat = 0, float longFoot = 0f, int thighCoat = 0)
     {
-        float l = length * h;
+        // Seven percent longer than the body was drawn for. The feet are put
+        // on the ground and the legs bent to reach it, and a leg exactly as
+        // long as the drop has no bend to give: it stands locked straight,
+        // and hovers on any slope. The slack is taken up as a slight bend.
+        float l = length * h * 1.07f;
         float knee = l * 0.44f;
 
         var thigh = new List<CreatureMesh.Piece>();
@@ -1689,17 +1702,21 @@ public static class AnimalBuilder
             },
             new[] { ankle * h * 0.95f, ankle * h * 0.80f }, 7, 0.9f));
 
+        var sole = new Vector3(0f, -rest, (footZ - kneeZ) * h);
+
         if (fore)
         {
             kit.ForeThigh = Wrap(thigh);
             kit.ForeShin = Wrap(shin);
             kit.ForeKnee = new Vector3(0f, -knee, kneeZ * h);
+            kit.ForeFoot = sole;
         }
         else
         {
             kit.HindThigh = Wrap(thigh);
             kit.HindShin = Wrap(shin);
             kit.HindKnee = new Vector3(0f, -knee, kneeZ * h);
+            kit.HindFoot = sole;
         }
     }
 

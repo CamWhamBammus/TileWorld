@@ -88,6 +88,42 @@ public class Animal : MonoBehaviour
     private bool perched;
     private GameObject snag;         // a dead trunk built for it to sit on, where there was no ruin
     private bool landing;            // a flier on its way down to ground that suits it
+
+    // How much of a stride it is taking: eased in and out over a quarter of
+    // a second, so standing does not snap into walking.
+    private float stride;
+
+    // Ears and tail on springs rather than lerps: they lag the head and body
+    // and settle a beat after them, with a little overshoot, which is most of
+    // what reads as alive.
+    private readonly float[] earPitch = new float[2], earRoll = new float[2], earPitchV = new float[2], earRollV = new float[2];
+    private float tailLift, tailSwing, tailLiftV, tailSwingV;
+
+    /// <summary>Where each sole is, in the world, as last placed.</summary>
+    public Vector3[] Feet { get; } = new Vector3[4];
+
+    /// <summary>Which soles are on the ground this frame, as against swinging.</summary>
+    public bool[] Planted { get; } = new bool[4];
+
+    // The visible ground is not the walking surface. A grass tile carries a
+    // cap of blades a third of a unit above it, snow lies a drift deep on it,
+    // sand and stone sit a little proud of it. Feet go on what can be seen.
+    private float footing;
+    private float baseline;          // how far the frame is dropped so the soles reach the footing
+
+    /// <summary>How far above the walking surface the ground looks to be, on this tile.</summary>
+    public static float FootingAt(int tileX, int tileZ, int seed)
+    {
+        if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return 0f;
+        if (SnowCover.IsSnowy(tileX, tileZ, seed)) return 0.17f;
+        switch (Regions.CharacterAtTile(tileX, tileZ, seed))
+        {
+            case Regions.Character.Desert: return 0.14f;
+            case Regions.Character.Stone:
+            case Regions.Character.Peaks: return 0.08f;
+            default: return 0.32f;
+        }
+    }
     private Vector3 neckAt;          // where the head hangs when it is out
 
     private Gesture gesture;
@@ -487,7 +523,10 @@ public class Animal : MonoBehaviour
 
         transform.position += forward * (pace * dt);
 
-        gait += pace * dt * Fauna.Moving(Kind, state == State.Flee).Cadence;
+        // The cycle runs at whatever rate keeps a planted foot still: half a
+        // cycle on the ground has to carry the foot back exactly as far as the
+        // body goes forward, so the rate follows the stride, not a fixed number.
+        gait += pace * dt * CycleRate(Fauna.Moving(Kind, state == State.Flee));
 
         if (landing)
         {
@@ -538,7 +577,10 @@ public class Animal : MonoBehaviour
 
         slope = Vector3.Slerp(slope, normal, 1f - Mathf.Exp(-6f * dt));
 
-        var tilt = Flying ? Quaternion.identity : Quaternion.FromToRotation(Vector3.up, slope);
+        // Half the lie of the land in the body; the legs take up the rest, so
+        // an animal across a hillside stands with its uphill legs folded and
+        // its downhill legs straight, the way one does.
+        var tilt = Flying ? Quaternion.identity : Quaternion.FromToRotation(Vector3.up, Vector3.Slerp(Vector3.up, slope, 0.5f));
 
         // a flier climbs while it is getting away and comes down once it has
         if (state == State.Flee) perched = false;
@@ -574,6 +616,25 @@ public class Animal : MonoBehaviour
         var walk = Fauna.Moving(Kind, running);
 
         if (gesture != Gesture.None && Time.time > gestureUntil) gesture = Gesture.None;
+
+        stride = Mathf.MoveTowards(stride, moving && !Flying && state != State.Hidden ? 1f : 0f, dt * 4f);
+
+        // where the soles should rest, and how far the body has to come down
+        // for them to: the legs were drawn to end a little above the frame's
+        // origin, and the visible ground is a little above the walking one
+        footing = FootingAt(Mathf.RoundToInt(transform.position.x / WorldGrid.TileSize), Mathf.RoundToInt(transform.position.z / WorldGrid.TileSize), seed);
+        // The soles a little below the footing, by six percent of the leg:
+        // a leg exactly as long as the drop stands locked straight and has
+        // nothing to give when the foot moves; the slack is a slight bend.
+        float gap = 0f, reach = 0f;
+        if (body.Thigh != null && body.Legs != null && body.Legs.Length > 2 && body.Legs[2] != null)
+        {
+            gap = body.Legs[2].localPosition.y + body.Thigh[2].y + body.Shin[2].y;
+            reach = body.Thigh[2].magnitude + body.Shin[2].magnitude;
+        }
+        float scale = body.Frame != null ? body.Frame.localScale.x : 1f;
+        float wantBaseline = Flying || perched || state == State.Hidden ? 0f : footing - (Mathf.Max(0f, gap) + reach * 0.09f) * scale;
+        baseline = Mathf.Lerp(baseline, wantBaseline, 1f - Mathf.Exp(-6f * dt));
 
         Limbs(dt, moving, walk);
         Carriage(dt, moving, walk);
@@ -622,8 +683,9 @@ public class Animal : MonoBehaviour
             earFlick[i] = Mathf.MoveTowards(earFlick[i], 0f, dt * 4.5f);
             float flick = Mathf.Sin(earFlick[i] * Mathf.PI) * 32f;
 
-            var want = Quaternion.Euler(forward + flick, 0f, -side * splay);
-            body.Ears[i].localRotation = Quaternion.Slerp(body.Ears[i].localRotation, want, 1f - Mathf.Exp(-9f * dt));
+            Spring(ref earPitch[i], ref earPitchV[i], forward + flick, 320f, 14f, dt);
+            Spring(ref earRoll[i], ref earRollV[i], -side * splay, 260f, 13f, dt);
+            body.Ears[i].localRotation = Quaternion.Euler(earPitch[i], 0f, earRoll[i]);
         }
     }
 
@@ -706,8 +768,21 @@ public class Animal : MonoBehaviour
                 break;
         }
 
-        var want = Quaternion.Euler(lift, swing, 0f);
-        body.Tail.localRotation = Quaternion.Slerp(body.Tail.localRotation, want, 1f - Mathf.Exp(-7f * dt));
+        Spring(ref tailLift, ref tailLiftV, lift, 140f, 9f, dt);
+        Spring(ref tailSwing, ref tailSwingV, swing, 140f, 9f, dt);
+        body.Tail.localRotation = Quaternion.Euler(tailLift, tailSwing, 0f);
+    }
+
+    /// <summary>
+    /// A damped spring on one angle: pulled toward its target, its speed
+    /// bled off, so it arrives a beat late and a touch over.
+    /// </summary>
+    private static void Spring(ref float value, ref float velocity, float target, float stiffness, float damping, float dt)
+    {
+        dt = Mathf.Min(dt, 0.05f);
+        velocity += (target - value) * stiffness * dt;
+        velocity *= Mathf.Exp(-damping * dt);
+        value += velocity * dt;
     }
 
     /// <summary>
@@ -814,25 +889,19 @@ public class Animal : MonoBehaviour
                 hip = t < 0.4f ? (fore ? 20f : -30f) : (fore ? -35f + leap * 70f : 40f - leap * 60f);
                 knee = t < 0.4f ? (fore ? -40f : 60f) : (fore ? -20f : 30f);
             }
-            else if (moving)
+            else if (body.Knees != null && body.Knees[i] != null && body.Thigh != null)
             {
-                float turn = gait + legPhase;
-
-                hip = Mathf.Sin(turn) * walk.Swing;
-
-                // fold while the leg is coming forward, straight while it is down
-                float lift = Mathf.Max(0f, Mathf.Cos(turn));
-                knee = lift * walk.Knee * (fore ? -1f : 1f);
+                // Standing or moving: the foot is put where it should be and
+                // the leg is bent to reach it. On the ground the foot stays
+                // where it was set down; in the air it swings forward in an
+                // arc; and the ground is the ground under that foot, not a
+                // plane through the middle of the animal.
+                Place(i, fore, legPhase, walk, dt);
+                continue;
             }
             else
             {
-                // A shuffle while it turns on the spot, so it does not swing
-                // round as one piece.
-                float shuffle = Mathf.Abs(Mathf.DeltaAngle(yaw, lastYaw)) > 0.05f
-                    ? Mathf.Sin(Time.time * 7f + i * 1.9f) * 5f
-                    : 0f;
-
-                hip = shuffle;
+                hip = 0f;
                 knee = 0f;
             }
 
@@ -845,6 +914,147 @@ public class Animal : MonoBehaviour
                     Quaternion.Euler(knee, 0f, 0f), moving || state == State.Rest ? 1f : dt * 6f);
             }
         }
+    }
+
+    /// <summary>
+    /// One leg, placed. The foot's target is worked out in the frame's own
+    /// space -- its rest position under the hip, moved back and forth by the
+    /// stride and lifted in an arc while it swings -- dropped to the ground
+    /// under it, and the hip and knee turned to reach it: two bones, solved
+    /// in the plane the leg swings in.
+    /// </summary>
+    private void Place(int i, bool fore, float legPhase, Fauna.Gait walk, float dt)
+    {
+        var hip = body.Legs[i];
+        var knee = body.Knees[i];
+        var frame = body.Frame;
+
+        Vector3 thigh = body.Thigh[i];
+        Vector3 shin = body.Shin[i];
+        float a = thigh.magnitude, b = shin.magnitude;
+        float reach = a + b;
+
+        // the stride, in the frame's units: half a cycle carries the body
+        // pi / cadence forward, and the planted foot has to go the same way back
+        float worldScale = Mathf.Max(0.01f, frame.lossyScale.x);
+        float half = StrideHalf(walk, reach, worldScale) * stride;
+        float turn = gait + legPhase;
+
+        // Half the cycle in the air, swinging forward in an arc; half on the
+        // ground, going back at one speed. A sine here slowed the planted foot
+        // at both ends of the stance and the body outran it.
+        float u = Mathf.Repeat(turn, Mathf.PI * 2f);
+        float along, lift;
+        if (u < Mathf.PI)
+        {
+            float p = u / Mathf.PI;
+            along = -Mathf.Cos(p * Mathf.PI) * half;
+            lift = Mathf.Sin(p * Mathf.PI) * reach * (walk.Bounds ? 0.30f : 0.22f) * stride;
+        }
+        else
+        {
+            float p = (u - Mathf.PI) / Mathf.PI;
+            along = half * (1f - 2f * p);
+            lift = 0f;
+        }
+
+        // the shuffle of a turn on the spot, when it is not going anywhere
+        if (stride < 0.05f && Mathf.Abs(Mathf.DeltaAngle(yaw, lastYaw)) > 0.05f)
+        {
+            along = Mathf.Sin(Time.time * 7f + i * 1.9f) * reach * 0.06f;
+            lift = Mathf.Max(0f, Mathf.Sin(Time.time * 7f + i * 1.9f)) * reach * 0.04f;
+        }
+
+        Vector3 restFoot = hip.localPosition + thigh + shin;
+        Vector3 wantLocal = restFoot + new Vector3(0f, 0f, along);
+
+        // to the ground under that foot, in the world, then back
+        Vector3 wantWorld = frame.TransformPoint(wantLocal);
+        float ground = GroundUnder(wantWorld) + footing;
+        wantWorld.y = ground + lift * worldScale;
+        Vector3 target = frame.InverseTransformPoint(wantWorld);
+
+        // in the leg's plane: y and z about the hip
+        Vector2 H = new Vector2(hip.localPosition.y, hip.localPosition.z);
+        Vector2 T = new Vector2(target.y, target.z);
+        Vector2 toFoot = T - H;
+        float d = Mathf.Clamp(toFoot.magnitude, Mathf.Abs(a - b) + 0.001f, reach - 0.001f);
+        toFoot = toFoot.normalized * d;
+
+        Vector2 t2 = new Vector2(thigh.y, thigh.z);
+        Vector2 s2 = new Vector2(shin.y, shin.z);
+
+        // how far the knee has to close: the angle between thigh and shin
+        // that makes the leg exactly d long, against the angle it was built with
+        float cosBend = Mathf.Clamp((d * d - a * a - b * b) / (2f * a * b), -1f, 1f);
+        float bend = Mathf.Acos(cosBend);                       // angle between the two bones
+        float built = Mathf.Acos(Mathf.Clamp(Vector2.Dot(t2, s2) / (a * b), -1f, 1f));
+
+        // Two ways to fold; the right one has the knee forward of the line
+        // from hip to foot on a foreleg and behind it on a hind leg.
+        float best = 0f; Vector2 bestKnee = Vector2.zero; float bestHip = 0f; bool any = false;
+        foreach (float sign in new[] { 1f, -1f })
+        {
+            float kneeTurn = sign * (built - bend) * Mathf.Rad2Deg * -1f;
+            Vector2 shinTurned = Rotate(s2, kneeTurn);
+            Vector2 w = t2 + shinTurned;
+            float hipTurn = Vector2.SignedAngle(w, toFoot) * -1f;   // the sign of Rotate() below
+            Vector2 kneeAt = Rotate(t2, hipTurn);
+            float lineSide = Vector3.Cross(new Vector3(toFoot.y, toFoot.x, 0f), new Vector3(kneeAt.y, kneeAt.x, 0f)).z;   // z of knee against the hip->foot line, in (z,y)
+            bool forwardOfLine = lineSide < 0f;
+            bool right = fore ? forwardOfLine : !forwardOfLine;
+            if (right || !any) { best = kneeTurn; bestHip = hipTurn; bestKnee = kneeAt; any = true; if (right) break; }
+        }
+
+        var hipRot = Quaternion.Euler(bestHip, 0f, 0f);
+        var kneeRot = Quaternion.Euler(best, 0f, 0f);
+        float ease = stride > 0.5f ? 1f : 1f - Mathf.Exp(-14f * dt);
+        hip.localRotation = Quaternion.Slerp(hip.localRotation, hipRot, ease);
+        knee.localRotation = Quaternion.Slerp(knee.localRotation, kneeRot, ease);
+
+        Feet[i] = frame.TransformPoint(new Vector3(hip.localPosition.x, H.x + toFoot.x, H.y + toFoot.y));
+        Planted[i] = lift <= 0.0005f;
+    }
+
+    /// <summary>
+    /// Half a stride, in the frame's units: as long as the cadence asks, but
+    /// never more than a third of the leg, which is as far as a leg can reach
+    /// and keep its foot on the ground.
+    /// </summary>
+    private float StrideHalf(Fauna.Gait walk, float reach, float worldScale)
+    {
+        return Mathf.Min(Mathf.PI / (2f * Mathf.Max(0.5f, walk.Cadence)) / worldScale, reach * 0.32f);
+    }
+
+    /// <summary>Radians of cycle per metre travelled, so the stance foot goes back at the body's speed.</summary>
+    private float CycleRate(Fauna.Gait walk)
+    {
+        if (body.Thigh == null || body.Legs == null || body.Legs.Length < 3 || body.Legs[2] == null) return walk.Cadence;
+        float worldScale = Mathf.Max(0.01f, body.Frame.lossyScale.x);
+        float reach = body.Thigh[2].magnitude + body.Shin[2].magnitude;
+        float half = StrideHalf(walk, reach, worldScale);
+        return Mathf.PI / (2f * Mathf.Max(0.01f, half * worldScale));
+    }
+
+    /// <summary>A rotation about x, as Unity applies it, in the (y, z) plane.</summary>
+    private static Vector2 Rotate(Vector2 yz, float degrees)
+    {
+        float r = degrees * Mathf.Deg2Rad;
+        float c = Mathf.Cos(r), s = Mathf.Sin(r);
+        return new Vector2(yz.x * c - yz.y * s, yz.x * s + yz.y * c);
+    }
+
+    /// <summary>
+    /// The ground under a point near the animal: the plane through its own
+    /// place with the lie of the land it stands on, which is what the
+    /// collision ramps between the terraces amount to.
+    /// </summary>
+    private float GroundUnder(Vector3 at)
+    {
+        Vector3 root = transform.position;
+        Vector3 n = slope.sqrMagnitude < 0.01f ? Vector3.up : slope;
+        if (n.y < 0.2f) return root.y;
+        return root.y - (n.x * (at.x - root.x) + n.z * (at.z - root.z)) / n.y;
     }
 
     /// <summary>
@@ -875,7 +1085,7 @@ public class Animal : MonoBehaviour
         else if (state == State.Hidden)
         {
             // down the hole: the whole animal goes under the ground
-            rise = Mathf.MoveTowards(body.Frame.localPosition.y, -traits.Size * 1.6f, dt * traits.Size * 4f);
+            rise = Mathf.MoveTowards(body.Frame.localPosition.y - baseline, -traits.Size * 1.6f, dt * traits.Size * 4f);
         }
         else if (perched)
         {
@@ -893,38 +1103,38 @@ public class Animal : MonoBehaviour
         else if ((Fauna.All(Kind).Withdraws || Fauna.All(Kind).Freezes) && state == State.Alert)
         {
             // down onto the sand, or flat to the snow, and stays there
-            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * (Fauna.All(Kind).Freezes ? 0.24f : 0.12f), dt * 4f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * (Fauna.All(Kind).Freezes ? 0.24f : 0.12f), dt * 4f);
         }
         else if (state == State.Rest)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.30f, dt * 3f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.30f, dt * 3f);
         }
         else if (gesture == Gesture.SitUp)
         {
             // the whole front lifted, sat back on the haunches
-            rise = Mathf.Lerp(body.Frame.localPosition.y, traits.Size * 0.14f, dt * 6f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, traits.Size * 0.14f, dt * 6f);
             pitch = -48f;
         }
         else if (gesture == Gesture.Stretch)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.10f, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.10f, dt * 5f);
             pitch = 16f * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t * 1.2f));
         }
         else if (gesture == Gesture.Shake)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y, 0f, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, 0f, dt * 5f);
             roll = Mathf.Sin(Time.time * 42f) * 10f * (1f - t);
             pitch = Mathf.Sin(Time.time * 42f + 1f) * 3f * (1f - t);
         }
         else if (gesture == Gesture.Scratch)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.05f, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.05f, dt * 5f);
             roll = -9f;
         }
         else if (gesture == Gesture.Pounce)
         {
             // a crouch, then up and over, nose down into the grass at the end
-            if (t < 0.4f) { rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.14f, dt * 6f); pitch = 6f; }
+            if (t < 0.4f) { rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.14f, dt * 6f); pitch = 6f; }
             else
             {
                 float leap = (t - 0.4f) / 0.6f;
@@ -947,11 +1157,11 @@ public class Animal : MonoBehaviour
             // Standing still is not standing frozen: it breathes.
             float breath = Mathf.Sin(Time.time * 0.9f + phase) * traits.Size * 0.007f;
 
-            rise = Mathf.Lerp(body.Frame.localPosition.y, breath, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, breath, dt * 5f);
         }
 
         var local = body.Frame.localPosition;
-        local.y = rise + hop;
+        local.y = rise + hop + baseline;
         body.Frame.localPosition = local;
 
         body.Frame.localRotation = Quaternion.Slerp(body.Frame.localRotation,

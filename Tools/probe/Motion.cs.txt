@@ -1,0 +1,194 @@
+// A probe: measures the legs. A deer walking, its feet sampled every frame
+// -- how far a planted foot slides against how far the body goes -- then a
+// goat stood across a hillside, and a deer walking side on, photographed.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var stateField = typeof(Animal).GetField("state", flags);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var targetField = typeof(Animal).GetField("target", flags);
+
+        // level ground for the walk
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int flat = home; bool foundFlat = false;
+        for (int r = 2; r < 200 && !foundFlat; r += 2)
+        for (int dx = -r; dx <= r && !foundFlat; dx += 2)
+        for (int dz = -r; dz <= r && !foundFlat; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int cx = home.x + dx, cz = home.y + dz;
+            float lo = float.MaxValue, hi = float.MinValue; bool wet = false;
+            for (int i = -6; i <= 6; i++) for (int j = -3; j <= 3; j++)
+            {
+                float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+                if (WaterSurface.IsUnderwater(cx + i, cz + j, seed)) wet = true;
+            }
+            if (!wet && hi - lo < 0.01f) { flat = new Vector2Int(cx, cz); foundFlat = true; }
+        }
+        var origin = new Vector3(flat.x * WorldGrid.TileSize, WorldHeight.SurfaceY(flat.x, flat.y, seed), flat.y * WorldGrid.TileSize);
+        body.enabled = false;
+        player.position = origin + new Vector3(0f, 0.3f, -12f);
+        body.enabled = true;
+        yield return new WaitForSecondsRealtime(5f);
+        HideInterface();
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        // 1. the walk: a deer sent along +x, feet sampled
+        {
+            var go = new GameObject("probe deer");
+            var an = go.AddComponent<Animal>();
+            an.Settle(FaunaKind.Deer, seed, player, origin + new Vector3(-8f, 0f, 0f));
+            typeof(Animal).GetField("yaw", flags).SetValue(an, 90f);
+            go.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            // the player well out of its notice, so it walks rather than watches
+            body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -70f); body.enabled = true;
+            yield return new WaitForSecondsRealtime(0.5f);
+            stateField.SetValue(an, System.Enum.Parse(stateType, "Wander"));
+            targetField.SetValue(an, origin + new Vector3(30f, 0f, 0f));
+            untilField.SetValue(an, Time.time + 1000f);
+            yield return new WaitForSecondsRealtime(1.2f);   // up to speed
+
+            var last = new Vector3[4]; var lastRoot = an.transform.position;
+            string peek = "";
+            int peeks = 0;
+            float slip = 0f, travel = 0f; int stanceSamples = 0; float began = Time.time;
+            int shot = 0; float nextShot = Time.time + 0.4f;
+            while (Time.time - began < 3.0f)
+            {
+                yield return null;
+                float dtBody = Vector3.Distance(new Vector3(an.transform.position.x, 0f, an.transform.position.z), new Vector3(lastRoot.x, 0f, lastRoot.z));
+                travel += dtBody; lastRoot = an.transform.position;
+                for (int i = 0; i < 4; i++)
+                {
+                    var f = an.Feet[i];
+                    int fx = Mathf.RoundToInt(f.x / 2f), fz = Mathf.RoundToInt(f.z / 2f);
+                    float groundY = WorldHeight.SurfaceY(fx, fz, seed) + Animal.FootingAt(fx, fz, seed);
+                    bool down = an.Planted[i];
+                    if (i == 0 && peeks < 14 && Time.frameCount % 6 == 0)
+                    {
+                        float g = (float)typeof(Animal).GetField("gait", flags).GetValue(an);
+                        peek += string.Format("<gait {0:F2} planted {1} foot-root x {2:F2} sole {3:F3}> ", g, an.Planted[0], f.x - an.transform.position.x, f.y - groundY);
+                        peeks++;
+                    }
+                    if (down && last[i] != Vector3.zero)
+                    {
+                        slip += Vector3.Distance(new Vector3(f.x, 0f, f.z), new Vector3(last[i].x, 0f, last[i].z));
+                        stanceSamples++;
+                    }
+                    last[i] = f;
+                }
+                if (false)
+                {
+                    float strideNow = (float)typeof(Animal).GetField("stride", flags).GetValue(an);
+                    string st = stateField.GetValue(an).ToString();
+                    peek += string.Format("[{0} stride {1:F2} foot0 {2} root {3}] ", st, strideNow, an.Feet[0].ToString("F2"), an.transform.position.ToString("F2"));
+                    peeks++;
+                }
+                if (shot < 3 && Time.time > nextShot)
+                {
+                    var p = an.transform.position;
+                    cam.transform.position = p + new Vector3(0f, 0.9f, -4.6f);
+                    cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 0.8f) - cam.transform.position, Vector3.up);
+                    ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-mo-walk" + shot + ".png"));
+                    shot++; nextShot = Time.time + 0.45f;
+                }
+            }
+            Mark("PEEK: " + peek);
+            Mark(string.Format("WALK: body travelled {0:F2} m in 3 s; planted feet slid {1:F2} m in total over {2} stance samples ({3:F0}% of travel per foot-sample avg {4:F4} m)",
+                travel, slip, stanceSamples, 100f * slip / Mathf.Max(0.01f, travel), slip / Mathf.Max(1, stanceSamples)));
+            Destroy(go);
+        }
+
+        // 2. a hillside: a goat stood across the steepest tile near here
+        {
+            Vector2Int steep = flat; float most = 0f;
+            for (int dx = -60; dx <= 60; dx += 1) for (int dz = -60; dz <= 60; dz += 1)
+            {
+                int tx = flat.x + dx, tz = flat.y + dz;
+                if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+                float diff = Mathf.Abs(WorldHeight.SurfaceY(tx + 1, tz, seed) - WorldHeight.SurfaceY(tx - 1, tz, seed));
+                if (diff > most && diff < 1.2f) { most = diff; steep = new Vector2Int(tx, tz); }
+            }
+            Mark("hillside: across-slope drop " + most.ToString("F2") + " over 4 m at " + steep);
+            var at = new Vector3(steep.x * WorldGrid.TileSize, WorldHeight.SurfaceY(steep.x, steep.y, seed), steep.y * WorldGrid.TileSize);
+            body.enabled = false;
+            player.position = at + new Vector3(0f, 0.5f, -8f);
+            body.enabled = true;
+            yield return new WaitForSecondsRealtime(4f);
+            HideInterface();
+
+            var go = new GameObject("probe goat");
+            var an = go.AddComponent<Animal>();
+            an.Settle(FaunaKind.Goat, seed, player, at);
+            typeof(Animal).GetField("yaw", flags).SetValue(an, 0f);   // facing +z: the slope runs across it
+            go.transform.rotation = Quaternion.identity;
+            body.enabled = false; player.position = at + new Vector3(0f, 0.5f, -70f); body.enabled = true;
+            stateField.SetValue(an, System.Enum.Parse(stateType, "Stand"));
+            untilField.SetValue(an, Time.time + 1000f);
+            yield return new WaitForSecondsRealtime(2.5f);
+
+            string feet = "";
+            for (int i = 0; i < 4; i++) feet += an.Feet[i].y.ToString("F2") + " ";
+            Mark("goat feet heights: " + feet + "| root " + an.transform.position.y.ToString("F2"));
+
+            var p = an.transform.position;
+            cam.transform.position = p + new Vector3(0f, 0.7f, -4.2f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 0.6f) - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(0.4f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-mo-slope.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            Destroy(go);
+        }
+
+        Mark("done");
+    }
+}
