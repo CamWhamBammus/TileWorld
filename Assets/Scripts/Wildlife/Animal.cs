@@ -13,7 +13,7 @@ using UnityEngine;
 /// </summary>
 public class Animal : MonoBehaviour
 {
-    private enum State { Stand, Graze, Look, Wander, ToWater, Drink, Rest, Alert, Flee, Hidden }
+    private enum State { Stand, Graze, Look, Wander, ToWater, Drink, Rest, Alert, Flee, Hidden, Hunt }
 
     /// <summary>
     /// The small things an animal does between one thing and the next, laid
@@ -41,6 +41,7 @@ public class Animal : MonoBehaviour
                 case State.Hidden: return gesture == Gesture.Rise ? Doing.Walking : Doing.Fleeing;
                 case State.Wander:
                 case State.ToWater: return Doing.Walking;
+                case State.Hunt: return Doing.Hunting;
                 default: return Doing.Standing;
             }
         }
@@ -88,6 +89,45 @@ public class Animal : MonoBehaviour
     private bool perched;
     private GameObject snag;         // a dead trunk built for it to sit on, where there was no ruin
     private bool landing;            // a flier on its way down to ground that suits it
+
+    // What it is afraid of, when that is not you: a fox after it, or the
+    // alarm of something that saw a fox. Fled from the same way.
+    private Vector3 threat;
+    private bool threatened;
+
+    // What it is after, when it hunts, and when it last looked for something
+    private Animal quarry;
+    private float nextHuntLook;
+    private float nextFollow;
+
+    /// <summary>The one it keeps with, if it came with company.</summary>
+    public Animal Leader { get; set; }
+
+    /// <summary>
+    /// Frightened by something other than you: the alarm of another animal,
+    /// or a hunter. Takes the same fright, from the same quarter, a moment
+    /// later -- a herd does not go all at once as one piece.
+    /// </summary>
+    public void Startle(Vector3 from, bool run, float delay = 0f)
+    {
+        if (state == State.Flee || state == State.Hidden || state == State.Hunt) return;
+        if (delay > 0f) { StartCoroutine(StartleLater(from, run, delay)); return; }
+
+        threat = from;
+        threatened = true;
+
+        if (run) Flee();
+        else { state = State.Alert; until = Time.time + Random.Range(2.5f, 6f); }
+    }
+
+    private System.Collections.IEnumerator StartleLater(Vector3 from, bool run, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        Startle(from, run, 0f);
+    }
+
+    /// <summary>Where the fright is coming from: you, unless it is something else.</summary>
+    private Vector3 Threat => threatened ? threat : player.position;
 
     // How much of a stride it is taking: eased in and out over a quarter of
     // a second, so standing does not snap into walking.
@@ -287,7 +327,62 @@ public class Animal : MonoBehaviour
                 return;
             }
 
-            if (state == State.Alert) Graze();      // you backed off
+            if (state == State.Alert) { Graze(); threatened = false; }      // you backed off
+        }
+
+        // The hunt, kept up every frame: the quarry moves, so the target does.
+        if (state == State.Hunt)
+        {
+            if (quarry == null || !quarry.Visible || Time.time > until || DistanceTo(quarry.transform.position) > traits.Notices * 1.3f)
+            {
+                quarry = null;
+                nextHuntLook = Time.time + Random.Range(25f, 50f);
+                Graze();
+                until = Time.time + Random.Range(3f, 7f);
+                return;
+            }
+
+            target = quarry.transform.position;
+
+            // caught up with it: the lunge, and the quarry away again. Nothing
+            // is ever caught; the chase is the thing worth seeing.
+            if (DistanceTo(quarry.transform.position) < traits.Size * 1.6f)
+            {
+                Begin(Kind == FaunaKind.Fox ? Gesture.Pounce : Gesture.Stamp, Kind == FaunaKind.Fox ? 1.3f : 0.6f);
+                quarry.Startle(transform.position, true);
+                quarry = null;
+                nextHuntLook = Time.time + Random.Range(25f, 50f);
+                state = State.Stand;
+                until = Time.time + Random.Range(3f, 6f);
+            }
+            return;
+        }
+
+        // A hunter looks about for something to hunt, now and then, when it
+        // is not busy being afraid of you.
+        if (Fauna.Hunts(Kind) && state != State.Flee && state != State.Hidden && state != State.Alert && Time.time > nextHuntLook)
+        {
+            nextHuntLook = Time.time + 0.7f;
+            var prey = Wildlife.Nearest(this, Fauna.All(Kind).Preys, traits.Notices * 0.8f);
+            if (prey != null && distance > traits.Bolts * Stalking.Wariness)
+            {
+                quarry = prey;
+                state = State.Hunt;
+                until = Time.time + Random.Range(6f, 10f);
+                target = prey.transform.position;
+                prey.Startle(transform.position, true);
+                return;
+            }
+        }
+
+        // Left behind: one that came with a leader goes after it when the
+        // leader has got more than a dozen metres off, whatever its clock says.
+        if (Leader != null && Leader != this && (state == State.Graze || state == State.Stand || state == State.Look)
+            && Vector3.Distance(Leader.transform.position, transform.position) > 12f && Time.time > nextFollow)
+        {
+            nextFollow = Time.time + 4f;
+            Wander();
+            return;
         }
 
         // Gone to ground: it comes back up when its time is done and you are
@@ -324,6 +419,8 @@ public class Animal : MonoBehaviour
         switch (state)
         {
             case State.Flee:
+                // far enough from whatever it was, and the fright is over
+                if (threatened && Vector3.Distance(transform.position, threat) > traits.Settles) threatened = false;
                 if (Fauna.Flies(Kind) && !Fauna.All(Kind).Airborne && distance > traits.Settles)
                 {
                     // far enough: find ground of its own sort to come down on,
@@ -485,9 +582,9 @@ public class Animal : MonoBehaviour
 
     private void Move(float dt)
     {
-        if (state != State.Wander && state != State.Flee && state != State.ToWater)
+        if (state != State.Wander && state != State.Flee && state != State.ToWater && state != State.Hunt)
         {
-            if (state == State.Alert && !Fauna.All(Kind).Withdraws) Face(player.position - transform.position, dt, Fauna.All(Kind).Roots ? 7f : 4f);
+            if (state == State.Alert && !Fauna.All(Kind).Withdraws) Face(Threat - transform.position, dt, Fauna.All(Kind).Roots ? 7f : 4f);
 
             pace = Mathf.MoveTowards(pace, 0f, 8f * dt);
             return;
@@ -503,7 +600,7 @@ public class Animal : MonoBehaviour
             return;
         }
 
-        float want = state == State.Flee || landing ? traits.RunSpeed : traits.WalkSpeed;
+        float want = state == State.Flee || state == State.Hunt || landing ? traits.RunSpeed : traits.WalkSpeed;
 
         // Weather is worth slowing for; nothing crosses a hillside in the rain
         // at the pace it would on a clear evening.
@@ -526,7 +623,7 @@ public class Animal : MonoBehaviour
         // The cycle runs at whatever rate keeps a planted foot still: half a
         // cycle on the ground has to carry the foot back exactly as far as the
         // body goes forward, so the rate follows the stride, not a fixed number.
-        gait += pace * dt * CycleRate(Fauna.Moving(Kind, state == State.Flee));
+        gait += pace * dt * CycleRate(Fauna.Moving(Kind, state == State.Flee || state == State.Hunt));
 
         if (landing)
         {
@@ -610,8 +707,8 @@ public class Animal : MonoBehaviour
 
     private void Animate(float dt)
     {
-        bool moving = state == State.Wander || state == State.Flee || state == State.ToWater;
-        bool running = state == State.Flee;
+        bool moving = state == State.Wander || state == State.Flee || state == State.ToWater || state == State.Hunt;
+        bool running = state == State.Flee || state == State.Hunt;
 
         var walk = Fauna.Moving(Kind, running);
 
@@ -1203,7 +1300,7 @@ public class Animal : MonoBehaviour
             case State.Alert:
                 // Watching you, not swaying in your general direction. An
                 // animal that holds your eye is the reason to stand still.
-                Vector3 to = player.position - body.Head.position;
+                Vector3 to = Threat - body.Head.position;
                 Vector3 local = transform.InverseTransformDirection(to);
 
                 turn = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg, -62f, 62f);
@@ -1420,6 +1517,11 @@ public class Animal : MonoBehaviour
         // drifting towards, which is what turns four deer into a herd.
         Vector3 pull = Company();
 
+        // one that came with a leader keeps with the leader, wherever the
+        // leader has got to, rather than with whichever of its kind is nearest
+        if (Leader != null && Leader != this && Vector3.Distance(Leader.transform.position, transform.position) > 7f)
+            pull = Leader.transform.position + new Vector3(Random.Range(-3f, 3f), 0f, Random.Range(-3f, 3f));
+
         for (int attempt = 0; attempt < 6; attempt++)
         {
             Vector2 offset = Random.insideUnitCircle.normalized * Random.Range(5f, 16f);
@@ -1503,9 +1605,20 @@ public class Animal : MonoBehaviour
         return false;
     }
 
+    private float lastAlarm = -100f;
+
     private void Flee()
     {
-        Vector3 away = transform.position - player.position;
+        // The fright carries: whatever put this one to flight puts the others
+        // within earshot to flight too, a moment later. Once each few seconds,
+        // or a herd would keep frightening itself.
+        if (Time.time > lastAlarm + 5f)
+        {
+            lastAlarm = Time.time;
+            Wildlife.Alarm(this, Threat, true, traits.Size < 0.5f ? 14f : 26f);
+        }
+
+        Vector3 away = transform.position - Threat;
         away.y = 0f;
 
         if (away.sqrMagnitude < 0.01f) away = Random.insideUnitSphere;

@@ -198,6 +198,9 @@ public class Wildlife : MonoBehaviour
             // for them and ground to put them on.
             int company = Random.Range(1, Fauna.Company(kind.Value) + 1);
 
+            // the first of a company leads it; the rest keep with the leader
+            Animal leader = null;
+
             for (int i = 0; i < company && living.Count < population; i++)
             {
                 if (CountOf(kind.Value) >= Fauna.Crowd(kind.Value)) break;
@@ -215,14 +218,15 @@ public class Wildlife : MonoBehaviour
                     if (!Fauna.Ground(kind.Value, cx, cz, seed)) continue;
                 }
 
-                Bring(kind.Value, seed, spot);
+                var one = Bring(kind.Value, seed, spot);
+                if (leader == null) leader = one; else one.Leader = leader;
             }
 
             return;
         }
     }
 
-    private void Bring(FaunaKind kind, int seed, Vector3 at)
+    private Animal Bring(FaunaKind kind, int seed, Vector3 at)
     {
         var go = new GameObject(Fauna.Of(kind).Name);
         go.transform.SetParent(transform, false);
@@ -231,6 +235,42 @@ public class Wildlife : MonoBehaviour
         animal.Settle(kind, seed, player, at);
 
         living.Add(animal);
+        return animal;
+    }
+
+    /// <summary>
+    /// One animal's alarm reaches the others. Whatever is within earshot and
+    /// is not itself a hunter takes the same fright, from the same quarter:
+    /// one deer's bark sends the herd off, a marmot's whistle puts every
+    /// marmot on the slope down its hole.
+    /// </summary>
+    public static void Alarm(Animal from, Vector3 threat, bool run, float reach)
+    {
+        if (instance == null) return;
+        foreach (var other in instance.living)
+        {
+            if (other == null || other == from) continue;
+            if (Fauna.Hunts(other.Kind)) continue;
+            if (Vector3.Distance(other.transform.position, from.transform.position) > reach) continue;
+            other.Startle(threat, run, Random.Range(0.1f, 0.6f));
+        }
+    }
+
+    /// <summary>The nearest of the kinds asked for within reach of a hunter, if any is out to be seen.</summary>
+    public static Animal Nearest(Animal hunter, FaunaKind[] kinds, float within)
+    {
+        if (instance == null || kinds == null) return null;
+        Animal best = null; float closest = within;
+        foreach (var other in instance.living)
+        {
+            if (other == null || other == hunter || !other.Visible) continue;
+            bool wanted = false;
+            foreach (var k in kinds) if (other.Kind == k) wanted = true;
+            if (!wanted) continue;
+            float d = Vector3.Distance(other.transform.position, hunter.transform.position);
+            if (d < closest) { closest = d; best = other; }
+        }
+        return best;
     }
 
     /// <summary>Which of the kinds abroad at this hour would suit this ground.</summary>

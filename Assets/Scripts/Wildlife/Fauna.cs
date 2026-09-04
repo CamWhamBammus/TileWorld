@@ -101,6 +101,10 @@ public static class Fauna
         public bool Soars;          // airborne high up, circling on set wings
         public bool Freezes;        // goes flat and still when it sees you, before it goes
 
+        // What it hunts, if it hunts. A hunter ignores the alarms of the
+        // hunted, and the hunted run from it as they run from you.
+        public FaunaKind[] Preys;
+
         // When it is about. A window whose start is later than its end runs
         // through midnight; no windows at all means it keeps no hours.
         public Vector2[] Hours;
@@ -128,6 +132,9 @@ public static class Fauna
 
     /// <summary>What sort of thing this is, for anyone who needs to know before building it.</summary>
     public static bool Flies(FaunaKind kind) => All(kind).Flies;
+
+    /// <summary>Whether this kind hunts anything.</summary>
+    public static bool Hunts(FaunaKind kind) => All(kind).Preys != null && All(kind).Preys.Length > 0;
 
     private static readonly Kind[] kinds =
     {
@@ -215,6 +222,7 @@ public static class Fauna
                 Notices = 20f, Bolts = 11f, Settles = 38f
             },
             Lowest = 0f, Highest = 0.60f,
+            Preys = new[] { FaunaKind.Rabbit, FaunaKind.Marmot, FaunaKind.Frog },
             Hours = new[] { new Vector2(0.72f, 0.30f) },      // through the night
             Company = 2, Crowd = 5,
 
@@ -319,6 +327,7 @@ public static class Fauna
             Lowest = 0f, Highest = 0.95f,
             Countries = new[] { Regions.Character.Snow },
             Howls = true,
+            Preys = new[] { FaunaKind.Hare, FaunaKind.Rabbit },
             Hours = new[] { new Vector2(0.60f, 0.30f) },
             Company = 2, Crowd = 4,
 

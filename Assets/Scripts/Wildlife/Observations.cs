@@ -173,6 +173,15 @@ public static class Observations
         Add("small-one", "a small one of its kind",
             s => s.Scale < 0.86f);
 
+        Add("fox-hunt", "a fox after a rabbit",
+            s => s.Kind == FaunaKind.Fox && s.Doing == Doing.Hunting);
+
+        Add("wolf-hunt", "a wolf running something down",
+            s => s.Kind == FaunaKind.Wolf && s.Doing == Doing.Hunting);
+
+        Add("herd-bolt", "a whole herd going at once",
+            s => s.Doing == Doing.Fleeing && s.Company >= 2);
+
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 

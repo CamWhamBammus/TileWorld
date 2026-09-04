@@ -7,5 +7,6 @@ public enum Doing
     Resting,
     Watching,
     Walking,
-    Fleeing
+    Fleeing,
+    Hunting
 }
