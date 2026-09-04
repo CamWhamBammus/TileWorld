@@ -384,13 +384,26 @@ public class Kit : ScriptableObject
                 var centre = eaveCentre + new Vector3(side * halfW * 0.5f, rise * 0.5f + thick * 0.4f, 0f);
                 var turn = Quaternion.Euler(0f, 0f, -side * pitchDegrees);
 
-                // The covering, in strips from ridge to eave, so that strips
-                // can be gone: a roof lets go a strip at a time, from the eave.
+                // The covering, in strips from ridge to eave. A roof does not go
+                // a strip at a time so much as a section at a time: the timbers
+                // under one length of it give and the whole length comes down,
+                // so at any decay worth the name each slope loses one run of
+                // strips together, and only a strip here and there besides.
                 float strip = style == RoofStyle.Thatch ? 0.7f : 0.45f;
+                float sectionFrom = 0f, sectionTo = 0f;
+                if (Decay > 0.35f && rng.NextDouble() < Decay)
+                {
+                    float sectionLen = over * Rand(0.25f, 0.45f) * Mathf.Clamp01(Decay + 0.2f);
+                    sectionFrom = Rand(-over * 0.5f, over * 0.5f - sectionLen);
+                    sectionTo = sectionFrom + sectionLen;
+                }
                 for (float z = -over * 0.5f + strip * 0.5f; z < over * 0.5f; z += strip)
                 {
-                    bool gone = Gone(0.3f);
-                    float keep = gone ? (Gone(0.5f) ? 0f : Rand(0.3f, 0.7f)) : 1f;
+                    bool inSection = z > sectionFrom && z < sectionTo;
+                    bool gone = inSection || Gone(0.12f);
+                    // in the fallen section nearly all of each strip is gone,
+                    // a stub left at the ridge; elsewhere a lost strip may keep more
+                    float keep = !gone ? 1f : inSection ? (Gone(0.7f) ? 0f : Rand(0.1f, 0.3f)) : (Gone(0.5f) ? 0f : Rand(0.3f, 0.7f));
                     if (keep <= 0f) continue;
                     // what is kept is the ridge end; the eave end is what fell
                     var at = centre + turn * new Vector3(-slope * (1f - keep) * 0.5f, 0f, 0f) + new Vector3(0f, 0f, z);
