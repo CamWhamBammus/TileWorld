@@ -13,13 +13,13 @@
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PROJECT="$(cd "$HERE/.." && pwd)"
-PROBE="$1"; WAIT="${2:-300}"
+PROBE="$1"; WAIT="${2:-300}"; KINDS="${3:-}"
 OUT="$HERE/.check"; SHOTS="$OUT/shots"
 SAVE="$HOME/Library/Application Support/DefaultCompany/Tile World"
 STAGES="$OUT/probe-stages.txt"
 
 mkdir -p "$SHOTS"
-sed "s#__STAGES__#$STAGES#g" "$PROBE" > "$PROJECT/Assets/Scripts/_Probe.cs"
+sed "s#__STAGES__#$STAGES#g; s#__KINDS__#$KINDS#g" "$PROBE" > "$PROJECT/Assets/Scripts/_Probe.cs"
 "$HERE/check.sh" || { rm -f "$PROJECT/Assets/Scripts/_Probe.cs"*; exit 1; }
 "$HERE/build.sh" || { rm -f "$PROJECT/Assets/Scripts/_Probe.cs"*; exit 1; }
 rm -f "$PROJECT/Assets/Scripts/_Probe.cs" "$PROJECT/Assets/Scripts/_Probe.cs.meta"

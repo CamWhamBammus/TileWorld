@@ -84,9 +84,9 @@ public static class Landmarks
                    Behind = 2, Ahead = 2, Aside = 2, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.6f },
 
         new Kind { Chance = 16, Name = "Trapper's Cabin", Country = Regions.Character.Snow, Site = Site.Level,
-                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 7f,
-                   Where = "in the snow, a hut of pale stone with a yard",
-                   Behind = 2, Ahead = 3, Aside = 2, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.6f },
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 8f,
+                   Where = "in the snow, a log cabin with a yard",
+                   Behind = 3, Ahead = 6, Aside = 3, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
         new Kind { Chance = 45, Name = "Fishing Jetty", Country = Regions.Character.Reed, Site = Site.Shore,
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,

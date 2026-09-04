@@ -79,8 +79,12 @@ public class _Probe : MonoBehaviour
         string dir = Application.persistentDataPath;
         var home = WorldGrid.WorldToChunk(player.position);
 
+        var only = new System.Collections.Generic.HashSet<int>();
+        foreach (var part in "__KINDS__".Split(',')) if (int.TryParse(part, out int id)) only.Add(id);
+
         for (int k = 0; k < n; k++)
         {
+            if (only.Count > 0 && !only.Contains(k)) continue;
             var want = (LandmarkKind)k;
             Landmarks.Placement at = default;
             bool found = false;

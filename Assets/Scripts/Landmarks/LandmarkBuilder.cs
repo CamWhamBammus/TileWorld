@@ -231,62 +231,84 @@ public static class LandmarkBuilder
     // --------------------------------------------------------- Trapper's Cabin
 
     /// <summary>
-    /// A hut of pale stone tiles, three across and two courses high with the
-    /// middle left open, one tile left out of the front for the doorway --
-    /// which is two wide and two high, and the pack's door is a little less.
-    /// Planks pitched over the top, the door standing open, a lamp by it,
-    /// and a fenced yard with the woodpile.
+    /// A log cabin on a flagged stone foundation: walls of stacked logs that
+    /// cross at the corners, a plank roof pitched over plaster gables with a
+    /// stone chimney through it, a porch along the front under its own
+    /// lean-to, windows either side of the door. Ahead of it a fenced yard
+    /// with the woodpile, the trough, the hay and a lantern, and a flagged
+    /// path from the door to the gate.
     /// </summary>
     private static void Cabin(Job b)
     {
-        for (int course = 1; course <= 2; course++)
-        for (int x = -1; x <= 1; x++)
-        for (int z = -1; z <= 1; z++)
-        {
-            if (x == 0 && z == 0) continue;                 // the room
-            if (course == 1 && x == 1 && z == 0) continue;  // the doorway
+        // The foundation stands clear of the snow, which lies 0.17 above the
+        // ground: anything lower and the snow comes up through the floor.
+        const float B = 0.30f;
+        var k = new Kit.Builder(b.Rng.Next());
 
-            // Pale stone, not the barrens' boulders: those taper underneath,
-            // and a wall of them was a wall of rocks hanging off each other.
-            GroundTile(b, SandTiles, new Vector3(x * Tile, Stack(course), z * Tile));
-        }
+        Foundation(b, k, new Vector3(-4.6f, 0f, -4.4f), new Vector3(4.6f, 0f, 4.4f), B);
 
-        // The roof: two pitches meeting at a ridge along z, each three
-        // slabs side by side hung under a frame that carries the tilt.
-        foreach (int side in new[] { -1, 1 })
-        {
-            var pitch = new GameObject("Pitch").transform;
-            pitch.SetParent(b.Root, false);
-            pitch.localPosition = new Vector3(side * 1.4f, Deck2 + 0.75f, 0f);
-            pitch.localRotation = Quaternion.Euler(0f, 0f, -side * 30f);
+        // the walls, in a rectangle longer in z so the ridge runs that way
+        float wallHeight = 2.7f, r = 0.17f;
+        var bl = new Vector3(-2.6f, B, -3.4f); var br = new Vector3(2.6f, B, -3.4f);
+        var fl = new Vector3(-2.6f, B, 2.2f); var fr = new Vector3(2.6f, B, 2.2f);
 
-            for (int k = -1; k <= 1; k++)
-                Slab(b, pitch, new Vector3(0f, -0.98f, k * 2.08f), 90f);
-        }
+        k.LogWall(bl, br, wallHeight, 0f, r);                 // back gable wall
+        k.LogWall(fl, fr, wallHeight, 0f, r);                 // front gable wall
+        k.LogWall(bl, fl, wallHeight, r, r);                  // left, half a log up
+        // the right wall is the door wall: two runs and a header over the gap
+        k.LogWall(br, new Vector3(2.6f, B, -0.75f), wallHeight, r, r);
+        k.LogWall(new Vector3(2.6f, B, 0.75f), fr, wallHeight, r, r);
+        k.LogWall(new Vector3(2.6f, B, -0.75f), new Vector3(2.6f, B, 0.75f), wallHeight, 2.05f, r);
 
-        // the door, standing open beside the doorway
-        Piece(b, b.Shelf.Doors, new Vector3(2.15f, Ground + DoorUp, -1.15f), 55f);
+        k.Door(new Vector3(2.6f + r, B, 0f), Vector3.right, 1.0f, 1.95f);
+        k.Window(new Vector3(2.6f + r + 0.02f, B + 1.55f, -2.1f), Vector3.right, 0.8f, 0.8f);
+        k.Window(new Vector3(2.6f + r + 0.02f, B + 1.55f, 1.6f), Vector3.right, 0.8f, 0.8f);
+        k.Window(new Vector3(0.6f, B + 1.55f, -3.4f - r - 0.02f), Vector3.back, 0.8f, 0.8f);
+        k.Window(new Vector3(-2.6f - r - 0.02f, B + 1.55f, -0.6f), Vector3.left, 0.8f, 0.8f);
 
-        Piece(b, b.Shelf.Lamp, new Vector3(3.3f, Ground + LampUp, 2.2f), 180f);
-        Piece(b, b.Shelf.Signboard, new Vector3(3.6f, Ground + SignUp, -2.5f), 0f);
-        Piece(b, b.Shelf.Chest, new Vector3(-0.3f, Ground + ChestUp, 0.6f), 270f, new Vector3(0.8f, 0.7f, 0.6f), new Vector3(0f, 0.2f, 0f));
+        // the roof: ridge along z, eaves at the wall tops, plaster gables
+        var eave = new Vector3(0f, B + wallHeight, -0.6f);
+        k.GableEnd(eave, 5.2f + 2f * r, 35f, -3.4f - r, Kit.Swatch.Plaster, 0.34f);
+        k.GableEnd(eave, 5.2f + 2f * r, 35f, 2.2f + r, Kit.Swatch.Plaster, 0.34f);
+        k.Roof(eave, 5.2f + 2f * r, 5.6f + 2f * r, 35f, Kit.Builder.RoofStyle.Plank, 0.6f);
 
-        // the yard, ahead of the house, with the woodpile
-        for (float z = -2.6f; z <= 2.6f; z += 0.86f)
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(7.6f, Ground + FenceUp, z), 90f);
-        for (float x = 4.4f; x <= 7.2f; x += 0.86f)
-        {
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(x, Ground + FenceUp, -2.9f), 0f);
-            Piece(b, Pick(b.Shelf.Fences, b), new Vector3(x, Ground + FenceUp, 2.9f), 0f);
-        }
-        Piece(b, Pick(b.Shelf.Fences, b), new Vector3(4.0f, Ground + FenceUp, -2.4f), 90f);
+        k.Chimney(new Vector3(-1.7f, B, -3.4f - r - 0.36f), 5.6f, 0.8f);
 
-        Piece(b, b.Shelf.Timber, new Vector3(6.3f, Ground + TimberUp, -1.7f), 0f);
-        Piece(b, b.Shelf.Timber, new Vector3(6.3f, Ground + TimberUp, -1.1f), 0f);
-        Piece(b, b.Shelf.Timber, new Vector3(6.3f, Ground + TimberUp + 0.7f, -1.4f), 0f);
+        // the porch: posts and a lean-to off the door wall
+        foreach (float z in new[] { -2.9f, -0.9f, 1.1f, 2.7f })
+            k.Post(new Vector3(4.3f, B, z), 2.35f, 0.11f, Kit.Swatch.Wood);
+        k.Block(new Vector3(3.55f, B + 2.62f, -0.1f), new Vector3(2.3f, 0.1f, 6.2f), Quaternion.Euler(0f, 0f, 16f), Kit.Swatch.Plank);
+        for (float z = -2.9f; z <= 2.7f; z += 0.8f)
+            k.Block(new Vector3(3.55f, B + 2.68f, z), new Vector3(2.2f, 0.05f, 0.1f), Quaternion.Euler(0f, 0f, 16f), Kit.Swatch.DarkWood);
+        k.Log(new Vector3(4.3f, B + 2.3f, -3.0f), new Vector3(4.3f, B + 2.3f, 2.8f), 0.07f, Kit.Swatch.DarkWood, 6);
+        k.Block(new Vector3(3.5f, B + 0.05f, -0.1f), new Vector3(1.9f, 0.1f, 6.0f), Kit.Swatch.Plank);
+        k.Bench(new Vector3(3.6f, B + 0.1f, 1.9f), 1.3f);
+        k.Barrel(new Vector3(3.5f, B + 0.1f, -2.6f), 0.3f, 0.85f);
+        k.Crate(new Vector3(3.6f, B + 0.1f, -1.7f), 0.6f);
 
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(5.2f, Ground + BoxUp, 2.0f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
-        Piece(b, Pick(b.Shelf.Boxes, b), new Vector3(5.8f, Ground + BoxUp, 2.2f), Turn(b), new Vector3(0.6f, 0.6f, 0.6f), Vector3.zero);
+        // the yard, ahead, fenced with a gap at the path
+        k.Railing(new Vector3(4.6f, B, -4.4f), new Vector3(9.6f, B, -4.4f), 1.0f);
+        k.Railing(new Vector3(4.6f, B, 4.4f), new Vector3(9.6f, B, 4.4f), 1.0f);
+        k.Railing(new Vector3(9.6f, B, -4.4f), new Vector3(9.6f, B, -0.9f), 1.0f);
+        k.Railing(new Vector3(9.6f, B, 0.9f), new Vector3(9.6f, B, 4.4f), 1.0f);
+        k.Pavers(new Vector3(7.1f, B, 0f), 5.4f, 1.3f, 0.6f);
+
+        k.Woodpile(new Vector3(7.6f, B, -3.2f), 1.8f, 4, 0f);
+        k.Woodpile(new Vector3(5.6f, B, -3.4f), 1.4f, 3, 0f);
+        k.Trough(new Vector3(6.6f, B, 3.4f), 1.8f, 0f);
+        k.HayBale(new Vector3(8.6f, B, 3.0f), 20f);
+        k.HayBale(new Vector3(8.5f, B, 2.2f), 70f);
+        k.HayBale(new Vector3(8.55f, B + 0.6f, 2.6f), 40f);
+        k.Lantern(new Vector3(4.9f, B, 3.9f), 2.4f, 180f);
+        k.Lantern(new Vector3(9.3f, B, -1.3f), 2.2f, 90f);
+        k.HangingSign(new Vector3(10.2f, B, 1.4f), 2.6f, 180f);
+        k.Cartwheel(new Vector3(-3.7f, B, 1.4f), 0.55f, 80f);
+        k.Ladder(new Vector3(-3.35f, B, -1.8f), 2.9f, 270f, 14f);
+
+        k.Finish("Cabin", b.Root, Vector3.zero, b.Flora.Paint);
+
+        // a flagged way out to the gate and beyond it
+        Piece(b, b.Shelf.Signboard, new Vector3(11.2f, Ground + SignUp, -1.8f), 0f);
     }
 
     // ---------------------------------------------------------- Fishing Jetty
@@ -620,6 +642,30 @@ public static class LandmarkBuilder
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /// <summary>
+    /// A flagged stone foundation from one corner to the other, its top at a
+    /// height above the root, with a skirt of coursed stone down its sides to
+    /// well below the ground: the ground under a big footprint steps by a
+    /// terrace or two, and the skirt swallows the steps.
+    /// </summary>
+    private static void Foundation(Job b, Kit.Builder k, Vector3 min, Vector3 max, float top, float skirt = 1.0f)
+    {
+        var centre = (min + max) * 0.5f;
+        var size = max - min;
+
+        k.Block(new Vector3(centre.x, top - 0.55f, centre.z), new Vector3(size.x, 1.1f, size.z), Kit.Swatch.Mortar, 0f, true);
+        k.Pavers(new Vector3(centre.x, top, centre.z), size.x, size.z, 0.9f);
+
+        float foot = top - skirt;
+        k.StoneWall(new Vector3(min.x, foot, min.z), new Vector3(max.x, foot, min.z), skirt, 0.3f);
+        k.StoneWall(new Vector3(max.x, foot, min.z), new Vector3(max.x, foot, max.z), skirt, 0.3f);
+        k.StoneWall(new Vector3(max.x, foot, max.z), new Vector3(min.x, foot, max.z), skirt, 0.3f);
+        k.StoneWall(new Vector3(min.x, foot, max.z), new Vector3(min.x, foot, min.z), skirt, 0.3f);
+
+        // steps up onto it from the front, since it stands a little proud
+        k.Steps(new Vector3(max.x, top - 0.3f, 0f) + Vector3.right * 0.0f, Vector3.right, 2, 0.15f, 0.35f, 1.6f);
+    }
 
     /// <summary>
     /// A ground tile, out of the same library the ground is drawn from, with
