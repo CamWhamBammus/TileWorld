@@ -142,7 +142,12 @@ public class Kit : ScriptableObject
             var side = Vector3.Cross(axis, Mathf.Abs(axis.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
             var up = Vector3.Cross(side, axis);
             var uv = At(Aged(swatch));
-            var grain = At(Swatch.EndGrain);
+
+            // end grain only where the log is wood: the same shape serves as a
+            // tower's mortar core, and that showed a pale disc when its top
+            // was broken open
+            bool wooden = swatch == Swatch.Wood || swatch == Swatch.Plank || swatch == Swatch.DarkWood || swatch == Swatch.OldWood;
+            var grain = wooden && Weathering != Weather.Char ? At(Swatch.EndGrain) : uv;
 
             var a = new Vector3[sides]; var b = new Vector3[sides];
             for (int i = 0; i < sides; i++)
@@ -587,6 +592,8 @@ public class Kit : ScriptableObject
                     Block(at + Vector3.up * 0.085f, new Vector3(flag * Rand(0.3f, 0.6f), 0.02f, flag * Rand(0.3f, 0.6f)), Quaternion.Euler(0f, Rand(0f, 90f), 0f), Swatch.Moss);
                 if (Weathering == Weather.Snow && !Gone(0.5f))
                     Block(at + Vector3.up * 0.13f, new Vector3(flag * Rand(0.6f, 0.95f), 0.1f, flag * Rand(0.6f, 0.95f)), Quaternion.Euler(0f, Rand(0f, 90f), 0f), Swatch.Snow, 0.01f);
+                if (Weathering == Weather.Sand && Gone(0.5f))
+                    Block(at + Vector3.up * 0.1f, new Vector3(flag * Rand(0.7f, 1.1f), 0.06f, flag * Rand(0.7f, 1.1f)), Quaternion.Euler(0f, Rand(0f, 90f), 0f), Swatch.Sand, 0.015f);
             }
         }
 
@@ -805,6 +812,16 @@ public class Kit : ScriptableObject
             Log(hub + turn * Vector3.back * 0.08f, hub + turn * Vector3.forward * 0.08f, 0.09f, Swatch.DarkWood, 8);
         }
 
+        /// <summary>A mound of what the weather brings -- sand or snow -- lying in the open.</summary>
+        public void Drift(Vector3 centre, float across, float tall)
+        {
+            var swatch = Weathering == Weather.Snow ? Swatch.Snow : Swatch.Sand;
+            if (Weathering != Weather.Snow && Weathering != Weather.Sand) return;
+            var turn = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
+            Gable(centre + turn * new Vector3(0f, 0f, 0f), across, tall, across * Rand(0.9f, 1.6f), turn, swatch);
+            Gable(centre + turn * new Vector3(across * 0.2f, 0f, across * 0.3f), across * 0.7f, tall * 0.6f, across * Rand(0.8f, 1.2f), turn * Quaternion.Euler(0f, 90f, 0f), swatch);
+        }
+
         /// <summary>Broken stone lying where it fell.</summary>
         public void Rubble(Vector3 centre, float radius, int count)
         {
@@ -942,7 +959,7 @@ public class Kit : ScriptableObject
         /// half a block from the one below, with a slit window or two and a
         /// top of either battlements or a cone of slate.
         /// </summary>
-        public void RoundTower(Vector3 foot, float radius, float height, bool battlements, RoofStyle cap = RoofStyle.Slate, float course = 0.45f)
+        public void RoundTower(Vector3 foot, float radius, float height, bool battlements, RoofStyle cap = RoofStyle.Slate, float course = 0.45f, bool topless = false)
         {
             int rows = Mathf.Max(1, Mathf.RoundToInt(height / course));
             float rowHeight = height / rows;
@@ -961,8 +978,9 @@ public class Kit : ScriptableObject
             Log(foot, foot + Vector3.up * height, radius - 0.03f, Swatch.Mortar, 32);
 
             // how far the top has fallen, round the tower: a wandering line
+            // a topless tower has lost its whole top: the bite is deep everywhere
             float[] bite = new float[count];
-            for (int i = 0; i < count; i++) bite[i] = Rand(0f, 1f) * Decay * rows * 0.4f;
+            for (int i = 0; i < count; i++) bite[i] = (topless ? Rand(1.5f, 4f) : Rand(0f, 1f) * Decay * rows * 0.4f);
             for (int i = 0; i < count; i++) bite[i] = (bite[i] + bite[(i + 1) % count] + bite[(i + count - 1) % count]) / 3f;
 
             for (int row = 0; row < rows; row++)
@@ -994,6 +1012,14 @@ public class Kit : ScriptableObject
 
             var top = foot + Vector3.up * height;
             if (Decay > 0.3f) Rubble(foot + new Vector3(Rand(-1f, 1f), 0f, Rand(-1f, 1f)).normalized * (radius + Rand(0.6f, 1.6f)), 1.0f, 4 + (int)(Decay * 4f));
+
+            if (topless)
+            {
+                // nothing on it: the core shows above the broken courses
+                Rubble(foot + new Vector3(Rand(-1f, 1f), 0f, Rand(-1f, 1f)).normalized * (radius + Rand(0.8f, 2.0f)), 1.2f, 6);
+                solids.Add((foot + Vector3.up * height * 0.5f, new Vector3(radius * 2f, height, radius * 2f), Quaternion.identity));
+                return;
+            }
 
             if (battlements)
             {
@@ -1061,7 +1087,10 @@ public class Kit : ScriptableObject
             var turn = Quaternion.LookRotation(across, Vector3.up);
             Block((from + to) * 0.5f + Vector3.up * 0.08f, new Vector3(length + 0.2f, 0.16f, thickness + 0.14f), turn, Swatch.DarkStone);
             for (float x = 0.3f; x < length - 0.2f; x += 1.0f)
+            {
+                if (Gone(0.5f)) { if (Gone(0.5f)) Block(from + along * x + Vector3.up * 0.2f, new Vector3(0.5f, 0.25f, thickness), turn, StoneShade(), 0.02f); continue; }
                 Block(from + along * x + Vector3.up * 0.46f, new Vector3(0.5f, 0.6f, thickness), turn, StoneShade(), 0.012f);
+            }
         }
 
         // ------------------------------------------------------------ finish

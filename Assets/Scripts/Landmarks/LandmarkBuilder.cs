@@ -309,33 +309,46 @@ public static class LandmarkBuilder
     private static void Gate(Job b)
     {
         const float B = 0.5f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.75f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-8.5f, 0f, -9.5f), new Vector3(3.0f, 0f, 9.5f), B, 1.3f, 1);
 
-        // the towers
+        // the towers: one whole to its battlements, the other lost its top
         float towerR = 2.2f, towerH = 9f;
-        foreach (float z in new[] { -6.0f, 6.0f })
-        {
-            k.RoundTower(new Vector3(0f, B, z), towerR, towerH, true, Kit.Builder.RoofStyle.Slate, 0.5f);
-            k.Door(new Vector3(-towerR - 0.06f, B, z), Vector3.left, 1.0f, 2.0f);
-            k.Banner(new Vector3(0f, B + towerH + 0.3f, z), 2.8f, 90f);
-        }
+        k.RoundTower(new Vector3(0f, B, -6.0f), towerR, towerH, true, Kit.Builder.RoofStyle.Slate, 0.5f);
+        k.Door(new Vector3(-towerR - 0.06f, B, -6.0f), Vector3.left, 1.0f, 2.0f);
+        k.Banner(new Vector3(0f, B + towerH + 0.3f, -6.0f), 2.8f, 90f);
+        k.RoundTower(new Vector3(0f, B, 6.0f), towerR, towerH * 0.66f, false, Kit.Builder.RoofStyle.Slate, 0.5f, true);
+        k.Door(new Vector3(-towerR - 0.06f, B, 6.0f), Vector3.left, 1.0f, 2.0f);
+        k.Rubble(new Vector3(-2.6f, B + 0.1f, 7.4f), 1.6f, 9);
+        k.Rubble(new Vector3(2.4f, Ground, 6.8f), 1.4f, 6);
 
         // the curtain wall in two runs either side of the gateway, and the
-        // lintel wall over it; a walk along the top behind the merlons
+        // lintel wall over it; a walk along the top behind the merlons. The
+        // run toward the fallen tower is breached: it stops short, and what
+        // came out of it lies in the gap.
         float wallH = 5.2f, gate = 1.8f, lintel = 3.6f;
         k.StoneWall(new Vector3(0f, B, -6.0f + towerR - 0.3f), new Vector3(0f, B, -gate), wallH, 1.2f);
-        k.StoneWall(new Vector3(0f, B, gate), new Vector3(0f, B, 6.0f - towerR + 0.3f), wallH, 1.2f);
+        k.StoneWall(new Vector3(0f, B, gate), new Vector3(0f, B, 2.9f), wallH, 1.2f);
+        k.StoneWall(new Vector3(0f, B, 3.6f), new Vector3(0f, B, 6.0f - towerR + 0.3f), wallH * 0.45f, 1.2f);
+        k.Rubble(new Vector3(0f, B + 0.1f, 3.3f), 1.3f, 8);
+        k.Rubble(new Vector3(-1.6f, B + 0.1f, 3.0f), 1.0f, 5);
         k.StoneWall(new Vector3(0f, B + lintel, -gate - 0.1f), new Vector3(0f, B + lintel, gate + 0.1f), wallH - lintel, 1.2f);
         k.Block(new Vector3(0f, B + lintel - 0.12f, 0f), new Vector3(1.4f, 0.24f, gate * 2f + 0.2f), Kit.Swatch.DarkWood);
-        k.Block(new Vector3(0f, B + wallH + 0.1f, 0f), new Vector3(1.6f, 0.2f, 12f - 2f * towerR + 0.6f), Kit.Swatch.Plank, 0f, true);
-        k.MerlonsAlong(new Vector3(0.7f, B + wallH + 0.2f, -6.0f + towerR - 0.3f), new Vector3(0.7f, B + wallH + 0.2f, 6.0f - towerR + 0.3f), 0.36f);
-        k.Railing(new Vector3(-0.75f, B + wallH + 0.2f, -6.0f + towerR - 0.3f), new Vector3(-0.75f, B + wallH + 0.2f, 6.0f - towerR + 0.3f), 1.0f);
+        k.Block(new Vector3(0f, B + wallH + 0.1f, -1.4f), new Vector3(1.6f, 0.2f, 9.0f - 2f * towerR + 0.6f), Kit.Swatch.Plank, 0f, true);
+        k.MerlonsAlong(new Vector3(0.7f, B + wallH + 0.2f, -6.0f + towerR - 0.3f), new Vector3(0.7f, B + wallH + 0.2f, 2.9f), 0.36f);
+        k.Railing(new Vector3(-0.75f, B + wallH + 0.2f, -6.0f + towerR - 0.3f), new Vector3(-0.75f, B + wallH + 0.2f, 2.9f), 1.0f);
 
-        // the doors, swung open into the court
+        // the doors: one still hanging open, the other down in the gateway
         k.Door(new Vector3(-0.5f, B, -gate + 0.1f), Quaternion.Euler(0f, -55f, 0f) * Vector3.right, 1.7f, 3.3f);
-        k.Door(new Vector3(-0.5f, B, gate - 0.1f), Quaternion.Euler(0f, 55f, 0f) * Vector3.right, 1.7f, 3.3f);
+        k.Block(new Vector3(-1.4f, B + 0.08f, 1.1f), new Vector3(3.3f, 0.12f, 1.7f), Quaternion.Euler(0f, -20f, 0f), Kit.Swatch.OldWood);
+        k.Block(new Vector3(-1.4f, B + 0.17f, 1.1f), new Vector3(3.3f, 0.06f, 0.12f), Quaternion.Euler(0f, -20f, 0f), Kit.Swatch.DarkWood);
+
+        // the sand, come in over the wall
+        k.Drift(new Vector3(-2.2f, B + 0.1f, -3.0f), 2.6f, 0.7f);
+        k.Drift(new Vector3(-4.4f, B + 0.1f, 5.6f), 3.2f, 0.9f);
+        k.Drift(new Vector3(1.6f, Ground, -6.4f), 2.4f, 0.6f);
+        k.Drift(new Vector3(-6.8f, B + 0.1f, -8.0f), 2.0f, 0.5f);
 
         // the court behind the wall
         k.Well(new Vector3(-5.2f, B + 0.1f, -4.6f));
