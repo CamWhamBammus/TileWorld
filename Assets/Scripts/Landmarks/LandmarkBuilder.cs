@@ -904,11 +904,12 @@ public static class LandmarkBuilder
     private static void Cairn(Job b)
     {
         const float B = 0.4f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-5.0f, 0f, -5.0f), new Vector3(5.0f, 0f, 5.0f), B, 1.6f, 1);
 
-        // the heap: rings of lying stones, each ring higher and tighter
+        // the heap: rings of lying stones, each ring higher and tighter, but
+        // spread now -- stones have rolled off it and lie about the base
         for (int ring = 0; ring < 4; ring++)
         {
             float rad = 2.6f - ring * 0.65f;
@@ -916,24 +917,40 @@ public static class LandmarkBuilder
             for (int i = 0; i < count; i++)
             {
                 float a = i / (float)count * Mathf.PI * 2f + ring * 0.4f;
+                if (ring >= 2 && b.Rng.Next(3) == 0)
+                {
+                    // rolled down and out
+                    float far = 2.9f + (float)b.Rng.NextDouble() * 1.8f;
+                    Lying(b, new Vector3(Mathf.Cos(a) * far, B, Mathf.Sin(a) * far), 0.7f + (float)b.Rng.NextDouble() * 0.4f);
+                    continue;
+                }
                 Lying(b, new Vector3(Mathf.Cos(a) * rad, B + ring * 0.55f, Mathf.Sin(a) * rad), 0.9f + (float)b.Rng.NextDouble() * 0.5f - ring * 0.08f);
             }
         }
-        k.Block(new Vector3(0f, B + 1.0f, 0f), new Vector3(3.0f, 2.0f, 3.0f), Kit.Swatch.Mortar, 0f, true);
-        Standing(b, new Vector3(0f, B + 2.15f, 0f), 2.8f);
-        k.Banner(new Vector3(0.9f, B + 2.0f, -0.6f), 4.6f, 0f);
+        k.Block(new Vector3(0f, B + 0.9f, 0f), new Vector3(3.0f, 1.8f, 3.0f), Kit.Swatch.Mortar, 0f, true);
 
-        // the windbreak and the lean-to
+        // the standing stone is down: a stump of it on the heap, the rest
+        // lying where it fell against the windbreak; the pole leans
+        Standing(b, new Vector3(0f, B + 1.95f, 0f), 1.1f);
+        Lying(b, new Vector3(-2.6f, B, -1.8f), 2.0f);
+        k.Banner(new Vector3(0.9f, B + 1.9f, -0.6f), 4.2f, 0f);
+
+        // the windbreak, and the lean-to that was against it, come down: its
+        // posts gone, the slab lying on the fallen wood
         k.StoneWall(new Vector3(-4.6f, B, -4.4f), new Vector3(-4.6f, B, 4.4f), 2.0f, 0.5f);
         k.StoneWall(new Vector3(-4.6f, B, -4.4f), new Vector3(-1.4f, B, -4.4f), 2.0f, 0.5f);
-        foreach (float z in new[] { -0.2f, 1.6f, 3.4f }) k.Post(new Vector3(-2.4f, B, z), 1.6f, 0.1f, Kit.Swatch.Wood);
-        k.Block(new Vector3(-3.4f, B + 1.95f, 1.6f), new Vector3(2.5f, 0.1f, 4.2f), Quaternion.Euler(0f, 0f, -14f), Kit.Swatch.Wood);
-        k.Log(new Vector3(-2.4f, B + 1.55f, -0.4f), new Vector3(-2.4f, B + 1.55f, 3.6f), 0.07f, Kit.Swatch.DarkWood, 6);
+        k.Post(new Vector3(-2.4f, B, -0.2f), 1.6f, 0.1f, Kit.Swatch.Wood);
+        k.Log(new Vector3(-2.4f, B + 0.1f, 1.6f), new Vector3(-3.6f, B + 0.1f, 2.8f), 0.1f, Kit.Swatch.OldWood, 6);
+        k.Block(new Vector3(-3.3f, B + 0.55f, 2.0f), new Vector3(2.5f, 0.1f, 4.2f), Quaternion.Euler(-8f, 6f, -34f), Kit.Swatch.OldWood);
         k.Woodpile(new Vector3(-3.6f, B, 3.2f), 1.2f, 3, 90f);
         k.Barrel(new Vector3(-3.2f, B, 0.3f), 0.28f, 0.8f);
-        k.Block(new Vector3(2.8f, B + 0.25f, 3.6f), new Vector3(1.8f, 0.5f, 0.6f), Kit.Swatch.Stone, 0.015f);
+
+        // the bench, cracked through
+        k.Block(new Vector3(2.35f, B + 0.25f, 3.6f), new Vector3(0.85f, 0.5f, 0.6f), Quaternion.Euler(0f, 0f, 5f), Kit.Swatch.Stone, 0.015f);
+        k.Block(new Vector3(3.3f, B + 0.22f, 3.65f), new Vector3(0.85f, 0.45f, 0.6f), Quaternion.Euler(3f, 0f, -7f), Kit.Swatch.Stone, 0.015f);
         k.Lantern(new Vector3(3.8f, B, -3.6f), 2.4f, 90f);
         k.HangingSign(new Vector3(6.2f, Ground, -1.4f), 2.6f, 180f);
+        k.Rubble(new Vector3(-3.6f, B, -2.6f), 1.2f, 6);
 
         k.Finish("Cairn", b.Root, Vector3.zero, b.Flora.Paint);
     }
