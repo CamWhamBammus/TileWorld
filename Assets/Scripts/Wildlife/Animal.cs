@@ -1120,19 +1120,19 @@ public class Animal : MonoBehaviour
             // The body is up while sin(gait) is positive -- that is the bounce
             // in Carriage -- and the feet go with it, tucked and swinging
             // forward to land; on the ground they go back at one speed.
-            // The first half of the cycle is the air, the second the ground:
-            // exactly halves, or the two joined with a jump where the phase
-            // wrapped and the legs snapped round.
-            float phaseOfBody = Mathf.Repeat(gait, Mathf.PI * 2f);
-            if (phaseOfBody < Mathf.PI)
+            // The first half of each leg's own cycle is the air, the second
+            // the ground: exactly halves, joined without a jump. Each leg on
+            // its own phase -- the hind pair lands ahead of the fore pair --
+            // or all four go together and the animal pronks like a gazelle.
+            if (u < Mathf.PI)
             {
-                float p = phaseOfBody / Mathf.PI;
+                float p = u / Mathf.PI;
                 along = Mathf.Lerp(-half, half, p);
                 lift = Mathf.Sin(p * Mathf.PI) * reach * 0.30f * stride;
             }
             else
             {
-                float p = (phaseOfBody - Mathf.PI) / Mathf.PI;
+                float p = (u - Mathf.PI) / Mathf.PI;
                 along = half * (1f - 2f * p);
                 lift = 0f;
             }
@@ -1220,13 +1220,13 @@ public class Animal : MonoBehaviour
         bool free = walk.Bounds || running;
         float half = free ? Mathf.Min(asked, reach * 0.85f) : Mathf.Min(asked, reach * 0.48f);
 
-        // and never so short that the legs blur: about three cycles a second
-        // at most. For a small thing at speed that means a stride longer than
-        // its leg, with the body in the air between and the feet reaching at
-        // the ends -- a stretched gallop, which is what a sprint looks like,
-        // and better than a whir.
+        // and never so short that the legs blur, about three cycles a second
+        // at most -- but never past the leg either. A stride longer than the
+        // leg has the foot reached for along a nearly flat line, and the legs
+        // stick straight out: from the side a running deer had none. A small
+        // thing at a sprint keeps quick legs instead.
         float slowest = pace / (12f * worldScale);
-        float most = reach * (walk.Bounds ? 2.0f : free ? 1.4f : 1.2f);
+        float most = reach * (free ? 0.85f : 0.6f);
         return Mathf.Min(Mathf.Max(half, slowest), most);
     }
 
