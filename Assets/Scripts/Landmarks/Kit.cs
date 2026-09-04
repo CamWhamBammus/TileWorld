@@ -58,8 +58,19 @@ public class Kit : ScriptableObject
         /// <summary>A small lean, more the further gone the place is.</summary>
         private float Lean(float most) => Decay <= 0f ? 0f : Rand(-most, most) * Decay;
 
-        /// <summary>Old wood for what is left standing, once a place is far gone.</summary>
-        private Swatch Aged(Swatch wood) => Weathering == Weather.Char ? Swatch.Char : Decay > 0.5f && (wood == Swatch.Plank || wood == Swatch.Wood) ? Swatch.OldWood : wood;
+        /// <summary>
+        /// Old wood for what is left standing, once a place is far gone; and
+        /// where the place burned, most of the wood is char and the rest is
+        /// scorched grey. Stone and plaster are left their colour: a fire does
+        /// not blacken a wall's whole face, and blackened they read as iron.
+        /// </summary>
+        private Swatch Aged(Swatch swatch)
+        {
+            bool wood = swatch == Swatch.Wood || swatch == Swatch.Plank || swatch == Swatch.DarkWood || swatch == Swatch.OldWood || swatch == Swatch.EndGrain || swatch == Swatch.Thatch;
+            if (!wood) return swatch;
+            if (Weathering == Weather.Char) return rng.NextDouble() < 0.7 ? Swatch.Char : Swatch.OldWood;
+            return Decay > 0.5f && (swatch == Swatch.Plank || swatch == Swatch.Wood) ? Swatch.OldWood : swatch;
+        }
 
         private readonly List<Vector3> points = new List<Vector3>();
         private readonly List<Vector2> uvs = new List<Vector2>();
@@ -831,6 +842,17 @@ public class Kit : ScriptableObject
             var turn = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
             Gable(centre + turn * new Vector3(0f, 0f, 0f), across, tall, across * Rand(0.9f, 1.6f), turn, swatch);
             Gable(centre + turn * new Vector3(across * 0.2f, 0f, across * 0.3f), across * 0.7f, tall * 0.6f, across * Rand(0.8f, 1.2f), turn * Quaternion.Euler(0f, 90f, 0f), swatch);
+        }
+
+        /// <summary>Ash and burnt ground, in blotches.</summary>
+        public void Ash(Vector3 centre, float radius, int count = 4)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float a = Rand(0f, Mathf.PI * 2f), d = Rand(0f, radius);
+                float size = Rand(0.6f, 1.6f);
+                Block(centre + new Vector3(Mathf.Cos(a) * d, 0.015f, Mathf.Sin(a) * d), new Vector3(size, 0.03f, size * Rand(0.6f, 1.2f)), Quaternion.Euler(0f, Rand(0f, 180f), 0f), i % 3 == 0 ? Swatch.Char : Swatch.DarkStone, 0.02f);
+            }
         }
 
         /// <summary>Broken stone lying where it fell.</summary>

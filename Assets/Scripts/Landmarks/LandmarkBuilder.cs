@@ -750,43 +750,55 @@ public static class LandmarkBuilder
     private static void Camp(Job b)
     {
         const float Y = 0.45f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.75f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-8.5f, 0f, -7.0f), new Vector3(8.5f, 0f, 7.0f), Y, 1.4f, 1, false);
 
-        // the clamps: a ring of logs, earth heaped over, a dark mouth on top
-        foreach (var at in new[] { new Vector3(2.6f, Y, -3.2f), new Vector3(3.4f, Y, 3.0f) })
+        // The clamps. One stands, earth over its wood and its mouth open at
+        // the top; the other burst and burned out: its earth slumped to a low
+        // heap and the charred wood inside it lying every way.
+        var standing = new Vector3(2.6f, Y, -3.2f);
+        float rad = 2.3f;
+        for (int i = 0; i < 14; i++)
         {
-            float rad = 2.3f;
-            for (int i = 0; i < 14; i++)
-            {
-                float a = i / 14f * Mathf.PI * 2f;
-                var foot = at + new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
-                k.Log(foot, foot + new Vector3(-Mathf.Cos(a) * 0.5f, 1.4f, -Mathf.Sin(a) * 0.5f), 0.12f, Kit.Swatch.DarkWood, 6);
-            }
-            k.Cone(at + Vector3.up * 0.3f, rad + 0.1f, 2.4f, Kit.Swatch.Earth, 14);
-            k.Block(at + Vector3.up * 0.15f, new Vector3(rad * 2f, 0.3f, rad * 2f), Kit.Swatch.Earth, 0.04f, true);
-            k.Block(at + Vector3.up * 2.55f, new Vector3(0.5f, 0.5f, 0.5f), Kit.Swatch.Iron, 0.03f);
-            k.Block(at + Vector3.up * 2.95f, new Vector3(0.35f, 0.4f, 0.35f), Kit.Swatch.DarkStone, 0.05f);
+            float a = i / 14f * Mathf.PI * 2f;
+            var foot = standing + new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
+            k.Log(foot, foot + new Vector3(-Mathf.Cos(a) * 0.5f, 1.4f, -Mathf.Sin(a) * 0.5f), 0.12f, Kit.Swatch.DarkWood, 6);
         }
+        k.Cone(standing + Vector3.up * 0.3f, rad + 0.1f, 2.4f, Kit.Swatch.Earth, 14);
+        k.Block(standing + Vector3.up * 0.15f, new Vector3(rad * 2f, 0.3f, rad * 2f), Kit.Swatch.Earth, 0.04f, true);
+        k.Block(standing + Vector3.up * 2.55f, new Vector3(0.5f, 0.5f, 0.5f), Kit.Swatch.Iron, 0.03f);
 
-        // the hut
+        var burst = new Vector3(3.4f, Y, 3.0f);
+        k.Cone(burst + Vector3.up * 0.1f, rad + 0.6f, 0.9f, Kit.Swatch.Earth, 14);
+        k.Block(burst + Vector3.up * 0.1f, new Vector3(rad * 2.2f, 0.2f, rad * 2.2f), Kit.Swatch.Earth, 0.05f, true);
+        for (int i = 0; i < 12; i++)
+        {
+            float a = (float)b.Rng.NextDouble() * Mathf.PI * 2f, d = (float)b.Rng.NextDouble() * rad * 1.3f;
+            var at = burst + new Vector3(Mathf.Cos(a) * d, 0.55f, Mathf.Sin(a) * d);
+            var t = Quaternion.Euler((float)b.Rng.NextDouble() * 40f - 20f, (float)b.Rng.NextDouble() * 360f, (float)b.Rng.NextDouble() * 40f - 20f);
+            k.Log(at - t * Vector3.forward * 0.7f, at + t * Vector3.forward * 0.7f, 0.11f, Kit.Swatch.Char, 6);
+        }
+        k.Ash(burst, 3.2f, 7);
+        k.Ash(new Vector3(-0.4f, Y, 0.6f), 2.0f, 4);
+
+        // the hut: what a fire leaves of a log hut, the walls part down and
+        // the thatch gone to the rafters
         const float r = 0.16f;
         var h0 = new Vector3(-7.4f, Y, -2.2f); var h1 = new Vector3(-3.6f, Y, -2.2f);
         var h2 = new Vector3(-3.6f, Y, 1.6f); var h3 = new Vector3(-7.4f, Y, 1.6f);
-        k.LogWall(h0, h1, 2.3f, 0f, r); k.LogWall(h3, h2, 2.3f, 0f, r);
+        k.LogWall(h0, h1, 2.3f, 0f, r); k.LogWall(h3, h2, 1.6f, 0f, r);
         k.LogWall(h0, h3, 2.3f, r, r);
-        k.LogWall(h1, new Vector3(-3.6f, Y, -0.9f), 2.3f, r, r);
-        k.LogWall(new Vector3(-3.6f, Y, 0.3f), h2, 2.3f, r, r);
-        k.LogWall(new Vector3(-3.6f, Y, -0.9f), new Vector3(-3.6f, Y, 0.3f), 2.3f, 1.9f, r);
+        k.LogWall(h1, new Vector3(-3.6f, Y, -0.9f), 1.9f, r, r);
+        k.LogWall(new Vector3(-3.6f, Y, 0.3f), h2, 1.3f, r, r);
         k.Door(new Vector3(-3.6f + r, Y, -0.3f), Vector3.right, 0.95f, 1.8f);
-        k.Window(new Vector3(-5.5f, Y + 1.35f, 1.6f + r + 0.02f), Vector3.forward, 0.8f, 0.7f);
         var eave = new Vector3(-5.5f, Y + 2.3f, -0.3f);
         k.GableEnd(eave, 3.8f + 2f * r, 42f, -1.9f - r, Kit.Swatch.Plaster, 0.3f);
-        k.GableEnd(eave, 3.8f + 2f * r, 42f, 1.9f + r, Kit.Swatch.Plaster, 0.3f);
         k.Roof(eave, 3.8f + 2f * r, 3.8f + 2f * r, 42f, Kit.Builder.RoofStyle.Thatch, 0.6f);
+        k.Ash(new Vector3(-5.5f, Y, -0.3f), 1.6f, 4);
+        k.Debris(new Vector3(-2.0f, Y, 2.6f), 1.8f, 5);
 
-        // the wood, everywhere
+        // the wood, some of it burned with the clamp, the rest scattered
         k.Woodpile(new Vector3(-6.0f, Y, 5.0f), 2.2f, 5, 0f);
         k.Woodpile(new Vector3(-3.2f, Y, 5.2f), 1.8f, 4, 0f);
         k.Woodpile(new Vector3(-6.4f, Y, -5.2f), 2.0f, 4, 90f);
