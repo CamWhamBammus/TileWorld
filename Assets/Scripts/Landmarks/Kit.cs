@@ -15,10 +15,10 @@ using UnityEngine;
 /// </summary>
 public class Kit : ScriptableObject
 {
-    public enum Swatch { Wood, DarkWood, Plank, EndGrain, Stone, DarkStone, Mortar, Plaster, Thatch, Slate, Iron, Pane, Cloth, WarmStone, Water }
+    public enum Swatch { Wood, DarkWood, Plank, EndGrain, Stone, DarkStone, Mortar, Plaster, Thatch, Slate, Iron, Pane, Cloth, WarmStone, Water, Earth }
 
     /// <summary>Where on the palette each swatch is, in the order of the enum.</summary>
-    public Vector2[] Where = new Vector2[15];
+    public Vector2[] Where = new Vector2[16];
 
     private static Kit loaded;
 
@@ -294,7 +294,7 @@ public class Kit : ScriptableObject
             float slope = halfW / Mathf.Cos(pitch);
             float rise = halfW * Mathf.Tan(pitch);
             float thick = style == RoofStyle.Thatch ? 0.34f : 0.12f;
-            var swatch = style == RoofStyle.Thatch ? Swatch.Thatch : style == RoofStyle.Slate ? Swatch.Slate : Swatch.Plank;
+            var swatch = style == RoofStyle.Thatch ? Swatch.Thatch : style == RoofStyle.Slate ? Swatch.Slate : Swatch.Wood;
             float over = length + overhang * 2f;
 
             foreach (int side in new[] { -1, 1 })

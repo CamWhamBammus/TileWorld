@@ -69,9 +69,9 @@ public static class Landmarks
     private static readonly Kind[] kinds =
     {
         new Kind { Chance = 22, Name = "Forester's Watch", Country = Regions.Character.Forest, Site = Site.Level,
-                   SurveyRadius = 5, SurveyHeight = 1.5f, LabelHeight = 9f,
+                   SurveyRadius = 5, SurveyHeight = 1.4f, LabelHeight = 14f,
                    Where = "in the woods, its tower above the trees",
-                   Behind = 1, Ahead = 4, Aside = 1, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
+                   Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
         new Kind { Chance = 30, Name = "Shipwreck", Country = Regions.Character.Water, Site = Site.Shallows,
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
@@ -89,9 +89,9 @@ public static class Landmarks
                    Behind = 3, Ahead = 6, Aside = 3, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
         new Kind { Chance = 45, Name = "Fishing Jetty", Country = Regions.Character.Reed, Site = Site.Shore,
-                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
-                   Where = "on a lake shore in the reeds, planks out over the water",
-                   Behind = 2, Ahead = 5, Aside = 1, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "on a lake shore in the reeds, a pier out over the water",
+                   Behind = 4, Ahead = 10, Aside = 3, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
 
         new Kind { Chance = 22, Name = "Stepped Altar", Country = Regions.Character.Stone, Site = Site.Level,
                    SurveyRadius = 6, SurveyHeight = 3.0f, LabelHeight = 10f,
@@ -129,9 +129,9 @@ public static class Landmarks
                    Behind = 3, Ahead = 3, Aside = 3, CoreHalf = 1, CoreVariation = 0.26f, ApronVariation = 0.8f },
 
         new Kind { Chance = 20, Name = "Lighthouse", Country = Regions.Character.Water, Site = Site.BeachShore,
-                   SurveyRadius = 6, SurveyHeight = 1.5f, LabelHeight = 12f,
-                   Where = "at a beach's edge, a tower on a plinth with a light on top",
-                   Behind = 3, Ahead = 2, Aside = 2, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+                   SurveyRadius = 7, SurveyHeight = 0.8f, LabelHeight = 16f,
+                   Where = "at a beach's edge, a tower with a light in a glass room on top",
+                   Behind = 5, Ahead = 2, Aside = 3, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
 
         new Kind { Chance = 14, Name = "Hunter's Hide", Country = Regions.Character.Forest, Site = Site.Level,
                    SurveyRadius = 3, SurveyHeight = 1.5f, LabelHeight = 6f,

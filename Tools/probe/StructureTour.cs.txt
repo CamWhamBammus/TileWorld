@@ -117,8 +117,8 @@ public class _Probe : MonoBehaviour
             foreach (var tag in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None)) if (tag.Kind == want) built = true;
             Mark(want + " at " + at.Position + " yaw " + at.Yaw + " built " + built);
 
-            float reach = about.Ahead * 2f + about.Behind * 2f + 6f;
-            Vector3 focus = at.Position + Vector3.up * 2f;
+            float reach = about.Ahead * 2f + about.Behind * 2f + 6f + about.LabelHeight * 0.8f;
+            Vector3 focus = at.Position + Vector3.up * (1f + about.LabelHeight * 0.25f);
 
             cam.transform.position = at.Position + turn * new Vector3(reach + 4f, reach * 0.55f + 3f, reach * 0.6f);
             cam.transform.rotation = Quaternion.LookRotation(focus - cam.transform.position, Vector3.up);
