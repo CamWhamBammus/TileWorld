@@ -94,7 +94,7 @@ Walk up to a structure and it gets added to your map with its name, and there's 
 
 ## Animals
 
-Nineteen kinds, each keeping to its own country and its own hours, so which one you meet is a question of where you're standing and what time it is.
+There are nineteen kinds. Each one sticks to its own biome and its own hours, so what you run into depends on where you are and what time it is.
 
 ![A deer walking](docs/images/deer.png)
 
@@ -102,49 +102,49 @@ Nineteen kinds, each keeping to its own country and its own hours, so which one 
 
 | Animal | Where | When | What it does |
 | --- | --- | --- | --- |
-| Deer | wooded lowland | dawn and dusk | grazes in loose herds; a stag bellows at dusk |
-| Rabbit | open meadow | day | hops, sits up, bolts; hunted by foxes |
-| Fox | lowland | night | trots low, pounces; hunts rabbits, marmots and frogs |
-| Goat | bare rock, high up | any | picks its way along ground you'd fall off |
-| Tortoise | desert sand | the heat of the day | never runs: pulls into its shell and waits you out |
-| Wolf | snowfields | dusk to morning | travels in pairs, gives ground and comes back, howls at night; hunts hares |
-| Heron | the shallows of any lake | day | stands still, spears at fish, sometimes comes up with one; flies off |
-| Boar | dead wood and mushroom woods | most of the day | roots with its snout; faces you and stamps before it goes |
-| Raven | dead wood | day | hops and pecks on the ground; flies off |
-| Marmot | stone barrens and peaks | day | sits up on a rock keeping watch; whistles and vanishes down a burrow |
-| Crab | beaches | any | scuttles sideways, stands its ground with its claws up; under the sand when pushed |
-| Owl | low woods | night | perches on a ruin or a dead snag and turns its head, one way then the other |
-| Frog | pond shallows | dusk and night | sits at the edge, calls in chorus, plops under when you come near |
-| Bat | over water | dusk and night | never lands; jinks about over the water after insects |
-| Hedgehog | low woods, leaf litter | night | curls into a ball when you're near, then unrolls and trundles off |
-| Fish | deep water | any | out of sight below the surface; rises for a few seconds and leaves a ring |
-| Eagle | over the peaks | day | circles a long way up on set wings; never comes down |
-| Hare | snowfields | day | goes flat and still when it sees you, then bolts faster than anything |
-| Scorpion | desert sand | night | raises its sting at you; goes under the sand |
+| Deer | wooded lowland | dawn and dusk | grazes in small herds, stags bellow at dusk |
+| Rabbit | open meadow | day | hops around, sits up, bolts; foxes hunt them |
+| Fox | lowland | night | stays low, pounces; hunts rabbits, marmots and frogs |
+| Goat | high bare rock | any | walks along slopes you can't |
+| Tortoise | desert | middle of the day | doesn't run, just pulls into its shell and waits |
+| Wolf | snowfields | dusk to morning | comes in pairs, backs off but comes back, howls at night; hunts hares |
+| Heron | lake shallows | day | stands still and stabs at fish, sometimes catches one; flies off if you push it |
+| Boar | dead wood, mushroom woods | most of the day | digs with its snout, turns to face you and stamps before running |
+| Raven | dead wood | day | hops around pecking at the ground; flies off |
+| Marmot | stone barrens, peaks | day | sits up on rocks on lookout, whistles and dives into a burrow |
+| Crab | beaches | any | scuttles sideways, puts its claws up; digs into the sand if you push it |
+| Owl | low woods | night | sits on a ruin or a dead tree turning its head |
+| Frog | pond edges | dusk and night | sits at the edge croaking with the others, jumps in when you get close |
+| Bat | over water | dusk and night | never lands, flits around over the water |
+| Hedgehog | low woods | night | curls into a ball, then unrolls and wanders off |
+| Fish | deep water | any | hidden under the surface, comes up for a few seconds and leaves a ring |
+| Eagle | over the peaks | day | circles way up high on still wings, never lands |
+| Hare | snowfields | day | freezes flat when it sees you, then runs faster than anything else |
+| Scorpion | desert | night | puts its sting up at you, then burrows into the sand |
 
 ![An eagle circling](docs/images/eagle-over-the-snow.png)
 
 *An eagle circling.*
 
-They move properly. Each leg is two bones bent to put its foot on the ground under it, so a planted foot stays where it was set down while the body passes over it, and an animal across a hillside stands with its uphill legs folded and its downhill legs straight. Ears and tails lag the head and body on springs. No two of a kind are the same size or the same shade, and herds have this year's young in them, small and kept close.
+The legs are actual two bone legs with IK, so feet plant on the ground and stay put while the body moves over them instead of sliding, and on a hillside the uphill legs bend more than the downhill ones. Ears and tails are on springs so they lag behind a bit. Every animal gets a random size and a slightly different coat colour, and herds sometimes have young ones that stay close to the adults.
 
 ![A hare gone flat](docs/images/hare.png)
 
 *A hare gone flat.*
 
-They react to each other, not just to you. An alarm carries: whatever puts one animal to flight sends everything within earshot off too, a beat later, so a herd goes in a wave and one marmot's whistle empties the slope. Foxes hunt rabbits and wolves hunt hares. The quarry runs, the hunter lunges at the last stride and misses, and the chase is the thing worth watching. Groups have a leader the rest keep up with, a wolf's howl gets taken up by the pair, a call gets an answer, and birds roost at night rather than disappearing.
+They also react to each other. If one animal spooks, everything nearby spooks too a moment later, so a whole herd takes off in a wave and one marmot whistle clears the hillside. Foxes chase rabbits and wolves chase hares. Nothing ever actually gets caught, the hunter lunges at the end and misses, but the chase is fun to watch. Groups follow a leader, wolves howl back at each other, calls get answered, and birds roost at night instead of despawning.
 
 ![A fox after a rabbit](docs/images/chase.png)
 
 *A fox after a rabbit.*
 
-They leave signs. Prints in snow and sand that fade over a few minutes, ground turned over where a boar has been rooting, a feather where a bird went up, a ring where a fish rose, and trails worn where animals keep passing. You can find an animal by what it left.
+They leave stuff behind too. Footprints in snow and sand that fade after a few minutes, dug up dirt where a boar has been, a feather where a bird took off, a ring where a fish surfaced, and worn trails where animals keep walking the same way. You can track an animal down from what it left.
 
 ![Tracks in the snow](docs/images/prints.png)
 
 *Tracks in the snow.*
 
-How close they let you get depends on how you move. Run at them and they're gone; walk, or stand still, and they settle. Some never run at all: a tortoise shuts its shell, a hedgehog curls up, a scorpion puts its sting up.
+How close you can get depends on how you move. Run at them and they bolt. Walk up slowly or stand still and they calm down. A few don't run at all: the tortoise shuts its shell, the hedgehog curls up, the scorpion puts its sting up.
 
 ![A scorpion with its sting up](docs/images/scorpion.png)
 
