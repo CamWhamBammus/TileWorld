@@ -1139,44 +1139,53 @@ public static class LandmarkBuilder
     private static void Hide(Job b)
     {
         const float Y = 0.4f, H = 3.6f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.75f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-5.0f, 0f, -5.5f), new Vector3(4.0f, 0f, 5.5f), Y, 1.3f, 1, false);
 
-        // the stilts, the platform, the walls and the roof
+        // The stilts: three standing, the fourth rotted through and lying, so
+        // the hide above has dropped at that corner and hangs at a tilt. The
+        // hide -- platform, walls, roof -- is one piece so it can tilt whole.
         foreach (float x in new[] { -2.4f, 1.0f }) foreach (float z in new[] { -2.0f, 2.0f })
         {
+            if (x > 0f && z < 0f)
+            {
+                k.Log(new Vector3(x, Y, z), new Vector3(x, Y + 0.7f, z), 0.16f, Kit.Swatch.OldWood, 7);
+                k.Log(new Vector3(x + 0.6f, Y + 0.15f, z - 0.4f), new Vector3(x + 3.2f, Y + 0.15f, z - 1.6f), 0.15f, Kit.Swatch.OldWood, 7);
+                continue;
+            }
             k.Log(new Vector3(x, Y, z), new Vector3(x, Y + H + 0.1f, z), 0.16f, Kit.Swatch.DarkWood, 7);
             k.Log(new Vector3(x, Y + 1.2f, z), new Vector3(x + (x < 0f ? 1f : -1f) * 1.1f, Y + H - 0.2f, z), 0.06f, Kit.Swatch.DarkWood, 5);
         }
-        k.Block(new Vector3(-0.7f, Y + H, 0f), new Vector3(4.6f, 0.16f, 5.2f), Kit.Swatch.Plank, 0f, true);
-        k.PlankWall(new Vector3(-3.0f, Y + H + 0.08f, -2.6f), new Vector3(1.6f, Y + H + 0.08f, -2.6f), 1.15f);
-        k.PlankWall(new Vector3(1.6f, Y + H + 0.08f, 2.6f), new Vector3(-3.0f, Y + H + 0.08f, 2.6f), 1.15f);
-        k.PlankWall(new Vector3(-3.0f, Y + H + 0.08f, 2.6f), new Vector3(-3.0f, Y + H + 0.08f, -2.6f), 1.15f);
-        k.Railing(new Vector3(1.6f, Y + H + 0.08f, -2.6f), new Vector3(1.6f, Y + H + 0.08f, -0.7f), 1.0f);
-        k.Railing(new Vector3(1.6f, Y + H + 0.08f, 0.7f), new Vector3(1.6f, Y + H + 0.08f, 2.6f), 1.0f);
-        foreach (float x in new[] { -2.8f, 1.4f }) foreach (float z in new[] { -2.4f, 2.4f })
-            k.Post(new Vector3(x, Y + H + 0.16f, z), 2.2f, 0.1f, Kit.Swatch.Wood);
-        var eave = new Vector3(-0.7f, Y + H + 2.3f, 0f);
-        k.Roof(eave, 5.0f, 5.6f, 26f, Kit.Builder.RoofStyle.Plank, 0.5f);
-        k.Bench(new Vector3(-2.2f, Y + H + 0.16f, 0f), 1.3f);
-        k.Crate(new Vector3(-2.5f, Y + H + 0.16f, 1.9f), 0.5f);
 
-        // the stair, wooden, from the court to the platform's open side
+        var hide = new Kit.Builder(b.Rng.Next()) { Decay = k.Decay, Weathering = k.Weathering };
+        hide.Block(new Vector3(0f, 0f, 0f), new Vector3(4.6f, 0.16f, 5.2f), Kit.Swatch.Plank, 0f, true);
+        hide.PlankWall(new Vector3(-2.3f, 0.08f, -2.6f), new Vector3(2.3f, 0.08f, -2.6f), 1.15f);
+        hide.PlankWall(new Vector3(2.3f, 0.08f, 2.6f), new Vector3(-2.3f, 0.08f, 2.6f), 1.15f);
+        hide.PlankWall(new Vector3(-2.3f, 0.08f, 2.6f), new Vector3(-2.3f, 0.08f, -2.6f), 1.15f);
+        hide.Railing(new Vector3(2.3f, 0.08f, -2.6f), new Vector3(2.3f, 0.08f, -0.7f), 1.0f);
+        hide.Railing(new Vector3(2.3f, 0.08f, 0.7f), new Vector3(2.3f, 0.08f, 2.6f), 1.0f);
+        foreach (float x in new[] { -2.1f, 2.1f }) foreach (float z in new[] { -2.4f, 2.4f })
+            hide.Post(new Vector3(x, 0.16f, z), 2.2f, 0.1f, Kit.Swatch.Wood);
+        hide.Roof(new Vector3(0f, 2.3f, 0f), 5.0f, 5.6f, 26f, Kit.Builder.RoofStyle.Plank, 0.5f);
+        hide.Bench(new Vector3(-1.5f, 0.16f, 0f), 1.3f);
+        hide.Crate(new Vector3(-1.8f, 0.16f, 1.9f), 0.5f);
+        var dropped = hide.Finish("Hide", b.Root, new Vector3(-0.7f, Y + H - 0.35f, 0f), b.Flora.Paint);
+        dropped.transform.localRotation = Quaternion.Euler(6f, 0f, -11f);
+
+        // the stair, wooden, from the court up to where the platform's open
+        // side was; its top no longer meets anything
         int flight = Mathf.CeilToInt(H / 0.2f);
         float stairFoot = 1.8f + flight * 0.32f;
         k.Steps(new Vector3(stairFoot, Y, 0f), Vector3.left, flight, H / flight, 0.32f, 1.4f, true);
         k.Railing(new Vector3(stairFoot, Y, 0.75f), new Vector3(1.8f, Y + H, 0.75f), 0.9f);
-        k.Railing(new Vector3(stairFoot, Y, -0.75f), new Vector3(1.8f, Y + H, -0.75f), 0.9f);
 
-        // below: the fire, the rack, the pile, the pen
+        // below: the fire long out, the rack down, the pile, the pen
         k.Ring(new Vector3(-0.7f, Y + 0.15f, 0f), 0.7f, 0.3f, 0.3f, 8, Kit.Swatch.DarkStone, true);
-        k.Block(new Vector3(-0.7f, Y + 0.25f, 0f), new Vector3(0.7f, 0.35f, 0.7f), Kit.Swatch.Thatch, 0.06f);
-        k.Block(new Vector3(-0.7f, Y + 0.5f, 0f), new Vector3(0.4f, 0.3f, 0.4f), Kit.Swatch.Cloth, 0.05f);
-        k.Post(new Vector3(-4.2f, Y, -1.4f), 2.0f, 0.07f); k.Post(new Vector3(-4.2f, Y, 1.4f), 2.0f, 0.07f);
-        k.Log(new Vector3(-4.2f, Y + 1.85f, -1.5f), new Vector3(-4.2f, Y + 1.85f, 1.5f), 0.04f, Kit.Swatch.Wood, 5);
-        foreach (float z in new[] { -0.9f, -0.2f, 0.6f })
-            k.Block(new Vector3(-4.2f, Y + 1.35f, z), new Vector3(0.06f, 0.9f, 0.4f), Kit.Swatch.Plaster);
+        k.Block(new Vector3(-0.7f, Y + 0.08f, 0f), new Vector3(0.9f, 0.1f, 0.9f), Kit.Swatch.Char, 0.05f);
+        k.Post(new Vector3(-4.2f, Y, -1.4f), 2.0f, 0.07f);
+        k.Log(new Vector3(-4.2f, Y + 0.1f, 1.4f), new Vector3(-3.0f, Y + 0.1f, 2.6f), 0.07f, Kit.Swatch.OldWood, 5);
+        k.Log(new Vector3(-4.2f, Y + 1.85f, -1.5f), new Vector3(-3.4f, Y + 0.2f, 1.2f), 0.04f, Kit.Swatch.OldWood, 5);
         k.Woodpile(new Vector3(-3.8f, Y, 4.2f), 1.6f, 4, 0f);
         k.Barrel(new Vector3(3.0f, Y, -4.2f), 0.3f, 0.85f);
         k.Crate(new Vector3(2.2f, Y, -4.6f), 0.6f);
@@ -1186,8 +1195,10 @@ public static class LandmarkBuilder
         k.Railing(new Vector3(-5.0f, Y, 5.5f), new Vector3(4.0f, Y, 5.5f), 1.0f);
         k.Railing(new Vector3(-5.0f, Y, -5.5f), new Vector3(-5.0f, Y, 5.5f), 1.0f);
         k.HangingSign(new Vector3(9.0f, Ground, -1.6f), 2.6f, 180f);
+        k.Debris(new Vector3(2.4f, Y, -2.8f), 1.8f, 6);
+        for (int i = 0; i < 8; i++) k.Tuft(new Vector3(b.Rng.Next(-46, 36) * 0.1f, Y, b.Rng.Next(-50, 50) * 0.1f), 0.5f);
 
-        k.Finish("Hide", b.Root, Vector3.zero, b.Flora.Paint);
+        k.Finish("Court", b.Root, Vector3.zero, b.Flora.Paint);
     }
 
     // ---------------------------------------------------------- Buried Tower
