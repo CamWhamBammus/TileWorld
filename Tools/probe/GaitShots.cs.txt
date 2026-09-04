@@ -80,7 +80,7 @@ public class _Probe : MonoBehaviour
         yield return new WaitForSecondsRealtime(5f);
         HideInterface();
 
-        var plan = new (FaunaKind kind, bool run, int frames)[] { (FaunaKind.Deer, true, 4), (FaunaKind.Fox, true, 4), (FaunaKind.Rabbit, false, 3) };
+        var plan = new (FaunaKind kind, bool run, int frames)[] { (FaunaKind.Rabbit, true, 4), (FaunaKind.Hare, true, 2) };
         foreach (var item in plan)
         {
             var go = new GameObject("probe " + item.kind);

@@ -185,7 +185,7 @@ public static class Fauna
                 Coat = new Color(0.573f, 0.506f, 0.451f),
                 Under = new Color(0.941f, 0.835f, 0.698f),
                 Dark = new Color(0.278f, 0.231f, 0.184f),
-                Size = 0.44f, WalkSpeed = 1.1f, RunSpeed = 6.5f,
+                Size = 0.44f, WalkSpeed = 1.1f, RunSpeed = 5.2f,
                 Notices = 14f, Bolts = 8f, Settles = 26f
             },
             Lowest = 0f, Highest = 0.32f,

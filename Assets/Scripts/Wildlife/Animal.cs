@@ -1226,7 +1226,7 @@ public class Animal : MonoBehaviour
         // stick straight out: from the side a running deer had none. A small
         // thing at a sprint keeps quick legs instead.
         float slowest = pace / (12f * worldScale);
-        float most = reach * (free ? 0.85f : 0.6f);
+        float most = reach * (walk.Bounds ? 1.1f : free ? 0.85f : 0.6f);   // a bound's feet are tucked in the air, so it may stretch a little
         return Mathf.Min(Mathf.Max(half, slowest), most);
     }
 
