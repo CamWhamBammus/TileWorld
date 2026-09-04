@@ -603,7 +603,7 @@ public static class LandmarkBuilder
     /// </summary>
     private static void Altar(Job b)
     {
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.75f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-8.5f, 0f, -8.5f), new Vector3(8.5f, 0f, 8.5f), 0.3f, 1.2f, 0);
 
@@ -618,9 +618,23 @@ public static class LandmarkBuilder
             k.Block(new Vector3(0f, (floor + top) * 0.5f, 0f), new Vector3(h * 2f, rise, h * 2f), Kit.Swatch.Mortar, 0f, true);
             k.StoneWall(new Vector3(-h, floor, -h), new Vector3(h, floor, -h), rise, 0.4f);
             k.StoneWall(new Vector3(h, floor, -h), new Vector3(h, floor, h), rise, 0.4f);
-            k.StoneWall(new Vector3(h, floor, h), new Vector3(-h, floor, h), rise, 0.4f);
-            k.StoneWall(new Vector3(-h, floor, h), new Vector3(-h, floor, -h), rise, 0.4f);
+            // the back-left corner of the lowest tier has come away: the wall
+            // stops short of it both ways and the stone lies below
+            if (t == 0)
+            {
+                k.StoneWall(new Vector3(h, floor, h), new Vector3(-h + 2.6f, floor, h), rise, 0.4f);
+                k.StoneWall(new Vector3(-h, floor, h - 2.6f), new Vector3(-h, floor, -h), rise, 0.4f);
+                k.Block(new Vector3(-h + 1.3f, (floor + top) * 0.5f - 0.3f, h - 1.3f), new Vector3(2.6f, rise - 0.6f, 2.6f), Kit.Swatch.Mortar, 0.06f);
+                k.Rubble(new Vector3(-h - 0.6f, 0.3f, h + 0.4f), 1.6f, 10);
+                k.Rubble(new Vector3(-h + 1.0f, top - 0.6f, h - 1.0f), 0.9f, 5);
+            }
+            else
+            {
+                k.StoneWall(new Vector3(h, floor, h), new Vector3(-h, floor, h), rise, 0.4f);
+                k.StoneWall(new Vector3(-h, floor, h), new Vector3(-h, floor, -h), rise, 0.4f);
+            }
             k.Pavers(new Vector3(0f, top, 0f), h * 2f - 0.3f, h * 2f - 0.3f, 0.85f);
+            if (t > 0) k.Rubble(new Vector3(b.Rng.Next(-8, 8) * 0.1f * h, floor, b.Rng.Next(-8, 8) * 0.1f * h), 0.8f, 3);
 
             // the stair up this tier's front face, cut into the terrace below
             int steps = Mathf.CeilToInt(rise / 0.21f);
@@ -631,13 +645,15 @@ public static class LandmarkBuilder
             floor = top;
         }
 
-        // the top: the stone, and four fires
-        Standing(b, new Vector3(0f, floor, 0f), 4.2f);
+        // the top: the stone, broken, its upper part lying on the tier below;
+        // the four fires long cold, ash in the bowls
+        Standing(b, new Vector3(0f, floor, 0f), 2.7f);
+        Lying(b, new Vector3(3.1f, floor - rise, -1.2f), 1.5f);
         foreach (float x in new[] { -1.7f, 1.7f }) foreach (float z in new[] { -1.7f, 1.7f })
         {
+            if (b.Rng.Next(4) == 0) { k.Rubble(new Vector3(x, floor, z), 0.5f, 3); continue; }
             k.Block(new Vector3(x, floor + 0.25f, z), new Vector3(0.8f, 0.5f, 0.8f), Kit.Swatch.DarkStone, 0.01f);
-            k.Block(new Vector3(x, floor + 0.62f, z), new Vector3(0.5f, 0.3f, 0.5f), Kit.Swatch.Thatch, 0.06f);
-            k.Block(new Vector3(x, floor + 0.85f, z), new Vector3(0.28f, 0.3f, 0.28f), Kit.Swatch.Cloth, 0.05f);
+            k.Block(new Vector3(x, floor + 0.55f, z), new Vector3(0.5f, 0.12f, 0.5f), Kit.Swatch.Char, 0.04f);
         }
 
         // lesser stones at the foot of the stair, and a lamp either side
@@ -648,6 +664,8 @@ public static class LandmarkBuilder
         k.Lantern(new Vector3(8.4f, 0.3f, 3.6f), 2.4f, 270f);
         k.Lantern(new Vector3(8.4f, 0.3f, -3.6f), 2.4f, 90f);
         k.HangingSign(new Vector3(11.0f, Ground, -1.9f), 2.6f, 180f);
+        k.Rubble(new Vector3(7.2f, 0.3f, 0f), 1.4f, 6);
+        k.Rubble(new Vector3(-2.0f, 0.3f, -7.6f), 1.2f, 5);
 
         k.Finish("Altar", b.Root, Vector3.zero, b.Flora.Paint);
     }
@@ -1149,7 +1167,17 @@ public static class LandmarkBuilder
     /// </summary>
     private static Kit.Builder.Weather WeatherAt(Job b)
     {
-        if (SnowCover.IsSnowy(b.At.TileX, b.At.TileZ, b.Seed)) return Kit.Builder.Weather.Snow;
+        // Snow if most of the footprint is under it, not just the middle tile:
+        // an altar on the last bare rock before a snowfield stood green-tufted
+        // in the middle of the white.
+        var about = Landmarks.All(b.At.Kind);
+        int snowy = 0;
+        foreach (var (dx, dz) in new[] { (0, 0), (about.Ahead, 0), (-about.Behind, 0), (0, about.Aside), (0, -about.Aside) })
+        {
+            Vector3 off = Quaternion.Euler(0f, b.At.Yaw, 0f) * new Vector3(dx, 0f, dz);
+            if (SnowCover.IsSnowy(b.At.TileX + Mathf.RoundToInt(off.x), b.At.TileZ + Mathf.RoundToInt(off.z), b.Seed)) snowy++;
+        }
+        if (snowy >= 2) return Kit.Builder.Weather.Snow;
 
         switch (Regions.CharacterAtTile(b.At.TileX, b.At.TileZ, b.Seed, false))
         {

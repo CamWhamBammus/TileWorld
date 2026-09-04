@@ -581,7 +581,7 @@ public class Kit : ScriptableObject
                 if (Gone(0.12f))
                 {
                     // a flag gone, and grass come up where it was
-                    if (Weathering != Weather.Sand && Weathering != Weather.Snow) Tuft(at, flag * 0.5f);
+                    if (Weathering == Weather.Vines) Tuft(at, flag * 0.5f);   // only where things grow
                     continue;
                 }
                 var tilt = Quaternion.Euler(Lean(7f), Rand(-3f, 3f), Lean(7f));
@@ -609,6 +609,17 @@ public class Kit : ScriptableObject
                 // each tread is a block from its own top down to the ground, so the flight is solid
                 float tall = rise * (i + 1);
                 var shade = wooden ? (i % 2 == 0 ? Swatch.Wood : Swatch.Plank) : (i % 2 == 0 ? Swatch.Stone : Swatch.DarkStone);
+
+                // a broken tread: the block is there, but its top is gone to a
+                // rough lower surface, so the flight is still climbable at a
+                // stumble
+                if (Gone(0.3f) && i > 0)
+                {
+                    float broken = tall - rise * Rand(0.4f, 0.9f);
+                    Block(foot + dir * (run * (i + 0.5f)) + Vector3.up * broken * 0.5f, new Vector3(width * Rand(0.7f, 1f), broken, run), turn, wooden ? Swatch.OldWood : Swatch.DarkStone, wooden ? 0.02f : 0.04f, true);
+                    if (!wooden) Rubble(foot + dir * (run * (i + 0.5f)) + Vector3.up * broken + new Vector3(0f, 0f, Rand(-width, width) * 0.4f), 0.3f, 2);
+                    continue;
+                }
                 Block(foot + dir * (run * (i + 0.5f)) + Vector3.up * tall * 0.5f, new Vector3(width, tall, run), turn, shade, wooden ? 0f : 0.01f, true);
             }
         }
