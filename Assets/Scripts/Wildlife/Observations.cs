@@ -85,6 +85,24 @@ public static class Observations
         Add("goat-moving", "a goat picking its way along",
             s => s.Kind == FaunaKind.Goat && s.Doing == Doing.Walking);
 
+        Add("tortoise-sun", "a tortoise out on the sand",
+            s => s.Kind == FaunaKind.Tortoise);
+
+        Add("tortoise-shut", "a tortoise pulled into its shell",
+            s => s.Kind == FaunaKind.Tortoise && s.Doing == Doing.Watching);
+
+        Add("wolf-night", "a wolf abroad in the dark",
+            s => s.Kind == FaunaKind.Wolf && Night(s));
+
+        Add("wolf-pair", "two wolves together",
+            s => s.Kind == FaunaKind.Wolf && s.Company >= 2);
+
+        Add("heron-still", "a heron standing in the shallows",
+            s => s.Kind == FaunaKind.Heron && s.ByWater);
+
+        Add("heron-flight", "a heron taking flight",
+            s => s.Kind == FaunaKind.Heron && s.Doing == Doing.Fleeing);
+
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 

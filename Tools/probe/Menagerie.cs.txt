@@ -78,103 +78,97 @@ public class _Probe : MonoBehaviour
         body.enabled = true;
         yield return new WaitForSecondsRealtime(5f);
 
-        // one of each, side by side, all facing +x so the camera sees a flank
-        var kinds = new[] { FaunaKind.Deer, FaunaKind.Goat, FaunaKind.Fox, FaunaKind.Rabbit };
-        float[] xs = { -5.2f, -1.6f, 1.6f, 4.2f };
+        // one of each asked for, side by side; the pose list is per kind
+        var asked = new System.Collections.Generic.List<FaunaKind>();
+        foreach (var part in "__KINDS__".Split(',')) if (System.Enum.TryParse(part.Trim(), out FaunaKind k)) asked.Add(k);
+        if (asked.Count == 0) asked.AddRange(new[] { FaunaKind.Deer, FaunaKind.Goat, FaunaKind.Fox, FaunaKind.Rabbit });
+        var kinds = asked.ToArray();
         var animals = new Animal[kinds.Length];
         for (int i = 0; i < kinds.Length; i++)
         {
             var go = new GameObject("probe " + kinds[i]);
-            var a = go.AddComponent<Animal>();
-            a.Settle(kinds[i], seed, player, origin + new Vector3(xs[i], 0f, 0f));
-            animals[i] = a;
+            var an = go.AddComponent<Animal>();
+            an.Settle(kinds[i], seed, player, origin + new Vector3((i - (kinds.Length - 1) * 0.5f) * 3.6f, 0f, 0f));
+            animals[i] = an;
         }
         Mark("spawned " + kinds.Length);
 
-        // pinned where they were put, or they wander behind things
-        {
-            var f = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-            var st = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
-            foreach (var a in animals)
-            {
-                typeof(Animal).GetField("state", f).SetValue(a, System.Enum.Parse(st, "Stand"));
-                typeof(Animal).GetField("until", f).SetValue(a, Time.time + 1000f);
-            }
-        }
-
-        string dir = Application.persistentDataPath;
-        yield return new WaitForSecondsRealtime(1f);
-        HideInterface();
-
-        // the row, side on
-        cam.transform.position = origin + new Vector3(0f, 1.5f, -9.5f);
-        cam.transform.rotation = Quaternion.LookRotation((origin + Vector3.up * 0.7f) - cam.transform.position, Vector3.up);
-        for (int shot = 0; shot < 3; shot++)
-        {
-            yield return new WaitForSecondsRealtime(shot == 0 ? 0.5f : 4f);
-            HideInterface();
-            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-row" + shot + ".png"));
-            yield return new WaitForSecondsRealtime(0.5f);
-        }
-
-        // each close, three quarter front, then put through its poses by hand:
-        // the state and the gesture are private, so reflection sets them
         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
         var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
         var gestureType = typeof(Animal).GetNestedType("Gesture", System.Reflection.BindingFlags.NonPublic);
         var stateField = typeof(Animal).GetField("state", flags);
         var untilField = typeof(Animal).GetField("until", flags);
         var restedField = typeof(Animal).GetField("restedSince", flags);
+        var altitudeField = typeof(Animal).GetField("altitude", flags);
         var begin = typeof(Animal).GetMethod("Begin", flags);
 
-        string[] gestures = { "Stamp", "Groom", "Groom", "SitUp" };   // deer, goat, fox, rabbit
-        string[] extra = { "Stretch", "Shake", "Pounce", "Scratch" };
+        foreach (var an in animals)
+        {
+            stateField.SetValue(an, System.Enum.Parse(stateType, "Stand"));
+            untilField.SetValue(an, Time.time + 1000f);
+        }
+
+        string dir = Application.persistentDataPath;
+        yield return new WaitForSecondsRealtime(1f);
+        HideInterface();
+
+        cam.transform.position = origin + new Vector3(0f, 1.5f, -9.5f);
+        cam.transform.rotation = Quaternion.LookRotation((origin + Vector3.up * 0.7f) - cam.transform.position, Vector3.up);
+        yield return new WaitForSecondsRealtime(0.5f);
+        HideInterface();
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-row0.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
 
         for (int i = 0; i < animals.Length; i++)
         {
             if (animals[i] == null) continue;
             var a = animals[i];
-            var p = a.transform.position;
             float sz = Fauna.Of(kinds[i]).Size;
             string name = kinds[i].ToString().ToLower();
 
-            void Aim()
+            // what each is put through: state names, or gesture names after a colon
+            string[] poses = kinds[i] switch
             {
-                cam.transform.position = p + new Vector3(sz * 2.2f, sz * 0.9f, -sz * 2.9f);
-                cam.transform.rotation = Quaternion.LookRotation((a.transform.position + Vector3.up * sz * 0.5f) - cam.transform.position, Vector3.up);
-            }
-            IEnumerator Shot(string what, float wait)
+                FaunaKind.Tortoise => new[] { "Stand", "Wander", "Alert", "Alert" },
+                FaunaKind.Wolf => new[] { "Stand", "Alert", ":Howl", "Rest" },
+                FaunaKind.Heron => new[] { "Stand", "Graze", ":Stretch", "Flee", "Flee" },
+                FaunaKind.Rabbit => new[] { "Stand", "Alert", ":SitUp", ":Scratch", "Rest" },
+                FaunaKind.Fox => new[] { "Stand", "Alert", ":Groom", ":Pounce", "Rest" },
+                FaunaKind.Goat => new[] { "Stand", "Alert", ":Groom", ":Shake", "Rest" },
+                _ => new[] { "Stand", "Alert", ":Stamp", ":Stretch", "Rest" }
+            };
+
+            int shot = 0;
+            foreach (var pose in poses)
             {
+                if (pose.StartsWith(":"))
+                {
+                    begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, pose.Substring(1)), 4f });
+                }
+                else
+                {
+                    stateField.SetValue(a, System.Enum.Parse(stateType, pose));
+                    untilField.SetValue(a, Time.time + 1000f);
+                    if (pose == "Rest") restedField.SetValue(a, Time.time - 10f);
+                    if (pose == "Wander") typeof(Animal).GetField("target", flags).SetValue(a, a.transform.position + Vector3.right * 6f);
+                }
+
+                float wait = pose == "Flee" ? (shot == 3 ? 1.2f : 1.6f) : pose == ":Stamp" ? 0.45f : pose == ":Pounce" ? 1.05f : pose == "Rest" ? 2.2f : 1.3f;
                 yield return new WaitForSecondsRealtime(wait);
-                Aim();
+
+                float up = altitudeField != null ? (float)altitudeField.GetValue(a) : 0f;
+                var p = a.transform.position + Vector3.up * up;
+                cam.transform.position = p + new Vector3(sz * 2.2f, sz * 0.9f, -sz * 2.9f);
+                cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * sz * 0.5f) - cam.transform.position, Vector3.up);
                 HideInterface();
                 yield return new WaitForSecondsRealtime(0.15f);
-                ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + name + "-" + what + ".png"));
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + name + "-" + shot + "-" + pose.Trim(':').ToLower() + ".png"));
                 yield return new WaitForSecondsRealtime(0.4f);
-            }
-            void Set(string state)
-            {
-                stateField.SetValue(a, System.Enum.Parse(stateType, state));
-                untilField.SetValue(a, Time.time + 1000f);
+                shot++;
             }
 
-            Set("Stand");
-            yield return Shot("stand", 1.2f);
-
-            Set("Alert");
-            yield return Shot("alert", 1.4f);
-
-            begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, gestures[i]), 4f });
-            yield return Shot(gestures[i].ToLower(), gestures[i] == "Stamp" ? 0.45f : 1.4f);
-
-            begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, extra[i]), 4f });
-            yield return Shot(extra[i].ToLower(), extra[i] == "Pounce" ? 1.05f : 0.9f);
-
-            Set("Rest");
-            restedField.SetValue(a, Time.time - 10f);
-            yield return Shot("sleep", 2.2f);
-
-            Set("Graze");
+            stateField.SetValue(a, System.Enum.Parse(stateType, "Stand"));
+            untilField.SetValue(a, Time.time + 1000f);
         }
 
         Mark("done");

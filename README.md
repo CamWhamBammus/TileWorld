@@ -78,7 +78,9 @@ Walk up to a structure and it gets added to your map with its name, and there's 
 
 ## Animals
 
-Deer in the wooded lowlands at dawn and dusk, rabbits in the meadows during the day, foxes on the same ground at night, and goats up on the bare rock where nothing else goes. Which animal you run into depends on where you are and what time it is.
+Deer in the wooded lowlands at dawn and dusk, rabbits in the meadows during the day, foxes on the same ground at night, goats up on the bare rock where nothing else goes, tortoises out on the desert sand in the heat of the day, wolves on the snowfields from dusk to morning, and herons standing in the shallows of any lake. Which animal you run into depends on where you are and what time it is.
+
+A few of them don't behave like the rest. A tortoise never runs: get close and it stops, pulls its head into its shell and waits you out, which makes it the one animal you can draw from arm's length. Wolves travel in pairs, give ground rather than bolting, and come back; at night they howl. A heron gets away by air, and lands a long way off.
 
 You usually hear them before you see them, and the sound comes from where they actually are. They stick to the ground properly: they lean along hillsides, step up terraces, slow down in the rain, lie down when the weather turns, avoid the ruins, and watch you once they've noticed you. Each one moves differently (deer trot and bound, rabbits hop, foxes stay low, goats pick their way) and the legs have actual knees. They graze, wander, drink, rest and drift towards their own kind. How close they let you get depends on how you move. Run at them and they're gone; walk or stand still and they calm down.
 

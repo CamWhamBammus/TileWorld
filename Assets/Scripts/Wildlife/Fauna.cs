@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum FaunaKind { Deer, Rabbit, Fox, Goat }
+public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron }
 
 /// <summary>
 /// What lives where. Like everything else in the world this is a function of
@@ -78,6 +78,19 @@ public static class Fauna
         public float Highest;       // a share of the tallest ground there is
         public bool KeepsOffSnow;
 
+        // The country it keeps to, if it keeps to one: a tortoise is a desert
+        // animal whatever the height of the sand. Empty means any country.
+        public Regions.Character[] Countries;
+
+        // How deep a water it will stand in; nought is none. A heron lives in
+        // the shallows and nowhere else, which is what WadesOnly says.
+        public float Wades;
+        public bool WadesOnly;
+
+        public bool Flies;          // gets away through the air, not over the ground
+        public bool Withdraws;      // pulls in and sits tight rather than running
+        public bool Howls;          // a call with its head up, in the dark
+
         // When it is about. A window whose start is later than its end runs
         // through midnight; no windows at all means it keeps no hours.
         public Vector2[] Hours;
@@ -102,6 +115,9 @@ public static class Fauna
         public float ProperLowest;
         public float ProperHighest;
     }
+
+    /// <summary>What sort of thing this is, for anyone who needs to know before building it.</summary>
+    public static bool Flies(FaunaKind kind) => All(kind).Flies;
 
     private static readonly Kind[] kinds =
     {
@@ -239,6 +255,115 @@ public static class Fauna
                                WobbleDepth = 52f, Rasp = 0.34f, Noise = 0.10f, Thump = 0f },
 
             ProperHours = Vector2.zero, ProperLowest = 0.55f, ProperHighest = 1f
+        },
+
+        // tortoise: the sand, in the heat of the day, and never in a hurry.
+        // It does not run from you; it stops, pulls in, and waits you out.
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "tortoise",
+                Coat = new Color(0.447f, 0.420f, 0.251f),
+                Under = new Color(0.753f, 0.678f, 0.447f),
+                Dark = new Color(0.251f, 0.220f, 0.153f),
+                Size = 0.36f, WalkSpeed = 0.28f, RunSpeed = 0.28f,
+                Notices = 7f, Bolts = 0f, Settles = 4f
+            },
+            Lowest = 0f, Highest = 0.7f,
+            Countries = new[] { Regions.Character.Desert },
+            Withdraws = true,
+            Hours = new[] { new Vector2(0.22f, 0.80f) },
+            Company = 1, Crowd = 4,
+
+            // a plod: short strides, the shell rocking side to side
+            Walk = new Gait { Cadence = 7f, Swing = 16f, Knee = 8f, Bounce = 0.01f,
+                              Pitch = 0.5f, Roll = 5f, Bounds = false },
+            Run = new Gait { Cadence = 7f, Swing = 18f, Knee = 8f, Bounce = 0.01f,
+                             Pitch = 0.5f, Roll = 5f, Bounds = false },
+
+            Found = "the sand, in the heat of the day",
+            Country = "out on the sand in daylight",
+            Habit = "sunning itself", Doing = Doing.Standing,
+
+            // a hiss, which is all it has to say
+            Call = new Voice { Length = 0.5f, Pitch = 90f, Glide = -0.1f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0.2f, Noise = 0.9f, Thump = 0f },
+
+            ProperHours = new Vector2(0.34f, 0.66f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // wolf: the snowfields, from dusk through to morning, in twos. It
+        // gives ground rather than bolting, and comes back.
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "wolf",
+                Coat = new Color(0.522f, 0.529f, 0.549f),
+                Under = new Color(0.839f, 0.831f, 0.784f),
+                Dark = new Color(0.180f, 0.180f, 0.200f),
+                Size = 0.84f, WalkSpeed = 1.7f, RunSpeed = 8.2f,
+                Notices = 34f, Bolts = 11f, Settles = 26f
+            },
+            Lowest = 0f, Highest = 0.95f,
+            Countries = new[] { Regions.Character.Snow },
+            Howls = true,
+            Hours = new[] { new Vector2(0.60f, 0.30f) },
+            Company = 2, Crowd = 4,
+
+            // a lope, low and even; a run that stretches out
+            Walk = new Gait { Cadence = 3.4f, Swing = 28f, Knee = 42f, Bounce = 0.03f,
+                              Pitch = 1.5f, Roll = 2f, Bounds = false },
+            Run = new Gait { Cadence = 2.4f, Swing = 48f, Knee = 44f, Bounce = 0.16f,
+                             Pitch = 4f, Roll = 1.5f, Bounds = true },
+
+            Found = "the snowfields, after dark",
+            Country = "on the snow after dark",
+            Habit = "watching", Doing = Doing.Watching,
+
+            // the howl: long, rising, and held
+            Call = new Voice { Length = 1.9f, Pitch = 330f, Glide = 0.28f, WobbleRate = 2.6f,
+                               WobbleDepth = 10f, Rasp = 0.08f, Noise = 0.04f, Thump = 0f },
+
+            ProperHours = new Vector2(0.84f, 0.16f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // heron: the shallows of any lake or shore, standing stock still; it
+        // gets away by air, and lands a long way off.
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "heron",
+                Coat = new Color(0.549f, 0.620f, 0.678f),
+                Under = new Color(0.922f, 0.929f, 0.922f),
+                Dark = new Color(0.157f, 0.169f, 0.180f),
+                Size = 1.05f, WalkSpeed = 0.55f, RunSpeed = 7.5f,
+                Notices = 24f, Bolts = 13f, Settles = 64f
+            },
+            Lowest = 0f, Highest = 1f,
+            KeepsOffSnow = true,
+            Wades = 0.75f, WadesOnly = true,
+            Flies = true,
+            Hours = new[] { new Vector2(0.14f, 0.86f) },
+            Company = 1, Crowd = 3,
+
+            // a high careful step through the water; the run is flight
+            Walk = new Gait { Cadence = 2.4f, Swing = 26f, Knee = 70f, Bounce = 0.01f,
+                              Pitch = 1f, Roll = 1.5f, Bounds = false },
+            Run = new Gait { Cadence = 1.2f, Swing = 10f, Knee = 20f, Bounce = 0f,
+                             Pitch = 0f, Roll = 0f, Bounds = false },
+
+            Found = "the shallows, standing still",
+            Country = "standing in the shallows",
+            Habit = "fishing", Doing = Doing.Drinking,
+
+            // a harsh croak, going down
+            Call = new Voice { Length = 0.38f, Pitch = 230f, Glide = -0.30f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0.6f, Noise = 0.3f, Thump = 0f },
+
+            ProperHours = new Vector2(0f, 0f), ProperLowest = 0f, ProperHighest = 1f
         }
     };
 
@@ -287,11 +412,24 @@ public static class Fauna
     /// </summary>
     public static bool Ground(FaunaKind kind, int tileX, int tileZ, int worldSeed)
     {
-        if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) return false;
-
         var it = All(kind);
 
+        if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed))
+        {
+            float deep = WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, worldSeed);
+            if (it.Wades <= 0f || deep > it.Wades) return false;
+        }
+        else if (it.WadesOnly) return false;
+
         if (it.KeepsOffSnow && SnowCover.IsSnowy(tileX, tileZ, worldSeed)) return false;
+
+        if (it.Countries != null && it.Countries.Length > 0)
+        {
+            var here = Regions.CharacterAtTile(tileX, tileZ, worldSeed);
+            bool home = false;
+            foreach (var c in it.Countries) if (c == here) home = true;
+            if (!home) return false;
+        }
 
         float relief = WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief;
 

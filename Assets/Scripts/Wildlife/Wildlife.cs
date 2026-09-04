@@ -238,11 +238,12 @@ public class Wildlife : MonoBehaviour
     {
         // Start somewhere different each time, or the first kind in the list
         // takes every spot that suits more than one animal.
-        int start = Random.Range(0, 4);
+        int count = Fauna.Count;
+        int start = Random.Range(0, count);
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < count; i++)
         {
-            var kind = (FaunaKind)((start + i) % 4);
+            var kind = (FaunaKind)((start + i) % count);
 
             if (!Fauna.Suits(kind, tileX, tileZ, seed, now)) continue;
             if (CountOf(kind) >= Fauna.Crowd(kind)) continue;
