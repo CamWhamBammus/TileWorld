@@ -459,44 +459,92 @@ public static class LandmarkBuilder
     /// A long plank pier on posts out over the lake, railed both sides, with
     /// a square landing at the end under a lantern; on the shore a log hut
     /// with a thatched roof, and the fisherman's things. +x is the water.
+    ///
+    /// Left to the lake, the pier goes a bay at a time: a bay's deck drops
+    /// into the water at one end, or is gone with only its posts left, and
+    /// the rails along it with it. The landing sags where a post has gone.
     /// </summary>
     private static void Jetty(Job b)
     {
         float water = WaterSurface.Level - b.At.Position.y;
         float deck = Mathf.Max(water + 0.55f, 0.25f);
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
+        var rng = b.Rng;
 
-        // the pier: a deck of planks from the shore out, posts to the bed
-        float length = 15f, width = 2.4f;
-        k.Block(new Vector3(length * 0.5f + 0.4f, deck - 0.08f, 0f), new Vector3(length, 0.16f, width), Kit.Swatch.Plank, 0f, true);
-        for (float x = 0.6f; x < length + 0.4f; x += 0.42f)
-            k.Block(new Vector3(x, deck + 0.005f, 0f), new Vector3(0.36f, 0.03f, width - 0.06f), (x * 7f) % 2f < 1f ? Kit.Swatch.Wood : Kit.Swatch.Plank);
-        for (float x = 1.0f; x <= length; x += 2.4f)
-        foreach (float z in new[] { -width * 0.5f + 0.1f, width * 0.5f - 0.1f })
-            k.Log(new Vector3(x, deck - 3.0f, z), new Vector3(x, deck + 0.02f, z), 0.11f, Kit.Swatch.DarkWood, 7);
-        k.Railing(new Vector3(0.6f, deck, width * 0.5f), new Vector3(length - 0.2f, deck, width * 0.5f), 1.0f);
-        k.Railing(new Vector3(0.6f, deck, -width * 0.5f), new Vector3(length - 0.2f, deck, -width * 0.5f), 1.0f);
+        // the pier, bay by bay between pairs of posts
+        float width = 2.4f, bay = 2.4f;
+        int bays = 6;
+        float start = 0.4f;
 
-        // the landing at the end, wider, with a lantern and a bench
-        var end = new Vector3(length + 0.4f + 2.0f, deck, 0f);
-        k.Block(end + Vector3.down * 0.08f, new Vector3(4.4f, 0.16f, 5.6f), Kit.Swatch.Plank, 0f, true);
+        for (int i = 0; i < bays; i++)
+        {
+            float x0 = start + i * bay, x1 = x0 + bay;
+            float mid = (x0 + x1) * 0.5f;
+
+            // the posts, the far pair of each bay; the near pair of the first is the shore
+            foreach (float z in new[] { -width * 0.5f + 0.1f, width * 0.5f - 0.1f })
+            {
+                bool postGone = rng.NextDouble() < 0.2 * k.Decay;
+                var top = new Vector3(x1, deck + 0.02f, z);
+                if (postGone) top = new Vector3(x1, deck - Mathf.Lerp(0.6f, 1.6f, (float)rng.NextDouble()), z);
+                else if (rng.NextDouble() < k.Decay * 0.6) top += new Vector3(Mathf.Lerp(-0.25f, 0.25f, (float)rng.NextDouble()), 0f, Mathf.Lerp(-0.2f, 0.2f, (float)rng.NextDouble()));
+                k.Log(new Vector3(x1, deck - 3.0f, z), top, 0.11f, Kit.Swatch.DarkWood, 7);
+            }
+
+            double fate = rng.NextDouble();
+            if (fate < 0.22 * k.Decay)
+            {
+                // gone: a plank or two left hanging, nothing to walk on
+                k.Block(new Vector3(mid, deck - 0.3f, -0.6f), new Vector3(bay * 0.7f, 0.08f, 0.3f), Quaternion.Euler(0f, 6f, -35f), Kit.Swatch.OldWood);
+                continue;
+            }
+            if (fate < 0.5 * k.Decay)
+            {
+                // dropped: the far end in the water, still crossable at a lean
+                var turn = Quaternion.Euler(0f, 0f, 24f);
+                var centre = new Vector3(mid + 0.3f, deck - 0.6f, 0f);
+                k.Block(centre, new Vector3(bay, 0.16f, width), turn, Kit.Swatch.OldWood, 0f, true);
+                for (float x = -bay * 0.5f + 0.25f; x < bay * 0.5f; x += 0.42f)
+                    k.Block(centre + turn * new Vector3(x, 0.09f, 0f), new Vector3(0.36f, 0.03f, width - 0.06f), turn, Kit.Swatch.OldWood);
+                continue;
+            }
+
+            k.Block(new Vector3(mid, deck - 0.08f, 0f), new Vector3(bay, 0.16f, width), Kit.Swatch.Plank, 0f, true);
+            for (float x = x0 + 0.25f; x < x1; x += 0.42f)
+            {
+                if (rng.NextDouble() < 0.15 * k.Decay) continue;   // a plank gone
+                k.Block(new Vector3(x, deck + 0.005f, 0f), new Vector3(0.36f, 0.03f, width - 0.06f), (x * 7f) % 2f < 1f ? Kit.Swatch.Wood : Kit.Swatch.Plank);
+            }
+            k.Railing(new Vector3(x0 + 0.1f, deck, width * 0.5f), new Vector3(x1 - 0.1f, deck, width * 0.5f), 1.0f);
+            k.Railing(new Vector3(x0 + 0.1f, deck, -width * 0.5f), new Vector3(x1 - 0.1f, deck, -width * 0.5f), 1.0f);
+        }
+
+        // the landing at the end, sagging toward the corner whose post went
+        var end = new Vector3(start + bays * bay + 2.0f, deck, 0f);
+        var sag = Quaternion.Euler(k.Decay * 6f, 0f, -k.Decay * 5f);
+        k.Block(end + Vector3.down * 0.08f - Vector3.up * k.Decay * 0.25f, new Vector3(4.4f, 0.16f, 5.6f), sag, Kit.Swatch.Plank, 0f, true);
         for (float z = -2.6f; z < 2.8f; z += 0.42f)
-            k.Block(end + new Vector3(0f, 0.005f, z), new Vector3(4.3f, 0.03f, 0.36f), (z * 5f) % 2f < 1f ? Kit.Swatch.Wood : Kit.Swatch.Plank);
+            if (rng.NextDouble() > 0.15 * k.Decay)
+                k.Block(end - Vector3.up * k.Decay * 0.25f + sag * new Vector3(0f, 0.005f, z), new Vector3(4.3f, 0.03f, 0.36f), sag, (z * 5f) % 2f < 1f ? Kit.Swatch.Wood : Kit.Swatch.Plank);
         foreach (float x in new[] { -1.6f, 1.6f }) foreach (float z in new[] { -2.4f, 2.4f })
-            k.Log(end + new Vector3(x, -3.0f, z), end + new Vector3(x, 0.02f, z), 0.11f, Kit.Swatch.DarkWood, 7);
-        k.Railing(end + new Vector3(-2.2f, 0f, -2.8f), end + new Vector3(2.2f, 0f, -2.8f), 1.0f);
-        k.Railing(end + new Vector3(2.2f, 0f, -2.8f), end + new Vector3(2.2f, 0f, 2.8f), 1.0f);
-        k.Railing(end + new Vector3(2.2f, 0f, 2.8f), end + new Vector3(-2.2f, 0f, 2.8f), 1.0f);
-        k.Railing(end + new Vector3(-2.2f, 0f, 2.8f), end + new Vector3(-2.2f, 0f, 1.4f), 1.0f);
-        k.Railing(end + new Vector3(-2.2f, 0f, -1.4f), end + new Vector3(-2.2f, 0f, -2.8f), 1.0f);
-        k.Lantern(end + new Vector3(1.8f, 0f, 2.4f), 2.6f, 200f);
-        k.Bench(end + new Vector3(1.6f, 0f, -1.2f), 1.3f);
-        k.Barrel(end + new Vector3(-1.5f, 0f, -2.2f), 0.28f, 0.8f);
-        k.Crate(end + new Vector3(-1.4f, 0f, 2.1f), 0.55f);
+        {
+            bool gone = x > 0f && z < 0f;   // the corner that went
+            k.Log(end + new Vector3(x, -3.0f, z), end + new Vector3(x, gone ? -1.2f : 0.02f - k.Decay * 0.2f, z), 0.11f, Kit.Swatch.DarkWood, 7);
+        }
+        var landing = end - Vector3.up * k.Decay * 0.25f;
+        k.Railing(landing + new Vector3(-2.2f, 0f, -2.8f), landing + new Vector3(2.2f, 0f, -2.8f), 1.0f);
+        k.Railing(landing + new Vector3(2.2f, 0f, -2.8f), landing + new Vector3(2.2f, 0f, 2.8f), 1.0f);
+        k.Railing(landing + new Vector3(2.2f, 0f, 2.8f), landing + new Vector3(-2.2f, 0f, 2.8f), 1.0f);
+        k.Railing(landing + new Vector3(-2.2f, 0f, 2.8f), landing + new Vector3(-2.2f, 0f, 1.4f), 1.0f);
+        k.Railing(landing + new Vector3(-2.2f, 0f, -1.4f), landing + new Vector3(-2.2f, 0f, -2.8f), 1.0f);
+        k.Lantern(landing + new Vector3(1.8f, 0f, 2.4f), 2.6f, 200f);
+        k.Bench(landing + new Vector3(1.6f, 0f, -1.2f), 1.3f);
+        k.Barrel(landing + new Vector3(-1.5f, 0f, -2.2f), 0.28f, 0.8f);
+        k.Crate(landing + new Vector3(-1.4f, 0f, 2.1f), 0.55f);
 
         // steps up from the shore
         int flight = Mathf.Max(1, Mathf.CeilToInt((deck - Ground) / 0.19f));
-        k.Steps(new Vector3(0.6f - flight * 0.36f, Ground, 0f), Vector3.right, flight, (deck - Ground) / flight, 0.36f, 2.4f);
+        k.Steps(new Vector3(start - flight * 0.36f, Ground, 0f), Vector3.right, flight, (deck - Ground) / flight, 0.36f, 2.4f);
 
         // the hut on the shore, logs under thatch
         const float B = 0.25f;
@@ -526,6 +574,8 @@ public static class LandmarkBuilder
         k.Lantern(new Vector3(-1.2f, B + 0.1f, 4.0f), 2.4f, 90f);
         k.HangingSign(new Vector3(-7.6f, Ground, -1.0f), 2.6f, 90f);
         k.Cartwheel(new Vector3(-6.6f, B + 0.1f, 4.2f), 0.5f, 30f);
+        k.Debris(new Vector3(-3.4f, B + 0.1f, -0.8f), 1.6f, 4);
+        for (int i = 0; i < 6; i++) k.Tuft(new Vector3(b.Rng.Next(-66, -8) * 0.1f, B, b.Rng.Next(-44, 44) * 0.1f), 0.4f);
 
         k.Finish("Jetty", b.Root, Vector3.zero, b.Flora.Paint);
     }
