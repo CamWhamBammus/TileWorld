@@ -41,6 +41,10 @@ public static class Observations
         public float Standing;      // the player's own height against the highest ground
         public bool AtWater;        // and whether they are at the edge of any
 
+        public bool NearSign;       // a sign underfoot: prints, rooting, a feather
+        public Tracks.Sort Sign;
+        public FaunaKind SignOf;
+
         public Vector2Int Chunk;
     }
 
@@ -181,6 +185,19 @@ public static class Observations
 
         Add("herd-bolt", "a whole herd going at once",
             s => s.Doing == Doing.Fleeing && s.Company >= 2);
+
+        // --- and what they leave behind -------------------------------------
+        Add("prints-snow", "tracks in the snow",
+            s => s.NearSign && s.Sign == Tracks.Sort.SnowPrint, false);
+
+        Add("prints-sand", "tracks in the sand",
+            s => s.NearSign && s.Sign == Tracks.Sort.SandPrint, false);
+
+        Add("rooting-found", "ground freshly rooted up",
+            s => s.NearSign && s.Sign == Tracks.Sort.Rooting, false);
+
+        Add("feather-found", "a feather on the ground",
+            s => s.NearSign && (s.Sign == Tracks.Sort.PaleFeather || s.Sign == Tracks.Sort.DarkFeather), false);
 
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);

@@ -87,7 +87,10 @@ public class Noticing : MonoBehaviour
             Overcast = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f,
             Distance = 999f,
             Standing = Relief(player.position, seed),
-            AtWater = ByWater(player.position, seed)
+            AtWater = ByWater(player.position, seed),
+            NearSign = Tracks.Near(player.position, 2.5f, out var signSort, out var signOf),
+            Sign = signSort,
+            SignOf = signOf
         };
 
         sight.Animal = Seen();

@@ -99,6 +99,8 @@ public class Animal : MonoBehaviour
     private Animal quarry;
     private float nextHuntLook;
     private float nextFollow;
+    private float nextRooting;
+    private Vector2Int lastTile = new Vector2Int(int.MinValue, int.MinValue);
 
     /// <summary>The one it keeps with, if it came with company.</summary>
     public Animal Leader { get; set; }
@@ -625,6 +627,13 @@ public class Animal : MonoBehaviour
         // body goes forward, so the rate follows the stride, not a fixed number.
         gait += pace * dt * CycleRate(Fauna.Moving(Kind, state == State.Flee || state == State.Hunt));
 
+        // the tile it is on: each new one crossed is a crossing, toward a trail
+        if (!Flying)
+        {
+            var tile = new Vector2Int(Mathf.RoundToInt(transform.position.x / WorldGrid.TileSize), Mathf.RoundToInt(transform.position.z / WorldGrid.TileSize));
+            if (tile != lastTile) { lastTile = tile; Tracks.Cross(tile.x, tile.y); }
+        }
+
         if (landing)
         {
             Vector3 left = target - transform.position; left.y = 0f;
@@ -1110,7 +1119,9 @@ public class Animal : MonoBehaviour
         knee.localRotation = Quaternion.Slerp(knee.localRotation, kneeRot, ease);
 
         Feet[i] = frame.TransformPoint(new Vector3(hip.localPosition.x, H.x + toFoot.x, H.y + toFoot.y));
-        Planted[i] = lift <= 0.0005f;
+        bool down = lift <= 0.0005f;
+        if (down && !Planted[i] && stride > 0.5f) Tracks.Print(Feet[i], yaw, traits.Size * 0.14f, Kind, seed);
+        Planted[i] = down;
     }
 
     /// <summary>
@@ -1353,11 +1364,19 @@ public class Animal : MonoBehaviour
             turn = 0f;
         }
 
-        // a boar rooting: snout in the ground, worked side to side
+        // a boar rooting: snout in the ground, worked side to side, and the
+        // ground turned over where it has been at it
         if (Fauna.All(Kind).Roots && state == State.Graze)
         {
             dip = 46f + Mathf.Sin(Time.time * 5f + phase) * 4f;
             turn = Mathf.Sin(Time.time * 2.6f + phase) * 16f;
+            if (Time.time > nextRooting)
+            {
+                nextRooting = Time.time + Random.Range(2.5f, 5f);
+                var snout = transform.position + Quaternion.Euler(0f, yaw, 0f) * Vector3.forward * traits.Size * 0.5f;
+                snout.y = GroundUnder(snout) + footing;
+                Tracks.Root(snout, traits.Size * Random.Range(0.5f, 0.8f));
+            }
         }
 
         // a raven pecking: quick stabs at the ground between looks about
@@ -1609,6 +1628,10 @@ public class Animal : MonoBehaviour
 
     private void Flee()
     {
+        // a bird going up from the ground now and then leaves a feather where it stood
+        if (Fauna.Flies(Kind) && !Fauna.All(Kind).Airborne && altitude < 0.1f && !perched && state != State.Flee && Random.value < 0.6f)
+            Tracks.Feather(transform.position + Vector3.up * footing, Kind == FaunaKind.Heron || Kind == FaunaKind.Owl);
+
         // The fright carries: whatever put this one to flight puts the others
         // within earshot to flight too, a moment later. Once each few seconds,
         // or a herd would keep frightening itself.
