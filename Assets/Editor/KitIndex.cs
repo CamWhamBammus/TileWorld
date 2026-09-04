@@ -42,6 +42,12 @@ public static class KitIndex
             (Kit.Swatch.WarmStone, new Color(0.60f, 0.56f, 0.50f)),
             (Kit.Swatch.Water,     new Color(0.25f, 0.45f, 0.60f)),
             (Kit.Swatch.Earth,     new Color(0.32f, 0.26f, 0.19f)),
+            (Kit.Swatch.Snow,      new Color(0.94f, 0.94f, 0.94f)),
+            (Kit.Swatch.Moss,      new Color(0.19f, 0.31f, 0.19f)),
+            (Kit.Swatch.Vine,      new Color(0.13f, 0.50f, 0.19f)),
+            (Kit.Swatch.Sand,      new Color(0.82f, 0.70f, 0.56f)),
+            (Kit.Swatch.Char,      new Color(0.09f, 0.09f, 0.09f)),
+            (Kit.Swatch.OldWood,   new Color(0.44f, 0.38f, 0.30f)),
         };
 
         asset.Where = new Vector2[wanted.Length];

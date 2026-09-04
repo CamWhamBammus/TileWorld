@@ -109,7 +109,7 @@ public static class LandmarkBuilder
     {
         const float Y = 0.45f;  // the yard, a court of packed earth
         const float B = 1.5f;   // the plinth top
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.65f, Weathering = Kit.Builder.Weather.Vines };
 
         Foundation(b, k, new Vector3(-9.8f, 0f, -6.6f), new Vector3(8.4f, 0f, 7.8f), Y, 1.4f, 1, false);
         Foundation(b, k, new Vector3(-3.3f, 0f, -3.3f), new Vector3(3.3f, 0f, 3.3f), B, B - Y + 0.2f);
@@ -187,6 +187,12 @@ public static class LandmarkBuilder
         k.Railing(new Vector3(8.2f, Y, 1.2f), new Vector3(8.2f, Y, 7.6f), 1.0f);
         k.Railing(new Vector3(8.2f, Y, -6.4f), new Vector3(8.2f, Y, -1.2f), 1.0f);
         k.Pavers(new Vector3(6.6f, Y, 0f), 5.2f, 2.0f, 0.7f);
+
+        // what has come down, and what has come up
+        k.Debris(new Vector3(4.4f, Y, 2.4f), 2.4f, 6);
+        k.Debris(new Vector3(-6.0f, Y, -3.6f), 1.8f, 4);
+        k.Rubble(new Vector3(3.9f, Y, -2.8f), 1.2f, 5);
+        for (int i = 0; i < 10; i++) k.Tuft(new Vector3(b.Rng.Next(-90, 80) * 0.1f, Y, b.Rng.Next(-60, 70) * 0.1f), 0.5f);
 
         k.Finish("Watch", b.Root, Vector3.zero, b.Flora.Paint);
     }

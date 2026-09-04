@@ -15,10 +15,10 @@ using UnityEngine;
 /// </summary>
 public class Kit : ScriptableObject
 {
-    public enum Swatch { Wood, DarkWood, Plank, EndGrain, Stone, DarkStone, Mortar, Plaster, Thatch, Slate, Iron, Pane, Cloth, WarmStone, Water, Earth }
+    public enum Swatch { Wood, DarkWood, Plank, EndGrain, Stone, DarkStone, Mortar, Plaster, Thatch, Slate, Iron, Pane, Cloth, WarmStone, Water, Earth, Snow, Moss, Vine, Sand, Char, OldWood }
 
     /// <summary>Where on the palette each swatch is, in the order of the enum.</summary>
-    public Vector2[] Where = new Vector2[16];
+    public Vector2[] Where = new Vector2[22];
 
     private static Kit loaded;
 
@@ -39,6 +39,27 @@ public class Kit : ScriptableObject
     public sealed class Builder
     {
         public enum RoofStyle { Plank, Thatch, Slate }
+
+        /// <summary>What the country does to a place left to it.</summary>
+        public enum Weather { None, Vines, Snow, Sand, Char }
+
+        /// <summary>
+        /// How far gone a structure is, nought to one. Every part consults
+        /// it: at nought a place is kept, at one it is barely standing. What
+        /// goes is decided by the builder's own random, so a ruin rebuilt is
+        /// the same ruin.
+        /// </summary>
+        public float Decay = 0f;
+        public Weather Weathering = Weather.None;
+
+        /// <summary>Whether a thing of this fragility has gone, at this decay.</summary>
+        private bool Gone(float fragility) => Decay > 0f && rng.NextDouble() < fragility * Decay;
+
+        /// <summary>A small lean, more the further gone the place is.</summary>
+        private float Lean(float most) => Decay <= 0f ? 0f : Rand(-most, most) * Decay;
+
+        /// <summary>Old wood for what is left standing, once a place is far gone.</summary>
+        private Swatch Aged(Swatch wood) => Weathering == Weather.Char ? Swatch.Char : Decay > 0.5f && (wood == Swatch.Plank || wood == Swatch.Wood) ? Swatch.OldWood : wood;
 
         private readonly List<Vector3> points = new List<Vector3>();
         private readonly List<Vector2> uvs = new List<Vector2>();
@@ -88,7 +109,7 @@ public class Kit : ScriptableObject
         /// <summary>A box. Jitter moves its corners a little, for stone.</summary>
         public void Block(Vector3 centre, Vector3 size, Quaternion turn, Swatch swatch, float jitter = 0f, bool solid = false)
         {
-            var uv = At(swatch);
+            var uv = At(Aged(swatch));
             var h = size * 0.5f;
             var c = new Vector3[8];
 
@@ -120,7 +141,7 @@ public class Kit : ScriptableObject
             var axis = (to - from).normalized;
             var side = Vector3.Cross(axis, Mathf.Abs(axis.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
             var up = Vector3.Cross(side, axis);
-            var uv = At(swatch);
+            var uv = At(Aged(swatch));
             var grain = At(Swatch.EndGrain);
 
             var a = new Vector3[sides]; var b = new Vector3[sides];
@@ -173,11 +194,36 @@ public class Kit : ScriptableObject
             var a = from - along * radius * 1.6f;
             var b = to + along * radius * 1.6f;
 
-            for (float y = radius + lift; y < height; y += pitch)
+            int course = 0;
+            for (float y = radius + lift; y < height; y += pitch, course++)
             {
                 float r = radius * Rand(0.92f, 1.05f);
+
+                // the top courses go first, and the ends of them before the middles
+                bool high = y > height - pitch * 2.5f;
+                if (high && Gone(0.6f))
+                {
+                    if (Gone(0.5f)) Log(a + Vector3.up * y, Vector3.Lerp(a, b, Rand(0.3f, 0.6f)) + Vector3.up * y, r);
+                    continue;
+                }
+                if (high && Gone(0.35f))
+                {
+                    // slipped: one end dropped and pushed out
+                    var outward = Vector3.Cross(along, Vector3.up) * Rand(-0.3f, 0.3f);
+                    Log(a + Vector3.up * y, b + Vector3.up * (y - radius * 1.2f) + outward, r);
+                    continue;
+                }
                 Log(a + Vector3.up * y, b + Vector3.up * y, r);
             }
+
+            if (Gone(0.5f))
+            {
+                var at = Vector3.Lerp(from, to, Rand(0.2f, 0.8f)) + Vector3.Cross(along, Vector3.up) * Rand(0.6f, 1.4f) * (rng.Next(2) == 0 ? 1f : -1f);
+                var turn = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
+                Log(at + turn * Vector3.forward * 1.2f + Vector3.up * radius, at - turn * Vector3.forward * 1.2f + Vector3.up * radius, radius * 0.9f);
+            }
+
+            Climb(from, to, height, radius * 2f);
 
             solids.Add(((from + to) * 0.5f + Vector3.up * height * 0.5f,
                         new Vector3(Vector3.Distance(from, to), height, radius * 2f),
@@ -196,6 +242,11 @@ public class Kit : ScriptableObject
             int rows = Mathf.Max(1, Mathf.RoundToInt(height / course));
             float rowHeight = height / rows;
 
+            // How much of the top has fallen, along the wall: a wandering line,
+            // deeper toward the ends, so the top is ragged rather than shaved.
+            float fallen = Decay * rows * 0.55f;
+            float bite0 = Rand(0.2f, 1f) * fallen, bite1 = Rand(0.2f, 1f) * fallen, biteMid = Rand(0f, 0.6f) * fallen;
+
             for (int row = 0; row < rows; row++)
             {
                 float y = rowHeight * (row + 0.5f);
@@ -205,19 +256,33 @@ public class Kit : ScriptableObject
                 {
                     float len = Mathf.Min(Rand(0.45f, 1.0f), length - Mathf.Max(x, 0f));
                     float start = Mathf.Max(x, 0f), end = Mathf.Min(x + len, length);
-                    if (end - start > 0.08f)
-                    {
-                        var centre = from + along * ((start + end) * 0.5f) + Vector3.up * y;
-                        var size = new Vector3(end - start - 0.03f, rowHeight - 0.03f, thickness * Rand(0.94f, 1.04f));
-                        Block(centre, size, Quaternion.LookRotation(across, Vector3.up), StoneShade(), 0.012f);
-                    }
                     x += len;
+                    if (end - start <= 0.08f) continue;
+
+                    float t = (start + end) * 0.5f / length;
+                    float bite = t < 0.5f ? Mathf.Lerp(bite0, biteMid, t * 2f) : Mathf.Lerp(biteMid, bite1, (t - 0.5f) * 2f);
+                    if (row >= rows - bite) { if (Gone(0.9f)) continue; }
+
+                    var centre = from + along * ((start + end) * 0.5f) + Vector3.up * y;
+                    var size = new Vector3(end - start - 0.03f, rowHeight - 0.03f, thickness * Rand(0.94f, 1.04f));
+                    Block(centre, size, Quaternion.LookRotation(across, Vector3.up), StoneShade(), 0.012f);
                 }
             }
 
-            // the mortar behind the joints, one slab a little inside the face
-            Block(from + along * length * 0.5f + Vector3.up * height * 0.5f,
-                  new Vector3(length, height, thickness * 0.8f), Quaternion.LookRotation(across, Vector3.up), Swatch.Mortar);
+            // the mortar behind the joints, one slab a little inside the face,
+            // as tall as the lowest the top has fallen to
+            float keptHeight = height - Mathf.Max(bite0, Mathf.Max(bite1, biteMid)) * rowHeight;
+            Block(from + along * length * 0.5f + Vector3.up * keptHeight * 0.5f,
+                  new Vector3(length, keptHeight, thickness * 0.8f), Quaternion.LookRotation(across, Vector3.up), Swatch.Mortar);
+
+            if (fallen > 0.3f)
+            {
+                Rubble(Vector3.Lerp(from, to, Rand(0.1f, 0.9f)) + across * Rand(-1f, 1f) * (thickness + 0.4f), 0.9f, 3 + (int)(fallen * 3f));
+                if (Gone(0.6f)) Rubble(Vector3.Lerp(from, to, Rand(0.1f, 0.9f)) - across * Rand(0.3f, 0.9f) * (thickness + 0.4f), 0.7f, 3);
+            }
+
+            Climb(from, to, height, thickness);
+            if (Weathering == Weather.Vines || Decay > 0.3f) Moss(from, to, height, thickness);
 
             solids.Add((from + along * length * 0.5f + Vector3.up * height * 0.5f,
                         new Vector3(length, height, thickness), Quaternion.LookRotation(across, Vector3.up)));
@@ -235,9 +300,23 @@ public class Kit : ScriptableObject
             var turn = Quaternion.LookRotation(across, Vector3.up);
             float beam = 0.16f;
 
-            Block(from + along * length * 0.5f + Vector3.up * height * 0.5f, new Vector3(length, height, thickness * 0.8f), turn, Swatch.Plaster);
-
             int bays = Mathf.Max(1, Mathf.RoundToInt(length / 1.1f));
+
+            // the plaster, a panel a bay, and the panels fall out first
+            for (int i = 0; i < bays; i++)
+            {
+                float x0 = length * i / bays, x1 = length * (i + 1) / bays;
+                if (Gone(0.55f))
+                {
+                    // a broken panel: what is left of it, low in the bay
+                    if (Gone(0.5f)) continue;
+                    float keep = Rand(0.25f, 0.6f);
+                    Block(from + along * ((x0 + x1) * 0.5f) + Vector3.up * (height * keep * 0.5f), new Vector3(x1 - x0, height * keep, thickness * 0.8f), turn, Swatch.Plaster, 0.02f);
+                    continue;
+                }
+                Block(from + along * ((x0 + x1) * 0.5f) + Vector3.up * height * 0.5f, new Vector3(x1 - x0, height, thickness * 0.8f), turn, Swatch.Plaster);
+            }
+
             for (int i = 0; i <= bays; i++)
             {
                 float x = length * i / bays;
@@ -257,6 +336,7 @@ public class Kit : ScriptableObject
                 Block(mid, new Vector3(beam * 0.8f, Vector3.Distance(lo, hi), thickness * 0.95f), Quaternion.LookRotation(across, dir), Swatch.DarkWood);
             }
 
+            Climb(from, to, height, thickness);
             solids.Add((from + along * length * 0.5f + Vector3.up * height * 0.5f, new Vector3(length, height, thickness), turn));
         }
 
@@ -271,8 +351,10 @@ public class Kit : ScriptableObject
             float plank = 0.24f;
             for (float x = plank * 0.5f; x < length; x += plank + 0.02f)
             {
-                float h = height * Rand(0.96f, 1.0f);
-                Block(from + along * x + Vector3.up * h * 0.5f, new Vector3(plank, h, thickness), turn, rng.Next(3) == 0 ? Swatch.Wood : Swatch.Plank);
+                if (Gone(0.3f)) continue;
+                float h = height * Rand(0.96f, 1.0f) * (Gone(0.3f) ? Rand(0.4f, 0.8f) : 1f);
+                var lean = Quaternion.AngleAxis(Lean(9f), across) * turn;
+                Block(from + along * x + Vector3.up * h * 0.5f, new Vector3(plank, h, thickness), lean, rng.Next(3) == 0 ? Swatch.Wood : Swatch.Plank);
             }
             foreach (float y in new[] { height * 0.15f, height * 0.85f })
                 Block(from + along * length * 0.5f + Vector3.up * y - across * thickness, new Vector3(length, 0.14f, thickness), turn, Swatch.DarkWood);
@@ -301,14 +383,33 @@ public class Kit : ScriptableObject
             {
                 var centre = eaveCentre + new Vector3(side * halfW * 0.5f, rise * 0.5f + thick * 0.4f, 0f);
                 var turn = Quaternion.Euler(0f, 0f, -side * pitchDegrees);
-                Block(centre, new Vector3(slope, thick, over), turn, swatch, style == RoofStyle.Thatch ? 0.03f : 0f);
+
+                // The covering, in strips from ridge to eave, so that strips
+                // can be gone: a roof lets go a strip at a time, from the eave.
+                float strip = style == RoofStyle.Thatch ? 0.7f : 0.45f;
+                for (float z = -over * 0.5f + strip * 0.5f; z < over * 0.5f; z += strip)
+                {
+                    bool gone = Gone(0.3f);
+                    float keep = gone ? (Gone(0.5f) ? 0f : Rand(0.3f, 0.7f)) : 1f;
+                    if (keep <= 0f) continue;
+                    // what is kept is the ridge end; the eave end is what fell
+                    var at = centre + turn * new Vector3(-slope * (1f - keep) * 0.5f, 0f, 0f) + new Vector3(0f, 0f, z);
+                    Block(at, new Vector3(slope * keep, thick, Mathf.Min(strip, over * 0.5f - z + strip * 0.5f)), turn, swatch, style == RoofStyle.Thatch ? 0.03f : 0f);
+                    if (Weathering == Weather.Snow && keep > 0.5f && !Gone(0.3f))
+                        Block(at + turn * new Vector3(0f, thick * 0.5f + 0.09f, 0f), new Vector3(slope * keep * 0.96f, 0.18f, Mathf.Min(strip, over * 0.5f - z + strip * 0.5f) * 1.02f), turn, Swatch.Snow, 0.02f);
+                }
 
                 if (style == RoofStyle.Plank)
                 {
                     // battens across the slope, so it is planks and not a sheet
                     for (float z = -over * 0.5f + 0.4f; z < over * 0.5f; z += 0.9f)
-                        Block(centre + turn * new Vector3(0f, thick * 0.6f, 0f) + new Vector3(0f, 0f, z), new Vector3(slope * 0.98f, 0.05f, 0.12f), turn, Swatch.DarkWood);
+                        if (!Gone(0.25f)) Block(centre + turn * new Vector3(0f, thick * 0.6f, 0f) + new Vector3(0f, 0f, z), new Vector3(slope * 0.98f, 0.05f, 0.12f), turn, Swatch.DarkWood);
                 }
+
+                // the rafters under it, which show where the covering has gone
+                if (Decay > 0.15f)
+                    for (float z = -over * 0.5f + 0.5f; z < over * 0.5f; z += 1.1f)
+                        Block(centre + turn * new Vector3(0f, -thick * 0.7f, 0f) + new Vector3(0f, 0f, z), new Vector3(slope * 0.96f, 0.1f, 0.1f), turn, Swatch.DarkWood);
                 if (style == RoofStyle.Thatch)
                 {
                     // thatch is laid in courses from the eave up, each lapping
@@ -346,8 +447,21 @@ public class Kit : ScriptableObject
         /// <summary>A door: planks, two bands, a frame; set into a wall face.</summary>
         public void Door(Vector3 foot, Vector3 facing, float width = 1.0f, float height = 1.9f)
         {
-            var turn = Quaternion.LookRotation(facing, Vector3.up);
+            var frameTurn = Quaternion.LookRotation(facing, Vector3.up);
+            var turn = frameTurn;
+
+            // Left long enough a door hangs open on one hinge, or comes off
+            // and leans where it fell.
+            var hinge = foot + frameTurn * new Vector3(-width * 0.5f, 0f, 0f);
+            if (Gone(0.5f))
+            {
+                float swing = Rand(25f, 70f);
+                turn = frameTurn * Quaternion.Euler(0f, -swing, 0f);
+                if (Gone(0.4f)) turn = turn * Quaternion.Euler(0f, 0f, -Rand(8f, 18f));
+                foot = hinge + turn * new Vector3(width * 0.5f, 0f, 0f);
+            }
             Vector3 P(float x, float y, float z) => foot + turn * new Vector3(x, y, z);
+            Vector3 F(float x, float y, float z) => hinge + frameTurn * new Vector3(x + width * 0.5f, y, z);
 
             float plank = width / 4f;
             for (int i = 0; i < 4; i++)
@@ -356,9 +470,9 @@ public class Kit : ScriptableObject
             foreach (float y in new[] { height * 0.25f, height * 0.75f })
                 Block(P(0f, y, 0.08f), new Vector3(width, 0.12f, 0.05f), turn, Swatch.DarkWood);
 
-            Block(P(-width * 0.5f - 0.06f, height * 0.5f, 0.05f), new Vector3(0.12f, height + 0.12f, 0.16f), turn, Swatch.DarkWood);
-            Block(P(width * 0.5f + 0.06f, height * 0.5f, 0.05f), new Vector3(0.12f, height + 0.12f, 0.16f), turn, Swatch.DarkWood);
-            Block(P(0f, height + 0.06f, 0.05f), new Vector3(width + 0.24f, 0.12f, 0.16f), turn, Swatch.DarkWood);
+            Block(F(-width * 0.5f - 0.06f, height * 0.5f, 0.05f), new Vector3(0.12f, height + 0.12f, 0.16f), frameTurn, Swatch.DarkWood);
+            Block(F(width * 0.5f + 0.06f, height * 0.5f, 0.05f), new Vector3(0.12f, height + 0.12f, 0.16f), frameTurn, Swatch.DarkWood);
+            Block(F(0f, height + 0.06f, 0.05f), new Vector3(width + 0.24f, 0.12f, 0.16f), frameTurn, Swatch.DarkWood);
             Block(P(width * 0.32f, height * 0.5f, 0.1f), new Vector3(0.05f, 0.05f, 0.08f), turn, Swatch.Iron);
         }
 
@@ -368,7 +482,15 @@ public class Kit : ScriptableObject
             var turn = Quaternion.LookRotation(facing, Vector3.up);
             Vector3 P(float x, float y, float z) => centre + turn * new Vector3(x, y, z);
 
-            Block(P(0f, 0f, 0.02f), new Vector3(width, height, 0.04f), turn, Swatch.Pane);
+            bool glassGone = Gone(0.6f);
+            if (!glassGone) Block(P(0f, 0f, 0.02f), new Vector3(width, height, 0.04f), turn, Swatch.Pane);
+            else Block(P(0f, 0f, -0.05f), new Vector3(width, height, 0.03f), turn, Swatch.Iron);
+            if (Gone(0.5f))
+            {
+                // one shutter, hanging from its top hinge
+                var hang = turn * Quaternion.Euler(0f, 0f, Rand(6f, 22f));
+                Block(centre + turn * new Vector3(width * 0.5f + 0.25f, -height * 0.15f, 0.12f), new Vector3(width * 0.5f, height, 0.05f), hang, Swatch.OldWood);
+            }
             Block(P(-width * 0.5f, 0f, 0.06f), new Vector3(0.1f, height + 0.1f, 0.12f), turn, Swatch.DarkWood);
             Block(P(width * 0.5f, 0f, 0.06f), new Vector3(0.1f, height + 0.1f, 0.12f), turn, Swatch.DarkWood);
             Block(P(0f, height * 0.5f, 0.06f), new Vector3(width, 0.1f, 0.12f), turn, Swatch.DarkWood);
@@ -382,7 +504,8 @@ public class Kit : ScriptableObject
         public void Chimney(Vector3 foot, float height, float width = 0.7f)
         {
             float course = 0.3f;
-            for (float y = 0f; y < height; y += course)
+            float standing = height * (1f - 0.45f * Decay * (float)rng.NextDouble());
+            for (float y = 0f; y < standing; y += course)
             {
                 float w = width * (1f - 0.12f * (y / height));
                 foreach (int side in new[] { 0, 1 })
@@ -392,7 +515,8 @@ public class Kit : ScriptableObject
                     Block(foot + new Vector3(off + shift, y + course * 0.5f, 0f), new Vector3(w * 0.5f - 0.02f, course - 0.02f, w), rng.Next(3) == 0 ? Swatch.DarkStone : Swatch.Stone, 0.01f);
                 }
             }
-            Block(foot + Vector3.up * (height + 0.06f), new Vector3(width * 1.1f, 0.12f, width * 1.1f), Swatch.DarkStone);
+            if (standing > height * 0.9f) Block(foot + Vector3.up * (height + 0.06f), new Vector3(width * 1.1f, 0.12f, width * 1.1f), Swatch.DarkStone);
+            else Rubble(foot + new Vector3(Rand(-1f, 1f), 0f, Rand(0.6f, 1.4f)), 0.7f, 4);
             solids.Add((foot + Vector3.up * height * 0.5f, new Vector3(width, height, width), Quaternion.identity));
         }
 
@@ -408,9 +532,25 @@ public class Kit : ScriptableObject
             float length = Vector3.Distance(from, to);
             int posts = Mathf.Max(1, Mathf.RoundToInt(length / 1.2f));
 
-            for (int i = 0; i <= posts; i++) Post(from + along * (length * i / posts), height, 0.06f);
+            var across = Vector3.Cross(along, Vector3.up);
+            for (int i = 0; i <= posts; i++)
+            {
+                var foot = from + along * (length * i / posts);
+                if (Gone(0.2f)) { Log(foot, foot + Vector3.up * height * Rand(0.2f, 0.5f), 0.06f, Swatch.DarkWood, 6); continue; }
+                Log(foot, foot + Vector3.up * height + across * Lean(0.25f) + along * Lean(0.1f), 0.06f, Swatch.DarkWood, 6);
+            }
             foreach (float y in new[] { height * 0.5f, height - 0.05f })
-                Log(from + Vector3.up * y, to + Vector3.up * y, 0.035f, Swatch.Wood, 5);
+                for (int i = 0; i < posts; i++)
+                {
+                    if (Gone(0.35f))
+                    {
+                        // one end down, if it is there at all
+                        if (Gone(0.5f)) continue;
+                        Log(from + along * (length * i / posts) + Vector3.up * y, from + along * (length * (i + 1) / posts) + Vector3.up * (y - height * 0.45f) + across * 0.15f, 0.035f, Swatch.Wood, 5);
+                        continue;
+                    }
+                    Log(from + along * (length * i / posts) + Vector3.up * y, from + along * (length * (i + 1) / posts) + Vector3.up * y, 0.035f, Swatch.Wood, 5);
+                }
         }
 
         /// <summary>Stone flags over an area, with gaps, two greys.</summary>
@@ -419,9 +559,21 @@ public class Kit : ScriptableObject
             for (float x = -width * 0.5f + flag * 0.5f; x < width * 0.5f; x += flag + 0.05f)
             for (float z = -depth * 0.5f + flag * 0.5f; z < depth * 0.5f; z += flag + 0.05f)
             {
-                Block(centre + new Vector3(x + Rand(-0.02f, 0.02f), 0.04f + Rand(0f, 0.02f), z + Rand(-0.02f, 0.02f)),
+                var at = centre + new Vector3(x, 0f, z);
+                if (Gone(0.12f))
+                {
+                    // a flag gone, and grass come up where it was
+                    if (Weathering != Weather.Sand && Weathering != Weather.Snow) Tuft(at, flag * 0.5f);
+                    continue;
+                }
+                var tilt = Quaternion.Euler(Lean(7f), Rand(-3f, 3f), Lean(7f));
+                Block(at + new Vector3(Rand(-0.02f, 0.02f), 0.04f + Rand(0f, 0.02f), Rand(-0.02f, 0.02f)),
                       new Vector3(flag * Rand(0.9f, 0.98f), 0.08f, flag * Rand(0.9f, 0.98f)),
-                      Quaternion.Euler(0f, Rand(-3f, 3f), 0f), rng.Next(3) == 0 ? Swatch.DarkStone : Swatch.Stone, 0.008f);
+                      tilt, rng.Next(3) == 0 ? Swatch.DarkStone : Swatch.Stone, 0.008f);
+                if (Weathering == Weather.Vines && Gone(0.35f))
+                    Block(at + Vector3.up * 0.085f, new Vector3(flag * Rand(0.3f, 0.6f), 0.02f, flag * Rand(0.3f, 0.6f)), Quaternion.Euler(0f, Rand(0f, 90f), 0f), Swatch.Moss);
+                if (Weathering == Weather.Snow && !Gone(0.5f))
+                    Block(at + Vector3.up * 0.13f, new Vector3(flag * Rand(0.6f, 0.95f), 0.1f, flag * Rand(0.6f, 0.95f)), Quaternion.Euler(0f, Rand(0f, 90f), 0f), Swatch.Snow, 0.01f);
             }
         }
 
@@ -446,6 +598,14 @@ public class Kit : ScriptableObject
         /// <summary>A barrel: a fat log on end with two iron bands.</summary>
         public void Barrel(Vector3 foot, float radius = 0.32f, float height = 0.9f)
         {
+            if (Gone(0.35f))
+            {
+                // on its side, and split
+                var turn = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
+                Log(foot + Vector3.up * radius * 0.9f - turn * Vector3.forward * height * 0.5f, foot + Vector3.up * radius * 0.9f + turn * Vector3.forward * height * 0.5f, radius, Swatch.OldWood, 12);
+                Ring(foot + Vector3.up * radius * 0.9f + turn * Vector3.forward * height * 0.28f, radius + 0.02f, 0.06f, 0.05f, 12, Swatch.Iron);
+                return;
+            }
             Log(foot + Vector3.up * 0.02f, foot + Vector3.up * height, radius, Swatch.Wood, 12);
             foreach (float y in new[] { height * 0.22f, height * 0.78f }) Ring(foot + Vector3.up * y, radius + 0.02f, 0.06f, 0.05f, 12, Swatch.Iron);
             solids.Add((foot + Vector3.up * height * 0.5f, new Vector3(radius * 2f, height, radius * 2f), Quaternion.identity));
@@ -454,6 +614,16 @@ public class Kit : ScriptableObject
         /// <summary>A crate: planks, corner posts, a band round the middle.</summary>
         public void Crate(Vector3 foot, float size = 0.7f)
         {
+            if (Gone(0.4f))
+            {
+                // broken open: three sides and the lid off beside it
+                var t = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
+                Block(foot + Vector3.up * 0.04f, new Vector3(size, 0.08f, size), t, Swatch.OldWood);
+                Block(foot + t * new Vector3(0f, size * 0.3f, size * 0.5f), new Vector3(size, size * 0.6f, 0.06f), t, Swatch.OldWood);
+                Block(foot + t * new Vector3(-size * 0.5f, size * 0.25f, 0f), new Vector3(0.06f, size * 0.5f, size), t, Swatch.OldWood);
+                Block(foot + t * new Vector3(size * 0.9f, 0.04f, -size * 0.3f), new Vector3(size, 0.07f, size), t * Quaternion.Euler(0f, 30f, 0f), Swatch.OldWood);
+                return;
+            }
             var c = foot + Vector3.up * size * 0.5f;
             Block(c, new Vector3(size, size, size), Swatch.Plank);
             float e = 0.07f;
@@ -482,8 +652,9 @@ public class Kit : ScriptableObject
         public void Lantern(Vector3 foot, float height = 2.4f, float yaw = 0f)
         {
             var turn = Quaternion.Euler(0f, yaw, 0f);
-            Post(foot, height, 0.07f);
-            var arm = foot + Vector3.up * (height - 0.1f);
+            var top = foot + Vector3.up * height + new Vector3(Lean(0.35f), 0f, Lean(0.35f));
+            Log(foot, top, 0.07f, Swatch.DarkWood, 6);
+            var arm = top + Vector3.down * 0.1f;
             Log(arm, arm + turn * Vector3.forward * 0.5f, 0.04f, Swatch.DarkWood, 5);
             var lamp = arm + turn * Vector3.forward * 0.45f + Vector3.down * 0.32f;
             Block(lamp, new Vector3(0.22f, 0.3f, 0.22f), Swatch.Pane);
@@ -538,14 +709,22 @@ public class Kit : ScriptableObject
         {
             var turn = Quaternion.Euler(0f, yaw, 0f);
             float r = 0.13f;
-            for (int row = 0; row < rows; row++)
+            int keptRows = Mathf.Max(1, rows - Mathf.RoundToInt(Decay * rows * 0.6f));
+            for (int row = 0; row < keptRows; row++)
             {
                 int across = 5 - row;
                 for (int i = 0; i < across; i++)
                 {
+                    if (row == keptRows - 1 && Gone(0.5f)) continue;
                     var c = foot + turn * new Vector3((i - (across - 1) * 0.5f) * r * 2.1f, r + row * r * 1.8f, 0f);
                     Log(c + turn * Vector3.back * length * 0.5f, c + turn * Vector3.forward * length * 0.5f, r * Rand(0.85f, 1f), Swatch.Wood, 7);
                 }
+            }
+            for (int i = 0; i < rows - keptRows + 1 && Decay > 0f; i++)
+            {
+                var c = foot + turn * new Vector3(Rand(-1.2f, 1.2f), r, Rand(-0.8f, 0.8f)) + turn * Vector3.right * Rand(1.2f, 2.2f) * (rng.Next(2) == 0 ? 1f : -1f);
+                var t = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
+                Log(c - t * Vector3.forward * length * 0.5f, c + t * Vector3.forward * length * 0.5f, r * 0.9f, Swatch.OldWood, 7);
             }
             solids.Add((foot + Vector3.up * rows * r, new Vector3(1.4f, rows * r * 2f, length), turn));
         }
@@ -567,6 +746,13 @@ public class Kit : ScriptableObject
             var arm = foot + Vector3.up * (height - 0.05f);
             Log(arm, arm + turn * Vector3.forward * 0.8f, 0.04f, Swatch.DarkWood, 5);
             var cloth = arm + turn * Vector3.forward * 0.42f + Vector3.down * 0.7f;
+            if (Gone(0.6f))
+            {
+                // a rag of it, hanging from one corner
+                float rag = Rand(0.3f, 0.6f);
+                Block(arm + turn * Vector3.forward * 0.15f + Vector3.down * rag * 0.5f, new Vector3(0.03f, rag, 0.25f), turn * Quaternion.Euler(Rand(-20f, 20f), 0f, 0f), Swatch.Cloth);
+                return;
+            }
             Block(cloth, new Vector3(0.03f, 1.3f, 0.7f), turn, Swatch.Cloth);
             Gable(cloth + Vector3.down * 0.65f, 0.7f, -0.3f, 0.03f, turn * Quaternion.Euler(0f, 90f, 0f), Swatch.Cloth);
         }
@@ -604,6 +790,103 @@ public class Kit : ScriptableObject
                 Log(hub, tip, 0.03f, Swatch.Wood, 5);
             }
             Log(hub + turn * Vector3.back * 0.08f, hub + turn * Vector3.forward * 0.08f, 0.09f, Swatch.DarkWood, 8);
+        }
+
+        /// <summary>Broken stone lying where it fell.</summary>
+        public void Rubble(Vector3 centre, float radius, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float a = Rand(0f, Mathf.PI * 2f), d = Rand(0f, radius);
+                float size = Rand(0.18f, 0.42f);
+                Block(centre + new Vector3(Mathf.Cos(a) * d, size * 0.4f, Mathf.Sin(a) * d), new Vector3(size * Rand(0.8f, 1.6f), size * 0.8f, size), Quaternion.Euler(Rand(-15f, 15f), Rand(0f, 360f), Rand(-15f, 15f)), StoneShade(), 0.02f);
+            }
+        }
+
+        /// <summary>Wood lying where it fell: planks and lengths of log.</summary>
+        public void Debris(Vector3 centre, float radius, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float a = Rand(0f, Mathf.PI * 2f), d = Rand(0f, radius);
+                var at = centre + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d);
+                var t = Quaternion.Euler(0f, Rand(0f, 360f), 0f);
+                if (rng.Next(2) == 0)
+                    Block(at + Vector3.up * 0.04f, new Vector3(Rand(0.6f, 1.6f), 0.07f, 0.24f), t * Quaternion.Euler(Lean(6f), 0f, 0f), Swatch.OldWood);
+                else
+                    Log(at - t * Vector3.forward * Rand(0.4f, 0.9f) + Vector3.up * 0.1f, at + t * Vector3.forward * Rand(0.4f, 0.9f) + Vector3.up * 0.1f, 0.1f, Swatch.OldWood, 6);
+            }
+        }
+
+        /// <summary>Grass come up through a floor.</summary>
+        public void Tuft(Vector3 at, float spread)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                float a = Rand(0f, Mathf.PI * 2f), d = Rand(0f, spread);
+                var foot = at + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d);
+                float tall = Rand(0.2f, 0.45f);
+                Block(foot + Vector3.up * tall * 0.5f, new Vector3(0.05f, tall, 0.14f), Quaternion.Euler(Lean(20f) + Rand(-12f, 12f), Rand(0f, 180f), Rand(-12f, 12f)), Swatch.Vine);
+            }
+        }
+
+        /// <summary>
+        /// What grows up a wall left alone: in the woods, vines with leaves,
+        /// climbing from the foot; in snow, a drift against the foot and a cap
+        /// along the top; in the desert, sand drifted against it.
+        /// </summary>
+        private void Climb(Vector3 from, Vector3 to, float height, float thickness)
+        {
+            var along = (to - from).normalized;
+            var across = Vector3.Cross(along, Vector3.up).normalized;
+            float length = Vector3.Distance(from, to);
+
+            switch (Weathering)
+            {
+                case Weather.Vines:
+                    for (float x = Rand(0.2f, 0.8f); x < length; x += Rand(0.9f, 1.8f))
+                    {
+                        if (Gone(0.3f) == false && Decay < 0.2f) continue;
+                        float side = rng.Next(2) == 0 ? 1f : -1f;
+                        var foot = from + along * x + across * side * (thickness * 0.5f + 0.04f);
+                        float reach = height * Rand(0.4f, 1.05f) * Mathf.Clamp01(0.4f + Decay);
+                        float wander = 0f;
+                        for (float y = 0f; y < reach; y += 0.35f)
+                        {
+                            wander += Rand(-0.12f, 0.12f);
+                            var seg = foot + along * wander + Vector3.up * (y + 0.17f);
+                            Block(seg, new Vector3(0.06f, 0.4f, 0.05f), Quaternion.Euler(0f, 0f, Rand(-14f, 14f)) , Swatch.Vine);
+                            if (rng.Next(3) > 0) Block(seg + along * Rand(-0.15f, 0.15f) + across * side * 0.06f, new Vector3(0.22f, 0.16f, 0.06f), Quaternion.Euler(Rand(-25f, 25f), Rand(-25f, 25f), Rand(0f, 360f)), rng.Next(4) == 0 ? Swatch.Moss : Swatch.Vine);
+                        }
+                    }
+                    break;
+
+                case Weather.Snow:
+                    Block(from + along * length * 0.5f + Vector3.up * (height + 0.08f), new Vector3(length + 0.2f, 0.16f, thickness + 0.2f), Quaternion.LookRotation(across, Vector3.up), Swatch.Snow, 0.02f);
+                    foreach (float side in new[] { -1f, 1f })
+                        Gable(from + along * length * 0.5f + across * side * (thickness * 0.5f + 0.3f), 0.8f, 0.45f * (0.5f + Decay), length, Quaternion.LookRotation(along, Vector3.up) * Quaternion.Euler(0f, 90f, 0f), Swatch.Snow);
+                    break;
+
+                case Weather.Sand:
+                    foreach (float side in new[] { -1f, 1f })
+                        Gable(from + along * length * 0.5f + across * side * (thickness * 0.5f + 0.5f), 1.2f, 0.7f * (0.4f + Decay), length * Rand(0.6f, 1f), Quaternion.LookRotation(along, Vector3.up) * Quaternion.Euler(0f, 90f, 0f), Swatch.Sand);
+                    break;
+            }
+        }
+
+        /// <summary>Moss on stone, low down, where it is damp.</summary>
+        private void Moss(Vector3 from, Vector3 to, float height, float thickness)
+        {
+            var along = (to - from).normalized;
+            var across = Vector3.Cross(along, Vector3.up).normalized;
+            float length = Vector3.Distance(from, to);
+            for (float x = Rand(0.1f, 0.5f); x < length; x += Rand(0.5f, 1.2f))
+            {
+                if (!Gone(0.7f)) continue;
+                float side = rng.Next(2) == 0 ? 1f : -1f;
+                float h = Rand(0.1f, height * 0.45f);
+                Block(from + along * x + across * side * (thickness * 0.5f + 0.012f) + Vector3.up * h * 0.5f, new Vector3(Rand(0.3f, 0.7f), h, 0.02f), Quaternion.LookRotation(across, Vector3.up), Swatch.Moss);
+            }
         }
 
         /// <summary>A ring of blocks round a centre, for bands, wells and towers.</summary>
@@ -644,11 +927,17 @@ public class Kit : ScriptableObject
             // that stood every block on end, pointing out of the wall.
             Log(foot, foot + Vector3.up * height, radius - 0.03f, Swatch.Mortar, 32);
 
+            // how far the top has fallen, round the tower: a wandering line
+            float[] bite = new float[count];
+            for (int i = 0; i < count; i++) bite[i] = Rand(0f, 1f) * Decay * rows * 0.4f;
+            for (int i = 0; i < count; i++) bite[i] = (bite[i] + bite[(i + 1) % count] + bite[(i + count - 1) % count]) / 3f;
+
             for (int row = 0; row < rows; row++)
             {
                 float y = rowHeight * (row + 0.5f);
                 for (int i = 0; i < count; i++)
                 {
+                    if (row >= rows - bite[i] && Gone(0.9f)) continue;
                     float a = (i + (row % 2) * 0.5f) / count * Mathf.PI * 2f;
                     float r = radius - 0.02f + Rand(-0.008f, 0.008f);
                     var at = foot + new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r);
@@ -671,6 +960,7 @@ public class Kit : ScriptableObject
             }
 
             var top = foot + Vector3.up * height;
+            if (Decay > 0.3f) Rubble(foot + new Vector3(Rand(-1f, 1f), 0f, Rand(-1f, 1f)).normalized * (radius + Rand(0.6f, 1.6f)), 1.0f, 4 + (int)(Decay * 4f));
 
             if (battlements)
             {
@@ -678,6 +968,7 @@ public class Kit : ScriptableObject
                 Ring(top + Vector3.up * 0.1f, radius + 0.08f, 0.2f, 0.5f, count, Swatch.DarkStone, true);
                 for (int i = 0; i < count; i += 3)
                 {
+                    if (Gone(0.5f)) continue;
                     float a = (i + 0.5f) / count * Mathf.PI * 2f;
                     var facing = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
                     Block(top + facing * (radius - 0.02f) + Vector3.up * 0.5f, new Vector3(2f * Mathf.PI * radius / count * 1.6f, 0.6f, 0.3f), Quaternion.LookRotation(facing, Vector3.up), Swatch.Stone, 0.004f);
