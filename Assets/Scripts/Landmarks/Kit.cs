@@ -1046,6 +1046,29 @@ public class Kit : ScriptableObject
             var top = foot + Vector3.up * height;
             if (Decay > 0.3f) Rubble(foot + new Vector3(Rand(-1f, 1f), 0f, Rand(-1f, 1f)).normalized * (radius + Rand(0.6f, 1.6f)), 1.0f, 4 + (int)(Decay * 4f));
 
+            // what grows up it, and the moss low down, as on a wall
+            if (Weathering == Weather.Vines)
+                for (int v = 0; v < 2 + (int)(Decay * 3f); v++)
+                {
+                    float a = Rand(0f, Mathf.PI * 2f);
+                    float reach = height * Rand(0.3f, 0.9f) * Mathf.Clamp01(0.4f + Decay);
+                    for (float y = 0f; y < reach; y += 0.35f)
+                    {
+                        a += Rand(-0.06f, 0.06f);
+                        var outward = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                        var seg = foot + outward * (radius + 0.06f) + Vector3.up * (y + 0.17f);
+                        Block(seg, new Vector3(0.06f, 0.4f, 0.05f), Quaternion.LookRotation(outward, Vector3.up) * Quaternion.Euler(0f, 0f, Rand(-14f, 14f)), Swatch.Vine);
+                        if (rng.Next(3) > 0) Block(seg + outward * 0.06f, new Vector3(0.22f, 0.16f, 0.06f), Quaternion.LookRotation(outward, Vector3.up) * Quaternion.Euler(Rand(-25f, 25f), Rand(-25f, 25f), Rand(0f, 360f)), rng.Next(4) == 0 ? Swatch.Moss : Swatch.Vine);
+                    }
+                }
+            if (Weathering == Weather.Vines || Decay > 0.3f)
+                for (int m = 0; m < 3 + (int)(Decay * 4f); m++)
+                {
+                    float a = Rand(0f, Mathf.PI * 2f), h = Rand(0.15f, height * 0.25f);
+                    var outward = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                    Block(foot + outward * (radius + 0.012f) + Vector3.up * h * 0.5f, new Vector3(Rand(0.3f, 0.7f), h, 0.02f), Quaternion.LookRotation(outward, Vector3.up), Swatch.Moss);
+                }
+
             if (topless)
             {
                 // nothing on it: the core shows above the broken courses

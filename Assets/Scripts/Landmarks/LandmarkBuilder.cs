@@ -830,7 +830,7 @@ public static class LandmarkBuilder
     private static void Beacon(Job b)
     {
         const float B = 0.8f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.75f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-7.5f, 0f, -6.5f), new Vector3(5.5f, 0f, 6.5f), B, 1.8f, 1);
 
@@ -838,13 +838,13 @@ public static class LandmarkBuilder
         var foot = new Vector3(-1.0f, B, 0f);
         k.RoundTower(foot, radius, height, true, Kit.Builder.RoofStyle.Slate, 0.5f);
 
-        // the fire on top: an iron bowl on a stone pier, flame and embers
+        // the fire on top, long out: the iron bowl on its pier, rusted, a
+        // cake of ash in it and the rain's black streaks down the stone
         var top = foot + Vector3.up * (height + 0.12f);
         k.Block(top + Vector3.up * 0.4f, new Vector3(1.4f, 0.8f, 1.4f), Kit.Swatch.DarkStone, 0.01f);
         k.Ring(top + Vector3.up * 1.1f, 0.9f, 0.6f, 0.08f, 10, Kit.Swatch.Iron);
-        k.Block(top + Vector3.up * 1.3f, new Vector3(1.3f, 0.5f, 1.3f), Kit.Swatch.Thatch, 0.08f);
-        k.Block(top + Vector3.up * 1.85f, new Vector3(0.8f, 0.9f, 0.8f), Kit.Swatch.Cloth, 0.08f);
-        k.Block(top + Vector3.up * 2.5f, new Vector3(0.4f, 0.6f, 0.4f), Kit.Swatch.Cloth, 0.1f);
+        k.Block(top + Vector3.up * 0.95f, new Vector3(1.2f, 0.16f, 1.2f), Kit.Swatch.Char, 0.05f);
+        k.Block(top + Vector3.up * 0.1f, new Vector3(2.2f, 0.04f, 2.2f), Kit.Swatch.Char, 0.06f);
 
         // the stair up a buttress to the door, a storey up
         float landing = B + 2.6f;
@@ -872,7 +872,10 @@ public static class LandmarkBuilder
         k.Roof(hutEave, 3.4f + 0.4f, 3.6f + 0.4f, 34f, Kit.Builder.RoofStyle.Slate, 0.45f);
         k.Chimney(new Vector3(-7.0f - 0.22f - 0.36f, B, 4.8f), 4.6f, 0.7f);
 
-        // fuel and the rest
+        // fuel and the rest, and what has come down off the tower
+        k.Rubble(new Vector3(1.8f, B + 0.1f, -1.4f), 1.6f, 8);
+        k.Debris(new Vector3(-2.4f, B + 0.1f, -3.4f), 1.8f, 5);
+        for (int i = 0; i < 8; i++) k.Tuft(new Vector3(b.Rng.Next(-70, 50) * 0.1f, B, b.Rng.Next(-60, 60) * 0.1f), 0.5f);
         k.Woodpile(new Vector3(-5.6f, B + 0.1f, -4.6f), 2.2f, 5, 0f);
         k.Woodpile(new Vector3(-2.6f, B + 0.1f, -4.9f), 1.8f, 4, 0f);
         k.Barrel(new Vector3(3.2f, B + 0.1f, -4.4f), 0.32f, 0.9f);
