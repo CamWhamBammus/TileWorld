@@ -681,24 +681,33 @@ public static class LandmarkBuilder
     private static void Ring(Job b)
     {
         const float M = 0.7f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-5.0f, 0f, -5.0f), new Vector3(5.0f, 0f, 5.0f), M, 1.4f, 1, false);
 
+        // the circle: two of the six down, one of those slid off the mound
         for (int i = 0; i < 6; i++)
         {
             float a = i / 6f * Mathf.PI * 2f + 0.3f;
-            Standing(b, new Vector3(Mathf.Cos(a) * 3.4f, M, Mathf.Sin(a) * 3.4f), 2.3f + (float)b.Rng.NextDouble() * 0.9f);
+            var foot = new Vector3(Mathf.Cos(a) * 3.4f, M, Mathf.Sin(a) * 3.4f);
+            if (i == 1) { Lying(b, foot + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.8f, 1.4f); continue; }
+            if (i == 4) { Lying(b, new Vector3(Mathf.Cos(a) * 6.2f, Ground, Mathf.Sin(a) * 6.2f), 1.5f); continue; }
+            Standing(b, foot, 2.3f + (float)b.Rng.NextDouble() * 0.9f);
         }
 
-        k.Block(new Vector3(0f, M + 0.45f, 0f), new Vector3(2.0f, 0.9f, 1.2f), Kit.Swatch.DarkStone, 0.015f, true);
-        k.Block(new Vector3(0f, M + 0.95f, 0f), new Vector3(2.4f, 0.14f, 1.5f), Kit.Swatch.Stone, 0.01f);
-        k.Block(new Vector3(0f, M + 1.2f, 0f), new Vector3(0.7f, 0.35f, 0.5f), Kit.Swatch.Thatch, 0.06f);
-        k.Block(new Vector3(0f, M + 1.45f, 0f), new Vector3(0.4f, 0.3f, 0.3f), Kit.Swatch.Cloth, 0.05f);
+        // the table, split, its two halves settled apart; the fire long out
+        k.Block(new Vector3(-0.55f, M + 0.42f, 0f), new Vector3(0.95f, 0.85f, 1.2f), Quaternion.Euler(0f, 0f, 6f), Kit.Swatch.DarkStone, 0.015f, true);
+        k.Block(new Vector3(0.6f, M + 0.38f, 0.1f), new Vector3(0.95f, 0.78f, 1.2f), Quaternion.Euler(4f, 0f, -9f), Kit.Swatch.DarkStone, 0.015f, true);
+        k.Block(new Vector3(-0.6f, M + 0.9f, 0f), new Vector3(1.15f, 0.14f, 1.5f), Quaternion.Euler(0f, 0f, 6f), Kit.Swatch.Stone, 0.01f);
+        k.Block(new Vector3(0.65f, M + 0.82f, 0.1f), new Vector3(1.15f, 0.14f, 1.5f), Quaternion.Euler(4f, 0f, -9f), Kit.Swatch.Stone, 0.01f);
+        k.Block(new Vector3(-0.5f, M + 1.02f, 0f), new Vector3(0.5f, 0.1f, 0.4f), Kit.Swatch.Char, 0.04f);
+        k.Rubble(new Vector3(0.1f, M, 0.9f), 0.6f, 3);
 
         foreach (float x in new[] { -2.2f, 2.2f })
             k.Log(new Vector3(x, M + 0.2f, -1.6f), new Vector3(x, M + 0.2f, 1.6f), 0.2f, Kit.Swatch.Wood, 7);
 
+        // the toadstools, grown as they like: the ring of them, and now up
+        // onto the mound, and through the fence
         for (int i = 0; i < 9; i++)
         {
             float a = i / 9f * Mathf.PI * 2f;
@@ -706,6 +715,13 @@ public static class LandmarkBuilder
             float inner = a + Mathf.PI / 9f;
             Mushroom(b, new Vector3(Mathf.Cos(inner) * 6.2f, 0f, Mathf.Sin(inner) * 6.2f), 1.2f + (float)b.Rng.NextDouble() * 0.9f);
         }
+        for (int i = 0; i < 7; i++)
+        {
+            float a = (float)b.Rng.NextDouble() * Mathf.PI * 2f, d = 1.6f + (float)b.Rng.NextDouble() * 2.6f;
+            Mushroom(b, new Vector3(Mathf.Cos(a) * d, M + 0.1f, Mathf.Sin(a) * d), 0.5f + (float)b.Rng.NextDouble() * 1.4f);
+        }
+        Mushroom(b, new Vector3(6.4f, 0f, -1.0f), 2.8f);
+        Mushroom(b, new Vector3(6.6f, 0f, 6.2f), 2.2f);
 
         for (int i = 0; i < 3; i++)
         {
@@ -718,6 +734,8 @@ public static class LandmarkBuilder
         k.Railing(new Vector3(6.4f, Ground, 4.0f), new Vector3(6.4f, Ground, 9.0f), 1.0f);
         k.Post(new Vector3(6.4f, Ground, 0.8f), 1.0f, 0.06f);
         k.HangingSign(new Vector3(9.6f, Ground, 1.4f), 2.6f, 180f);
+        k.Debris(new Vector3(-3.6f, M, 3.0f), 1.4f, 4);
+        for (int i = 0; i < 8; i++) k.Tuft(new Vector3(b.Rng.Next(-46, 46) * 0.1f, M, b.Rng.Next(-46, 46) * 0.1f), 0.5f);
 
         k.Finish("Ring", b.Root, Vector3.zero, b.Flora.Paint);
     }
