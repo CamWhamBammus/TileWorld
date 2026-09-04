@@ -193,7 +193,7 @@ public static class Fauna
             Company = 3, Crowd = 10,
 
             // a series of hops with pauses in them
-            Walk = new Gait { Cadence = 3.0f, Swing = 34f, Knee = 62f, Bounce = 0.34f,
+            Walk = new Gait { Cadence = 6.0f, Swing = 34f, Knee = 62f, Bounce = 0.34f,
                               Pitch = 13f, Roll = 0f, Bounds = true },
             Run = new Gait { Cadence = 2.4f, Swing = 52f, Knee = 62f, Bounce = 0.55f,
                              Pitch = 13f, Roll = 0f, Bounds = true },
@@ -754,7 +754,7 @@ public static class Fauna
             Hours = new[] { new Vector2(0.18f, 0.84f) },
             Company = 1, Crowd = 4,
 
-            Walk = new Gait { Cadence = 3.0f, Swing = 36f, Knee = 60f, Bounce = 0.30f,
+            Walk = new Gait { Cadence = 5.0f, Swing = 36f, Knee = 60f, Bounce = 0.30f,
                               Pitch = 12f, Roll = 0f, Bounds = true },
             Run = new Gait { Cadence = 2.0f, Swing = 58f, Knee = 62f, Bounce = 0.5f,
                              Pitch = 14f, Roll = 0f, Bounds = true },

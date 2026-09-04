@@ -1826,8 +1826,12 @@ public static class AnimalBuilder
         var go = new GameObject("catch");
         go.transform.SetParent(beak, false);
         go.transform.localScale = Vector3.one * 0.32f;
-        Part(go.transform, "fish", kit.Trunk, kit.Palette, Vector3.zero);
-        if (kit.Tail.Mesh != null) Part(go.transform, "fishtail", kit.Tail, kit.Palette, kit.Rump);
+
+        // The fish is built about its own frame, body half a length up; held
+        // by the middle it has to be brought down to the beak, or it floats.
+        Vector3 middle = kit.Trunk.Mesh != null ? kit.Trunk.Mesh.bounds.center : Vector3.zero;
+        Part(go.transform, "fish", kit.Trunk, kit.Palette, -middle);
+        if (kit.Tail.Mesh != null) Part(go.transform, "fishtail", kit.Tail, kit.Palette, kit.Rump - middle);
         return go.transform;
     }
 }

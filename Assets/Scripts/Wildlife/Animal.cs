@@ -461,6 +461,15 @@ public class Animal : MonoBehaviour
             return;
         }
 
+        // On the wing there is no standing about: if it is not going
+        // somewhere, it picks somewhere, whatever its clock says. Grazing in
+        // mid-air was an eagle hanging still in the sky.
+        if (Fauna.All(Kind).Airborne && state != State.Wander && state != State.Flee)
+        {
+            Wander();
+            return;
+        }
+
         if (Time.time < until) return;
 
         // Getting up is a thing in itself: a stretch, or a shake.
@@ -651,6 +660,7 @@ public class Animal : MonoBehaviour
         if (to.sqrMagnitude < 0.5f)
         {
             if (state == State.ToWater) Drinking();
+            else if (state == State.Wander && Fauna.All(Kind).Airborne) Wander();   // never stops in the air
             else if (state == State.Wander) Graze();
             return;
         }
@@ -678,7 +688,8 @@ public class Animal : MonoBehaviour
         // The cycle runs at whatever rate keeps a planted foot still: half a
         // cycle on the ground has to carry the foot back exactly as far as the
         // body goes forward, so the rate follows the stride, not a fixed number.
-        gait += pace * dt * CycleRate(Fauna.Moving(Kind, state == State.Flee || state == State.Hunt));
+        bool runningNow = state == State.Flee || state == State.Hunt;
+        gait += pace * dt * CycleRate(Fauna.Moving(Kind, runningNow), runningNow);
 
         // the tile it is on: each new one crossed is a crossing, toward a trail
         if (!Flying)
@@ -970,8 +981,8 @@ public class Animal : MonoBehaviour
                 if (flying && Fauna.All(Kind).Soars && state != State.Flee)
                 {
                     // set wings, held a little up, with a few slow beats now and then
-                    bool beating = Mathf.Sin(Time.time * 0.23f + phase) > 0.75f;
-                    float beat = beating ? Mathf.Sin(Time.time * 3.2f) * 22f : 6f + Mathf.Sin(Time.time * 0.9f + phase) * 3f;
+                    bool beating = Mathf.Sin(Time.time * 0.23f + phase) > -0.25f;
+                    float beat = beating ? Mathf.Sin(Time.time * 2.6f) * 24f - 2f : 6f + Mathf.Sin(Time.time * 0.9f + phase) * 3f;
                     wing = Quaternion.AngleAxis(side * beat, Vector3.forward) * Quaternion.AngleAxis(-side * 88f, Vector3.up);
                 }
                 else if (flying)
@@ -1096,7 +1107,7 @@ public class Animal : MonoBehaviour
         // the stride, in the frame's units: half a cycle carries the body
         // pi / cadence forward, and the planted foot has to go the same way back
         float worldScale = Mathf.Max(0.01f, frame.lossyScale.x);
-        float half = StrideHalf(walk, reach, worldScale) * stride;
+        float half = StrideHalf(walk, reach, worldScale, state == State.Flee || state == State.Hunt) * stride;
         float turn = gait + legPhase;
 
         // Half the cycle in the air, swinging forward in an arc; half on the
@@ -1149,21 +1160,15 @@ public class Animal : MonoBehaviour
         float bend = Mathf.Acos(cosBend);                       // angle between the two bones
         float built = Mathf.Acos(Mathf.Clamp(Vector2.Dot(t2, s2) / (a * b), -1f, 1f));
 
-        // Two ways to fold; the right one has the knee forward of the line
-        // from hip to foot on a foreleg and behind it on a hind leg.
-        float best = 0f; Vector2 bestKnee = Vector2.zero; float bestHip = 0f; bool any = false;
-        foreach (float sign in new[] { 1f, -1f })
-        {
-            float kneeTurn = sign * (built - bend) * Mathf.Rad2Deg * -1f;
-            Vector2 shinTurned = Rotate(s2, kneeTurn);
-            Vector2 w = t2 + shinTurned;
-            float hipTurn = Vector2.SignedAngle(w, toFoot) * -1f;   // the sign of Rotate() below
-            Vector2 kneeAt = Rotate(t2, hipTurn);
-            float lineSide = Vector3.Cross(new Vector3(toFoot.y, toFoot.x, 0f), new Vector3(kneeAt.y, kneeAt.x, 0f)).z;   // z of knee against the hip->foot line, in (z,y)
-            bool forwardOfLine = lineSide < 0f;
-            bool right = fore ? forwardOfLine : !forwardOfLine;
-            if (right || !any) { best = kneeTurn; bestHip = hipTurn; bestKnee = kneeAt; any = true; if (right) break; }
-        }
+        // One way to fold, fixed per leg. A foreleg's joint stands forward of
+        // the line from hip to foot and closes with the foot swinging back;
+        // a hind leg's joint -- the hock, or a bird's ankle -- stands behind
+        // it. Choosing by test each frame flipped between the two at full
+        // stretch, where they meet, and the leg shook.
+        float sign = fore ? 1f : -1f;
+        float best = sign * (built - bend) * Mathf.Rad2Deg * -1f;
+        Vector2 w = t2 + Rotate(s2, best);
+        float bestHip = Vector2.SignedAngle(w, toFoot) * -1f;
 
         var hipRot = Quaternion.Euler(bestHip, 0f, 0f);
         var kneeRot = Quaternion.Euler(best, 0f, 0f);
@@ -1182,18 +1187,25 @@ public class Animal : MonoBehaviour
     /// never more than a third of the leg, which is as far as a leg can reach
     /// and keep its foot on the ground.
     /// </summary>
-    private float StrideHalf(Fauna.Gait walk, float reach, float worldScale)
+    private float StrideHalf(Fauna.Gait walk, float reach, float worldScale, bool running)
     {
-        return Mathf.Min(Mathf.PI / (2f * Mathf.Max(0.5f, walk.Cadence)) / worldScale, reach * 0.32f);
+        float asked = Mathf.PI / (2f * Mathf.Max(0.5f, walk.Cadence)) / worldScale;
+
+        // A run or a bound has the body in the air between footfalls, and its
+        // stride is longer than any leg; capped to the leg, a running goat's
+        // legs went round nine times a second. A walk keeps a foot on the
+        // ground, and a stride much past half the leg has it stretched.
+        bool free = walk.Bounds || running;
+        return free ? asked : Mathf.Min(asked, reach * 0.48f);
     }
 
     /// <summary>Radians of cycle per metre travelled, so the stance foot goes back at the body's speed.</summary>
-    private float CycleRate(Fauna.Gait walk)
+    private float CycleRate(Fauna.Gait walk, bool running)
     {
         if (body.Thigh == null || body.Legs == null || body.Legs.Length < 3 || body.Legs[2] == null) return walk.Cadence;
         float worldScale = Mathf.Max(0.01f, body.Frame.lossyScale.x);
         float reach = body.Thigh[2].magnitude + body.Shin[2].magnitude;
-        float half = StrideHalf(walk, reach, worldScale);
+        float half = StrideHalf(walk, reach, worldScale, running);
         return Mathf.PI / (2f * Mathf.Max(0.01f, half * worldScale));
     }
 
@@ -1463,8 +1475,8 @@ public class Animal : MonoBehaviour
             if (Kind == FaunaKind.Heron && caught == null && jab > 0.99f && Time.time > caughtUntil && Random.value < 0.06f)
             {
                 caught = AnimalBuilder.FishInBeak(body.Head);
-                caught.localPosition = new Vector3(0f, 0.44f * traits.Size, 0.30f * traits.Size);
-                caught.localRotation = Quaternion.Euler(0f, 90f, 20f);
+                caught.localPosition = new Vector3(0f, 0.455f * traits.Size, 0.26f * traits.Size);
+                caught.localRotation = Quaternion.Euler(0f, 90f, 12f);
                 caughtUntil = Time.time + 3.5f;
             }
         }
@@ -1641,14 +1653,19 @@ public class Animal : MonoBehaviour
         if (Leader != null && Leader != this && Vector3.Distance(Leader.transform.position, transform.position) > (Young ? 3.5f : 7f))
             pull = Leader.transform.position + new Vector3(Random.Range(-2f, 2f), 0f, Random.Range(-2f, 2f)) * (Young ? 0.6f : 1.5f);
 
+        // a soaring bird's legs are long ones: far targets, so it flies lines
+        // it can bank round rather than fussing over a spot
+        float near = Fauna.All(Kind).Soars ? 30f : 5f, far = Fauna.All(Kind).Soars ? 70f : 16f;
+
         for (int attempt = 0; attempt < 6; attempt++)
         {
-            Vector2 offset = Random.insideUnitCircle.normalized * Random.Range(5f, 16f);
+            Vector2 offset = Random.insideUnitCircle.normalized * Random.Range(near, far);
             Vector3 at = transform.position + new Vector3(offset.x, 0f, offset.y);
 
             if (pull != Vector3.zero) at = Vector3.Lerp(at, pull, 0.45f);
 
-            if (!Walkable(at)) continue;
+            // something on the wing goes where it likes; the ground is not its business
+            if (!Fauna.All(Kind).Airborne && !Walkable(at)) continue;
 
             target = at;
             state = State.Wander;
