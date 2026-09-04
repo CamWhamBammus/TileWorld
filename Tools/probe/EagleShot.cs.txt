@@ -1,0 +1,91 @@
+// A probe: one eagle, the view radius at its widest, photographed against
+// the country below it.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.36f);
+        world.SetViewRadius(8);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        foreach (var wild in FindObjectsByType<Animal>(FindObjectsSortMode.None)) Destroy(wild.gameObject);
+        FindFirstObjectByType<Wildlife>().enabled = false;
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        // high ground near the player, for the country to fall away under it
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int high = home; float best = -1f;
+        for (int dx = -60; dx <= 60; dx += 3) for (int dz = -60; dz <= 60; dz += 3)
+        {
+            float h = WorldHeight.HeightAt(home.x + dx, home.y + dz, seed);
+            if (h > best && !WaterSurface.IsUnderwater(home.x + dx, home.y + dz, seed)) { best = h; high = new Vector2Int(home.x + dx, home.y + dz); }
+        }
+        var origin = new Vector3(high.x * WorldGrid.TileSize, WorldHeight.SurfaceY(high.x, high.y, seed), high.y * WorldGrid.TileSize);
+        var body = player.GetComponent<CharacterController>();
+        body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -6f); body.enabled = true;
+        yield return new WaitForSecondsRealtime(16f);   // the wide radius takes a while to fill
+        HideInterface();
+
+        var go = new GameObject("eagle");
+        var an = go.AddComponent<Animal>();
+        an.Settle(FaunaKind.Eagle, seed, player, origin, 1.1f);
+        yield return new WaitForSecondsRealtime(9f);    // up to its height, into its circle
+        HideInterface();
+
+        float altitude = (float)typeof(Animal).GetField("altitude", flags).GetValue(an);
+        var p = an.transform.position + Vector3.up * altitude;
+        Mark("eagle at altitude " + altitude.ToString("F1") + " | view radius " + world.ViewRadius);
+
+        // from a little below and behind, so the wings are against the country, not the sky
+        var back = -(an.transform.forward);
+        cam.fieldOfView = 42f;
+        cam.transform.position = p + back * 7f + Vector3.up * 1.2f + an.transform.right * 3f;
+        cam.transform.rotation = Quaternion.LookRotation((p + an.transform.forward * 3f - Vector3.up * 1.5f) - cam.transform.position, Vector3.up);
+        yield return null;
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-eagle.png"));
+        yield return new WaitForSecondsRealtime(1.2f);
+        Mark("done");
+    }
+}
