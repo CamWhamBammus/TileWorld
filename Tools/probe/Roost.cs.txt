@@ -1,0 +1,117 @@
+// A probe: a raven told to roost, and what it does; a ring left on the
+// water and counted; two deer, one made to call, and whether the other
+// answers.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var manager = FindFirstObjectByType<Wildlife>();
+        var living = (List<Animal>)typeof(Wildlife).GetField("living", flags).GetValue(manager);
+        foreach (var wild in living.ToArray()) if (wild != null) Destroy(wild.gameObject);
+        living.Clear();
+        manager.enabled = false;
+
+        var origin = player.position + new Vector3(0f, 0f, 8f);
+        body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -75f); body.enabled = true;
+        yield return new WaitForSecondsRealtime(4f);
+
+        Animal Make(FaunaKind kind, Vector3 at)
+        {
+            var go = new GameObject("probe " + kind);
+            var an = go.AddComponent<Animal>();
+            an.Settle(kind, seed, player, at);
+            living.Add(an);
+            return an;
+        }
+
+        // 1. the raven roosts
+        {
+            var raven = Make(FaunaKind.Raven, origin);
+            yield return new WaitForSecondsRealtime(1f);
+            var head = raven.transform.Find("frame/head");
+            float before = head.localPosition.z;
+            raven.Roost(true);
+            yield return new WaitForSecondsRealtime(2.5f);
+            Mark("ROOST: busy " + raven.Busy + " | head drawn back by " + (before - head.localPosition.z).ToString("F3") + " (of size 0.36)");
+            raven.Roost(false);
+            yield return new WaitForSecondsRealtime(0.5f);
+            Mark("ROOST off: busy " + raven.Busy);
+            Destroy(raven.gameObject); living.Clear();
+        }
+
+        // 2. a ring on the water
+        {
+            var tracks = FindFirstObjectByType<Tracks>();
+            var marks = (System.Collections.IList)typeof(Tracks).GetField("marks", flags).GetValue(tracks);
+            int before = marks.Count;
+            Tracks.Ring(origin);
+            yield return new WaitForSecondsRealtime(0.5f);
+            int mid = marks.Count;
+            yield return new WaitForSecondsRealtime(4.5f);
+            Mark("RING: marks " + before + " -> " + mid + " -> after five seconds " + marks.Count);
+        }
+
+        // 3. a call answered: listen for the other deer's voice
+        {
+            var a = Make(FaunaKind.Deer, origin + new Vector3(-3f, 0f, 0f));
+            var b = Make(FaunaKind.Deer, origin + new Vector3(3f, 0f, 0f));
+            yield return new WaitForSecondsRealtime(1f);
+            var speak = typeof(Animal).GetMethod("Speak", flags, null, new[] { typeof(bool) }, null);
+            var voices = b.GetComponents<AudioSource>();
+            // the listener stood still, so it neither chews nor steps: only a reply can sound
+            var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+            typeof(Animal).GetField("state", flags).SetValue(b, System.Enum.Parse(stateType, "Stand"));
+            typeof(Animal).GetField("until", flags).SetValue(b, Time.time + 100f);
+            typeof(Animal).GetField("nextCall", flags).SetValue(b, Time.time + 100f);
+            yield return new WaitForSecondsRealtime(1f);
+            speak.Invoke(a, new object[] { false });
+            float began = Time.realtimeSinceStartup, heard = -1f;
+            while (Time.realtimeSinceStartup - began < 4.5f)
+            {
+                yield return null;
+                foreach (var v in voices) if (v.maxDistance > 50f && v.isPlaying && heard < 0f) heard = Time.realtimeSinceStartup - began;
+            }
+            Mark("ANSWER: the other deer was heard " + (heard < 0f ? "not at all" : heard.ToString("F1") + " s after the call"));
+            Destroy(a.gameObject); Destroy(b.gameObject); living.Clear();
+        }
+
+        Mark("done");
+    }
+}
