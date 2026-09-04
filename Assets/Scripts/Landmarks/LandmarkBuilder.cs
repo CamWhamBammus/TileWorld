@@ -478,7 +478,6 @@ public static class LandmarkBuilder
         k.Crate(end + new Vector3(-1.4f, 0f, 2.1f), 0.55f);
 
         // steps up from the shore
-        k.Steps(new Vector3(0.6f, Ground, 0f), Vector3.left, Mathf.Max(1, Mathf.CeilToInt(deck / 0.18f)), 0f, 0.36f, 2.4f);
         int flight = Mathf.Max(1, Mathf.CeilToInt((deck - Ground) / 0.19f));
         k.Steps(new Vector3(0.6f - flight * 0.36f, Ground, 0f), Vector3.right, flight, (deck - Ground) / flight, 0.36f, 2.4f);
 
@@ -726,8 +725,9 @@ public static class LandmarkBuilder
         k.StoneWall(new Vector3(foot.x + radius + 1.9f, B, -1.2f), new Vector3(foot.x + radius + 1.9f, B, 1.2f), landing - B, 0.3f);
         k.Pavers(new Vector3(foot.x + radius + 0.9f, landing, 0f), 2.0f, 2.4f, 0.6f);
         int flight = Mathf.CeilToInt((landing - B) / 0.2f);
-        k.Steps(new Vector3(foot.x + radius + 1.9f, B, 0f), Vector3.right, flight, (landing - B) / flight, 0.34f, 2.0f);
-        k.Railing(new Vector3(foot.x + radius + 1.9f, B, 1.1f), new Vector3(foot.x + radius + 1.9f + flight * 0.34f, B, 1.1f), 0.9f);
+        float stairFoot = foot.x + radius + 1.9f + flight * 0.34f;
+        k.Steps(new Vector3(stairFoot, B, 0f), Vector3.left, flight, (landing - B) / flight, 0.34f, 2.0f);
+        k.Railing(new Vector3(stairFoot, B, 1.1f), new Vector3(foot.x + radius + 1.9f, landing, 1.1f), 0.9f);
         k.Railing(new Vector3(foot.x + radius + 1.9f, landing, 1.2f), new Vector3(foot.x + radius + 1.9f, landing, -1.2f), 0.9f);
         k.Door(foot + new Vector3(radius - 0.06f, landing - B, 0f), Vector3.right, 1.0f, 2.0f);
         k.Door(foot + new Vector3(0f, 0f, -radius - 0.06f), Vector3.back, 1.0f, 2.0f);
@@ -994,8 +994,10 @@ public static class LandmarkBuilder
 
         // the stair, wooden, from the court to the platform's open side
         int flight = Mathf.CeilToInt(H / 0.2f);
-        k.Steps(new Vector3(1.8f, Y, 0f), Vector3.right, flight, H / flight, 0.32f, 1.4f, true);
-        k.Railing(new Vector3(1.8f, Y, 0.75f), new Vector3(1.8f + flight * 0.32f, Y, 0.75f), 0.9f);
+        float stairFoot = 1.8f + flight * 0.32f;
+        k.Steps(new Vector3(stairFoot, Y, 0f), Vector3.left, flight, H / flight, 0.32f, 1.4f, true);
+        k.Railing(new Vector3(stairFoot, Y, 0.75f), new Vector3(1.8f, Y + H, 0.75f), 0.9f);
+        k.Railing(new Vector3(stairFoot, Y, -0.75f), new Vector3(1.8f, Y + H, -0.75f), 0.9f);
 
         // below: the fire, the rack, the pile, the pen
         k.Ring(new Vector3(-0.7f, Y + 0.15f, 0f), 0.7f, 0.3f, 0.3f, 8, Kit.Swatch.DarkStone, true);
@@ -1081,9 +1083,13 @@ public static class LandmarkBuilder
 
         if (stepsSide == 0) return;
 
+        // Steps climb from their foot in the direction given, so the foot is
+        // out on the ground and the flight climbs back toward the slab. Given
+        // the slab's edge as the foot, it climbed away from it.
         int flight = Mathf.Max(1, Mathf.CeilToInt((top + 0.1f) / 0.19f));
-        var edge = new Vector3(stepsSide > 0 ? max.x : min.x, Ground, centre.z);
-        k.Steps(edge, stepsSide > 0 ? Vector3.right : Vector3.left, flight, (top - Ground) / flight, 0.36f, 1.8f);
+        var toward = stepsSide > 0 ? Vector3.left : Vector3.right;
+        var stairFoot = new Vector3(stepsSide > 0 ? max.x + flight * 0.36f : min.x - flight * 0.36f, Ground, centre.z);
+        k.Steps(stairFoot, toward, flight, (top - Ground) / flight, 0.36f, 1.8f);
     }
 
     /// <summary>
