@@ -1,0 +1,134 @@
+// A probe: photographs the world for the README. View radius at its maximum,
+// every canvas hidden, the camera carried by hand to a long view of each
+// scene at an hour that suits it.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+        foreach (var t in FindObjectsByType<TMPro.TextMeshPro>(FindObjectsSortMode.None)) t.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+
+        world.SetViewRadius(8);
+        Mark("view radius " + world.ViewRadius);
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>())
+            if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        cam.fieldOfView = 50f;
+
+        string dir = Application.persistentDataPath;
+        var home = WorldGrid.WorldToChunk(player.position);
+
+        // name, structure kind, hour, how far back (a multiple of the tour's reach), how high, and whether to look out past it
+        var scenes = new (string name, int kind, float hour, float back, float up, bool outward)[]
+        {
+            ("hero2", 0, 0.36f, 1.3f, 0.32f, false),
+            ("dusk2", 12, 0.70f, 1.4f, 0.22f, false),
+            ("peaks2", 9, 0.34f, 1.6f, 0.5f, false),
+            ("fungal2", 6, 0.40f, 1.3f, 0.35f, false),
+            ("desert2", 2, 0.35f, 1.4f, 0.35f, false),
+            ("night2", 11, 0.96f, 1.4f, 0.3f, false),
+            ("ruin2", 14, 0.36f, 1.4f, 0.35f, false),
+            ("lake2", 4, 0.30f, 1.5f, 0.3f, false),
+        };
+
+        foreach (var scene in scenes)
+        {
+            var want = (LandmarkKind)scene.kind;
+            Landmarks.Placement at = default;
+            bool found = false;
+
+            for (int r = 0; r < 90 && !found; r++)
+            for (int dx = -r; dx <= r && !found; dx++)
+            for (int dz = -r; dz <= r && !found; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                var p = Landmarks.In(new Vector2Int(home.x + dx, home.y + dz), seed);
+                if (p.Exists && p.Kind == want) { at = p; found = true; }
+            }
+
+            if (!found) { Mark(scene.name + ": no " + want + " within 90 chunks"); continue; }
+
+            if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(scene.hour);
+
+            var turn = Quaternion.Euler(0f, at.Yaw, 0f);
+            var about = Landmarks.All(want);
+
+            Vector3 stand = at.Position + turn * new Vector3(about.Ahead * 2f + 4f, 0f, 3f);
+            int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+            float y = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level) + 0.3f;
+
+            body.enabled = false;
+            player.position = new Vector3(stand.x, y, stand.z);
+            body.enabled = true;
+
+            // a wide radius takes a while to fill
+            yield return new WaitForSecondsRealtime(14f);
+            HideInterface();
+
+            float reach = (about.Ahead * 2f + about.Behind * 2f + 6f + about.LabelHeight * 0.8f) * scene.back;
+            Vector3 focus = at.Position + Vector3.up * (1f + about.LabelHeight * 0.25f);
+
+            if (scene.outward)
+            {
+                // from behind and above, looking out over the country past it
+                cam.transform.position = at.Position + turn * new Vector3(-reach * 0.5f, reach * scene.up, -reach * 0.35f);
+                focus = at.Position + turn * new Vector3(reach * 1.5f, -reach * 0.15f, reach * 0.6f);
+            }
+            else
+            {
+                cam.transform.position = at.Position + turn * new Vector3(reach * 0.9f, reach * scene.up, reach * 0.7f);
+            }
+            cam.transform.rotation = Quaternion.LookRotation(focus - cam.transform.position, Vector3.up);
+
+            yield return new WaitForSecondsRealtime(2f);
+            HideInterface();
+            yield return new WaitForSecondsRealtime(0.5f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-g-" + scene.name + ".png"));
+            yield return new WaitForSecondsRealtime(1.5f);
+            Mark(scene.name + " shot at " + at.Position);
+        }
+
+        Mark("done");
+    }
+}
