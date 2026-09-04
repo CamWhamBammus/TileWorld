@@ -91,6 +91,17 @@ public class _Probe : MonoBehaviour
         }
         Mark("spawned " + kinds.Length);
 
+        // pinned where they were put, or they wander behind things
+        {
+            var f = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            var st = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+            foreach (var a in animals)
+            {
+                typeof(Animal).GetField("state", f).SetValue(a, System.Enum.Parse(st, "Stand"));
+                typeof(Animal).GetField("until", f).SetValue(a, Time.time + 1000f);
+            }
+        }
+
         string dir = Application.persistentDataPath;
         yield return new WaitForSecondsRealtime(1f);
         HideInterface();
@@ -106,18 +117,64 @@ public class _Probe : MonoBehaviour
             yield return new WaitForSecondsRealtime(0.5f);
         }
 
-        // each close, three quarter front
+        // each close, three quarter front, then put through its poses by hand:
+        // the state and the gesture are private, so reflection sets them
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var gestureType = typeof(Animal).GetNestedType("Gesture", System.Reflection.BindingFlags.NonPublic);
+        var stateField = typeof(Animal).GetField("state", flags);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var restedField = typeof(Animal).GetField("restedSince", flags);
+        var begin = typeof(Animal).GetMethod("Begin", flags);
+
+        string[] gestures = { "Stamp", "Groom", "Groom", "SitUp" };   // deer, goat, fox, rabbit
+        string[] extra = { "Stretch", "Shake", "Pounce", "Scratch" };
+
         for (int i = 0; i < animals.Length; i++)
         {
             if (animals[i] == null) continue;
-            var p = animals[i].transform.position;
-            float s = Fauna.Of(kinds[i]).Size;
-            cam.transform.position = p + new Vector3(s * 2.4f, s * 1.1f, -s * 2.2f);
-            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * s * 0.55f) - cam.transform.position, Vector3.up);
-            yield return new WaitForSecondsRealtime(0.6f);
-            HideInterface();
-            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + kinds[i].ToString().ToLower() + ".png"));
-            yield return new WaitForSecondsRealtime(0.5f);
+            var a = animals[i];
+            var p = a.transform.position;
+            float sz = Fauna.Of(kinds[i]).Size;
+            string name = kinds[i].ToString().ToLower();
+
+            void Aim()
+            {
+                cam.transform.position = p + new Vector3(sz * 2.2f, sz * 0.9f, -sz * 2.9f);
+                cam.transform.rotation = Quaternion.LookRotation((a.transform.position + Vector3.up * sz * 0.5f) - cam.transform.position, Vector3.up);
+            }
+            IEnumerator Shot(string what, float wait)
+            {
+                yield return new WaitForSecondsRealtime(wait);
+                Aim();
+                HideInterface();
+                yield return new WaitForSecondsRealtime(0.15f);
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + name + "-" + what + ".png"));
+                yield return new WaitForSecondsRealtime(0.4f);
+            }
+            void Set(string state)
+            {
+                stateField.SetValue(a, System.Enum.Parse(stateType, state));
+                untilField.SetValue(a, Time.time + 1000f);
+            }
+
+            Set("Stand");
+            yield return Shot("stand", 1.2f);
+
+            Set("Alert");
+            yield return Shot("alert", 1.4f);
+
+            begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, gestures[i]), 4f });
+            yield return Shot(gestures[i].ToLower(), gestures[i] == "Stamp" ? 0.45f : 1.4f);
+
+            begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, extra[i]), 4f });
+            yield return Shot(extra[i].ToLower(), extra[i] == "Pounce" ? 1.05f : 0.9f);
+
+            Set("Rest");
+            restedField.SetValue(a, Time.time - 10f);
+            yield return Shot("sleep", 2.2f);
+
+            Set("Graze");
         }
 
         Mark("done");

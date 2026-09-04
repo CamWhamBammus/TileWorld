@@ -15,6 +15,15 @@ public class Animal : MonoBehaviour
 {
     private enum State { Stand, Graze, Look, Wander, ToWater, Drink, Rest, Alert, Flee }
 
+    /// <summary>
+    /// The small things an animal does between one thing and the next, laid
+    /// over whatever state it is in: a deer stamps a forefoot when it is
+    /// unsure of you, a rabbit sits up to look, a fox grooms its flank and
+    /// pounces on something in the grass, anything getting up from a rest
+    /// stretches or shakes. Each runs for a moment and is gone.
+    /// </summary>
+    private enum Gesture { None, Stamp, SitUp, Groom, Scratch, Shake, Stretch, Pounce }
+
     public FaunaKind Kind { get; private set; }
 
     /// <summary>What it is doing, for anyone with a pencil out.</summary>
@@ -63,6 +72,17 @@ public class Animal : MonoBehaviour
     private AudioSource steps;
     private float nextCall;
     private float nextNibble;
+
+    private Gesture gesture;
+    private float gestureFrom;       // when it began
+    private float gestureUntil;
+    private float nextGesture;
+    private float restedSince;
+    private readonly float[] earFlick = new float[2];   // how far each ear is mid-flick
+    private readonly float[] nextFlick = new float[2];
+
+    /// <summary>How far through the gesture, nought to one.</summary>
+    private float GestureT => Mathf.Clamp01((Time.time - gestureFrom) / Mathf.Max(0.05f, gestureUntil - gestureFrom));
 
     public void Settle(FaunaKind kind, int worldSeed, Transform watching, Vector3 at)
     {
@@ -147,6 +167,19 @@ public class Animal : MonoBehaviour
             {
                 if (state != State.Alert) until = Time.time + Random.Range(2f, 5f);
                 state = State.Alert;
+
+                // the forefoot stamp of something that has seen you and is
+                // not yet sure what to do about it
+                if ((Kind == FaunaKind.Deer || Kind == FaunaKind.Goat) && gesture == Gesture.None && Time.time > nextGesture && Random.value < 0.02f)
+                {
+                    Begin(Gesture.Stamp, 0.8f);
+                    nextGesture = Time.time + Random.Range(3f, 7f);
+                }
+                if (Kind == FaunaKind.Rabbit && gesture == Gesture.None && Time.time > nextGesture)
+                {
+                    Begin(Gesture.SitUp, Random.Range(2.5f, 5f));
+                    nextGesture = Time.time + Random.Range(6f, 12f);
+                }
                 return;
             }
 
@@ -154,6 +187,13 @@ public class Animal : MonoBehaviour
         }
 
         if (Time.time < until) return;
+
+        // Getting up is a thing in itself: a stretch, or a shake.
+        if (state == State.Rest)
+        {
+            Begin(Random.value < 0.6f ? Gesture.Stretch : Gesture.Shake, Random.Range(1.3f, 1.9f));
+            return;
+        }
 
         switch (state)
         {
@@ -193,7 +233,42 @@ public class Animal : MonoBehaviour
         if ((overcast > 0.72f || small) && roll < 0.5f && distance > traits.Notices * 1.4f)
         {
             state = State.Rest;
+            restedSince = Time.time;
             until = Time.time + Random.Range(16f, 40f);
+            return;
+        }
+
+        // Now and then, one of the small things. Which ones depends on the
+        // animal; none of them while you are close enough to worry it.
+        if (Time.time > nextGesture && roll < 0.24f && distance > traits.Notices * 1.2f)
+        {
+            var could = Kind switch
+            {
+                FaunaKind.Rabbit => new[] { Gesture.SitUp, Gesture.SitUp, Gesture.Scratch, Gesture.Shake },
+                FaunaKind.Fox => new[] { Gesture.Groom, Gesture.Pounce, Gesture.Scratch, Gesture.Shake },
+                FaunaKind.Goat => new[] { Gesture.Groom, Gesture.Stamp, Gesture.Shake },
+                _ => new[] { Gesture.Stamp, Gesture.Shake, Gesture.Groom }
+            };
+            var pick = could[Random.Range(0, could.Length)];
+            float length = pick switch
+            {
+                Gesture.SitUp => Random.Range(3f, 6.5f),
+                Gesture.Groom => Random.Range(2.2f, 3.6f),
+                Gesture.Scratch => Random.Range(1.4f, 2.2f),
+                Gesture.Shake => 0.9f,
+                Gesture.Pounce => 1.3f,
+                _ => 1.0f
+            };
+            Begin(pick, length);
+            nextGesture = Time.time + Random.Range(12f, 40f);
+            return;
+        }
+
+        // wet weather: a shake now and then
+        if (overcast > 0.6f && roll < 0.34f && Time.time > nextGesture)
+        {
+            Begin(Gesture.Shake, 0.9f);
+            nextGesture = Time.time + Random.Range(10f, 30f);
             return;
         }
 
@@ -209,6 +284,7 @@ public class Animal : MonoBehaviour
         if (roll < 0.13f && distance > traits.Notices * 1.8f)
         {
             state = State.Rest;
+            restedSince = Time.time;
             until = Time.time + Random.Range(14f, 34f);
             return;
         }
@@ -331,18 +407,96 @@ public class Animal : MonoBehaviour
 
         var walk = Fauna.Moving(Kind, running);
 
+        if (gesture != Gesture.None && Time.time > gestureUntil) gesture = Gesture.None;
+
         Limbs(dt, moving, walk);
         Carriage(dt, moving, walk);
         Poise(dt, moving);
+        Ears(dt, moving);
+        Tail(dt, moving);
 
-        if (body.Tail != null)
-        {
-            // The tail flicks when it is uneasy, which is the tell before it goes.
-            float unease = state == State.Alert ? 5f : (state == State.Rest ? 0.5f : 1.2f);
-            body.Tail.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * unease + phase) * 12f, 0f, 0f);
-        }
+        // a pounce carries it forward through the air
+        if (gesture == Gesture.Pounce && GestureT > 0.4f)
+            transform.position += Quaternion.Euler(0f, yaw, 0f) * Vector3.forward * (traits.Size * 2.2f * dt);
 
         Nibble();
+    }
+
+    /// <summary>
+    /// Ears. Forward when it is watching you, flat back when it runs, out to
+    /// the sides when it is at ease with its head down; and the odd flick,
+    /// each ear on its own clock, which is most of what makes a standing
+    /// animal look alive.
+    /// </summary>
+    private void Ears(float dt, bool moving)
+    {
+        if (body.Ears == null) return;
+
+        for (int i = 0; i < body.Ears.Length; i++)
+        {
+            if (body.Ears[i] == null) continue;
+            float side = i == 0 ? 1f : -1f;
+
+            float forward, splay;   // pitch toward the nose (negative) or flat back; roll outward
+            switch (state)
+            {
+                case State.Alert: forward = -22f; splay = -4f; break;
+                case State.Flee: forward = 55f; splay = -10f; break;
+                case State.Graze:
+                case State.Drink: forward = 8f; splay = 22f; break;
+                case State.Rest: forward = 14f; splay = 26f; break;
+                default: forward = moving ? 4f : 0f; splay = 8f; break;
+            }
+            if (gesture == Gesture.SitUp) { forward = -18f; splay = -6f; }
+            if (Kind == FaunaKind.Goat) splay += 30f;     // carried out and down whatever it is doing
+
+            // the flick: a quick lay-back and return, when its clock comes round
+            if (Time.time > nextFlick[i]) { earFlick[i] = 1f; nextFlick[i] = Time.time + Random.Range(2.5f, 9f); }
+            earFlick[i] = Mathf.MoveTowards(earFlick[i], 0f, dt * 4.5f);
+            float flick = Mathf.Sin(earFlick[i] * Mathf.PI) * 32f;
+
+            var want = Quaternion.Euler(forward + flick, 0f, -side * splay);
+            body.Ears[i].localRotation = Quaternion.Slerp(body.Ears[i].localRotation, want, 1f - Mathf.Exp(-9f * dt));
+        }
+    }
+
+    /// <summary>
+    /// The tail, which is a different thing on each of them: a deer's flags
+    /// up white when it is alarmed, a fox's brush swings and is carried out
+    /// level on the move, a goat's is up and wagging, a rabbit's is a tuft.
+    /// </summary>
+    private void Tail(float dt, bool moving)
+    {
+        if (body.Tail == null) return;
+
+        float lift = 0f, swing = 0f;
+
+        switch (Kind)
+        {
+            case FaunaKind.Deer:
+                bool flagged = state == State.Alert || state == State.Flee;
+                lift = flagged ? -75f : Mathf.Sin(Time.time * 1.2f + phase) * 8f;
+                swing = flagged ? Mathf.Sin(Time.time * 9f) * 8f : 0f;
+                break;
+
+            case FaunaKind.Fox:
+                lift = moving ? (state == State.Flee ? 12f : 4f) : (state == State.Rest ? 22f : 6f);
+                swing = moving ? Mathf.Sin(gait * 0.5f) * 10f : Mathf.Sin(Time.time * 1.1f + phase) * 22f;
+                if (gesture == Gesture.Pounce) lift = -30f + GestureT * 40f;
+                break;
+
+            case FaunaKind.Goat:
+                lift = -55f + Mathf.Sin(Time.time * 3.2f + phase) * 12f;
+                swing = Mathf.Sin(Time.time * 3.2f + phase) * 25f;
+                break;
+
+            default:
+                lift = Mathf.Sin(Time.time * 2f + phase) * 6f;
+                break;
+        }
+
+        var want = Quaternion.Euler(lift, swing, 0f);
+        body.Tail.localRotation = Quaternion.Slerp(body.Tail.localRotation, want, 1f - Mathf.Exp(-7f * dt));
     }
 
     /// <summary>
@@ -365,12 +519,44 @@ public class Animal : MonoBehaviour
                 : (i % 3 == 0 ? 0f : Mathf.PI);
 
             float hip, knee;
+            float t = GestureT;
 
             if (state == State.Rest)
             {
                 // folded under it
                 hip = fore ? 62f : -54f;
                 knee = fore ? -96f : 104f;
+            }
+            else if (gesture == Gesture.SitUp)
+            {
+                // up on its haunches: forelegs tucked to the chest, hind legs flat
+                hip = fore ? 70f : -30f;
+                knee = fore ? -100f : 60f;
+            }
+            else if (gesture == Gesture.Stretch)
+            {
+                // forelegs out along the ground, rump in the air
+                hip = fore ? 58f : -12f;
+                knee = fore ? -8f : 10f;
+            }
+            else if (gesture == Gesture.Stamp && i == 0)
+            {
+                // the near forefoot lifted and brought down
+                float arc = Mathf.Sin(Mathf.PI * Mathf.Clamp01(t * 1.5f));
+                hip = -44f * arc;
+                knee = -70f * arc;
+            }
+            else if (gesture == Gesture.Scratch && i == 3)
+            {
+                // a hind leg up to the ear, going like anything
+                hip = -70f + Mathf.Sin(Time.time * 22f) * 9f;
+                knee = 50f;
+            }
+            else if (gesture == Gesture.Pounce)
+            {
+                float leap = Mathf.Clamp01((t - 0.4f) / 0.6f);
+                hip = t < 0.4f ? (fore ? 20f : -30f) : (fore ? -35f + leap * 70f : 40f - leap * 60f);
+                knee = t < 0.4f ? (fore ? -40f : 60f) : (fore ? -20f : 30f);
             }
             else if (moving)
             {
@@ -419,9 +605,44 @@ public class Animal : MonoBehaviour
 
         hop = Mathf.MoveTowards(hop, 0f, traits.Size * 1.6f * dt);
 
+        float t = GestureT;
+
         if (state == State.Rest)
         {
             rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.30f, dt * 3f);
+        }
+        else if (gesture == Gesture.SitUp)
+        {
+            // the whole front lifted, sat back on the haunches
+            rise = Mathf.Lerp(body.Frame.localPosition.y, traits.Size * 0.14f, dt * 6f);
+            pitch = -48f;
+        }
+        else if (gesture == Gesture.Stretch)
+        {
+            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.10f, dt * 5f);
+            pitch = 16f * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t * 1.2f));
+        }
+        else if (gesture == Gesture.Shake)
+        {
+            rise = Mathf.Lerp(body.Frame.localPosition.y, 0f, dt * 5f);
+            roll = Mathf.Sin(Time.time * 42f) * 10f * (1f - t);
+            pitch = Mathf.Sin(Time.time * 42f + 1f) * 3f * (1f - t);
+        }
+        else if (gesture == Gesture.Scratch)
+        {
+            rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.05f, dt * 5f);
+            roll = -9f;
+        }
+        else if (gesture == Gesture.Pounce)
+        {
+            // a crouch, then up and over, nose down into the grass at the end
+            if (t < 0.4f) { rise = Mathf.Lerp(body.Frame.localPosition.y, -traits.Size * 0.14f, dt * 6f); pitch = 6f; }
+            else
+            {
+                float leap = (t - 0.4f) / 0.6f;
+                rise = Mathf.Sin(leap * Mathf.PI) * traits.Size * 0.55f;
+                pitch = -22f + leap * 50f;
+            }
         }
         else if (moving)
         {
@@ -469,7 +690,10 @@ public class Animal : MonoBehaviour
                 break;
 
             case State.Rest:
-                dip = 16f;
+                // settled a while, the head goes round onto the flank to sleep
+                bool asleep = Time.time - restedSince > 7f;
+                dip = asleep ? 24f : 16f;
+                turn = asleep ? (Mathf.Repeat(phase, 1f) > 0.5f ? 125f : -125f) : 0f;
                 break;
 
             case State.Look:
@@ -493,6 +717,35 @@ public class Animal : MonoBehaviour
                 // the head nods with the stride rather than riding along level
                 dip = moving ? 8f + Mathf.Sin(gait + 1.1f) * 5f : 22f;
                 break;
+        }
+
+        // the gestures that are done with the head
+        if (gesture == Gesture.Groom)
+        {
+            turn = (Mathf.Repeat(phase, 1f) > 0.5f ? 118f : -118f);
+            dip = 30f + Mathf.Sin(Time.time * 13f) * 4f;
+        }
+        else if (gesture == Gesture.Scratch)
+        {
+            turn = -38f;
+            dip = 22f;
+        }
+        else if (gesture == Gesture.SitUp)
+        {
+            dip = -6f;
+            turn = Mathf.Sin(Time.time * 0.9f + phase) * 30f;
+        }
+        else if (gesture == Gesture.Shake)
+        {
+            turn = Mathf.Sin(Time.time * 42f) * 9f * (1f - GestureT);
+        }
+        else if (gesture == Gesture.Stretch)
+        {
+            dip = -8f;
+        }
+        else if (gesture == Gesture.Pounce && GestureT > 0.8f)
+        {
+            dip = 45f;
         }
 
         // The odd twitch, so a standing animal is never quite still. Driven
@@ -562,6 +815,20 @@ public class Animal : MonoBehaviour
     {
         state = State.Graze;
         until = Time.time + Random.Range(4f, 11f);
+    }
+
+    /// <summary>Starts a gesture. It holds the animal on the spot for as long as it runs.</summary>
+    private void Begin(Gesture what, float length)
+    {
+        gesture = what;
+        gestureFrom = Time.time;
+        gestureUntil = Time.time + length;
+
+        if (state != State.Alert)
+        {
+            state = State.Stand;
+            until = gestureUntil + 0.2f;
+        }
     }
 
     private void Drinking()
