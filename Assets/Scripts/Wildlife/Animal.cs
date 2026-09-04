@@ -47,6 +47,15 @@ public class Animal : MonoBehaviour
     }
 
     /// <summary>Where its head is, which is what you would be drawing.</summary>
+    /// <summary>
+    /// Whether there is anything to see. Down a burrow or under the water
+    /// there is not, and nothing hidden should count as seen, or be drawn.
+    /// </summary>
+    public bool Visible => state != State.Hidden || (Fauna.All(Kind).Surfaces && gesture == Gesture.Rise);
+
+    /// <summary>How big this one is against its kind: a large fox is 1.2, a small one 0.8.</summary>
+    public float Scale => body.Frame != null ? body.Frame.localScale.x : 1f;
+
     public Vector3 Head => body.Head != null ? body.Head.position
                                              : transform.position + Vector3.up * traits.Size;
 
@@ -77,6 +86,8 @@ public class Animal : MonoBehaviour
     private float altitude;          // how far off the ground, for what flies
     private float perchHeight;       // how high up the ruin it is sitting, if it is
     private bool perched;
+    private GameObject snag;         // a dead trunk built for it to sit on, where there was no ruin
+    private bool landing;            // a flier on its way down to ground that suits it
     private Vector3 neckAt;          // where the head hangs when it is out
 
     private Gesture gesture;
@@ -121,6 +132,25 @@ public class Animal : MonoBehaviour
                 altitude = perchHeight;
                 perched = true;
             }
+
+            // No ruin near: a dead snag is put up for it, a bare trunk with
+            // one stub of a branch, so it is never sat on nothing. The snag
+            // stands in the world rather than under the bird, since the bird
+            // will leave it; it goes when the bird is taken away.
+            if (!perched)
+            {
+                var snagKit = new Kit.Builder(Mathf.RoundToInt(at.x * 7f + at.z * 13f));
+                float tall = Random.Range(2.3f, 3.3f);
+                snagKit.Log(Vector3.zero, Vector3.up * tall, 0.13f, Kit.Swatch.OldWood, 7);
+                snagKit.Log(Vector3.up * (tall - 0.7f), Vector3.up * (tall - 0.25f) + Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward * 0.55f, 0.05f, Kit.Swatch.OldWood, 5);
+                snagKit.Log(Vector3.zero, Vector3.up * 0.3f + Vector3.right * 0.35f, 0.08f, Kit.Swatch.OldWood, 5);
+                var flora = Resources.Load<Flora>("Flora");
+                snag = snagKit.Finish("snag", transform.parent, Vector3.zero, flora != null ? flora.Paint : null);
+                snag.transform.position = transform.position;
+                perchHeight = tall;
+                altitude = tall;
+                perched = true;
+            }
         }
 
         yaw = Random.Range(0f, 360f);
@@ -141,6 +171,11 @@ public class Animal : MonoBehaviour
             state = State.Hidden;
             until = Time.time + Random.Range(3f, 12f);
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (snag != null) Destroy(snag);
     }
 
     private AudioSource Source(float reach, float doppler)
@@ -253,6 +288,16 @@ public class Animal : MonoBehaviour
         switch (state)
         {
             case State.Flee:
+                if (Fauna.Flies(Kind) && !Fauna.All(Kind).Airborne && distance > traits.Settles)
+                {
+                    // far enough: find ground of its own sort to come down on,
+                    // and fly there before dropping, rather than landing on
+                    // whatever hillside it happens to be over
+                    var spot = LandingSpot();
+                    if (spot.HasValue) { target = spot.Value; landing = true; state = State.Wander; until = Time.time + 25f; }
+                    else Graze();
+                    break;
+                }
                 if (Fauna.All(Kind).Burrows)
                 {
                     // a short dash and down the hole
@@ -422,7 +467,7 @@ public class Animal : MonoBehaviour
             return;
         }
 
-        float want = state == State.Flee ? traits.RunSpeed : traits.WalkSpeed;
+        float want = state == State.Flee || landing ? traits.RunSpeed : traits.WalkSpeed;
 
         // Weather is worth slowing for; nothing crosses a hillside in the rain
         // at the pace it would on a clear evening.
@@ -444,11 +489,17 @@ public class Animal : MonoBehaviour
 
         gait += pace * dt * Fauna.Moving(Kind, state == State.Flee).Cadence;
 
-        if (!(Fauna.Flies(Kind) && state == State.Flee)) Footfall(state == State.Flee);
+        if (landing)
+        {
+            Vector3 left = target - transform.position; left.y = 0f;
+            if (left.magnitude < 2.5f) { landing = false; Graze(); }
+        }
+
+        if (!(Fauna.Flies(Kind) && state == State.Flee) && !landing) Footfall(state == State.Flee);
     }
 
     /// <summary>Whether it is in the air, which only a flier ever is.</summary>
-    private bool Flying => Fauna.All(Kind).Airborne || (Fauna.Flies(Kind) && (state == State.Flee || (altitude > 0.05f && !perched)));
+    private bool Flying => Fauna.All(Kind).Airborne || (Fauna.Flies(Kind) && (state == State.Flee || landing || (altitude > 0.05f && !perched)));
 
     /// <summary>
     /// Puts the animal on the ground and lies it along the hill.
@@ -470,7 +521,10 @@ public class Animal : MonoBehaviour
 
         // Close the gap quickly but never instantly, and never let it wade far
         // from the surface if it has been dropped a long way.
-        at.y = Mathf.Abs(at.y - ground) > 3f ? ground : Mathf.Lerp(at.y, ground, 1f - Mathf.Exp(-12f * dt));
+        // Under something on the wing the ground is followed slowly, so a
+        // sharp ridge is a long rise in its flight and not a step in it.
+        bool aloft = Fauna.All(Kind).Airborne;
+        at.y = !aloft && Mathf.Abs(at.y - ground) > 3f ? ground : Mathf.Lerp(at.y, ground, 1f - Mathf.Exp((aloft ? -0.7f : -12f) * dt));
 
         transform.position = at;
 
@@ -490,7 +544,7 @@ public class Animal : MonoBehaviour
         if (state == State.Flee) perched = false;
         float wantAltitude = Fauna.All(Kind).Soars ? traits.Size * 22f + Mathf.Sin(Time.time * 0.25f + phase) * traits.Size * 4f
                            : Fauna.All(Kind).Airborne ? traits.Size * 9f + Mathf.Sin(Time.time * 0.7f + phase) * traits.Size * 2.5f
-                           : Fauna.Flies(Kind) && state == State.Flee ? traits.Size * 5.5f : (perched ? perchHeight : 0f);
+                           : Fauna.Flies(Kind) && (state == State.Flee || landing) ? traits.Size * 5.5f : (perched ? perchHeight : 0f);
         altitude = Mathf.MoveTowards(altitude, wantAltitude, dt * traits.Size * (wantAltitude > altitude ? 3.2f : 2.6f));
 
         lastYaw = Mathf.LerpAngle(lastYaw, yaw, 1f - Mathf.Exp(-3f * dt));
@@ -822,6 +876,11 @@ public class Animal : MonoBehaviour
         {
             // down the hole: the whole animal goes under the ground
             rise = Mathf.MoveTowards(body.Frame.localPosition.y, -traits.Size * 1.6f, dt * traits.Size * 4f);
+        }
+        else if (perched)
+        {
+            // up on its perch, where the altitude has carried it, and still
+            rise = altitude + Mathf.Sin(Time.time * 1.1f + phase) * traits.Size * 0.01f;
         }
         else if (Flying)
         {
@@ -1261,6 +1320,26 @@ public class Animal : MonoBehaviour
         target = transform.position + away * 20f;
         state = State.Flee;
         until = Time.time + (Fauna.All(Kind).Burrows ? 1.1f : 5f);
+    }
+
+    /// <summary>The nearest ground this kind would stand on, within a few tiles.</summary>
+    private Vector3? LandingSpot()
+    {
+        int cx = Mathf.RoundToInt(transform.position.x / WorldGrid.TileSize);
+        int cz = Mathf.RoundToInt(transform.position.z / WorldGrid.TileSize);
+
+        for (int r = 0; r <= 16; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = cx + dx, tz = cz + dz;
+            if (!Fauna.Ground(Kind, tx, tz, seed)) continue;
+            float y = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.IsUnderwater(tx, tz, seed) ? WaterSurface.Level - Fauna.All(Kind).Wades : 0f);
+            return new Vector3(tx * WorldGrid.TileSize, y, tz * WorldGrid.TileSize);
+        }
+
+        return null;
     }
 
     private bool Walkable(Vector3 at)

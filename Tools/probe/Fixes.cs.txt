@@ -1,0 +1,145 @@
+// A probe: checks the fixes. The guide's contents page with every entry;
+// a heron pushed into flight and where it lands; the sizes of six foxes;
+// an owl put down where there is no ruin, and what it sits on.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        // 1. the guide's contents page
+        FieldGuideScreen.Show();
+        yield return new WaitForSecondsRealtime(1.2f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-fix-guide.png"));
+        yield return new WaitForSecondsRealtime(0.8f);
+        FieldGuideScreen.Show();   // toggles it away again, if it toggles
+        yield return new WaitForSecondsRealtime(0.5f);
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) if (c.name.ToLower().Contains("guide") || c.name.ToLower().Contains("sketch")) c.enabled = false;
+
+        // 2. the sizes of six foxes
+        string sizes = "";
+        for (int i = 0; i < 6; i++)
+        {
+            var go = new GameObject("probe fox");
+            var an = go.AddComponent<Animal>();
+            an.Settle(FaunaKind.Fox, seed, player, player.position + new Vector3(4f + i * 2f, 0f, 6f));
+            sizes += an.Scale.ToString("F2") + " ";
+            Destroy(go);
+        }
+        Mark("fox scales: " + sizes);
+
+        // 3. a heron: put on land next to water, pushed, and where it comes down
+        Vector2Int shore = default; bool found = false;
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        for (int r = 2; r < 300 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = home.x + dx, tz = home.y + dz;
+            if (!Fauna.Ground(FaunaKind.Heron, tx, tz, seed)) continue;
+            shore = new Vector2Int(tx, tz); found = true;
+        }
+        Mark("heron shallows found " + found + " at " + shore);
+
+        if (found)
+        {
+            var at = new Vector3(shore.x * WorldGrid.TileSize, WaterSurface.Level, shore.y * WorldGrid.TileSize);
+            body.enabled = false;
+            player.position = at + new Vector3(0f, 1f, -6f);
+            body.enabled = true;
+            yield return new WaitForSecondsRealtime(6f);
+
+            var go = new GameObject("probe heron");
+            var an = go.AddComponent<Animal>();
+            an.Settle(FaunaKind.Heron, seed, player, at);
+            yield return new WaitForSecondsRealtime(1f);
+
+            var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+            typeof(Animal).GetMethod("Flee", flags).Invoke(an, null);
+
+            // follow it until it has landed, or thirty seconds
+            float began = Time.realtimeSinceStartup;
+            float altitude = 0f; bool wasUp = false;
+            while (Time.realtimeSinceStartup - began < 40f)
+            {
+                yield return new WaitForSecondsRealtime(0.5f);
+                altitude = (float)typeof(Animal).GetField("altitude", flags).GetValue(an);
+                bool landing = (bool)typeof(Animal).GetField("landing", flags).GetValue(an);
+                string st = typeof(Animal).GetField("state", flags).GetValue(an).ToString();
+                if (altitude > 1f) wasUp = true;
+                if (wasUp && altitude < 0.1f && !landing && st != "Flee") break;
+            }
+            int lx = Mathf.RoundToInt(an.transform.position.x / WorldGrid.TileSize), lz = Mathf.RoundToInt(an.transform.position.z / WorldGrid.TileSize);
+            bool suits = Fauna.Ground(FaunaKind.Heron, lx, lz, seed);
+            Mark("heron: went up " + wasUp + " | down at " + an.transform.position.ToString("F0") + " altitude " + altitude.ToString("F2")
+                + " | ground suits a heron: " + suits + " | " + (Time.realtimeSinceStartup - began).ToString("F0") + "s");
+            Destroy(go);
+        }
+
+        // 4. an owl with no ruin near: does it get a snag
+        {
+            var at = player.position + new Vector3(5f, 0f, 5f);
+            var go = new GameObject("probe owl");
+            var an = go.AddComponent<Animal>();
+            an.Settle(FaunaKind.Owl, seed, player, at);
+            yield return new WaitForSecondsRealtime(1.5f);
+            var snag = GameObject.Find("snag");
+            Mark("owl snag built: " + (snag != null) + " | owl head at " + an.Head.ToString("F1") + " ground " + at.y.ToString("F1"));
+            var cam = Camera.main;
+            foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+            HideInterface();
+            var p = an.transform.position;
+            cam.transform.position = p + new Vector3(3.5f, 2.6f, -4.5f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 2.2f) - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(0.5f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-fix-owl.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+        }
+
+        Mark("done");
+    }
+}

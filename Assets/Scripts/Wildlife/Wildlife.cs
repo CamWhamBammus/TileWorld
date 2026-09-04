@@ -310,8 +310,11 @@ public class Wildlife : MonoBehaviour
         foreach (var animal in living)
         {
             if (animal == null || SightingLog.Has(animal.Kind)) continue;
+            if (!animal.Visible) continue;
 
-            Vector3 head = animal.transform.position + Vector3.up * Fauna.Of(animal.Kind).Size;
+            // the head itself, wherever it is: up a snag, on the wing, or
+            // sunk down a burrow -- not a point above the animal's root
+            Vector3 head = animal.Head;
             Vector3 to = head - camera.transform.position;
 
             if (to.magnitude > sightRange) continue;

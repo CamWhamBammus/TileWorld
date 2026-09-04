@@ -98,6 +98,7 @@ public class Noticing : MonoBehaviour
         {
             sight.Kind = sight.Animal.Kind;
             sight.Doing = sight.Animal.Busy;
+            sight.Scale = sight.Animal.Scale;
             sight.Distance = Vector3.Distance(player.position, at);
 
             foreach (var other in FindObjectsByType<Animal>(FindObjectsSortMode.None))
@@ -139,6 +140,7 @@ public class Noticing : MonoBehaviour
 
         foreach (var animal in FindObjectsByType<Animal>(FindObjectsSortMode.None))
         {
+            if (!animal.Visible) continue;
             Vector3 head = animal.Head;
             Vector3 to = head - camera.transform.position;
             float distance = to.magnitude;

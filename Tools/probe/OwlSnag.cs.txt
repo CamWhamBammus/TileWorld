@@ -1,0 +1,102 @@
+// A probe: checks the fixes. The guide's contents page with every entry;
+// a heron pushed into flight and where it lands; the sizes of six foxes;
+// an owl put down where there is no ruin, and what it sits on.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+
+        // an owl put down on ground with no ruin within sixty metres
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int spot = home; bool found = false;
+        for (int r = 4; r < 200 && !found; r += 3)
+        for (int dx = -r; dx <= r && !found; dx += 3)
+        for (int dz = -r; dz <= r && !found; dz += 3)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = home.x + dx, tz = home.y + dz;
+            if (!Fauna.Ground(FaunaKind.Owl, tx, tz, seed)) continue;
+            var at3 = new Vector3(tx * WorldGrid.TileSize, 0f, tz * WorldGrid.TileSize);
+            var chunk = WorldGrid.WorldToChunk(at3);
+            bool ruin = false;
+            for (int cx = -1; cx <= 1; cx++) for (int cz = -1; cz <= 1; cz++)
+            {
+                var placed = Landmarks.In(new Vector2Int(chunk.x + cx, chunk.y + cz), seed);
+                if (placed.Exists && Vector3.Distance(new Vector3(placed.Position.x, 0f, placed.Position.z), at3) < 70f) ruin = true;
+            }
+            if (ruin) continue;
+            spot = new Vector2Int(tx, tz); found = true;
+        }
+        Mark("owl ground without a ruin: " + found + " at " + spot);
+        var owlAt = new Vector3(spot.x * WorldGrid.TileSize, WorldHeight.SurfaceY(spot.x, spot.y, seed), spot.y * WorldGrid.TileSize);
+        body.enabled = false;
+        player.position = owlAt + new Vector3(-5f, 0.5f, -5f);
+        body.enabled = true;
+        yield return new WaitForSecondsRealtime(6f);
+
+        // 4. an owl with no ruin near: does it get a snag
+        {
+            var at = owlAt;
+            var go = new GameObject("probe owl");
+            var an = go.AddComponent<Animal>();
+            an.Settle(FaunaKind.Owl, seed, player, at);
+            yield return new WaitForSecondsRealtime(3.5f);
+            var snag = GameObject.Find("snag");
+            Mark("owl snag built: " + (snag != null) + " | owl head at " + an.Head.ToString("F1") + " ground " + at.y.ToString("F1"));
+            var cam = Camera.main;
+            foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+            HideInterface();
+            var p = an.transform.position;
+            cam.transform.position = p + new Vector3(3.5f, 2.6f, -4.5f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 2.2f) - cam.transform.position, Vector3.up);
+            yield return new WaitForSecondsRealtime(0.5f);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-fix-owl.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+        }
+
+        Mark("done");
+    }
+}

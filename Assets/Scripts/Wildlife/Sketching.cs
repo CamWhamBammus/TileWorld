@@ -437,6 +437,7 @@ public class Sketching : MonoBehaviour
         foreach (var animal in FindObjectsByType<Animal>(FindObjectsSortMode.None))
         {
             if (forDrawing && animal.Busy == Doing.Fleeing) continue;
+            if (!animal.Visible) continue;
 
             if (Look(camera, animal.Head, forDrawing ? reach : watching, forDrawing) < 0f) continue;
 

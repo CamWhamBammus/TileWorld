@@ -24,6 +24,7 @@ public static class Observations
         public Doing Doing;
 
         public float Distance;      // from the player
+        public float Scale;         // how big it is against its kind
         public int Company;         // others of its kind close by
         public bool Mixed;          // another kind close by as well
         public FaunaKind Other;
@@ -165,6 +166,12 @@ public static class Observations
 
         Add("scorpion-sting", "a scorpion with its sting up",
             s => s.Kind == FaunaKind.Scorpion && s.Doing == Doing.Watching);
+
+        Add("big-one", "an unusually big one of its kind",
+            s => s.Scale > 1.16f);
+
+        Add("small-one", "a small one of its kind",
+            s => s.Scale < 0.86f);
 
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);

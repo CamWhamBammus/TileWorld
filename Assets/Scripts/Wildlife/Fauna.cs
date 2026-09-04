@@ -367,7 +367,7 @@ public static class Fauna
 
             Found = "the shallows, standing still",
             Country = "standing in the shallows",
-            Habit = "fishing", Doing = Doing.Drinking,
+            Habit = "fishing", Doing = Doing.Grazing,
 
             // a harsh croak, going down
             Call = new Voice { Length = 0.38f, Pitch = 230f, Glide = -0.30f, WobbleRate = 0f,

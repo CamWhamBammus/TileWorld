@@ -207,10 +207,10 @@ public class FieldGuideScreen : MonoBehaviour
                 break;
 
             case Shape.Contents:
-                // under four rows of thumbnails now, so lower and shorter
-                rect.sizeDelta = new Vector2(800f, 150f);
-                rect.anchoredPosition = new Vector2(0f, -706f);
-                body.fontSizeMax = 18f;
+                // under six rows of thumbnails now, so low and short
+                rect.sizeDelta = new Vector2(800f, 92f);
+                rect.anchoredPosition = new Vector2(0f, -838f);
+                body.fontSizeMax = 15f;
                 break;
 
             default:
@@ -250,10 +250,9 @@ public class FieldGuideScreen : MonoBehaviour
                 : "<color=" + Dim + ">" + (met ? all[i].Name : "not yet found") + "</color>";
         }
 
-        body.text = "<color=" + Dim + ">Draw each creature up close, see what it does, and find it "
-                  + "where it lives. Ruins want all of it drawn from further back, and the writing on "
-                  + "them read.\n\nThe book also notes things you come across as you go: "
-                  + Notebook.Count + " of " + Notebook.Possible + " so far.</color>";
+        body.text = "<color=" + Dim + ">Draw each creature up close, see what it does, and find it where it lives. "
+                  + "Ruins want the whole of it drawn from further back, and the writing read. "
+                  + "Things noticed as you go: " + Notebook.Count + " of " + Notebook.Possible + ".</color>";
     }
 
     private void Entry(Subject subject)
@@ -463,8 +462,12 @@ public class FieldGuideScreen : MonoBehaviour
         Label("Row creatures", contents.transform, 19f, new Vector2(0f, -136f), new Vector2(800f, 28f))
             .text = "<color=" + Dim + ">CREATURES</color>";
 
-        int creatureRows = Mathf.CeilToInt(creatures / 5f);
-        float builtLabelY = -160f - creatureRows * 128f - 6f;
+        // Seven to a row and 104 tall a row: nineteen creatures and fifteen
+        // structures are six rows, which is what a 940 card has room for.
+        const int Columns = 7;
+        const float RowPitch = 104f, ColumnPitch = 112f;
+        int creatureRows = Mathf.CeilToInt(creatures / (float)Columns);
+        float builtLabelY = -160f - creatureRows * RowPitch - 2f;
 
         Label("Row built", contents.transform, 19f, new Vector2(0f, builtLabelY), new Vector2(800f, 28f))
             .text = "<color=" + Dim + ">STRUCTURES</color>";
@@ -476,11 +479,11 @@ public class FieldGuideScreen : MonoBehaviour
         {
             bool wild = i < creatures;
             int within = wild ? i : i - creatures;
-            int column = within % 5;
-            int row = within / 5;
+            int column = within % Columns;
+            int row = within / Columns;
 
-            float top = wild ? -166f : builtLabelY - 30f;
-            float y = top - row * 128f;
+            float top = wild ? -164f : builtLabelY - 28f;
+            float y = top - row * RowPitch;
 
             var thumbGo = new GameObject("Thumb " + i);
             thumbGo.transform.SetParent(contents.transform, false);
@@ -491,12 +494,12 @@ public class FieldGuideScreen : MonoBehaviour
             rect.anchorMin = new Vector2(0.5f, 1f);
             rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(124f, 93f);
-            rect.anchoredPosition = new Vector2((column - 2f) * 156f, y);
+            rect.sizeDelta = new Vector2(100f, 75f);
+            rect.anchoredPosition = new Vector2((column - (Columns - 1) * 0.5f) * ColumnPitch, y);
 
-            thumbNames[i] = Label("Thumb name " + i, contents.transform, 14f,
-                                  new Vector2((column - 2f) * 156f, y - 96f),
-                                  new Vector2(152f, 26f));
+            thumbNames[i] = Label("Thumb name " + i, contents.transform, 12f,
+                                  new Vector2((column - (Columns - 1) * 0.5f) * ColumnPitch, y - 77f),
+                                  new Vector2(110f, 22f));
         }
 
         body = Label("Body", cardGo.transform, 23f, new Vector2(0f, -640f), new Vector2(800f, 210f));

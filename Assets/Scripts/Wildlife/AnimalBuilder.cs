@@ -65,8 +65,10 @@ public static class AnimalBuilder
         var frameGo = new GameObject("frame");
         frameGo.transform.SetParent(parent, false);
 
-        // No two animals of a kind are quite the same size.
-        frameGo.transform.localScale = Vector3.one * Random.Range(0.92f, 1.09f);
+        // No two animals of a kind are the same size: most near the middle,
+        // the odd one a good deal bigger or smaller, so a big fox is a thing
+        // you can meet. Two rolls averaged, for the middle to be the common case.
+        frameGo.transform.localScale = Vector3.one * Mathf.Lerp(0.76f, 1.26f, (Random.value + Random.value) * 0.5f);
 
         var body = new Body { Frame = frameGo.transform };
         var frame = frameGo.transform;
