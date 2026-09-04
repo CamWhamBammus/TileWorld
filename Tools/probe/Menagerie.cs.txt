@@ -132,6 +132,9 @@ public class _Probe : MonoBehaviour
                 FaunaKind.Tortoise => new[] { "Stand", "Wander", "Alert", "Alert" },
                 FaunaKind.Wolf => new[] { "Stand", "Alert", ":Howl", "Rest" },
                 FaunaKind.Heron => new[] { "Stand", "Graze", ":Stretch", "Flee", "Flee" },
+                FaunaKind.Bat => new[] { "Stand", "Wander", "Flee", "Wander" },
+                FaunaKind.Hedgehog => new[] { "Stand", "Wander", "Alert", "Alert", "Rest" },
+                FaunaKind.Fish => new[] { "Hidden", "~Rise", "~Rise", "~Rise" },
                 FaunaKind.Crab => new[] { "Stand", "Wander", "Alert", "Flee", "Hidden" },
                 FaunaKind.Owl => new[] { "Stand", "Look", ":Stretch", "Flee", "Flee" },
                 FaunaKind.Frog => new[] { "Stand", "Wander", "Alert", "Flee", "Hidden" },
@@ -151,6 +154,13 @@ public class _Probe : MonoBehaviour
                 {
                     begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, pose.Substring(1)), 4f });
                 }
+                else if (pose.StartsWith("~"))
+                {
+                    // a gesture that belongs to the hidden state: begun, then the state put back
+                    begin.Invoke(a, new object[] { System.Enum.Parse(gestureType, pose.Substring(1)), 3f });
+                    stateField.SetValue(a, System.Enum.Parse(stateType, "Hidden"));
+                    untilField.SetValue(a, Time.time + 1000f);
+                }
                 else
                 {
                     stateField.SetValue(a, System.Enum.Parse(stateType, pose));
@@ -159,7 +169,7 @@ public class _Probe : MonoBehaviour
                     if (pose == "Wander") typeof(Animal).GetField("target", flags).SetValue(a, a.transform.position + Vector3.right * 6f);
                 }
 
-                float wait = pose == "Flee" ? (shot == 3 ? 1.2f : 1.6f) : pose == "Hidden" ? 1.6f : pose == ":Stamp" ? 0.45f : pose == ":Pounce" ? 1.05f : pose == "Rest" ? 2.2f : 1.3f;
+                float wait = pose == "Flee" ? (shot == 3 ? 1.2f : 1.6f) : pose == "Hidden" ? 1.6f : pose == "~Rise" ? (shot == 1 ? 0.7f : shot == 2 ? 1.4f : 2.2f) : pose == ":Stamp" ? 0.45f : pose == ":Pounce" ? 1.05f : pose == "Rest" ? 2.2f : 1.3f;
                 yield return new WaitForSecondsRealtime(wait);
 
                 float up = altitudeField != null ? (float)altitudeField.GetValue(a) : 0f;
@@ -172,7 +182,7 @@ public class _Probe : MonoBehaviour
                 p = a.transform.position + Vector3.up * up;
                 cam.transform.position = p + new Vector3(sz * 2.2f, sz * 0.9f, -sz * 2.9f);
                 cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * sz * 0.5f) - cam.transform.position, Vector3.up);
-                ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + name + "-" + shot + "-" + pose.Trim(':').ToLower() + ".png"));
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-m-" + name + "-" + shot + "-" + pose.Trim(':', '~').ToLower() + ".png"));
                 yield return new WaitForSecondsRealtime(0.4f);
                 shot++;
             }

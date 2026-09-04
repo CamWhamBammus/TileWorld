@@ -139,6 +139,18 @@ public static class Observations
         Add("frog-chorus", "frogs calling after dark",
             s => s.Kind == FaunaKind.Frog && Night(s) && s.Company >= 2);
 
+        Add("bat-dusk", "bats over the water",
+            s => s.Kind == FaunaKind.Bat && s.ByWater);
+
+        Add("hedgehog-night", "a hedgehog in the litter",
+            s => s.Kind == FaunaKind.Hedgehog);
+
+        Add("hedgehog-ball", "a hedgehog curled up",
+            s => s.Kind == FaunaKind.Hedgehog && s.Doing == Doing.Watching);
+
+        Add("fish-rise", "a fish rising",
+            s => s.Kind == FaunaKind.Fish && s.Doing == Doing.Walking);
+
         Add("held-eye", "an animal watching you",
             s => s.Doing == Doing.Watching);
 

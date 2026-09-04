@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot, Crab, Owl, Frog }
+public enum FaunaKind { Deer, Rabbit, Fox, Goat, Tortoise, Wolf, Heron, Boar, Raven, Marmot, Crab, Owl, Frog, Bat, Hedgehog, Fish }
 
 /// <summary>
 /// What lives where. Like everything else in the world this is a function of
@@ -95,6 +95,9 @@ public static class Fauna
         public bool Sideways;       // travels side on to the way it faces, as a crab does
         public bool Perches;        // sits up on a ruin if there is one to sit on
         public bool Chorus;         // calls a great deal more after dark
+        public bool Airborne;       // never on the ground at all
+        public float WadesLeast;    // the shallowest water it will have, for what lives under it
+        public bool Surfaces;       // lives out of sight below the water and rises now and then
 
         // When it is about. A window whose start is later than its end runs
         // through midnight; no windows at all means it keeps no hours.
@@ -583,6 +586,108 @@ public static class Fauna
                                WobbleDepth = 22f, Rasp = 0.6f, Noise = 0.12f, Thump = 0f },
 
             ProperHours = new Vector2(0.72f, 0.22f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // bat: over the water and the low woods from dusk, never down
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "bat",
+                Coat = new Color(0.290f, 0.251f, 0.231f),
+                Under = new Color(0.451f, 0.400f, 0.361f),
+                Dark = new Color(0.098f, 0.078f, 0.078f),
+                Size = 0.22f, WalkSpeed = 3.4f, RunSpeed = 6.5f,
+                Notices = 9f, Bolts = 4.5f, Settles = 18f
+            },
+            Lowest = 0f, Highest = 0.6f,
+            Countries = new[] { Regions.Character.Lowland, Regions.Character.Forest, Regions.Character.Water, Regions.Character.Reed },
+            Wades = 99f,
+            Flies = true, Airborne = true,
+            Hours = new[] { new Vector2(0.70f, 0.24f) },
+            Company = 3, Crowd = 9,
+
+            Walk = new Gait { Cadence = 1f, Swing = 0f, Knee = 0f, Bounce = 0f, Pitch = 0f, Roll = 0f, Bounds = false },
+            Run = new Gait { Cadence = 1f, Swing = 0f, Knee = 0f, Bounce = 0f, Pitch = 0f, Roll = 0f, Bounds = false },
+
+            Found = "over the water at dusk",
+            Country = "over the water at dusk",
+            Habit = "hunting", Doing = Doing.Walking,
+
+            // a squeak, at the top of hearing
+            Call = new Voice { Length = 0.06f, Pitch = 3200f, Glide = -0.3f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0f, Noise = 0.2f, Thump = 0f },
+
+            ProperHours = new Vector2(0.72f, 0.22f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // hedgehog: the low woods after dark, in the litter; it never runs,
+        // it curls up and waits
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "hedgehog",
+                Coat = new Color(0.322f, 0.271f, 0.220f),
+                Under = new Color(0.800f, 0.749f, 0.651f),
+                Dark = new Color(0.118f, 0.098f, 0.078f),
+                Size = 0.21f, WalkSpeed = 0.6f, RunSpeed = 0.6f,
+                Notices = 5f, Bolts = 0f, Settles = 3f
+            },
+            Lowest = 0f, Highest = 0.5f,
+            KeepsOffSnow = true,
+            Countries = new[] { Regions.Character.Lowland, Regions.Character.Forest, Regions.Character.Hills },
+            Withdraws = true,
+            Hours = new[] { new Vector2(0.70f, 0.26f) },
+            Company = 1, Crowd = 4,
+
+            Walk = new Gait { Cadence = 8f, Swing = 20f, Knee = 18f, Bounce = 0.01f,
+                              Pitch = 1f, Roll = 4f, Bounds = false },
+            Run = new Gait { Cadence = 8f, Swing = 22f, Knee = 18f, Bounce = 0.01f,
+                             Pitch = 1f, Roll = 4f, Bounds = false },
+
+            Found = "the low woods after dark, in the litter",
+            Country = "in the low woods after dark",
+            Habit = "curled up", Doing = Doing.Watching,
+
+            // a snuffle
+            Call = new Voice { Length = 0.2f, Pitch = 210f, Glide = 0.1f, WobbleRate = 30f,
+                               WobbleDepth = 30f, Rasp = 0.5f, Noise = 0.8f, Thump = 0f },
+
+            ProperHours = new Vector2(0.72f, 0.22f), ProperLowest = 0f, ProperHighest = 1f
+        },
+
+        // fish: the deep water, out of sight, rising at dusk for a moment
+        new Kind
+        {
+            Traits = new Traits
+            {
+                Name = "fish",
+                Coat = new Color(0.549f, 0.600f, 0.620f),
+                Under = new Color(0.851f, 0.871f, 0.851f),
+                Dark = new Color(0.251f, 0.302f, 0.349f),
+                Size = 0.52f, WalkSpeed = 0f, RunSpeed = 0f,
+                Notices = 9f, Bolts = 6f, Settles = 5f
+            },
+            Lowest = 0f, Highest = 1f,
+            KeepsOffSnow = true,
+            Wades = 99f, WadesLeast = 1.1f, WadesOnly = true,
+            Surfaces = true,
+            Hours = new[] { new Vector2(0.58f, 0.32f) },
+            Company = 2, Crowd = 6,
+
+            Walk = new Gait { Cadence = 1f, Swing = 0f, Knee = 0f, Bounce = 0f, Pitch = 0f, Roll = 0f, Bounds = false },
+            Run = new Gait { Cadence = 1f, Swing = 0f, Knee = 0f, Bounce = 0f, Pitch = 0f, Roll = 0f, Bounds = false },
+
+            Found = "the deep water, rising at dusk",
+            Country = "in the deep water at dusk",
+            Habit = "rising", Doing = Doing.Walking,
+
+            // the splash of it
+            Call = new Voice { Length = 0.25f, Pitch = 120f, Glide = -0.4f, WobbleRate = 0f,
+                               WobbleDepth = 0f, Rasp = 0f, Noise = 0.9f, Thump = 1f },
+
+            ProperHours = new Vector2(0.62f, 0.86f), ProperLowest = 0f, ProperHighest = 1f
         }
     };
 
@@ -636,7 +741,7 @@ public static class Fauna
         if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed))
         {
             float deep = WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, worldSeed);
-            if (it.Wades <= 0f || deep > it.Wades) return false;
+            if (it.Wades <= 0f || deep > it.Wades || deep < it.WadesLeast) return false;
         }
         else if (it.WadesOnly) return false;
 
