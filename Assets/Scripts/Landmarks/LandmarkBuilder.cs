@@ -1016,35 +1016,42 @@ public static class LandmarkBuilder
     private static void Stones(Job b)
     {
         const float M = 0.5f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.6f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-9.5f, 0f, -9.5f), new Vector3(9.5f, 0f, 9.5f), M, 1.3f, 1, false);
 
+        // the ring: three of the nine down now, one of those broken in two
         for (int i = 1; i < 10; i++)
         {
             float a = i / 10f * Mathf.PI * 2f;
             var foot = new Vector3(Mathf.Cos(a) * 7.8f, M, Mathf.Sin(a) * 7.8f);
-            if (i == 6) Lying(b, foot, 1.6f);
-            else Standing(b, foot, 3.2f + (float)b.Rng.NextDouble() * 1.2f);
+            if (i == 3) { Lying(b, foot + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * -1.2f, 1.9f); continue; }
+            if (i == 6) { Lying(b, foot, 1.6f); continue; }
+            if (i == 8) { Lying(b, foot + new Vector3(0.6f, 0f, 0.4f), 1.2f); Lying(b, foot + new Vector3(-0.9f, 0f, -0.5f), 0.9f); continue; }
+            Standing(b, foot, 3.2f + (float)b.Rng.NextDouble() * 1.2f);
         }
 
-        // the trilithon at the entrance, on +x
+        // the trilithon: one upright standing, the other down, the lintel
+        // fallen and lying across it
         Standing(b, new Vector3(7.8f, M, -1.5f), 4.2f);
-        Standing(b, new Vector3(7.8f, M, 1.5f), 4.2f);
-        k.Block(new Vector3(7.8f, M + 4.35f, 0f), new Vector3(1.1f, 0.7f, 4.2f), Kit.Swatch.DarkStone, 0.02f);
+        Lying(b, new Vector3(9.6f, M, 2.2f), 2.2f);
+        k.Block(new Vector3(8.9f, M + 0.55f, 0.9f), new Vector3(1.1f, 0.7f, 4.2f), Quaternion.Euler(-18f, 12f, 8f), Kit.Swatch.DarkStone, 0.02f);
 
-        k.Block(new Vector3(0f, M + 0.35f, 0f), new Vector3(2.8f, 0.7f, 1.8f), Kit.Swatch.Stone, 0.015f, true);
-        k.Block(new Vector3(0f, M + 0.9f, 0f), new Vector3(0.8f, 0.4f, 0.7f), Kit.Swatch.Thatch, 0.06f);
-        k.Block(new Vector3(0f, M + 1.2f, 0f), new Vector3(0.45f, 0.35f, 0.4f), Kit.Swatch.Cloth, 0.05f);
+        // the flat stone in the middle, cracked, the fire on it out
+        k.Block(new Vector3(-0.5f, M + 0.35f, 0f), new Vector3(1.6f, 0.7f, 1.8f), Quaternion.Euler(0f, 0f, 4f), Kit.Swatch.Stone, 0.015f, true);
+        k.Block(new Vector3(0.9f, M + 0.32f, 0.05f), new Vector3(1.1f, 0.64f, 1.8f), Quaternion.Euler(3f, 0f, -6f), Kit.Swatch.Stone, 0.015f, true);
+        k.Block(new Vector3(-0.4f, M + 0.74f, 0f), new Vector3(0.7f, 0.08f, 0.6f), Kit.Swatch.Char, 0.04f);
 
+        // the avenue, half of it down
         for (int i = 0; i < 4; i++)
         {
             float x = 11.5f + i * 2.4f;
-            Standing(b, new Vector3(x, Ground, -2.2f), 1.3f + (i % 2) * 0.3f);
-            Standing(b, new Vector3(x, Ground, 2.2f), 1.3f + ((i + 1) % 2) * 0.3f);
+            if (i == 1) Lying(b, new Vector3(x + 0.5f, Ground, -2.6f), 1.1f); else Standing(b, new Vector3(x, Ground, -2.2f), 1.3f + (i % 2) * 0.3f);
+            if (i == 2) Lying(b, new Vector3(x - 0.3f, Ground, 2.8f), 1.2f); else Standing(b, new Vector3(x, Ground, 2.2f), 1.3f + ((i + 1) % 2) * 0.3f);
         }
         k.Pavers(new Vector3(14.5f, Ground + 0.02f, 0f), 9.0f, 1.6f, 0.7f);
         k.HangingSign(new Vector3(20.4f, Ground, 2.6f), 2.6f, 180f);
+        for (int i = 0; i < 14; i++) k.Tuft(new Vector3(b.Rng.Next(-90, 90) * 0.1f, M, b.Rng.Next(-90, 90) * 0.1f), 0.6f);
 
         k.Finish("Stones", b.Root, Vector3.zero, b.Flora.Paint);
     }
