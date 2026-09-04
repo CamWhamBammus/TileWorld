@@ -966,20 +966,29 @@ public static class LandmarkBuilder
     private static void Shrine(Job b)
     {
         const float B = 0.5f;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.65f, Weathering = WeatherAt(b) };
 
         Foundation(b, k, new Vector3(-4.5f, 0f, -4.0f), new Vector3(3.5f, 0f, 4.0f), B, 1.3f, 1);
 
-        // the shrine
+        // the shrine: the stone still up, the fire before it long out
         k.Block(new Vector3(-1.5f, B + 0.25f, 0f), new Vector3(3.6f, 0.5f, 3.6f), Kit.Swatch.DarkStone, 0.01f, true);
         k.Pavers(new Vector3(-1.5f, B + 0.5f, 0f), 3.4f, 3.4f, 0.55f);
         Standing(b, new Vector3(-2.0f, B + 0.5f, 0f), 2.4f);
         k.Block(new Vector3(-0.6f, B + 0.75f, 0f), new Vector3(0.6f, 0.5f, 0.6f), Kit.Swatch.Stone, 0.01f);
-        k.Block(new Vector3(-0.6f, B + 1.1f, 0f), new Vector3(0.4f, 0.24f, 0.4f), Kit.Swatch.Cloth, 0.05f);
+        k.Block(new Vector3(-0.6f, B + 1.03f, 0f), new Vector3(0.45f, 0.08f, 0.45f), Kit.Swatch.Char, 0.04f);
+
+        // three posts standing and the fourth down, so the roof has settled
+        // toward that corner: the roof is its own piece, tipped
         foreach (float x in new[] { -3.2f, 0.2f }) foreach (float z in new[] { -1.7f, 1.7f })
+        {
+            if (x > 0f && z > 0f) { k.Log(new Vector3(0.4f, B + 0.6f, 2.2f), new Vector3(1.6f, B + 0.6f, 3.6f), 0.11f, Kit.Swatch.OldWood, 6); continue; }
             k.Post(new Vector3(x, B + 0.5f, z), 2.6f, 0.12f, Kit.Swatch.DarkWood);
-        var eave = new Vector3(-1.5f, B + 3.1f, 0f);
-        k.Roof(eave, 3.8f, 3.8f, 34f, Kit.Builder.RoofStyle.Slate, 0.5f);
+        }
+        var roof = new Kit.Builder(b.Rng.Next()) { Decay = k.Decay, Weathering = k.Weathering };
+        roof.Roof(new Vector3(0f, 0f, 0f), 3.8f, 3.8f, 34f, Kit.Builder.RoofStyle.Slate, 0.5f);
+        var tipped = roof.Finish("Roof", b.Root, new Vector3(-1.5f, B + 3.1f - 0.35f, 0f), b.Flora.Paint);
+        tipped.transform.localRotation = Quaternion.Euler(-7f, 0f, -9f);
+
         k.StoneWall(new Vector3(-3.4f, B, -2.0f), new Vector3(-3.4f, B, 2.0f), 1.1f, 0.4f);
         k.StoneWall(new Vector3(-3.4f, B, -2.0f), new Vector3(0.4f, B, -2.0f), 1.1f, 0.4f);
         k.StoneWall(new Vector3(-3.4f, B, 2.0f), new Vector3(0.4f, B, 2.0f), 1.1f, 0.4f);
@@ -990,6 +999,9 @@ public static class LandmarkBuilder
         k.Trough(new Vector3(-3.6f, B + 0.1f, -3.2f), 1.5f, 0f);
         k.HangingSign(new Vector3(4.6f, Ground, 1.8f), 2.6f, 180f);
         k.Pavers(new Vector3(5.6f, Ground + 0.02f, 0f), 3.0f, 1.4f, 0.6f);
+        k.Debris(new Vector3(1.2f, B + 0.1f, 0.4f), 1.2f, 3);
+        k.Rubble(new Vector3(-3.6f, B + 0.1f, 2.8f), 0.8f, 3);
+        for (int i = 0; i < 5; i++) k.Tuft(new Vector3(b.Rng.Next(-40, 30) * 0.1f, B, b.Rng.Next(-36, 36) * 0.1f), 0.4f);
 
         k.Finish("Shrine", b.Root, Vector3.zero, b.Flora.Paint);
     }
