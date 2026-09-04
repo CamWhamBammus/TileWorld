@@ -217,7 +217,8 @@ public static class LandmarkBuilder
     private static void Wreck(Job b)
     {
         float water = WaterSurface.Level - b.At.Position.y;
-        var k = new Kit.Builder(b.Rng.Next());
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
+        var rng = b.Rng;
 
         // the hull in her own frame: x runs bow to stern, +x the bow
         float length = 14f, beam = 4.6f, depth = 2.2f;
@@ -251,10 +252,14 @@ public static class LandmarkBuilder
                     float h1 = beam * 0.5f * Mathf.Sqrt(Mathf.Max(0.05f, 1f - Mathf.Pow(x1 / (length * 0.5f), 2f) * 0.85f)) * (y / depth * 0.35f + 0.65f);
                     var p0 = new Vector3(x0, y, side * h0); var p1 = new Vector3(x1, y, side * h1);
                     if (strake == 4 && i > 2 && i < 5 && side > 0f) continue;   // the hole in her side
+                    if (strake >= 2 && rng.NextDouble() < 0.28 * k.Decay) continue;   // planks sprung and gone, above the waterline
                     var mid = (p0 + p1) * 0.5f;
                     var along = (p1 - p0).normalized;
                     var facing = Vector3.Cross(along, Vector3.up) * side;
                     k.Block(mid, new Vector3(Vector3.Distance(p0, p1) + 0.04f, 0.4f, 0.1f), Quaternion.LookRotation(facing, Vector3.up), strake % 2 == 0 ? Kit.Swatch.Wood : Kit.Swatch.Plank);
+                    // weed and moss on the strakes that are wet
+                    if (strake < 2 && rng.NextDouble() < 0.5)
+                        k.Block(mid + facing * 0.06f + Vector3.up * 0.05f, new Vector3(Vector3.Distance(p0, p1) * (float)(0.3 + rng.NextDouble() * 0.5), 0.25f, 0.02f), Quaternion.LookRotation(facing, Vector3.up), Kit.Swatch.Moss);
                 }
             }
         }
@@ -267,12 +272,15 @@ public static class LandmarkBuilder
         k.PlankWall(new Vector3(-5.6f, depth, 1.5f), new Vector3(-3.2f, depth, 1.5f), 1.7f, 0.08f);
         k.PlankWall(new Vector3(-3.2f, depth, -1.5f), new Vector3(-5.6f, depth, -1.5f), 1.7f, 0.08f);
         k.Door(new Vector3(-3.2f, depth, 0f), Vector3.right, 0.9f, 1.6f);
-        k.Block(new Vector3(-4.4f, depth + 1.75f, 0f), new Vector3(2.8f, 0.1f, 3.4f), Kit.Swatch.DarkWood);
-        k.Log(new Vector3(1.2f, depth - 0.2f, 0f), new Vector3(1.6f, depth + 5.2f, 0.3f), 0.17f, Kit.Swatch.DarkWood, 8);
-        k.Log(new Vector3(1.6f, depth + 5.2f, 0.3f), new Vector3(4.6f, depth + 3.2f, 2.6f), 0.13f, Kit.Swatch.DarkWood, 7);
-        k.Log(new Vector3(2.0f, depth + 4.4f, -2.2f), new Vector3(1.4f, depth + 4.6f, 2.4f), 0.09f, Kit.Swatch.DarkWood, 6);
-        k.Block(new Vector3(1.3f, depth + 3.2f, -0.6f), new Vector3(0.04f, 2.4f, 3.0f), Quaternion.Euler(0f, 0f, 8f), Kit.Swatch.Plaster);
-        k.Block(new Vector3(1.4f, depth + 2.1f, -1.6f), new Vector3(0.04f, 1.2f, 1.2f), Quaternion.Euler(0f, 10f, -12f), Kit.Swatch.Plaster);
+        // the cabin roof is off, lying askew on the deck; the mast snapped a
+        // man's height up, the rest of it and the yard down across the deck,
+        // the sail a rag on the stump
+        k.Block(new Vector3(-2.6f, depth + 0.5f, 1.4f), new Vector3(2.8f, 0.1f, 3.4f), Quaternion.Euler(14f, 25f, 8f), Kit.Swatch.OldWood);
+        k.Log(new Vector3(1.2f, depth - 0.2f, 0f), new Vector3(1.3f, depth + 2.1f, 0.1f), 0.17f, Kit.Swatch.DarkWood, 8);
+        k.Log(new Vector3(1.3f, depth + 2.1f, 0.1f), new Vector3(4.8f, depth + 0.3f, -1.4f), 0.15f, Kit.Swatch.OldWood, 8);
+        k.Log(new Vector3(0.4f, depth + 0.25f, -2.0f), new Vector3(3.6f, depth + 0.35f, 1.8f), 0.09f, Kit.Swatch.OldWood, 6);
+        k.Block(new Vector3(1.4f, depth + 1.5f, 0.35f), new Vector3(0.04f, 0.9f, 0.5f), Quaternion.Euler(20f, 0f, 10f), Kit.Swatch.Plaster);
+        k.Block(new Vector3(2.8f, depth + 0.16f, 0.4f), new Vector3(1.6f, 0.03f, 1.2f), Quaternion.Euler(0f, 30f, 0f), Kit.Swatch.Plaster);
         k.Barrel(new Vector3(3.6f, depth + 0.02f, -1.2f), 0.3f, 0.85f);
         k.Crate(new Vector3(-1.6f, depth + 0.02f, 1.2f), 0.6f);
 
@@ -285,7 +293,8 @@ public static class LandmarkBuilder
         while (shore < 5 && WaterSurface.IsUnderwater(b.At.TileX + Dir(b).x * shore, b.At.TileZ + Dir(b).y * shore, b.Seed)) shore++;
         float sx = shore * Tile + 4f;
 
-        var beach = new Kit.Builder(b.Rng.Next());
+        var beach = new Kit.Builder(b.Rng.Next()) { Decay = 0.7f, Weathering = WeatherAt(b) };
+        beach.Drift(new Vector3(sx - 1.2f, GroundAt(b, sx - 1.2f, 0.6f) + 0.1f, 0.6f), 2.8f, 0.7f);
         beach.Barrel(new Vector3(sx + 0.3f, GroundAt(b, sx + 0.3f, -2.4f) + 0.1f, -2.4f), 0.32f, 0.9f);
         beach.Barrel(new Vector3(sx + 1.2f, GroundAt(b, sx + 1.2f, -1.8f) + 0.1f, -1.8f), 0.28f, 0.8f);
         beach.Crate(new Vector3(sx + 0.6f, GroundAt(b, sx + 0.6f, 1.6f) + 0.1f, 1.6f), 0.7f);
