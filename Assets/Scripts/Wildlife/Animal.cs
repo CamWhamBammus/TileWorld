@@ -172,6 +172,25 @@ public class Animal : MonoBehaviour
     private float baseline;          // how far the frame is dropped so the soles reach the footing
 
     /// <summary>
+    /// What the frame's height is measured from this frame. Standing and
+    /// moving, the baseline: the drop that puts the soles on the ground. In
+    /// a pose that folds the legs -- lying down, sitting up, stretched out,
+    /// shut in a shell, flat in the snow -- the ground itself: those poses
+    /// were set against the ground, and dropped again by the baseline they
+    /// sank into it with their folded legs standing up past the belly.
+    /// </summary>
+    private float Floor
+    {
+        get
+        {
+            bool folded = state == State.Rest || state == State.Hidden
+                || gesture == Gesture.SitUp || gesture == Gesture.Stretch || gesture == Gesture.Scratch || gesture == Gesture.Pounce
+                || ((Fauna.All(Kind).Withdraws || Fauna.All(Kind).Freezes) && state == State.Alert);
+            return folded && !Flying && !perched ? footing : baseline;
+        }
+    }
+
+    /// <summary>
     /// How far above the walking surface the ground looks to be, on this
     /// tile. Measured off the tiles themselves: every one -- grass, sand,
     /// stone -- has its top at the same height, five hundredths below the
@@ -1321,7 +1340,7 @@ public class Animal : MonoBehaviour
         else if (state == State.Hidden)
         {
             // down the hole: the whole animal goes under the ground
-            rise = Mathf.MoveTowards(body.Frame.localPosition.y - baseline, -traits.Size * 1.6f, dt * traits.Size * 4f);
+            rise = Mathf.MoveTowards(body.Frame.localPosition.y - Floor, -traits.Size * 1.6f, dt * traits.Size * 4f);
         }
         else if (perched)
         {
@@ -1339,38 +1358,38 @@ public class Animal : MonoBehaviour
         else if ((Fauna.All(Kind).Withdraws || Fauna.All(Kind).Freezes) && state == State.Alert)
         {
             // down onto the sand, or flat to the snow, and stays there
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * (Fauna.All(Kind).Freezes ? 0.24f : 0.12f), dt * 4f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, -traits.Size * (Fauna.All(Kind).Freezes ? 0.24f : 0.12f), dt * 4f);
         }
         else if (state == State.Rest)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.30f, dt * 3f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, -traits.Size * 0.30f, dt * 3f);
         }
         else if (gesture == Gesture.SitUp)
         {
             // the whole front lifted, sat back on the haunches
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, traits.Size * 0.14f, dt * 6f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, traits.Size * 0.14f, dt * 6f);
             pitch = -48f;
         }
         else if (gesture == Gesture.Stretch)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.10f, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, -traits.Size * 0.10f, dt * 5f);
             pitch = 16f * Mathf.Sin(Mathf.PI * Mathf.Min(1f, t * 1.2f));
         }
         else if (gesture == Gesture.Shake)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, 0f, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, 0f, dt * 5f);
             roll = Mathf.Sin(Time.time * 42f) * 10f * (1f - t);
             pitch = Mathf.Sin(Time.time * 42f + 1f) * 3f * (1f - t);
         }
         else if (gesture == Gesture.Scratch)
         {
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.05f, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, -traits.Size * 0.05f, dt * 5f);
             roll = -9f;
         }
         else if (gesture == Gesture.Pounce)
         {
             // a crouch, then up and over, nose down into the grass at the end
-            if (t < 0.4f) { rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, -traits.Size * 0.14f, dt * 6f); pitch = 6f; }
+            if (t < 0.4f) { rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, -traits.Size * 0.14f, dt * 6f); pitch = 6f; }
             else
             {
                 float leap = (t - 0.4f) / 0.6f;
@@ -1393,11 +1412,11 @@ public class Animal : MonoBehaviour
             // Standing still is not standing frozen: it breathes.
             float breath = Mathf.Sin(Time.time * 0.9f + phase) * traits.Size * 0.007f;
 
-            rise = Mathf.Lerp(body.Frame.localPosition.y - baseline, breath, dt * 5f);
+            rise = Mathf.Lerp(body.Frame.localPosition.y - Floor, breath, dt * 5f);
         }
 
         var local = body.Frame.localPosition;
-        local.y = rise + hop + baseline;
+        local.y = rise + hop + Floor;
         body.Frame.localPosition = local;
 
         body.Frame.localRotation = Quaternion.Slerp(body.Frame.localRotation,

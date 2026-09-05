@@ -1,0 +1,149 @@
+// A probe: the folded poses on open ground -- a deer lying down, a wolf
+// lying down, a rabbit sitting up, a hare flat, a tortoise shut.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(0.40f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateField = typeof(Animal).GetField("state", flags);
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var gestureType = typeof(Animal).GetNestedType("Gesture", System.Reflection.BindingFlags.NonPublic);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var restedField = typeof(Animal).GetField("restedSince", flags);
+        var begin = typeof(Animal).GetMethod("Begin", flags);
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        FindFirstObjectByType<Wildlife>().enabled = false;
+        foreach (var wild in FindObjectsByType<Animal>(FindObjectsSortMode.None)) Destroy(wild.gameObject);
+
+        // a lowland chunk by the map, then open ground in it
+        {
+            var homeChunk = WorldGrid.WorldToChunk(player.position);
+            bool got = false;
+            for (int r = 1; r < 60 && !got; r++)
+            for (int dx = -r; dx <= r && !got; dx++)
+            for (int dz = -r; dz <= r && !got; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                var chunk = new Vector2Int(homeChunk.x + dx, homeChunk.y + dz);
+                if (Regions.CharacterAt(chunk, seed) != Regions.Character.Lowland) continue;
+                int cx = chunk.x * WorldGrid.TilesPerChunk + 7, cz = chunk.y * WorldGrid.TilesPerChunk + 7;
+                if (WaterSurface.IsUnderwater(cx, cz, seed) || SnowCover.IsSnowy(cx, cz, seed)) continue;
+                var c = WorldGrid.ChunkCenter(chunk);
+                body.enabled = false; player.position = new Vector3(c.x, WorldHeight.SurfaceY(cx, cz, seed) + 1f, c.z); body.enabled = true;
+                got = true;
+            }
+            yield return new WaitForSecondsRealtime(8f);
+        }
+        int TallNear(Vector3 at, float within)
+        {
+            int count = 0;
+            try
+            {
+                var under = FindFirstObjectByType<Undergrowth>();
+                var every = (Flora.Sprout[])typeof(Undergrowth).GetField("every", flags).GetValue(under);
+                var gathered = (Matrix4x4[][])typeof(Undergrowth).GetField("gathered", flags).GetValue(under);
+                for (int i = 0; every != null && gathered != null && i < every.Length && i < gathered.Length; i++)
+                {
+                    if (gathered[i] == null) continue;
+                    foreach (var m in gathered[i])
+                    {
+                        if (m.lossyScale.y * every[i].Size < 1.4f) continue;
+                        var pos = m.GetPosition(); pos.y = 0f; var flat = at; flat.y = 0f;
+                        if (Vector3.Distance(pos, flat) < within) count++;
+                    }
+                }
+            }
+            catch { }
+            return count;
+        }
+        var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
+        Vector2Int site = home; bool found = false;
+        for (int r = 2; r < 56 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int cx = home.x + dx, cz = home.y + dz;
+            float lo = float.MaxValue, hi = float.MinValue; bool ok = true;
+            for (int i = -4; i <= 4 && ok; i++) for (int j = -2; j <= 2 && ok; j++)
+            {
+                float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+                if (WaterSurface.IsUnderwater(cx + i, cz + j, seed) || SnowCover.IsSnowy(cx + i, cz + j, seed)) ok = false;
+            }
+            if (ok && hi - lo < 0.26f && TallNear(new Vector3(cx * 2f, 0f, cz * 2f), 9f) == 0) { site = new Vector2Int(cx, cz); found = true; }
+        }
+        Mark("open site " + found + " at " + site);
+        var origin = new Vector3(site.x * WorldGrid.TileSize, WorldHeight.SurfaceY(site.x, site.y, seed), site.y * WorldGrid.TileSize);
+        body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -70f); body.enabled = true;
+        yield return new WaitForSecondsRealtime(5f);
+        HideInterface();
+
+        var poses = new (FaunaKind kind, string pose, string name)[]
+        {
+            (FaunaKind.Deer, "Rest", "deer-rest"), (FaunaKind.Wolf, "Rest", "wolf-rest"), (FaunaKind.Rabbit, ":SitUp", "rabbit-situp"),
+            (FaunaKind.Hare, "Alert", "hare-flat"), (FaunaKind.Tortoise, "Alert", "tortoise-shut"), (FaunaKind.Fox, ":Stretch", "fox-stretch"),
+        };
+        foreach (var it in poses)
+        {
+            var go = new GameObject("probe " + it.kind);
+            var an = go.AddComponent<Animal>();
+            an.Settle(it.kind, seed, player, origin, 1f);
+            typeof(Animal).GetField("yaw", flags).SetValue(an, 90f); go.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            yield return new WaitForSecondsRealtime(0.6f);
+            if (it.pose.StartsWith(":")) begin.Invoke(an, new object[] { System.Enum.Parse(gestureType, it.pose.Substring(1)), 6f });
+            else { stateField.SetValue(an, System.Enum.Parse(stateType, it.pose)); untilField.SetValue(an, Time.time + 1000f); if (it.pose == "Rest") restedField.SetValue(an, Time.time - 10f); }
+            yield return new WaitForSecondsRealtime(2.5f);
+            float sz = Fauna.Of(it.kind).Size;
+            var p = an.transform.position;
+            cam.transform.position = p + new Vector3(0f, sz * 0.7f, -sz * 3.2f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * sz * 0.3f) - cam.transform.position, Vector3.up);
+            HideInterface(); yield return null;
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-po-" + it.name + ".png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            Destroy(go);
+        }
+        Mark("done");
+    }
+}
