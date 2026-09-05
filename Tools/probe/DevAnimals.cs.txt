@@ -1,0 +1,97 @@
+// A probe: the dev tools' animals page, opened and photographed; then a
+// deer put down by it, a company staged, and everything near told to run.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(7f);
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        Transform player = world.PlayerTransform;
+        string dir = Application.persistentDataPath;
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+
+        var dev = FindFirstObjectByType<DevTools>();
+        if (dev == null) { Mark("no DevTools in the scene"); Mark("done"); yield break; }
+        var toggle = typeof(DevTools).GetMethod("Toggle", flags);
+        var showPage = typeof(DevTools).GetMethod("ShowPage", flags);
+        toggle.Invoke(dev, new object[] { true });
+        showPage.Invoke(dev, new object[] { 1 });
+        yield return new WaitForSecondsRealtime(1f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-dev-animals.png"));
+        yield return new WaitForSecondsRealtime(1f);
+        Mark("panel open, animals page shown");
+
+        Wildlife.ClearAll();
+        int before = Wildlife.Near(player.position, 60f).Count;
+        typeof(DevTools).GetMethod("Summon", flags).Invoke(dev, new object[] { FaunaKind.Deer, false });
+        yield return new WaitForSecondsRealtime(0.5f);
+        int afterOne = Wildlife.Near(player.position, 60f).Count;
+        typeof(DevTools).GetMethod("Company", flags).Invoke(dev, new object[] { FaunaKind.Deer });
+        yield return new WaitForSecondsRealtime(0.5f);
+        int afterHerd = Wildlife.Near(player.position, 60f).Count;
+        int young = 0; foreach (var a in Wildlife.Near(player.position, 60f)) if (a.Young) young++;
+        Mark("summon: " + before + " -> " + afterOne + " -> herd " + afterHerd + " (young " + young + ")");
+
+        typeof(DevTools).GetMethod("Tell", flags).Invoke(dev, new object[] { "run" });
+        yield return new WaitForSecondsRealtime(0.6f);
+        int fleeing = 0; foreach (var a in Wildlife.Near(player.position, 80f)) if (a.Busy == Doing.Fleeing) fleeing++;
+        Mark("told to run: " + fleeing + " fleeing of " + Wildlife.Near(player.position, 80f).Count);
+
+        // the teleports above read as running, which makes everything wary of
+        // the player; wait for that to settle, as it would when you stand still
+        float waited = 0f;
+        while (Stalking.Wariness > 1.05f && waited < 15f) { yield return new WaitForSecondsRealtime(0.5f); waited += 0.5f; }
+        Mark("wariness " + Stalking.Wariness.ToString("F2") + " after " + waited + " s");
+        Wildlife.ClearAll();
+        typeof(DevTools).GetMethod("Hunt", flags).Invoke(dev, null);
+        Animal fox = null, rabbit = null;
+        foreach (var a in Wildlife.Near(player.position, 80f)) { if (a.Kind == FaunaKind.Fox) fox = a; if (a.Kind == FaunaKind.Rabbit) rabbit = a; }
+        string trace = "fox " + (fox != null) + " rabbit " + (rabbit != null) + " | ";
+        var stateField = typeof(Animal).GetField("state", flags);
+        var quarryField = typeof(Animal).GetField("quarry", flags);
+        for (int t = 0; t < 7 && fox != null; t++)
+        {
+            trace += string.Format("[{0:F1}s {1} q:{2} d:{3:F1}] ", t * 0.5f, stateField.GetValue(fox), quarryField.GetValue(fox) != null,
+                rabbit != null ? Vector3.Distance(fox.transform.position, rabbit.transform.position) : -1f);
+            yield return new WaitForSecondsRealtime(0.5f);
+        }
+        Mark("hunt trace: " + trace);
+        int hunting = 0; foreach (var a in Wildlife.Near(player.position, 80f)) if (a.Busy == Doing.Hunting) hunting++;
+        Mark("hunt staged: " + hunting + " hunting");
+
+        typeof(DevTools).GetMethod("GoToAnimal", flags).Invoke(dev, null);
+        yield return new WaitForSecondsRealtime(0.5f);
+        float nearest = float.MaxValue; foreach (var a in Wildlife.Near(player.position, 200f)) nearest = Mathf.Min(nearest, Vector3.Distance(a.transform.position, player.position));
+        Mark("go to animal: nearest now " + nearest.ToString("F1") + " m");
+
+        Mark("done");
+    }
+}

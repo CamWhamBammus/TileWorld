@@ -280,6 +280,14 @@ the opening again; wipe the world. `DevTools.cs` is under
 `#if UNITY_EDITOR || DEVELOPMENT_BUILD`; `check.sh` defines
 `DEVELOPMENT_BUILD` so it is compiled.
 
+The panel has two pages. **Animals** puts any kind down ten metres ahead
+(`Wildlife.Summon`, which marks it `Kept` so the hours cull leaves it alone),
+stages a company, a wolf pair or a fox after a rabbit, and tells everything
+within forty metres to walk, run, rest, graze, alert, spook or hunt
+(`Animal.Direct`, which nothing in the game itself uses). Hours and slow time
+are there too. The probe `Tools/probe/DevAnimals.cs.txt` presses the buttons
+by reflection and checks what they did.
+
 ## Conventions
 
 - Comments explain *why*, in plain prose, and say what went wrong before when

@@ -91,7 +91,7 @@ public class Wildlife : MonoBehaviour
             }
 
             bool gone = animal.DistanceTo(player.position) > forget;
-            bool bedded = !Fauna.Awake(animal.Kind, now);
+            bool bedded = !Fauna.Awake(animal.Kind, now) && !animal.Kept;
 
             // A bird on the ground out of its hours roosts where it stands
             // rather than vanishing; the rest go, as they always did.
@@ -262,6 +262,34 @@ public class Wildlife : MonoBehaviour
             if (Vector3.Distance(other.transform.position, from.transform.position) > reach) continue;
             other.Startle(threat, run, Random.Range(0.1f, 0.6f));
         }
+    }
+
+    /// <summary>One animal, put down where asked and known to the others. For the dev tools.</summary>
+    public static Animal Summon(FaunaKind kind, Vector3 at, bool young = false)
+    {
+        if (instance == null) return null;
+        int seed = instance.world != null ? instance.world.WorldSeed : 0;
+        var one = instance.Bring(kind, seed, at, young);
+        if (one != null) one.Kept = true;
+        return one;
+    }
+
+    /// <summary>Every animal within reach of a point.</summary>
+    public static List<Animal> Near(Vector3 at, float within)
+    {
+        var found = new List<Animal>();
+        if (instance == null) return found;
+        foreach (var a in instance.living)
+            if (a != null && Vector3.Distance(a.transform.position, at) <= within) found.Add(a);
+        return found;
+    }
+
+    /// <summary>Every animal gone, at once.</summary>
+    public static void ClearAll()
+    {
+        if (instance == null) return;
+        foreach (var a in instance.living) if (a != null) Destroy(a.gameObject);
+        instance.living.Clear();
     }
 
     /// <summary>A call answered: the nearest other of its kind within earshot calls back, once.</summary>

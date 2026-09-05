@@ -352,9 +352,23 @@ public class DevTools : MonoBehaviour
         cardRect.sizeDelta = new Vector2(940f, 1040f);
 
         heading = Label("Heading", cardGo.transform, 26f, new Vector2(0f, 438f), new Vector2(880f, 90f));
+
+        // Two pages: the places, and the animals. The tabs sit either side
+        // of the heading; whichever is not showing is simply switched off.
+        pages = new GameObject[2];
+        for (int p = 0; p < 2; p++)
+        {
+            pages[p] = new GameObject(p == 0 ? "Places" : "Animals");
+            pages[p].transform.SetParent(cardGo.transform, false);
+            var pr = pages[p].AddComponent<RectTransform>();
+            pr.anchorMin = Vector2.zero; pr.anchorMax = Vector2.one; pr.offsetMin = Vector2.zero; pr.offsetMax = Vector2.zero;
+        }
+        Button("Places", cardGo.transform, new Vector2(-380f, 438f), new Vector2(150f, 44f), () => ShowPage(0));
+        Button("Animals", cardGo.transform, new Vector2(380f, 438f), new Vector2(150f, 44f), () => ShowPage(1));
+        var placesGo = pages[0];
         heading.color = new Color(0.85f, 0.87f, 0.90f);
 
-        Label("Go", cardGo.transform, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
+        Label("Go", placesGo.transform, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST";
 
         var kinds = (Regions.Character[])System.Enum.GetValues(typeof(Regions.Character));
@@ -366,11 +380,11 @@ public class DevTools : MonoBehaviour
             float x = (i % 3 - 1) * 300f;
             float y = 330f - (i / 3) * 56f;
 
-            labels[kind] = Button(kind.ToString(), cardGo.transform,
+            labels[kind] = Button(kind.ToString(), placesGo.transform,
                 new Vector2(x, y), new Vector2(285f, 52f), () => GoTo(kind));
         }
 
-        Label("Water", cardGo.transform, 17f, new Vector2(0f, 108f), new Vector2(880f, 30f))
+        Label("Water", placesGo.transform, 17f, new Vector2(0f, 108f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST WATER   (a lake is not a region, it is a thing inside one)";
 
         var bodies = (WaterSurface.Body[])System.Enum.GetValues(typeof(WaterSurface.Body));
@@ -379,11 +393,11 @@ public class DevTools : MonoBehaviour
         {
             var kind = bodies[i];
 
-            waters[kind] = Button(kind.ToString(), cardGo.transform,
+            waters[kind] = Button(kind.ToString(), placesGo.transform,
                 new Vector2((i - 1) * 300f, 66f), new Vector2(285f, 52f), () => GoToWater(kind));
         }
 
-        Label("Built", cardGo.transform, 17f, new Vector2(0f, 16f), new Vector2(880f, 30f))
+        Label("Built", placesGo.transform, 17f, new Vector2(0f, 16f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST STRUCTURE";
 
         var built = (LandmarkKind[])System.Enum.GetValues(typeof(LandmarkKind));
@@ -392,14 +406,14 @@ public class DevTools : MonoBehaviour
         {
             var kind = built[i];
 
-            Button(Landmarks.NameOf(kind), cardGo.transform,
+            Button(Landmarks.NameOf(kind), placesGo.transform,
                 new Vector2((i % 4 - 1.5f) * 222f, -26f - (i / 4) * 56f), new Vector2(212f, 52f), () => GoToStructure(kind));
         }
 
-        Label("Keeping", cardGo.transform, 17f, new Vector2(0f, -262f), new Vector2(880f, 30f))
+        Label("Keeping", placesGo.transform, 17f, new Vector2(0f, -262f), new Vector2(880f, 30f))
             .text = "THE FIRST FEW MINUTES";
 
-        Button("Show the opening again", cardGo.transform,
+        Button("Show the opening again", placesGo.transform,
             new Vector2(-230f, -312f), new Vector2(430f, 52f), () =>
             {
                 Arrival.Replay();
@@ -407,13 +421,175 @@ public class DevTools : MonoBehaviour
                 Notices.Show("Dev: showing the first page again.");
             });
 
-        wipeLabel = Button("Put this world back to nothing", cardGo.transform,
+        wipeLabel = Button("Put this world back to nothing", placesGo.transform,
             new Vector2(230f, -312f), new Vector2(430f, 52f), Wipe);
 
-        Label("Foot", cardGo.transform, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
+        Label("Foot", placesGo.transform, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
+        BuildAnimals(pages[1].transform);
+        ShowPage(0);
+
         panel.SetActive(false);
+    }
+
+    private GameObject[] pages;
+    private FaunaKind lastKind = FaunaKind.Deer;
+    private bool slow;
+
+    private void ShowPage(int which)
+    {
+        if (pages == null) return;
+        for (int p = 0; p < pages.Length; p++) pages[p].SetActive(p == which);
+    }
+
+    /// <summary>
+    /// The animals page: put any kind down in front of you, tell whatever is
+    /// near you what to do, stage a hunt or a herd, set the hour, slow time.
+    /// Testing an animal meant finding one first; this is for not having to.
+    /// </summary>
+    private void BuildAnimals(Transform page)
+    {
+        Label("Put", page, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
+            .text = "PUT ONE IN FRONT OF ME";
+
+        var kinds = (FaunaKind[])System.Enum.GetValues(typeof(FaunaKind));
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            var kind = kinds[i];
+            Button(Fauna.Of(kind).Name, page,
+                new Vector2((i % 5 - 2f) * 176f, 336f - (i / 5) * 50f), new Vector2(168f, 46f), () => Summon(kind, false));
+        }
+
+        Label("Stage", page, 17f, new Vector2(0f, 120f), new Vector2(880f, 30f))
+            .text = "STAGE";
+
+        Button("A company of the last kind", page, new Vector2(-330f, 78f), new Vector2(210f, 46f), () => Company(lastKind));
+        Button("A deer herd, with young", page, new Vector2(-110f, 78f), new Vector2(210f, 46f), () => Company(FaunaKind.Deer));
+        Button("A fox after a rabbit", page, new Vector2(110f, 78f), new Vector2(210f, 46f), Hunt);
+        Button("A wolf pair", page, new Vector2(330f, 78f), new Vector2(210f, 46f), () => { Summon(FaunaKind.Wolf, false); Summon(FaunaKind.Wolf, false); });
+
+        Label("Tell", page, 17f, new Vector2(0f, 26f), new Vector2(880f, 30f))
+            .text = "TELL EVERYTHING WITHIN 40 M TO";
+
+        string[] orders = { "walk", "run", "rest", "graze", "alert", "spook", "hunt" };
+        for (int i = 0; i < orders.Length; i++)
+        {
+            string order = orders[i];
+            Button(order, page, new Vector2((i - 3f) * 125f, -16f), new Vector2(118f, 46f), () => Tell(order));
+        }
+
+        Label("Hour", page, 17f, new Vector2(0f, -70f), new Vector2(880f, 30f))
+            .text = "THE HOUR, AND THE CLOCK";
+
+        (string, float)[] hours = { ("dawn", 0.24f), ("noon", 0.50f), ("dusk", 0.74f), ("night", 0.95f) };
+        for (int i = 0; i < hours.Length; i++)
+        {
+            var hour = hours[i];
+            Button(hour.Item1, page, new Vector2((i - 2.5f) * 146f, -112f), new Vector2(138f, 46f), () =>
+            {
+                if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(hour.Item2);
+                Notices.Show("Dev: " + hour.Item1 + ".");
+            });
+        }
+        slowLabel = Button("slow time", page, new Vector2(2.5f * 146f - 73f, -112f), new Vector2(210f, 46f), () =>
+        {
+            slow = !slow;
+            Time.timeScale = slow ? 0.25f : 1f;
+            slowLabel.text = slow ? "time back to normal" : "slow time";
+        });
+
+        Button("Take every animal away", page, new Vector2(-230f, -180f), new Vector2(430f, 52f), () =>
+        {
+            Wildlife.ClearAll();
+            Notices.Show("Dev: the country is empty.");
+        });
+        Button("Go to the nearest animal", page, new Vector2(230f, -180f), new Vector2(430f, 52f), GoToAnimal);
+
+        Label("Foot2", page, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
+            .text = "Animals put down here are real ones: they behave, and the book counts them.";
+    }
+
+    private TMP_Text slowLabel;
+
+    /// <summary>A spot ten metres ahead, on ground, or as near as can be found.</summary>
+    private Vector3 Ahead(float metres, float aside = 0f)
+    {
+        var cam = Camera.main;
+        Vector3 forward = cam != null ? cam.transform.forward : player.forward;
+        forward.y = 0f; forward = forward.sqrMagnitude < 0.01f ? Vector3.forward : forward.normalized;
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        Vector3 at = player.position + forward * metres + right * aside;
+        int tx = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+        at.y = Mathf.Max(WorldHeight.SurfaceY(tx, tz, world.WorldSeed), WaterSurface.Level - 0.5f);
+        return at;
+    }
+
+    private void Summon(FaunaKind kind, bool young)
+    {
+        lastKind = kind;
+        var an = Wildlife.Summon(kind, Ahead(10f, Random.Range(-3f, 3f)), young);
+        if (an != null) an.Direct("graze");
+        Toggle(false);
+        Notices.Show("Dev: a " + Fauna.Of(kind).Name + ", ahead of you.");
+    }
+
+    private void Company(FaunaKind kind)
+    {
+        int count = Mathf.Max(2, Fauna.Company(kind));
+        Animal leader = null;
+        for (int i = 0; i < count; i++)
+        {
+            bool young = i > 0 && i == count - 1;
+            var an = Wildlife.Summon(kind, Ahead(12f + Random.Range(-2f, 2f), (i - (count - 1) * 0.5f) * 3f), young);
+            if (an == null) continue;
+            if (leader == null) leader = an; else an.Leader = leader;
+            an.Direct("graze");
+        }
+        Toggle(false);
+        Notices.Show("Dev: " + count + " " + Fauna.Of(kind).Name + (count > 1 ? "s" : "") + ", ahead of you.");
+    }
+
+    private void Hunt()
+    {
+        // both beyond the fox's notice of you, or it stands watching you
+        // instead of hunting; the rabbit a little nearer, off to one side
+        var rabbit = Wildlife.Summon(FaunaKind.Rabbit, Ahead(22f, 4f));
+        var fox = Wildlife.Summon(FaunaKind.Fox, Ahead(30f, -4f));
+        if (rabbit != null) rabbit.Direct("graze");
+        if (fox != null) fox.Direct("hunt");
+        Toggle(false);
+        Notices.Show("Dev: a fox after a rabbit.");
+    }
+
+    private void Tell(string order)
+    {
+        int told = 0;
+        foreach (var an in Wildlife.Near(player.position, 40f)) { an.Direct(order); told++; }
+        Toggle(false);
+        Notices.Show("Dev: " + told + " told to " + order + ".");
+    }
+
+    private void GoToAnimal()
+    {
+        Animal nearest = null; float best = float.MaxValue;
+        foreach (var an in Wildlife.Near(player.position, 2000f))
+        {
+            float d = Vector3.Distance(an.transform.position, player.position);
+            if (d > 3f && d < best) { best = d; nearest = an; }
+        }
+        if (nearest == null) { Notices.Show("Dev: nothing about."); return; }
+
+        var controller = player.GetComponent<CharacterController>();
+        Vector3 to = player.position - nearest.transform.position; to.y = 0f;
+        Vector3 stand = nearest.transform.position + (to.sqrMagnitude < 0.1f ? Vector3.back : to.normalized) * 12f;
+        int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+        if (controller != null) controller.enabled = false;
+        player.position = new Vector3(stand.x, Mathf.Max(WorldHeight.SurfaceY(tx, tz, world.WorldSeed), WaterSurface.Level) + 1.2f, stand.z);
+        player.rotation = Quaternion.LookRotation(-to.normalized, Vector3.up);
+        if (controller != null) controller.enabled = true;
+        Toggle(false);
+        Notices.Show("Dev: a " + Fauna.Of(nearest.Kind).Name + ", " + Mathf.RoundToInt(best) + " m off.");
     }
 
     private void Wipe()

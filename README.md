@@ -188,7 +188,7 @@ The game saves every thirty seconds and on quit. Escape then Worlds shows all yo
 - Click the map to place a marker, right click to remove it
 - F9 saves the map as an image, F3 shows world stats
 - Escape closes whatever is open, or pauses
-- F8 (editor and dev builds only) opens the dev tools: teleport to the nearest region or water type, replay the intro, or wipe the save
+- F8 (editor and dev builds only) opens the dev tools. Places: teleport to the nearest region, water type or structure, replay the intro, wipe the save. Animals: put any kind down in front of you, stage a herd, a wolf pair or a fox hunting a rabbit, tell everything nearby to walk, run, rest, spook or hunt, set the hour, slow time, or jump to the nearest animal
 
 ## Running it
 

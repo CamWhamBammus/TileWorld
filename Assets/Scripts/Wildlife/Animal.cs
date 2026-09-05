@@ -200,6 +200,38 @@ public class Animal : MonoBehaviour
     /// <summary>A young one: small, and kept close to whoever leads it.</summary>
     public bool Young { get; private set; }
 
+    /// <summary>Put down by the dev tools: kept whatever the hour, until you walk away from it.</summary>
+    public bool Kept { get; set; }
+
+    /// <summary>
+    /// Told what to do, by the dev tools: walk, run, rest, graze, alert,
+    /// spook. Nothing in the game itself uses this.
+    /// </summary>
+    public void Direct(string what)
+    {
+        roosting = false;
+        gesture = Gesture.None;
+        var ahead = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+
+        switch (what)
+        {
+            case "walk": target = transform.position + ahead * 24f; state = State.Wander; until = Time.time + 30f; break;
+            case "run": threatened = false; Flee(); until = Time.time + 6f; break;
+            case "rest": state = State.Rest; restedSince = Time.time; until = Time.time + 60f; break;
+            case "graze": Graze(); break;
+            case "alert": threatened = false; state = State.Alert; until = Time.time + 20f; break;
+            case "spook": Startle(player != null ? player.position : transform.position - ahead * 5f, true); break;
+            case "hunt":
+                // straight into a hunt of whatever it hunts, wary of nothing
+                if (!Fauna.Hunts(Kind)) break;
+                var prey = Wildlife.Nearest(this, Fauna.All(Kind).Preys, 60f);
+                if (prey == null) break;
+                quarry = prey; state = State.Hunt; until = Time.time + 12f; target = prey.transform.position;
+                prey.Startle(transform.position, true);
+                break;
+        }
+    }
+
     // A bird out of its hours does not vanish the way the rest do: it roosts
     // where it is, head drawn in, until its hours come round again.
     private bool roosting;
