@@ -267,6 +267,15 @@ public class Animal : MonoBehaviour
     /// <summary>Whether it has its head up calling -- a howl, a bellow.</summary>
     public bool Calling => gesture == Gesture.Howl;
 
+    /// <summary>The gesture it is in the middle of, by name, or "None".</summary>
+    public string Pose => gesture.ToString();
+
+    /// <summary>Whether it is in the air.</summary>
+    public bool Aloft => Flying;
+
+    /// <summary>Whether it is sat up on a perch.</summary>
+    public bool Perched => perched;
+
     /// <summary>Whether it has something in its beak.</summary>
     public bool HasCatch => caught != null;
 

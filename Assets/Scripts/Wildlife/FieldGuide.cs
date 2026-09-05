@@ -24,13 +24,50 @@ public static class FieldGuide
 
     public static event System.Action<Subject, Study> Filled;
 
-    /// <summary>What a subject's entry asks for. Creatures want three, ruins two.</summary>
+    // A creature's entry is its plates: which are filled, and where and when.
+    private static readonly Dictionary<string, Dictionary<string, string>> plates =
+        new Dictionary<string, Dictionary<string, string>>();
+
+    /// <summary>What a structure's entry asks for: a drawing and the writing. Creatures ask for plates.</summary>
     public static Study[] Wants(Subject subject)
     {
         return subject.Wild
-            ? new[] { Study.Sketch, Study.Habit, Study.Country }
+            ? new Study[0]
             : new[] { Study.Sketch, Study.Inscription };
     }
+
+    public static bool HasPlate(Subject subject, string plateId)
+    {
+        return plates.TryGetValue(subject.Key, out var set) && set.ContainsKey(plateId);
+    }
+
+    public static string PlateDetail(Subject subject, string plateId)
+    {
+        return plates.TryGetValue(subject.Key, out var set) && set.TryGetValue(plateId, out var d) ? d : "";
+    }
+
+    public static bool RecordPlate(Subject subject, string plateId, string where = "", string when = "")
+    {
+        if (!plates.TryGetValue(subject.Key, out var set)) { set = new Dictionary<string, string>(); plates[subject.Key] = set; }
+        if (set.ContainsKey(plateId)) return false;
+        set[plateId] = Written(where, when);
+        Filled?.Invoke(subject, Study.Sketch);
+        return true;
+    }
+
+    public static void RecordPlateQuietly(Subject subject, string plateId, string detail = "")
+    {
+        if (!plates.TryGetValue(subject.Key, out var set)) { set = new Dictionary<string, string>(); plates[subject.Key] = set; }
+        set[plateId] = detail;
+    }
+
+    public static IEnumerable<KeyValuePair<string, string>> PlatesOf(Subject subject)
+    {
+        return plates.TryGetValue(subject.Key, out var set) ? (IEnumerable<KeyValuePair<string, string>>)set : new KeyValuePair<string, string>[0];
+    }
+
+    /// <summary>How many parts an entry has: a creature's plates, a structure's two.</summary>
+    public static int Wanted(Subject subject) => subject.Wild ? Plates.For(subject.Fauna).Length : Wants(subject).Length;
 
     public static bool Has(Subject subject, Study study)
     {
@@ -47,10 +84,11 @@ public static class FieldGuide
 
     public static int Count(Subject subject)
     {
+        if (subject.Wild) return plates.TryGetValue(subject.Key, out var got) ? got.Count : 0;
         return done.TryGetValue(subject.Key, out var set) ? set.Count : 0;
     }
 
-    public static bool Complete(Subject subject) => Count(subject) >= Wants(subject).Length;
+    public static bool Complete(Subject subject) => Count(subject) >= Wanted(subject);
 
     /// <summary>Finished entries, out of however many there are.</summary>
     public static int Entries
@@ -84,7 +122,7 @@ public static class FieldGuide
         {
             int n = 0;
 
-            foreach (var subject in Subject.All()) n += Wants(subject).Length;
+            foreach (var subject in Subject.All()) n += Wanted(subject);
 
             return n;
         }
@@ -254,6 +292,7 @@ public static class FieldGuide
     public static void Clear()
     {
         done.Clear();
+        plates.Clear();
         Filled = null;
     }
 }

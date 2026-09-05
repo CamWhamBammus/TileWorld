@@ -34,6 +34,9 @@ public class FieldGuideScreen : MonoBehaviour
     private RawImage plate;                 // the big drawing, on a subject's page
     private RawImage[] thumbs;
     private TMP_Text[] thumbNames;
+    private GameObject strip;
+    private RawImage[] plateThumbs;
+    private TMP_Text[] plateNames;
     private GameObject contents;
     private Texture2D blank;
 
@@ -123,8 +126,8 @@ public class FieldGuideScreen : MonoBehaviour
 
     private const int PerPage = 8;
 
-    /// <summary>Contents, then a page each, then however many the notes fill.</summary>
-    private static int Pages => 1 + Subject.All().Length + Mathf.Max(1, Mathf.CeilToInt(Notebook.Count / (float)PerPage));
+    /// <summary>Contents, then a page each.</summary>
+    private static int Pages => 1 + Subject.All().Length;
 
     private void Turn(int by)
     {
@@ -137,57 +140,13 @@ public class FieldGuideScreen : MonoBehaviour
         var all = Subject.All();
 
         if (page == 0) Contents();
-        else if (page <= all.Length) Entry(all[page - 1]);
-        else Noticed(page - all.Length - 1);
+        else Entry(all[Mathf.Min(page, all.Length) - 1]);
 
         footer.text = "<color=" + Dim + ">page " + (page + 1) + " of " + Pages
                     + "   ·   arrows turn the page   ·   G closes</color>";
     }
 
-    /// <summary>
-    /// The running record of what the book has remarked on. Not a list of
-    /// things to go and do: a list of things that happened while you were out.
-    /// </summary>
-    private void Noticed(int sheet)
-    {
-        contents.SetActive(false);
-        plate.gameObject.SetActive(false);
-
-        Room(Shape.Notes);
-
-        heading.text = "<size=125%><b><color=" + Ink + ">NOTICED</color></b></size>\n"
-                     + "<size=80%><color=" + Dim + ">" + Notebook.Count + " of "
-                     + Notebook.Possible + " seen  ·  " + Notebook.Wondering() + "</color></size>";
-
-        var text = new System.Text.StringBuilder();
-
-        if (Notebook.Count == 0)
-        {
-            text.Append("<color=").Append(Dim)
-                .Append(">Nothing yet. These fill in as you go — there is nothing to go and fetch.</color>");
-        }
-        else
-        {
-            int from = sheet * PerPage;
-
-            for (int i = from; i < from + PerPage && i < Notebook.Count; i++)
-            {
-                var entry = Notebook.All[i];
-
-                text.Append("<color=").Append(Ink).Append(">•  ").Append(entry.Line).Append("</color>\n");
-                text.Append("<indent=22px><size=80%><color=").Append(Dim).Append(">")
-                    .Append(entry.Where);
-
-                if (!string.IsNullOrEmpty(entry.When)) text.Append(", ").Append(entry.When);
-
-                text.Append("</color></size></indent>\n");
-            }
-        }
-
-        body.text = text.ToString();
-    }
-
-    private enum Shape { Entry, Notes, Contents }
+    private enum Shape { Entry, Notes, Contents, Plates }
 
     /// <summary>
     /// Where the text sits, which differs by page: the notes want the whole
@@ -204,6 +163,13 @@ public class FieldGuideScreen : MonoBehaviour
                 rect.sizeDelta = new Vector2(800f, 700f);
                 rect.anchoredPosition = new Vector2(0f, -140f);
                 body.fontSizeMax = 21f;
+                break;
+
+            case Shape.Plates:
+                // under the drawing and the strip of plates
+                rect.sizeDelta = new Vector2(800f, 220f);
+                rect.anchoredPosition = new Vector2(0f, -640f);
+                body.fontSizeMax = 19f;
                 break;
 
             case Shape.Contents:
@@ -227,12 +193,13 @@ public class FieldGuideScreen : MonoBehaviour
     {
         contents.SetActive(true);
         plate.gameObject.SetActive(false);
+        if (strip != null) strip.SetActive(false);
 
         Room(Shape.Contents);
 
         heading.text = "<size=125%><b><color=" + Ink + ">FIELD SKETCHBOOK</color></b></size>\n"
                      + "<size=80%><color=" + Dim + ">" + FieldGuide.Entries + " of " + Subject.All().Length + " entries finished, "
-                     + FieldGuide.Notes + " of " + FieldGuide.NotesWanted + " notes made</color></size>";
+                     + FieldGuide.Notes + " of " + FieldGuide.NotesWanted + " plates drawn</color></size>";
 
         var all = Subject.All();
 
@@ -245,14 +212,14 @@ public class FieldGuideScreen : MonoBehaviour
 
             bool met = Met(all[i]);
 
+            string tally = FieldGuide.Count(all[i]) + "/" + FieldGuide.Wanted(all[i]);
             thumbNames[i].text = drawing != null
-                ? "<color=" + (FieldGuide.Complete(all[i]) ? Done : Ink) + ">" + all[i].Name + "</color>"
-                : "<color=" + Dim + ">" + (met ? all[i].Name : "not yet found") + "</color>";
+                ? "<color=" + (FieldGuide.Complete(all[i]) ? Done : Ink) + ">" + all[i].Name + "  <size=80%>" + tally + "</size></color>"
+                : "<color=" + Dim + ">" + (met ? all[i].Name + "  <size=80%>" + tally + "</size>" : "not yet found") + "</color>";
         }
 
-        body.text = "<color=" + Dim + ">Draw each creature up close, see what it does, and find it where it lives. "
-                  + "Ruins want the whole of it drawn from further back, and the writing read. "
-                  + "Things noticed as you go: " + Notebook.Count + " of " + Notebook.Possible + ".</color>";
+        body.text = "<color=" + Dim + ">Each creature has its plates: drawn standing, on the move, lying down, and doing whatever it does that "
+                  + "nothing else does. Ruins want the whole of them drawn from further back, and the writing read.</color>";
     }
 
     private void Entry(Subject subject)
@@ -275,10 +242,57 @@ public class FieldGuideScreen : MonoBehaviour
         heading.text = "<size=125%><b><color=" + (full ? Done : Ink) + ">"
                      + (met ? subject.Name.ToUpper() : "NOT FOUND YET")
                      + "</color></b></size>\n<size=80%><color=" + Dim + ">"
-                     + FieldGuide.Count(subject) + " of " + wants.Length + " done"
+                     + FieldGuide.Count(subject) + " of " + FieldGuide.Wanted(subject) + (subject.Wild ? " plates" : " done")
                      + "  ·  " + FieldGuide.Where(subject) + "</color></size>";
 
         var text = new System.Text.StringBuilder();
+
+        if (subject.Wild)
+        {
+            // the plates, in a strip under the drawing: what is drawn as a
+            // thumbnail with its name, what is not as a blank with what to do
+            strip.SetActive(true);
+            var all = Plates.For(subject.Fauna);
+            for (int i = 0; i < plateThumbs.Length; i++)
+            {
+                bool shown = i < all.Length;
+                plateThumbs[i].gameObject.SetActive(shown);
+                plateNames[i].gameObject.SetActive(shown);
+                if (!shown) continue;
+                bool has = FieldGuide.HasPlate(subject, all[i].Id);
+                var drawn = has ? SketchBook.Of(Plates.Key(subject, all[i].Id)) : null;
+                plateThumbs[i].texture = drawn != null ? drawn : blank;
+                plateThumbs[i].color = drawn != null ? Color.white : new Color(1f, 1f, 1f, 0.28f);
+                plateNames[i].text = has
+                    ? "<color=" + Done + ">" + all[i].Label + "</color>"
+                    : "<color=" + Dim + ">" + all[i].Label + "</color>";
+            }
+            // the strip's own x positions, centred on however many there are
+            for (int i = 0; i < all.Length; i++)
+            {
+                float x = (i - (all.Length - 1) * 0.5f) * 150f;
+                plateThumbs[i].rectTransform.anchoredPosition = new Vector2(x, -498f);
+                plateNames[i].rectTransform.anchoredPosition = new Vector2(x, -598f);
+            }
+
+            Room(Shape.Plates);
+            foreach (var plate in all)
+            {
+                bool has = FieldGuide.HasPlate(subject, plate.Id);
+                text.Append("<color=").Append(has ? Done : Ink).Append(">").Append(has ? "●  " : "○  ").Append(plate.Label).Append("</color>");
+                if (has)
+                {
+                    string detail = FieldGuide.PlateDetail(subject, plate.Id);
+                    if (!string.IsNullOrEmpty(detail)) text.Append("<size=80%><color=").Append(Dim).Append(">   ").Append(detail).Append("</color></size>");
+                }
+                else text.Append("<size=80%><i><color=").Append(Dim).Append(">   ").Append(plate.Ask).Append("</color></i></size>");
+                text.Append("\n");
+            }
+            body.text = text.ToString();
+            return;
+        }
+
+        strip.SetActive(false);
 
         foreach (var study in wants)
         {
@@ -440,6 +454,25 @@ public class FieldGuideScreen : MonoBehaviour
         plateRect.pivot = new Vector2(0.5f, 1f);
         plateRect.sizeDelta = new Vector2(460f, 345f);
         plateRect.anchoredPosition = new Vector2(0f, -134f);
+
+        // a creature's plates, under its drawing
+        strip = new GameObject("Plates");
+        strip.transform.SetParent(cardGo.transform, false);
+        var stripRect = strip.AddComponent<RectTransform>();
+        stripRect.anchorMin = Vector2.zero; stripRect.anchorMax = Vector2.one; stripRect.offsetMin = Vector2.zero; stripRect.offsetMax = Vector2.zero;
+        plateThumbs = new RawImage[6];
+        plateNames = new TMP_Text[6];
+        for (int i = 0; i < 6; i++)
+        {
+            var thumbGo = new GameObject("Plate " + i);
+            thumbGo.transform.SetParent(strip.transform, false);
+            plateThumbs[i] = thumbGo.AddComponent<RawImage>();
+            var r = thumbGo.GetComponent<RectTransform>();
+            r.anchorMin = new Vector2(0.5f, 1f); r.anchorMax = new Vector2(0.5f, 1f); r.pivot = new Vector2(0.5f, 1f);
+            r.sizeDelta = new Vector2(136f, 102f);
+            plateNames[i] = Label("Plate name " + i, strip.transform, 13f, new Vector2(0f, -598f), new Vector2(146f, 22f));
+        }
+        strip.SetActive(false);
 
         // the contents: all eight, small
         contents = new GameObject("Contents");

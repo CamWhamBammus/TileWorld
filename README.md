@@ -158,7 +158,7 @@ How close you can get depends on how you move. Run at them and they bolt. Walk u
 
 Press G. This is the main point of the game.
 
-The book has an entry for every animal and every kind of structure. An animal's entry needs a drawing from up close, something seen of how it behaves, and it found in its home region. A structure's entry needs a drawing with the whole thing on the page, plus reading whatever is written there. The empty entries are what tell you where to go next.
+The book has an entry for every animal and every kind of structure. An animal's entry is a set of plates to draw: standing, on the move, lying down, and whatever that animal does that nothing else does. A deer wants one in a herd and a stag bellowing at dusk, a wolf wants one howling and the pair together, a heron wants one fishing, one with a fish in its beak, and one in the air, a tortoise wants one pulled into its shell. One drawing can fill more than one plate if the animal happened to be doing both. A structure's entry needs a drawing with the whole thing on the page, plus reading whatever is written there. The empty plates are what tell you where to go next.
 
 Hold F and the view narrows to what will fit on the page, scroll to zoom. Get close enough, keep it in frame and stand still and the drawing fills in over a few seconds. Moving ruins it. The book grades the result (how much of the page it fills, whether it's cut off, whether you got the side or just the back of it walking away) relative to what's actually possible for that subject, and keeps your best one. The drawing is real: it captures the subject as it was, from where you stood, and renders it as ink on the map paper.
 
@@ -166,13 +166,13 @@ Hold F and the view narrows to what will fit on the page, scroll to zoom. Get cl
 
 *Three pages from the book, drawn in play: the Buried Tower leaning beside its fallen twin, the Hilltop Beacon, and the Fishing Jetty with its bays down.*
 
-The book also notes things it sees on its own, like three deer together, a fox out at night, or still water after dark. There are about forty of these, none required. When it runs out it tells you what it's curious about, which usually means going out at a time of day you haven't tried.
+While you're lining up a drawing the hint at the bottom names the plates it would fill, so you know before you commit whether this one is worth it.
 
 The first few minutes, on a brand new save only, walk you through this with one animal placed in front of you and a couple of prompts.
 
 ## The map
 
-Press M. Chunks you've walked through are shaded by height with water and snow marked. Ground you've only seen from a high point is faded. Structures you've found show as diamonds with their names. Click to place a marker. The compass along the top shows every structure you've found plus your marker. J opens the journal, which lists everything you've found and noticed.
+Press M. Chunks you've walked through are shaded by height with water and snow marked. Ground you've only seen from a high point is faded. Structures you've found show as diamonds with their names. Click to place a marker. The compass along the top shows every structure you've found plus your marker. J opens the journal, which lists everything you've found.
 
 ## Worlds and saving
 

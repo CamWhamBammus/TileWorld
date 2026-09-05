@@ -36,7 +36,11 @@ public class WorldSave
     public List<string> drawingVerdict = new List<string>();
     public List<string> drawingWhen = new List<string>();
 
-    public List<string> noticed = new List<string>();       // id, then where, then when
+    public List<string> plateSubjects = new List<string>(); // a creature's plates: subject, plate, where and when
+    public List<string> plateIds = new List<string>();
+    public List<string> plateWhere = new List<string>();
+
+    public List<string> noticed = new List<string>();       // the old notes; kept so old saves still read
     public List<string> noticedWhere = new List<string>();
     public List<string> noticedWhen = new List<string>();
 
@@ -274,7 +278,6 @@ public static class WorldLibrary
         LandmarkSpawner.ClearEvent();
         SightingLog.Clear();
         FieldGuide.Clear();
-        Notebook.Clear();
         SketchBook.Clear();
         Stalking.Clear();
         Waypoint.Forget();

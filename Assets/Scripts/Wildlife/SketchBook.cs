@@ -35,19 +35,43 @@ public static class SketchBook
     private static readonly Color Paper = new Color(0.902f, 0.855f, 0.749f);
     private static readonly Color Ink = new Color(0.204f, 0.161f, 0.114f);
 
-    public static Page Made(Subject subject)
+    /// <summary>
+    /// The drawing under a key. A structure's key is the subject's; a
+    /// creature's is the subject's and the plate's, so a deer has a drawing
+    /// standing and another lying down.
+    /// </summary>
+    public static Page Made(string key)
     {
-        return drawings.TryGetValue(subject.Key, out var found) ? found : null;
+        return drawings.TryGetValue(key, out var found) ? found : null;
+    }
+
+    public static Page Made(Subject subject) => subject.Wild ? Best(subject) : Made(subject.Key);
+
+    public static Texture2D Of(string key)
+    {
+        var page = Made(key);
+        return page != null ? page.Paper : null;
     }
 
     public static Texture2D Of(Subject subject)
     {
         var page = Made(subject);
-
         return page != null ? page.Paper : null;
     }
 
     public static bool Has(Subject subject) => Of(subject) != null;
+
+    /// <summary>A creature's best drawing across its plates, for the page and the contents.</summary>
+    public static Page Best(Subject subject)
+    {
+        Page best = null;
+        foreach (var plate in Plates.For(subject.Fauna))
+        {
+            var page = Made(Plates.Key(subject, plate.Id));
+            if (page != null && (best == null || page.Quality > best.Quality)) best = page;
+        }
+        return best;
+    }
 
     /// <summary>Every drawing on the shelf, for writing the save out.</summary>
     public static IEnumerable<KeyValuePair<string, Page>> Shelf => drawings;
@@ -67,7 +91,24 @@ public static class SketchBook
     /// hillside behind it does not end up in the drawing, then reduced to a
     /// line where its edges are and a wash where it is dark.
     /// </summary>
-    public static Page Draw(Subject subject, Transform what, Camera eye)
+    public static Page Draw(Subject subject, Transform what, Camera eye) => Draw(subject, subject.Key, what, eye);
+
+    /// <summary>
+    /// A drawing already made, kept under another key as well: one drawing
+    /// of a deer lying down in a herd fills two plates.
+    /// </summary>
+    public static bool Keep(string key, Page page)
+    {
+        if (page == null || page.Empty || page.Paper == null) return false;
+        var standing = Made(key);
+        if (standing != null && standing.Quality >= page.Quality) return false;
+        var copy = new Page { Paper = page.Paper, Quality = page.Quality, Verdict = page.Verdict, When = page.When, Where = page.Where, Covered = page.Covered };
+        drawings[key] = copy;
+        Write(key, page.Paper);
+        return true;
+    }
+
+    public static Page Draw(Subject subject, string key, Transform what, Camera eye)
     {
         if (what == null || eye == null) return null;
 
@@ -114,7 +155,7 @@ public static class SketchBook
         var drawing = ToInk(shot);
 
         Object.Destroy(shot);
-        Restored(subject, drawing, judged);
+        Restored(key, drawing, judged);
 
         return judged;
     }
@@ -123,9 +164,9 @@ public static class SketchBook
     /// A worse drawing never replaces a better one. Going back to a subject you
     /// made a poor job of is the whole reason the book says how good it was.
     /// </summary>
-    private static void Restored(Subject subject, Texture2D drawing, Page judged)
+    private static void Restored(string key, Texture2D drawing, Page judged)
     {
-        var standing = Made(subject);
+        var standing = Made(key);
 
         if (judged.Empty)
         {
@@ -147,9 +188,9 @@ public static class SketchBook
         }
 
         beaten = false;
-        drawings[subject.Key] = judged;
+        drawings[key] = judged;
 
-        Write(subject, drawing);
+        Write(key, drawing);
     }
 
     /// <summary>Whether the last drawing was thrown away for being the worse of the two.</summary>
@@ -376,12 +417,12 @@ public static class SketchBook
         }
     }
 
-    private static void Write(Subject subject, Texture2D drawing)
+    private static void Write(string key, Texture2D drawing)
     {
         try
         {
             System.IO.Directory.CreateDirectory(Folder);
-            System.IO.File.WriteAllBytes(System.IO.Path.Combine(Folder, subject.Key + ".png"),
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(Folder, key + ".png"),
                                          drawing.EncodeToPNG());
         }
         catch (System.Exception e)
@@ -399,17 +440,18 @@ public static class SketchBook
         {
             if (!System.IO.Directory.Exists(Folder)) return;
 
-            foreach (var subject in Subject.All())
+            // every drawing in the folder, whatever its key; one from before
+            // the plates, "c3.png", is the creature's standing plate
+            foreach (string path in System.IO.Directory.GetFiles(Folder, "*.png"))
             {
-                string path = System.IO.Path.Combine(Folder, subject.Key + ".png");
-
-                if (!System.IO.File.Exists(path)) continue;
+                string key = System.IO.Path.GetFileNameWithoutExtension(path);
+                if (key.StartsWith("c") && !key.Contains("-")) key += "-standing";
 
                 var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
 
                 if (texture.LoadImage(System.IO.File.ReadAllBytes(path)))
                 {
-                    drawings[subject.Key] = new Page { Paper = texture, Quality = 0.5f, Verdict = "" };
+                    drawings[key] = new Page { Paper = texture, Quality = 0.5f, Verdict = "" };
                 }
             }
         }

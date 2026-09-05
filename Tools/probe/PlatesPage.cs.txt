@@ -1,0 +1,90 @@
+// A probe: a few of a deer's plates filled with real drawings, then the
+// book opened on the deer's page and on the contents, and photographed.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(7f);
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        Transform player = world.PlayerTransform;
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateField = typeof(Animal).GetField("state", flags);
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var restedField = typeof(Animal).GetField("restedSince", flags);
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        // a deer, drawn standing, then lying down; the drawings made the real way
+        var subject = Subject.Creature(FaunaKind.Deer);
+        var deer = Wildlife.Summon(FaunaKind.Deer, player.position + player.forward * 6f);
+        yield return new WaitForSecondsRealtime(1.5f);
+        cam.transform.position = deer.transform.position + new Vector3(0f, 1.2f, -4.5f);
+        cam.transform.LookAt(deer.Head);
+        yield return null;
+        foreach (var pose in new[] { "Stand", "Rest" })
+        {
+            stateField.SetValue(deer, System.Enum.Parse(stateType, pose)); untilField.SetValue(deer, Time.time + 100f);
+            if (pose == "Rest") restedField.SetValue(deer, Time.time - 10f);
+            yield return new WaitForSecondsRealtime(2f);
+            cam.transform.LookAt(deer.Head);
+            yield return null;
+            var fits = Plates.Matching(deer, Plates.LookAt(deer, seed));
+            string ids = ""; foreach (var f in fits) ids += f.Id + " ";
+            var made = SketchBook.Draw(subject, Plates.Key(subject, fits[0].Id), deer.transform, cam);
+            foreach (var f in fits) { SketchBook.Keep(Plates.Key(subject, f.Id), made); FieldGuide.RecordPlate(subject, f.Id, "the probe's meadow", "noon"); }
+            Mark(pose + ": fits " + ids + "| drawn " + (made != null && !made.Empty) + " quality " + (made != null ? made.Quality.ToString("F2") : "-"));
+        }
+        Mark("deer plates filled " + FieldGuide.Count(subject) + " of " + FieldGuide.Wanted(subject));
+
+        // the book, on the deer's page (page 1 is the first subject: the deer)
+        FieldGuideScreen.Show();
+        yield return new WaitForSecondsRealtime(0.8f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-pl-contents.png"));
+        yield return new WaitForSecondsRealtime(0.8f);
+        object screen = null;
+        try
+        {
+            var f = typeof(FieldGuideScreen).GetField("instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            screen = f != null ? f.GetValue(null) : null;
+            if (screen == null) { var found = FindObjectsByType<FieldGuideScreen>(FindObjectsInactive.Include, FindObjectsSortMode.None); if (found.Length > 0) screen = found[0]; }
+            Mark("screen found " + (screen != null));
+            typeof(FieldGuideScreen).GetField("page", flags).SetValue(screen, 1);
+            typeof(FieldGuideScreen).GetMethod("Refresh", flags).Invoke(screen, null);
+        }
+        catch (System.Exception e) { Mark("page turn failed: " + e.Message); }
+        yield return new WaitForSecondsRealtime(0.8f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-pl-deer.png"));
+        yield return new WaitForSecondsRealtime(0.8f);
+        Mark("done");
+    }
+}

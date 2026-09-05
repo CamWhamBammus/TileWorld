@@ -216,7 +216,7 @@ public class Sketching : MonoBehaviour
 
             if (!have) Refresh("nothing in view");
             else if (!steady) Refresh("hold still");
-            else Refresh("hold " + drawKey + " to draw the " + working.What.Name);
+            else Refresh("hold " + drawKey + " to draw the " + working.What.Name + Would(working));
 
             return;
         }
@@ -246,36 +246,78 @@ public class Sketching : MonoBehaviour
 
         if (progress >= 1f)
         {
-            // The drawing is of this one, from here, as you framed it.
-            var made = SketchBook.Draw(subject.What, subject.Body, Eye());
-
             drewThisHold = true;
 
-            bool first = FieldGuide.Record(subject.What, FieldGuide.Study.Sketch, Here(), Now());
-
-            if (made != null)
+            if (subject.What.Wild && subject.Creature != null)
             {
-                if (SketchBook.Beaten)
+                // A creature: the drawing is asked which plates it fits, and
+                // fills every one of them it can. Made once, under the first
+                // plate's key, and kept under the others.
+                var fits = Plates.Matching(subject.Creature, Plates.LookAt(subject.Creature, world.WorldSeed));
+                if (fits.Count == 0) fits.Add(Plates.For(subject.What.Fauna)[0]);
+
+                var made = SketchBook.Draw(subject.What, Plates.Key(subject.What, fits[0].Id), subject.Body, Eye());
+                bool kept = made != null && !SketchBook.Beaten;
+                var filled = new System.Collections.Generic.List<string>();
+                var bettered = new System.Collections.Generic.List<string>();
+
+                if (made != null && !made.Empty)
                 {
-                    Notices.Show(made.Verdict + " — kept your old one instead");
-                }
-                else
-                {
-                    Notices.Show((first ? "You draw the " + subject.What.Name + " — " : "")
-                               + made.Verdict + (first ? "" : ", better than your last"));
+                    for (int i = 0; i < fits.Count; i++)
+                    {
+                        string key = Plates.Key(subject.What, fits[i].Id);
+                        bool took = i == 0 ? kept : SketchBook.Keep(key, made);
+                        if (!took) continue;
+                        if (FieldGuide.RecordPlate(subject.What, fits[i].Id, Here(), Now())) filled.Add(fits[i].Label);
+                        else bettered.Add(fits[i].Label);
+                    }
                 }
 
-                if (!SketchBook.Beaten) Ambience.Instance?.Click(1.15f);
+                if (made == null || made.Empty) Notices.Show("Nothing on the page");
+                else if (filled.Count > 0) Notices.Show("You draw the " + subject.What.Name + ", " + string.Join(", ", filled) + " — " + made.Verdict);
+                else if (bettered.Count > 0) Notices.Show(made.Verdict + " — better than your " + string.Join(", ", bettered));
+                else Notices.Show(made.Verdict + " — kept your old one instead");
 
-                var kept = SketchBook.Of(subject.What);
+                if (filled.Count > 0 || bettered.Count > 0) Ambience.Instance?.Click(1.15f);
 
-                if (kept != null)
+                var show = SketchBook.Of(Plates.Key(subject.What, fits[0].Id));
+                if (show != null) { page.texture = show; showUntil = Time.time + 4.5f; }
+
+                Finished(subject.What);
+            }
+            else
+            {
+                // The drawing is of this one, from here, as you framed it.
+                var made = SketchBook.Draw(subject.What, subject.Body, Eye());
+
+                bool first = FieldGuide.Record(subject.What, FieldGuide.Study.Sketch, Here(), Now());
+
+                if (made != null)
                 {
-                    // Nothing written across it: the page is a drawing, and a
-                    // line of type over the top only reads as a fault in it.
-                    page.texture = kept;
-                    showUntil = Time.time + 4.5f;
+                    if (SketchBook.Beaten)
+                    {
+                        Notices.Show(made.Verdict + " — kept your old one instead");
+                    }
+                    else
+                    {
+                        Notices.Show((first ? "You draw the " + subject.What.Name + " — " : "")
+                                   + made.Verdict + (first ? "" : ", better than your last"));
+                    }
+
+                    if (!SketchBook.Beaten) Ambience.Instance?.Click(1.15f);
+
+                    var kept = SketchBook.Of(subject.What);
+
+                    if (kept != null)
+                    {
+                        // Nothing written across it: the page is a drawing, and a
+                        // line of type over the top only reads as a fault in it.
+                        page.texture = kept;
+                        showUntil = Time.time + 4.5f;
+                    }
                 }
+
+                Finished(subject.What);
             }
 
             progress = 0f;
@@ -352,35 +394,24 @@ public class Sketching : MonoBehaviour
     }
 
     /// <summary>
-    /// The two studies that are a matter of being there rather than of holding
-    /// still: what the animal was doing, and where you found it.
+    /// Which of its plates a creature, as it stands, would fill -- the ones
+    /// still blank, named after the hint, so you know a drawing now is worth
+    /// something before you make it.
     /// </summary>
+    private string Would(Quarry quarry)
+    {
+        if (!quarry.What.Wild || quarry.Creature == null) return "";
+        var fits = Plates.Matching(quarry.Creature, Plates.LookAt(quarry.Creature, world.WorldSeed));
+        var blank = new System.Collections.Generic.List<string>();
+        foreach (var p in fits) if (!FieldGuide.HasPlate(quarry.What, p.Id)) blank.Add(p.Label);
+        if (blank.Count == 0) return fits.Count > 0 ? "   ·   " + fits[0].Label + ", drawn already" : "";
+        return "   ·   " + string.Join(", ", blank);
+    }
+
+    /// <summary>Whatever needs no drawing: the writing on the ruins.</summary>
     private void Notice()
     {
         Reading();
-
-        var seen = Nearest(false);
-
-        if (!seen.Any || !seen.What.Wild || seen.Creature == null) return;
-
-        float hour = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;
-        var kind = seen.What.Fauna;
-
-        if (!FieldGuide.Has(seen.What, FieldGuide.Study.Habit)
-            && FieldGuide.Habit(kind, seen.Creature.Busy)
-            && FieldGuide.Record(seen.What, FieldGuide.Study.Habit, Here(), Now()))
-        {
-            Notices.Show("Noted: " + FieldGuide.Habit(kind));
-        }
-
-        if (!FieldGuide.Has(seen.What, FieldGuide.Study.Country)
-            && FieldGuide.Country(kind, seen.Body.position, world.WorldSeed, hour)
-            && FieldGuide.Record(seen.What, FieldGuide.Study.Country, Here(), Now()))
-        {
-            Notices.Show("Noted: " + FieldGuide.Country(kind));
-        }
-
-        Finished(seen.What);
     }
 
     /// <summary>

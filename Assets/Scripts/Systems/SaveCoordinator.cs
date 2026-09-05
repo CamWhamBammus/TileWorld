@@ -94,11 +94,10 @@ public class SaveCoordinator : MonoBehaviour
                                      i < data.bookWhere.Count ? data.bookWhere[i] : "");
         }
 
-        for (int i = 0; i < data.noticed.Count; i++)
+        for (int i = 0; i < data.plateSubjects.Count && i < data.plateIds.Count; i++)
         {
-            Notebook.WriteQuietly(data.noticed[i],
-                i < data.noticedWhere.Count ? data.noticedWhere[i] : "",
-                i < data.noticedWhen.Count ? data.noticedWhen[i] : "");
+            FieldGuide.RecordPlateQuietly(Subject.FromKey(data.plateSubjects[i]), data.plateIds[i],
+                i < data.plateWhere.Count ? data.plateWhere[i] : "");
         }
 
         SketchBook.Reopen();
@@ -161,9 +160,6 @@ public class SaveCoordinator : MonoBehaviour
         data.drawingQuality.Clear();
         data.drawingVerdict.Clear();
         data.drawingWhen.Clear();
-        data.noticed.Clear();
-        data.noticedWhere.Clear();
-        data.noticedWhen.Clear();
 
         data.seed = world.WorldSeed;
         data.timeOfDay = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.3f;
@@ -193,11 +189,19 @@ public class SaveCoordinator : MonoBehaviour
             data.drawingWhen.Add(pair.Value.When);
         }
 
-        foreach (var entry in Notebook.All)
+        data.plateSubjects.Clear();
+        data.plateIds.Clear();
+        data.plateWhere.Clear();
+
+        foreach (var subject in Subject.All())
         {
-            data.noticed.Add(entry.Id);
-            data.noticedWhere.Add(entry.Where);
-            data.noticedWhen.Add(entry.When);
+            if (!subject.Wild) continue;
+            foreach (var pair in FieldGuide.PlatesOf(subject))
+            {
+                data.plateSubjects.Add(subject.Key);
+                data.plateIds.Add(pair.Key);
+                data.plateWhere.Add(pair.Value);
+            }
         }
 
         foreach (var subject in Subject.All())

@@ -630,9 +630,9 @@ public class DevTools : MonoBehaviour
             save.drawingVerdict.Clear();
             save.drawingWhen.Clear();
 
-            save.noticed.Clear();
-            save.noticedWhere.Clear();
-            save.noticedWhen.Clear();
+            save.plateSubjects.Clear();
+            save.plateIds.Clear();
+            save.plateWhere.Clear();
 
             save.creaturesSeen.Clear();
             save.creatureChunks.Clear();
@@ -649,7 +649,6 @@ public class DevTools : MonoBehaviour
         }
 
         FieldGuide.Clear();
-        Notebook.Clear();
         SketchBook.Clear();
         SightingLog.Clear();
         Stalking.Clear();
