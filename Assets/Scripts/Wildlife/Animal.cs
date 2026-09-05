@@ -171,18 +171,18 @@ public class Animal : MonoBehaviour
     private float footing;
     private float baseline;          // how far the frame is dropped so the soles reach the footing
 
-    /// <summary>How far above the walking surface the ground looks to be, on this tile.</summary>
+    /// <summary>
+    /// How far above the walking surface the ground looks to be, on this
+    /// tile. Measured off the tiles themselves: every one -- grass, sand,
+    /// stone -- has its top at the same height, five hundredths below the
+    /// walking surface (the grass blades stand higher, but they are blades,
+    /// not ground). Snow is the one thing laid on top, a drift deep.
+    /// </summary>
     public static float FootingAt(int tileX, int tileZ, int seed)
     {
-        if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return 0f;
+        if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return -0.05f;
         if (SnowCover.IsSnowy(tileX, tileZ, seed)) return 0.17f;
-        switch (Regions.CharacterAtTile(tileX, tileZ, seed))
-        {
-            case Regions.Character.Desert: return 0.14f;
-            case Regions.Character.Stone:
-            case Regions.Character.Peaks: return 0.08f;
-            default: return 0.32f;
-        }
+        return -0.05f;
     }
     private Vector3 neckAt;          // where the head hangs when it is out
 

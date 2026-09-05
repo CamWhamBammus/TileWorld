@@ -363,7 +363,9 @@ public static class Fauna
             },
             Lowest = 0f, Highest = 1f,
             KeepsOffSnow = true,
-            Wades = 0.75f, WadesOnly = true,
+            // shallows a heron's legs can stand in with its body clear of the
+            // water; deeper and it looked to be swimming
+            Wades = 0.42f, WadesOnly = true,
             Flies = true,
             Hours = new[] { new Vector2(0.14f, 0.86f) },
             Company = 1, Crowd = 3,

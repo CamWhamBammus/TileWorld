@@ -85,7 +85,10 @@ public class Tracks : MonoBehaviour
             else return;                                     // grass keeps no print
         }
 
-        instance.Leave(new Mark { Sort = sort, At = at + Vector3.up * 0.012f, Yaw = yaw, Size = size, Made = Time.time,
+        // on the ground of its own tile, not where the foot was: a foot at a
+        // terrace edge can be over the step, and a print there would hang
+        at.y = WorldHeight.SurfaceY(tx, tz, seed) + Animal.FootingAt(tx, tz, seed) + 0.012f;
+        instance.Leave(new Mark { Sort = sort, At = at, Yaw = yaw, Size = size, Made = Time.time,
                                   Lasts = sort == Sort.SnowPrint ? 240f : 150f, Kind = kind });
     }
 
