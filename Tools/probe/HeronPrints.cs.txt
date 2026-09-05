@@ -55,10 +55,34 @@ public class _Probe : MonoBehaviour
         FindFirstObjectByType<Wildlife>().enabled = false;
         foreach (var wild in FindObjectsByType<Animal>(FindObjectsSortMode.None)) Destroy(wild.gameObject);
 
+        // how many tall things the undergrowth has standing within reach of a point
+        int TallNear(Vector3 at, float within)
+        {
+            int count = 0;
+            try
+            {
+                var under = FindFirstObjectByType<Undergrowth>();
+                var every = (Flora.Sprout[])typeof(Undergrowth).GetField("every", flags).GetValue(under);
+                var gathered = (Matrix4x4[][])typeof(Undergrowth).GetField("gathered", flags).GetValue(under);
+                for (int i = 0; every != null && gathered != null && i < every.Length && i < gathered.Length; i++)
+                {
+                    if (gathered[i] == null) continue;
+                    foreach (var m in gathered[i])
+                    {
+                        if (m.lossyScale.y * every[i].Size < 1.4f) continue;
+                        var pos = m.GetPosition(); pos.y = 0f; var flat = at; flat.y = 0f;
+                        if (Vector3.Distance(pos, flat) < within) count++;
+                    }
+                }
+            }
+            catch { }
+            return count;
+        }
+
         Vector2Int Level(System.Func<int, int, bool> suits, int across, int deep)
         {
             var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
-            for (int r = 2; r < 400; r += 2)
+            for (int r = 2; r < 56; r += 2)
             for (int dx = -r; dx <= r; dx += 2)
             for (int dz = -r; dz <= r; dz += 2)
             {
@@ -70,8 +94,9 @@ public class _Probe : MonoBehaviour
                     float h = WorldHeight.SurfaceY(cx + i, cz + j, seed); lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
                     if (!suits(cx + i, cz + j)) ok = false;
                 }
-                if (ok && hi - lo < 0.01f) return new Vector2Int(cx, cz);
+                if (ok && hi - lo < 0.26f && TallNear(new Vector3(cx * 2f, 0f, cz * 2f), 9f) == 0) return new Vector2Int(cx, cz);
             }
+            Mark("SITE: nothing suitable within range; falling back to home, which may be wrong");
             return home;
         }
 
@@ -89,21 +114,24 @@ public class _Probe : MonoBehaviour
             yield return new WaitForSecondsRealtime(0.8f);
             if (walk)
             {
-                stateField.SetValue(an, System.Enum.Parse(stateType, "Wander"));
+                stateField.SetValue(an, System.Enum.Parse(stateType, kind == FaunaKind.Goat ? "Flee" : "Wander"));
                 targetField.SetValue(an, origin + new Vector3(30f, 0f, 0f));
             }
             else { stateField.SetValue(an, System.Enum.Parse(stateType, "Stand")); }
             untilField.SetValue(an, Time.time + 1000f);
             yield return new WaitForSecondsRealtime(1.2f);
-            for (int f = 0; f < 4; f++)
+            // the camera on whichever side is dry ground, not over a lake
+            var probeAt = an.transform.position + new Vector3(0f, 0f, -camBack);
+            float side = WaterSurface.IsUnderwater(Mathf.RoundToInt(probeAt.x / 2f), Mathf.RoundToInt(probeAt.z / 2f), seed) ? 1f : -1f;
+            for (int f = 0; f < 6; f++)
             {
                 var p = an.transform.position;
-                cam.transform.position = p + new Vector3(0f, camUp, -camBack);
+                cam.transform.position = p + new Vector3(0f, camUp, side * camBack);
                 cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * camUp * 0.5f) - cam.transform.position, Vector3.up);
                 HideInterface();
                 yield return null;
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-hp-" + name + f + ".png"));
-                yield return new WaitForSecondsRealtime(walk ? 0.35f : 0.1f);
+                yield return new WaitForSecondsRealtime(walk ? (kind == FaunaKind.Goat ? 0.12f : 0.3f) : 0.1f);
                 if (!walk) break;
             }
             string feet = ""; for (int i = 0; i < 4; i++) feet += (an.Feet[i].y - origin.y).ToString("F2") + " ";
@@ -111,61 +139,37 @@ public class _Probe : MonoBehaviour
             Destroy(go);
         }
 
-        var grass = Level((x, z) => !WaterSurface.IsUnderwater(x, z, seed) && !SnowCover.IsSnowy(x, z, seed) && Regions.CharacterAtTile(x, z, seed) == Regions.Character.Forest, 8, 3);
-        yield return Frames(FaunaKind.Heron, grass, "heronwalk", true, 1.0f, 4.2f);
-        yield return Frames(FaunaKind.Deer, grass, "deerstand", false, 0.9f, 4.5f);
-        yield return Frames(FaunaKind.Raven, grass, "ravenhop", true, 0.5f, 2.2f);
-
-        // the heron in water it can stand in
+        // first, somewhere open by the map alone: a lowland chunk, dry and flat
+        // at its middle; go there and let it draw, so trees can be counted
         {
-            Vector2Int shore = grass; bool found = false;
-            var home = new Vector2Int(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize));
-            for (int r = 2; r < 400 && !found; r += 2)
-            for (int dx = -r; dx <= r && !found; dx += 2)
-            for (int dz = -r; dz <= r && !found; dz += 2)
+            var homeChunk = WorldGrid.WorldToChunk(player.position);
+            bool got = false;
+            for (int r = 1; r < 60 && !got; r++)
+            for (int dx = -r; dx <= r && !got; dx++)
+            for (int dz = -r; dz <= r && !got; dz++)
             {
                 if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
-                if (Fauna.Ground(FaunaKind.Heron, home.x + dx, home.y + dz, seed)) { shore = new Vector2Int(home.x + dx, home.y + dz); found = true; }
+                var chunk = new Vector2Int(homeChunk.x + dx, homeChunk.y + dz);
+                if (Regions.CharacterAt(chunk, seed) != Regions.Character.Lowland) continue;
+                int cx = chunk.x * WorldGrid.TilesPerChunk + 7, cz = chunk.y * WorldGrid.TilesPerChunk + 7;
+                if (WaterSurface.IsUnderwater(cx, cz, seed) || SnowCover.IsSnowy(cx, cz, seed)) continue;
+                var c = WorldGrid.ChunkCenter(chunk);
+                body.enabled = false; player.position = new Vector3(c.x, WorldHeight.SurfaceY(cx, cz, seed) + 1f, c.z); body.enabled = true;
+                got = true;
             }
-            var origin = new Vector3(shore.x * WorldGrid.TileSize, WorldHeight.SurfaceY(shore.x, shore.y, seed), shore.y * WorldGrid.TileSize);
-            body.enabled = false; player.position = origin + new Vector3(0f, 1f, -60f); body.enabled = true;
-            yield return new WaitForSecondsRealtime(5f);
-            HideInterface();
-            var go = new GameObject("probe heron"); var an = go.AddComponent<Animal>();
-            an.Settle(FaunaKind.Heron, seed, player, origin, 1f);
-            stateField.SetValue(an, System.Enum.Parse(stateType, "Graze")); untilField.SetValue(an, Time.time + 1000f);
-            yield return new WaitForSecondsRealtime(2f);
-            var p = an.transform.position;
-            cam.transform.position = p + new Vector3(3f, 1.2f, -3.5f);
-            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 0.7f) - cam.transform.position, Vector3.up);
-            HideInterface(); yield return null;
-            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-hp-heronwater.png"));
-            Mark("heron in water " + (WaterSurface.Level - origin.y).ToString("F2") + " deep");
-            yield return new WaitForSecondsRealtime(0.8f);
-            Destroy(go);
+            Mark("lowland chunk found " + got);
+            yield return new WaitForSecondsRealtime(8f);
         }
 
-        // prints on sand, from low down
-        {
-            var sand = Level((x, z) => !WaterSurface.IsUnderwater(x, z, seed) && !SnowCover.IsSnowy(x, z, seed) && Regions.CharacterAtTile(x, z, seed) == Regions.Character.Desert, 8, 3);
-            var origin = new Vector3(sand.x * WorldGrid.TileSize, WorldHeight.SurfaceY(sand.x, sand.y, seed), sand.y * WorldGrid.TileSize);
-            body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -70f); body.enabled = true;
-            yield return new WaitForSecondsRealtime(5f);
-            HideInterface();
-            var go = new GameObject("probe deer"); var an = go.AddComponent<Animal>();
-            an.Settle(FaunaKind.Deer, seed, player, origin + new Vector3(-6f, 0f, 0f), 1f);
-            typeof(Animal).GetField("yaw", flags).SetValue(an, 90f); go.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-            yield return new WaitForSecondsRealtime(0.5f);
-            stateField.SetValue(an, System.Enum.Parse(stateType, "Wander")); targetField.SetValue(an, origin + new Vector3(30f, 0f, 0f)); untilField.SetValue(an, Time.time + 1000f);
-            yield return new WaitForSecondsRealtime(4f);
-            var p = an.transform.position;
-            cam.transform.position = p + new Vector3(-4f, 0.35f, -1.6f);
-            cam.transform.rotation = Quaternion.LookRotation((p + new Vector3(-2f, -0.2f, 0f)) - cam.transform.position, Vector3.up);
-            HideInterface(); yield return null;
-            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-hp-sandprints.png"));
-            yield return new WaitForSecondsRealtime(0.8f);
-            Destroy(go);
-        }
+        var grass = Level((x, z) => !WaterSurface.IsUnderwater(x, z, seed) && !SnowCover.IsSnowy(x, z, seed)
+            && (Regions.CharacterAtTile(x, z, seed) == Regions.Character.Forest || Regions.CharacterAtTile(x, z, seed) == Regions.Character.Lowland || Regions.CharacterAtTile(x, z, seed) == Regions.Character.Hills), 5, 2);
+        Mark(string.Format("SITE {0}: surface {1:F2}, water level {2:F2}, underwater {3}, snowy {4}, region {5}, character of chunk {6}, footing {7:F2}",
+            grass, WorldHeight.SurfaceY(grass.x, grass.y, seed), WaterSurface.Level, WaterSurface.IsUnderwater(grass.x, grass.y, seed),
+            SnowCover.IsSnowy(grass.x, grass.y, seed), Regions.CharacterAtTile(grass.x, grass.y, seed),
+            Regions.CharacterAt(WorldGrid.WorldToChunk(new Vector3(grass.x * 2f, 0f, grass.y * 2f)), seed), Animal.FootingAt(grass.x, grass.y, seed)));
+        yield return Frames(FaunaKind.Heron, grass, "heronwalk", true, 1.0f, 4.2f);
+        yield return Frames(FaunaKind.Deer, grass, "deerstand", false, 0.9f, 4.5f);
+        yield return Frames(FaunaKind.Goat, grass, "goatrun", true, 0.9f, 5.5f);
         Mark("done");
     }
 }

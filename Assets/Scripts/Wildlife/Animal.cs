@@ -1503,6 +1503,13 @@ public class Animal : MonoBehaviour
             turn = 0f;
         }
 
+        // a bird carries its head up: the nod toward the grass that a walking
+        // grazer has is a grazer's, and a heron with it walked like a goose
+        if (Fauna.Flies(Kind) && !Fauna.All(Kind).Airborne && state != State.Graze && state != State.Drink && state != State.Alert)
+        {
+            dip = moving ? 2f + Mathf.Sin(gait + 1.1f) * 2.5f : 0f;
+        }
+
         // a boar rooting: snout in the ground, worked side to side, and the
         // ground turned over where it has been at it
         if (Fauna.All(Kind).Roots && state == State.Graze)
