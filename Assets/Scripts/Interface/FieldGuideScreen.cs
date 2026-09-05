@@ -205,7 +205,9 @@ public class FieldGuideScreen : MonoBehaviour
 
         for (int i = 0; i < all.Length; i++)
         {
-            var drawing = SketchBook.Of(all[i]);
+            // a drawing shows only once something is recorded against it: a
+            // file left on disk from another life of the world is not an entry
+            var drawing = FieldGuide.Count(all[i]) > 0 ? SketchBook.Of(all[i]) : null;
 
             thumbs[i].texture = drawing != null ? drawing : blank;
             thumbs[i].color = drawing != null ? Color.white : new Color(1f, 1f, 1f, 0.3f);
