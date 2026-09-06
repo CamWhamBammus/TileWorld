@@ -248,6 +248,25 @@ look at it from both sides. Heights in a builder are from the root on the
 walking surface; put the foundation top above 0.17 in snow country or the
 snow comes up through the floor.
 
+### Small finds
+
+`Finds.In(chunk, seed)` places the six small kinds (`FallenTree` .. `BrokenCart`,
+appended to `LandmarkKind` with `Small = true` and `Chance = 0` so `Landmarks.Work`
+never picks them): about one chunk in three that could have one does, by
+its own table of countries, on a level dry tile at least three in from the
+chunk's edge, and never in a chunk with a ruin or on ground a ruin's apron
+reaches. `Landmarks.Occupies` covers them too (`StructureOccupies` is the
+ruins alone), so the planting keeps off them. They are built by the same
+`LandmarkBuilder.Build` through the partial class in `LandmarkFinds.cs`, get
+a `LandmarkTag` like a ruin, and so can be drawn (`Sketching` lets a small
+find be drawn from 2.5 to 18 m; a ruin wants 12 to 52) and read
+(`Inscriptions` has five lines for each, what you notice rather than what
+is written). `LandmarkSpawner` finds them within 7 m and logs them in
+`LandmarkLog` under their chunk, which is what the book's page needs; the
+labels, compass, map and journal skip `Landmarks.IsSmall` kinds.
+`Tools/probe/Finds.cs.txt` counts them over 6561 chunks and photographs the
+nearest of each kind.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy
@@ -268,7 +287,18 @@ plainest stone tiles by measuring coloured against grey surface area, laid
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride
-is derived from the measured leg, not tuned. `Swimming` corrects float by
+is derived from the measured leg, not tuned. The feet are planted: a foot on
+the ground holds a point in the world and the leg is bent to reach it
+(`PlaceLeg`, two bones, the fold direction found by trying both). A foot
+lifts when its half of the stride is up, or when the hips have gone past
+what a small sag can make up, and swings to land a step ahead of the hip;
+standing, a foot the body has turned or drifted away from steps back under
+its hip, one foot at a time. A landing crouches on a spring scaled by the
+fall speed. The capsule's `isGrounded` flickers on a walk and is debounced.
+`Tools/probe/Surveyor.cs.txt` walks, runs, turns, jumps and draws with a
+side camera on the figure and reports foot skid (under 1% at a walk, about
+2% at a run), how far a planted sole sits off the ground, and the landing
+crouch. `Swimming` corrects float by
 position, not force. The controller's step offset is 0.45 (`PlayerArmature`),
 which a stair tread of 0.12-0.17 clears and a 0.45 step does not.
 

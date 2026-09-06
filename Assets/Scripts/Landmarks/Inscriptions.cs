@@ -160,6 +160,61 @@ public static class Inscriptions
         "\"{0}\" cut deep into the stone, and under it a number too worn to read."
     };
 
+    // the small finds: what you notice, rather than what is written
+    private static readonly string[] FallenTreeLines =
+    {
+        "Cut, not blown down: the stump is axe-marked, and the top was never taken.",
+        "Down across the way, with the moss thick on its upper side now.",
+        "Someone has been sawing at it. They gave up a third of the way through.",
+        "The roots came up with it. There is a hollow under them you could sleep in.",
+        "The bark is stripped along one side, the way antlers do it."
+    };
+
+    private static readonly string[] DeadFireLines =
+    {
+        "A ring of stones and cold ash. Whoever it was sat on the log and looked toward {0}.",
+        "The ash is old, and there are small bones in it.",
+        "Three fires' worth of ash in one ring. They came back here.",
+        "The charred ends lie pointing in, the way you lay one to burn all night.",
+        "A pot was left on the stones. Nothing in it but rain."
+    };
+
+    private static readonly string[] DroppedPackLines =
+    {
+        "A pack, dropped and not come back for. The straps are cut.",
+        "Whatever was in it was taken. A tin cup and a bundle of pencils were not.",
+        "Set down carefully beside a rock, as if for a moment. That was a long time ago.",
+        "A bedroll still tied to it, sodden. A name in the lining, half gone.",
+        "Lantern, pack and a stick, laid out in a row. Nobody about."
+    };
+
+    private static readonly string[] SnareLines =
+    {
+        "A snare, set and sprung, with nothing in it.",
+        "The cord is new. Someone is still working this ground.",
+        "A sapling bent to a peg, the noose across the run. Set for hares, by the size of it.",
+        "Three pegs and a bit of cord, set by somebody who had done it before.",
+        "Sprung, and a tuft of fur in the noose. Something got out of it."
+    };
+
+    private static readonly string[] WaymarkLines =
+    {
+        "A cairn by the way, with a flat stone on top. Whoever passes adds one.",
+        "Stones stacked to the shoulder: the way to {0} runs on from here.",
+        "A marker cairn, and one stone on it newer than the rest.",
+        "Scratched on the top stone: an arrow, and the word \"water\".",
+        "Someone knocked the top off it. Someone else put it back."
+    };
+
+    private static readonly string[] BrokenCartLines =
+    {
+        "A cart with a wheel off, left where it broke. The load is gone.",
+        "Bound for {0}, by the way it was on. It got this far.",
+        "The axle went. They took the horse and what they could carry.",
+        "Cart, wheel and a barrel too heavy to carry. The barrel is empty.",
+        "Grass up through the boards. It has been here for years."
+    };
+
     public static string For(Vector2Int chunk, LandmarkKind kind, int worldSeed)
     {
         var region = Regions.At(chunk, worldSeed);
@@ -180,6 +235,12 @@ public static class Inscriptions
             LandmarkKind.Lighthouse => LighthouseLines,
             LandmarkKind.HuntersHide => HideLines,
             LandmarkKind.BuriedTower => BuriedLines,
+            LandmarkKind.FallenTree => FallenTreeLines,
+            LandmarkKind.DeadFire => DeadFireLines,
+            LandmarkKind.DroppedPack => DroppedPackLines,
+            LandmarkKind.Snare => SnareLines,
+            LandmarkKind.Waymark => WaymarkLines,
+            LandmarkKind.BrokenCart => BrokenCartLines,
             _ => WatchLines
         };
 

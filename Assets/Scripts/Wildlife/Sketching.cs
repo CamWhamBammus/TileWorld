@@ -491,9 +491,11 @@ public class Sketching : MonoBehaviour
         {
             Vector3 middle = Seen(ruin.transform);
 
-            float distance = Look(camera, middle, ruinReach, false);
+            // a small find is drawn from close to, a ruin from back a way
+            bool small = Landmarks.IsSmall(ruin.Kind);
+            float distance = Look(camera, middle, small ? 18f : ruinReach, false);
 
-            if (distance < ruinBack) continue;
+            if (distance < (small ? 2.5f : ruinBack)) continue;
 
             float off = Off(camera, middle);
 

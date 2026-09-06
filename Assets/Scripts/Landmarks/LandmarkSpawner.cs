@@ -130,6 +130,7 @@ public class LandmarkSpawner : MonoBehaviour
             }
 
             var placement = Landmarks.In(index, seed);
+            if (!placement.Exists) placement = Finds.In(index, seed);
 
             if (!placement.Exists)
             {
@@ -172,10 +173,15 @@ public class LandmarkSpawner : MonoBehaviour
             float distance = flat.magnitude;
 
             var placement = Landmarks.In(pair.Key, seed);
+            if (!placement.Exists) placement = Finds.In(pair.Key, seed);
 
-            if (distance <= discoveryRange && LandmarkLog.Discover(pair.Key, placement.Kind))
+            // a small find is found close to, and named without ceremony
+            bool small = Landmarks.IsSmall(placement.Kind);
+            float within = small ? 7f : discoveryRange;
+
+            if (distance <= within && LandmarkLog.Discover(pair.Key, placement.Kind))
             {
-                Notices.Show("Found a " + Landmarks.NameOf(placement.Kind));
+                Notices.Show((small ? "A " : "Found a ") + Landmarks.NameOf(placement.Kind).ToLower());
                 Notices.Show(Inscriptions.For(pair.Key, placement.Kind, seed));
             }
 

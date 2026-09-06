@@ -529,6 +529,8 @@ public class WorldMap : MonoBehaviour
     {
         foreach (var pair in LandmarkLog.Found)
         {
+            if (Landmarks.IsSmall(pair.Value)) continue;
+
             var placement = Landmarks.In(pair.Key, world.WorldSeed);
 
             if (!placement.Exists)

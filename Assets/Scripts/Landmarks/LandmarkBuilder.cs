@@ -11,7 +11,7 @@ using UnityEngine;
 /// Distances here are in world units; a tile is two of them. Heights are
 /// from the structure's root, which sits on the walking surface of its tile.
 /// </summary>
-public static class LandmarkBuilder
+public static partial class LandmarkBuilder
 {
     private const float Tile = WorldGrid.TileSize;
 
@@ -90,6 +90,12 @@ public static class LandmarkBuilder
             case LandmarkKind.Lighthouse: Lighthouse(b); break;
             case LandmarkKind.HuntersHide: Hide(b); break;
             case LandmarkKind.BuriedTower: Buried(b); break;
+            case LandmarkKind.FallenTree: Fallen(b); break;
+            case LandmarkKind.DeadFire: Fire(b); break;
+            case LandmarkKind.DroppedPack: Pack(b); break;
+            case LandmarkKind.Snare: Snare(b); break;
+            case LandmarkKind.Waymark: Waymark(b); break;
+            case LandmarkKind.BrokenCart: Cart(b); break;
             default:
             case LandmarkKind.ForestersWatch: Watch(b); break;
         }

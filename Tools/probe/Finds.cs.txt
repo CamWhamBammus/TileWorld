@@ -1,0 +1,134 @@
+// A probe: the small finds. Counts how many chunks near the spawn have one,
+// then teleports to the nearest of each kind and photographs it.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Finds", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        var player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+        int seed = world.WorldSeed;
+
+        var main = Camera.main;
+        var cam = new GameObject("ProbeCam").AddComponent<Camera>();
+        cam.CopyFrom(main);
+        cam.depth = main.depth + 50f;
+        cam.fieldOfView = 40f;
+
+        // the count, and the nearest of each kind
+        var home = WorldGrid.WorldToChunk(player.position);
+        var nearest = new Dictionary<LandmarkKind, Landmarks.Placement>();
+        int chunks = 0, withFind = 0, withRuin = 0;
+        var perKind = new Dictionary<LandmarkKind, int>();
+        for (int r = 0; r <= 40; r++)
+        {
+            for (int dx = -r; dx <= r; dx++)
+            for (int dz = -r; dz <= r; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                var c = new Vector2Int(home.x + dx, home.y + dz);
+                chunks++;
+                if (Landmarks.In(c, seed).Exists) withRuin++;
+                var f = Finds.In(c, seed);
+                if (!f.Exists) continue;
+                withFind++;
+                perKind[f.Kind] = perKind.TryGetValue(f.Kind, out int n) ? n + 1 : 1;
+                if (!nearest.ContainsKey(f.Kind)) nearest[f.Kind] = f;
+            }
+            if (r % 8 == 7) yield return null;
+        }
+        string tally = "";
+        foreach (var pair in perKind) tally += Landmarks.NameOf(pair.Key) + " " + pair.Value + ", ";
+        Mark("COUNT: " + chunks + " chunks, " + withRuin + " with a ruin, " + withFind + " with a find: " + tally);
+
+        foreach (var pair in nearest)
+        {
+            var f = pair.Value;
+            string name = Landmarks.NameOf(f.Kind).Replace(" ", "");
+
+            // stand the player off the find, so the chunks and the find come in, then close enough to notice it
+            Vector3 standAt = f.Position + new Vector3(5.5f, 1.2f, 4.0f);
+            body.enabled = false; player.position = standAt; body.enabled = true;
+            yield return new WaitForSecondsRealtime(5f);
+
+            Transform built = null;
+            foreach (var tag in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None))
+                if (tag.Kind == f.Kind && tag.Chunk == f.Chunk) built = tag.transform;
+            if (built == null) { Mark(name + ": not built after 5 s"); continue; }
+
+            // the ground under the find versus where the find sits
+            float ground = float.MinValue;
+            foreach (var hit in Physics.RaycastAll(built.position + Vector3.up * 3f, Vector3.down, 8f, ~0, QueryTriggerInteraction.Ignore))
+                if (!hit.collider.transform.IsChildOf(built) && hit.point.y > ground) ground = hit.point.y;
+
+            // the player somewhere off to the side so as not to be in the shot, within noticing range
+            Vector3 aside = f.Position + Quaternion.Euler(0f, 130f, 0f) * Vector3.forward * 5.5f + Vector3.up * 1f;
+            body.enabled = false; player.position = aside; body.enabled = true;
+
+            for (int i = 0; i < 3; i++)
+            {
+                float yaw = 35f + i * 120f;
+                Vector3 dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+                float back = f.Kind == LandmarkKind.FallenTree || f.Kind == LandmarkKind.BrokenCart ? 8.5f : 5.5f;
+                cam.transform.position = built.position + dir * back + Vector3.up * (back * 0.42f);
+                cam.transform.LookAt(built.position + Vector3.up * 0.5f);
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return new WaitForEndOfFrame();
+                ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-fd-" + name + "-" + i + ".png"));
+                yield return new WaitForSecondsRealtime(0.3f);
+            }
+
+            yield return new WaitForSecondsRealtime(1.5f);
+            bool noticed = LandmarkLog.Found.ContainsKey(f.Chunk);
+            Mark(name + ": at " + f.Position.ToString("F1") + " yaw " + f.Yaw.ToString("F0") + ", ground under it " + (ground > float.MinValue ? (ground - built.position.y).ToString("F2") : "?") + " from its root, noticed " + noticed
+                 + (noticed ? " | \"" + Inscriptions.For(f.Chunk, f.Kind, seed) + "\"" : ""));
+        }
+
+        Mark("done");
+    }
+}

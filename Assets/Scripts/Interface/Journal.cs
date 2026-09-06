@@ -151,6 +151,8 @@ public class Journal : MonoBehaviour
 
         foreach (var pair in LandmarkLog.Found)
         {
+            if (Landmarks.IsSmall(pair.Value)) continue;
+
             var placement = Landmarks.In(pair.Key, seed);
             if (!placement.Exists) continue;
 

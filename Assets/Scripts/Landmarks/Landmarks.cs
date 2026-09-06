@@ -17,7 +17,17 @@ public enum LandmarkKind
     StandingStones,   // a ring of stones in the open
     Lighthouse,       // a tower on a plinth at a beach's edge, a light on top
     HuntersHide,      // a small raised platform in the forest
-    BuriedTower       // a tower sunk in the sand, leaning
+    BuriedTower,      // a tower sunk in the sand, leaning
+
+    // The small finds: a tile or two of something left between the ruins,
+    // scattered by the seed like the ruins but never charted from, never on
+    // the map, and never in a chunk that has a ruin already.
+    FallenTree,       // a tree down across the way, cut or blown
+    DeadFire,         // a ring of stones and cold ash, a log to sit on
+    DroppedPack,      // a pack set down and not come back for
+    Snare,            // a bent sapling and a noose, set for hares
+    Waymark,          // a small cairn by the way, a flat stone on top
+    BrokenCart        // a cart with a wheel off, left where it broke
 }
 
 /// <summary>
@@ -64,6 +74,9 @@ public static class Landmarks
         // do. Each has its own: a desert is common and level, and at one rate
         // for all there were fifteen gates to a watch.
         public int Chance;
+
+        // A small find rather than a ruin: placed by Finds, not here.
+        public bool Small;
     }
 
     private static readonly Kind[] kinds =
@@ -142,6 +155,32 @@ public static class Landmarks
                    SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
                    Where = "in the sand, the ruin of a keep sunk to its shoulders and leaning",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
+
+        // the small finds -- Chance is 0 because Finds places them, by its own table of countries
+        new Kind { Small = true, Chance = 0, Name = "Fallen Tree", Country = Regions.Character.Forest, Site = Site.Level,
+                   SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
+                   Where = "in any of the woods, a tree down across the way",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
+        new Kind { Small = true, Chance = 0, Name = "Dead Fire", Country = Regions.Character.Lowland, Site = Site.Level,
+                   SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
+                   Where = "almost anywhere somebody might have camped, a ring of stones and cold ash",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
+        new Kind { Small = true, Chance = 0, Name = "Dropped Pack", Country = Regions.Character.Hills, Site = Site.Level,
+                   SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
+                   Where = "on the open ground and the high ground, a pack set down and left",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
+        new Kind { Small = true, Chance = 0, Name = "Snare", Country = Regions.Character.Forest, Site = Site.Level,
+                   SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
+                   Where = "in the woods and the snow, a bent sapling and a noose on a hare's run",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
+        new Kind { Small = true, Chance = 0, Name = "Waymark", Country = Regions.Character.Hills, Site = Site.Level,
+                   SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
+                   Where = "on the hills, the peaks, the bare rock and the sand, a small cairn by the way",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
+        new Kind { Small = true, Chance = 0, Name = "Broken Cart", Country = Regions.Character.Lowland, Site = Site.Level,
+                   SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
+                   Where = "on the low ground and in the sand, a cart with a wheel off",
+                   Behind = 1, Ahead = 1, Aside = 1, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
     };
 
     /// <summary>How many kinds there are, so nothing has to be told twice.</summary>
@@ -202,14 +241,14 @@ public static class Landmarks
         // is rare was rarer still.
         var here = Regions.CharacterAt(chunk, worldSeed);
         int fitting = 0;
-        for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here) fitting++;
+        for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here && !kinds[i].Small) fitting++;
         if (fitting == 0) return result;
 
         int pick = Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % fitting;
         int index = -1;
         for (int i = 0; i < kinds.Length; i++)
         {
-            if (kinds[i].Country != here) continue;
+            if (kinds[i].Country != here || kinds[i].Small) continue;
             if (pick-- == 0) { index = i; break; }
         }
 
@@ -377,7 +416,17 @@ public static class Landmarks
     /// and no tile with a tree on it is laid there: a tree up through the
     /// middle of the platform is what the old ruins had.
     /// </summary>
+    /// <summary>Whether a ruin or a small find takes this tile.</summary>
     public static bool Occupies(int tileX, int tileZ, int worldSeed)
+    {
+        return StructureOccupies(tileX, tileZ, worldSeed) || Finds.Occupies(tileX, tileZ, worldSeed);
+    }
+
+    /// <summary>A small find rather than a ruin.</summary>
+    public static bool IsSmall(LandmarkKind kind) => All(kind).Small;
+
+    /// <summary>Whether a ruin's ground takes this tile.</summary>
+    public static bool StructureOccupies(int tileX, int tileZ, int worldSeed)
     {
         var chunk = new Vector2Int(
             Mathf.FloorToInt(tileX / (float)WorldGrid.TilesPerChunk),
@@ -404,7 +453,7 @@ public static class Landmarks
         return false;
     }
 
-    private static bool Level(int tileX, int tileZ, int half, float allow, int seed)
+    internal static bool Level(int tileX, int tileZ, int half, float allow, int seed)
     {
         float lo = float.MaxValue, hi = float.MinValue;
 
@@ -419,7 +468,7 @@ public static class Landmarks
         return hi - lo <= allow;
     }
 
-    private static bool Wet(int tileX, int tileZ, int half, int seed)
+    internal static bool Wet(int tileX, int tileZ, int half, int seed)
     {
         for (int dx = -half; dx <= half; dx++)
         for (int dz = -half; dz <= half; dz++)

@@ -92,6 +92,10 @@ Walk up to a structure and it gets added to your map with its name, and there's 
 
 *The Buried Tower.*
 
+### Small finds
+
+Between the ruins there are smaller things to come across: a fallen tree, a dead fire, a dropped pack, a snare, a waymark cairn, a broken cart. About one chunk in six has one, on level dry ground, and never in a chunk that has a ruin. They belong to regions too. Fallen trees and snares are in the woods and the snow, waymarks on the high ground, carts on the low ground and in the sand, and fires nearly anywhere somebody might have camped. Walking up to one names it and tells you what you noticed about it. Each sort has a page in the book that wants a drawing. They don't go on the map.
+
 ## Animals
 
 There are nineteen kinds. Each one sticks to its own biome and its own hours, so what you run into depends on where you are and what time it is.
