@@ -185,7 +185,7 @@ public class TimeOfDay : MonoBehaviour
         Color fogDay = Color.Lerp(new Color(0.66f, 0.776f, 0.882f), new Color(0.96f, 0.72f, 0.52f), horizon * 0.8f);
         Color fogNight = new Color(0.07f, 0.09f, 0.15f);
 
-        RenderSettings.fogColor = Color.Lerp(fogNight, fogDay, day);
+        RenderSettings.fogColor = fogLocked ? fogLockColour : Color.Lerp(fogNight, fogDay, day);
         RenderSettings.fogStartDistance = Mathf.Lerp(clearFogStart, 25f, Overcast);
         RenderSettings.fogEndDistance = Mathf.Lerp(clearFogEnd, overcastFogEnd, Overcast) * Mathf.Lerp(0.55f, 1f, day);
     }
@@ -241,6 +241,14 @@ public class TimeOfDay : MonoBehaviour
     }
 
     public float DayLengthMinutes => dayLengthMinutes;
+
+    // The fog held to one colour: for a panorama, the sky's own colour at the
+    // horizon, so what fades into it fades into sky and not into a haze of
+    // a slightly different shade that stands against the sky like a hill.
+    private bool fogLocked;
+    private Color fogLockColour;
+    public void LockFog(Color colour) { fogLocked = true; fogLockColour = colour; }
+    public void UnlockFog() { fogLocked = false; }
 
     /// <summary>Changes how long a day takes while running.</summary>
     public void SetDayLength(float minutes)

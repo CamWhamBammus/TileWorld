@@ -49,13 +49,16 @@ public class _Probe : MonoBehaviour
         int seed = world.WorldSeed;
         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
 
-        world.SetViewRadius(8);
+        // drawn much further than the game ever draws, for the shot alone, so
+        // the edge of the drawn world lies beyond the camera's far plane
+        typeof(ChunkManager).GetField("viewRadius", flags).SetValue(world, 11);
+        typeof(ChunkManager).GetMethod("RefreshVisibleChunks", flags).Invoke(world, new object[] { true });
         if (TimeOfDay.Instance != null) typeof(TimeOfDay).GetField("weather", flags).SetValue(TimeOfDay.Instance, false);
         // fog pulled in short of the edge of the drawn world, so the horizon fades rather than stops
         if (TimeOfDay.Instance != null)
         {
-            typeof(TimeOfDay).GetField("clearFogStart", flags).SetValue(TimeOfDay.Instance, 45f);
-            typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(TimeOfDay.Instance, 175f);
+            typeof(TimeOfDay).GetField("clearFogStart", flags).SetValue(TimeOfDay.Instance, 50f);
+            typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(TimeOfDay.Instance, 200f);
         }
 
         var cam = Camera.main;
@@ -97,7 +100,7 @@ public class _Probe : MonoBehaviour
             int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
             float ground = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level);
             body.enabled = false; player.position = new Vector3(stand.x, ground + 0.5f, stand.z); body.enabled = true;
-            yield return new WaitForSecondsRealtime(20f);
+            yield return new WaitForSecondsRealtime(38f);
 
             foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
             foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
@@ -107,7 +110,37 @@ public class _Probe : MonoBehaviour
 
             cam.transform.position = new Vector3(stand.x, ground + v.up, stand.z);
             cam.transform.rotation = Quaternion.identity;
+            cam.farClipPlane = 240f;
+            if (TimeOfDay.Instance != null) TimeOfDay.Instance.UnlockFog();
             yield return null;
+
+            // a small render first, to read the sky's colour at the horizon:
+            // the fog is then held to it, and the drawn world fades into sky
+            var small = new RenderTexture(256, 256, 24) { dimension = UnityEngine.Rendering.TextureDimension.Cube };
+            small.Create();
+            cam.RenderToCubemap(small, 63);
+            var peek = new Texture2D(256, 256, TextureFormat.RGB24, false);
+            Color sky = Color.gray;
+            float best = -1f;
+            foreach (int f in new[] { 0, 1, 4, 5 })
+            {
+                Graphics.SetRenderTarget(small, 0, (CubemapFace)f);
+                peek.ReadPixels(new Rect(0, 0, 256, 256), 0, 0); peek.Apply();
+                foreach (int row in new[] { 128 - 14, 128 + 14 })
+                {
+                    Color sum = Color.black; int n = 0;
+                    for (int x = 16; x < 240; x += 4) { sum += peek.GetPixel(x, row); n++; }
+                    var c = sum / n;
+                    float skyness = c.grayscale;                    // the sky is the brighter band, at any hour
+                    if (skyness > best) { best = skyness; sky = c; }
+                }
+            }
+            Graphics.SetRenderTarget(null);
+            small.Release();
+            if (TimeOfDay.Instance != null) TimeOfDay.Instance.LockFog(sky);
+            Mark(v.name + ": horizon sky " + ColorUtility.ToHtmlStringRGB(sky));
+            yield return null; yield return null;
+
             bool ok = cam.RenderToCubemap(rt, 63);
             for (int i = 0; i < 6; i++)
             {
