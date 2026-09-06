@@ -28,8 +28,11 @@ public class _Probe : MonoBehaviour
         var cam = Camera.main;
         Mark("title " + TitleMenu.IsUp + " | skybox " + (RenderSettings.skybox != null ? RenderSettings.skybox.name : "none") + " | clear " + (cam != null ? cam.clearFlags.ToString() : "-"));
         ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-title-a.png"));
-        yield return new WaitForSecondsRealtime(6f);
+        yield return new WaitForSecondsRealtime(24.4f);   // the first cross-fade begins at 26 s
         ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-title-b.png"));
+        yield return new WaitForSecondsRealtime(4.5f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-title-c.png"));
+        Mark("skybox now " + (RenderSettings.skybox != null ? RenderSettings.skybox.name : "none") + " | wind " + (FindFirstObjectByType<WindAmbience>() != null && FindFirstObjectByType<WindAmbience>().enabled) + " | birds " + (FindFirstObjectByType<BirdSong>() != null && FindFirstObjectByType<BirdSong>().enabled));
         yield return new WaitForSecondsRealtime(1f);
         Mark("done");
     }

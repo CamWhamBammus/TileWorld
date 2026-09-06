@@ -31,14 +31,15 @@ public class BirdSong : MonoBehaviour
     private void Start()
     {
         world = FindFirstObjectByType<ChunkManager>();
+        onTitle = world == null && TitleMenu.IsUp;
 
-        if (world == null)
+        if (world == null && !onTitle)
         {
             enabled = false;
             return;
         }
 
-        player = world.PlayerTransform;
+        player = world != null ? world.PlayerTransform : null;
 
         source = gameObject.AddComponent<AudioSource>();
         source.playOnAwake = false;
@@ -91,11 +92,23 @@ public class BirdSong : MonoBehaviour
         return clip;
     }
 
+    private bool onTitle;
+
     private void Update()
     {
-        if (player == null || Time.time < next) return;
+        if (Time.time < next) return;
 
         next = Time.time + Random.Range(gapSeconds.x, gapSeconds.y);
+
+        if (onTitle)
+        {
+            // a bird now and then, somewhere in the picture
+            source.pitch = Random.Range(0.85f, 1.2f);
+            source.PlayOneShot(calls[Random.Range(0, calls.Length)], volume * Random.Range(0.4f, 0.8f));
+            return;
+        }
+
+        if (player == null) return;
 
         // daylight only, and not up a mountain
         float time = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;

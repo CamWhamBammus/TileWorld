@@ -50,61 +50,70 @@ public class _Probe : MonoBehaviour
         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
 
         world.SetViewRadius(8);
-        if (TimeOfDay.Instance != null)
-        {
-            TimeOfDay.Instance.SetTime(0.31f);
-            typeof(TimeOfDay).GetField("weather", flags).SetValue(TimeOfDay.Instance, false);
-        }
-
-        // the nearest lighthouse: a lake, a shore, a tower to look at
-        var home = WorldGrid.WorldToChunk(player.position);
-        Landmarks.Placement at = default; bool found = false;
-        for (int r = 0; r < 90 && !found; r++)
-        for (int dx = -r; dx <= r && !found; dx++)
-        for (int dz = -r; dz <= r && !found; dz++)
-        {
-            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
-            var p = Landmarks.In(new Vector2Int(home.x + dx, home.y + dz), seed);
-            if (p.Exists && p.Kind == (LandmarkKind)4) { at = p; found = true; }
-        }
-        Mark("lighthouse " + found);
-        var turn = Quaternion.Euler(0f, at.Yaw, 0f);
-        // on the shore behind the hut, the pier and the lake out in front
-        Vector3 stand = at.Position + turn * new Vector3(-16f, 0f, 6f);
-        int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
-        float ground = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level);
-        body.enabled = false; player.position = new Vector3(stand.x, ground + 0.5f, stand.z); body.enabled = true;
-        yield return new WaitForSecondsRealtime(20f);
-
-        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
-        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
-            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
-        foreach (var an in FindObjectsByType<Animal>(FindObjectsSortMode.None)) Destroy(an.gameObject);
-        // the surveyor out of the picture
-        foreach (var rend in player.GetComponentsInChildren<Renderer>()) rend.enabled = false;
-        yield return new WaitForSecondsRealtime(1f);
+        if (TimeOfDay.Instance != null) typeof(TimeOfDay).GetField("weather", flags).SetValue(TimeOfDay.Instance, false);
+        // fog pulled in short of the edge of the drawn world, so the horizon fades rather than stops
+        if (TimeOfDay.Instance != null) { typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(TimeOfDay.Instance, 230f); }
 
         var cam = Camera.main;
         foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
-        cam.transform.position = new Vector3(stand.x, ground + 3.2f, stand.z);
-        cam.transform.rotation = Quaternion.identity;
-        yield return null;
+        foreach (var rend in player.GetComponentsInChildren<Renderer>()) rend.enabled = false;
 
-        var rt = new RenderTexture(1024, 1024, 24) { dimension = UnityEngine.Rendering.TextureDimension.Cube };
-        rt.Create();
-        bool ok = cam.RenderToCubemap(rt, 63);
-        Mark("cubemap rendered " + ok);
-
-        var face = new Texture2D(1024, 1024, TextureFormat.RGB24, false);
-        for (int i = 0; i < 6; i++)
+        // four views: a structure to stand near, the hour, where to stand from it, the name
+        var views = new (int kind, float hour, Vector3 off, float up, string name)[]
         {
-            Graphics.SetRenderTarget(rt, 0, (CubemapFace)i);
-            face.ReadPixels(new Rect(0, 0, 1024, 1024), 0, 0);
-            face.Apply();
-            File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "pano-" + i + ".png"), face.EncodeToPNG());
+            (4, 0.30f, new Vector3(-16f, 0f, 6f), 3.6f, "dawn"),
+            (3, 0.46f, new Vector3(-14f, 0f, 10f), 3.2f, "noon"),
+            (2, 0.72f, new Vector3(-18f, 0f, 12f), 4.0f, "dusk"),
+            (11, 0.965f, new Vector3(-12f, 0f, 8f), 3.0f, "night"),
+        };
+
+        var home = WorldGrid.WorldToChunk(player.position);
+        var rt = new RenderTexture(2048, 2048, 24) { dimension = UnityEngine.Rendering.TextureDimension.Cube };
+        rt.Create();
+        var face = new Texture2D(2048, 2048, TextureFormat.RGB24, false);
+
+        foreach (var v in views)
+        {
+            Landmarks.Placement at = default; bool found = false;
+            for (int r = 0; r < 90 && !found; r++)
+            for (int dx = -r; dx <= r && !found; dx++)
+            for (int dz = -r; dz <= r && !found; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                var p = Landmarks.In(new Vector2Int(home.x + dx, home.y + dz), seed);
+                if (p.Exists && p.Kind == (LandmarkKind)v.kind) { at = p; found = true; }
+            }
+            Mark(v.name + ": structure " + (LandmarkKind)v.kind + " found " + found);
+            if (!found) continue;
+
+            if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(v.hour);
+            var turn = Quaternion.Euler(0f, at.Yaw, 0f);
+            Vector3 stand = at.Position + turn * v.off;
+            int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+            float ground = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level);
+            body.enabled = false; player.position = new Vector3(stand.x, ground + 0.5f, stand.z); body.enabled = true;
+            yield return new WaitForSecondsRealtime(20f);
+
+            foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+            foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+            foreach (var an in FindObjectsByType<Animal>(FindObjectsSortMode.None)) if (an.Kind != FaunaKind.Deer && an.Kind != FaunaKind.Heron) Destroy(an.gameObject);
+            yield return new WaitForSecondsRealtime(1f);
+
+            cam.transform.position = new Vector3(stand.x, ground + v.up, stand.z);
+            cam.transform.rotation = Quaternion.identity;
+            yield return null;
+            bool ok = cam.RenderToCubemap(rt, 63);
+            for (int i = 0; i < 6; i++)
+            {
+                Graphics.SetRenderTarget(rt, 0, (CubemapFace)i);
+                face.ReadPixels(new Rect(0, 0, 2048, 2048), 0, 0);
+                face.Apply();
+                File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "pano-" + v.name + "-" + i + ".png"), face.EncodeToPNG());
+            }
+            Graphics.SetRenderTarget(null);
+            Mark(v.name + ": rendered " + ok);
         }
-        Graphics.SetRenderTarget(null);
-        Mark("faces written");
         Mark("done");
     }
 }

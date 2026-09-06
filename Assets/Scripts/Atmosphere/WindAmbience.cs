@@ -30,13 +30,17 @@ public class WindAmbience : MonoBehaviour
     {
         world = FindFirstObjectByType<ChunkManager>();
 
-        if (world == null)
+        // under the title there is no world, but there is a country in the
+        // picture, and it has a wind in it
+        onTitle = world == null && TitleMenu.IsUp;
+
+        if (world == null && !onTitle)
         {
             enabled = false;
             return;
         }
 
-        player = world.PlayerTransform;
+        player = world != null ? world.PlayerTransform : null;
 
         source = gameObject.AddComponent<AudioSource>();
         source.clip = Build();
@@ -91,9 +95,21 @@ public class WindAmbience : MonoBehaviour
         return clip;
     }
 
+    private bool onTitle;
+
     private void Update()
     {
-        if (player == null || source == null) return;
+        if (source == null) return;
+
+        if (onTitle)
+        {
+            // a steady low wind off the lake in the picture
+            source.volume = Mathf.MoveTowards(source.volume, maximumVolume * 0.38f, Time.deltaTime * 0.25f);
+            source.pitch = 0.92f;
+            return;
+        }
+
+        if (player == null) return;
 
         int seed = world.WorldSeed;
         int tileX = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize);

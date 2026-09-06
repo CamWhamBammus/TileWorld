@@ -284,6 +284,17 @@ menu, the opening, the dev tools -- wakes under the title. Playing the game
 scene straight from the editor still works: with nothing chosen it adopts a
 world of its own.
 
+Behind the title, four panoramas of the country -- the jetty at dawn, the
+snow cabin at noon, the desert gate at dusk, the standing stones at night --
+turn slowly and cross-fade every half minute; the game's wind and birds play
+under them. They are rendered by `Tools/probe/Panorama.cs.txt` (a cubemap
+from each spot, view radius 8, weather off, fog pulled in) into six faces
+each, kept as 1024 JPEGs in `Assets/Resources/Title/`, and baked by
+`MakePanorama` into DXT1-compressed cubemaps and skybox materials named
+`View-*` -- about 6 MB each. Uncompressed they were 144 MB each and GitHub
+refused them. To change a view, edit the spot in the probe, run it, copy the
+faces in, and bake.
+
 A world's settings live on `WorldSave` (weather, dayCycle, startHour,
 dayLengthMinutes, animals, ruins) and are read once, where they apply:
 `TimeOfDay.Start`, `Wildlife.Start`, and `Landmarks.In`, which answers

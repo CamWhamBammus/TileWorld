@@ -41,6 +41,17 @@ public class TitleMenu : MonoBehaviour
     private Camera eye;
     private float turn;
 
+    // several views of the country, one after another, cross-faded: the
+    // next is drawn by a second camera into a texture laid over the first
+    private Material[] views;
+    private int view;
+    private float nextView;
+    private Camera fader;
+    private RenderTexture faded;
+    private RawImage overlay;
+    private float fade = -1f;
+    private const float Dwell = 26f, Cross = 2.6f;
+
     private void Awake()
     {
         IsUp = true;
@@ -53,13 +64,28 @@ public class TitleMenu : MonoBehaviour
         // the country behind the menu: a panorama rendered from a lakeside,
         // as a skybox the camera turns slowly through
         eye = Camera.main;
-        var panorama = Resources.Load<Material>("Title/Panorama");
-        if (eye != null && panorama != null)
+        views = Resources.LoadAll<Material>("Title");
+        System.Array.Sort(views, (a, b) => string.CompareOrdinal(a.name, b.name));
+        if (eye != null && views.Length > 0)
         {
-            RenderSettings.skybox = panorama;
+            view = Random.Range(0, views.Length);
+            RenderSettings.skybox = views[view];
             eye.clearFlags = CameraClearFlags.Skybox;
             eye.fieldOfView = 58f;
             turn = Random.Range(0f, 360f);
+            nextView = Time.unscaledTime + Dwell;
+
+            if (views.Length > 1)
+            {
+                var faderGo = new GameObject("Fader");
+                faderGo.transform.SetParent(transform, false);
+                fader = faderGo.AddComponent<Camera>();
+                fader.clearFlags = CameraClearFlags.Skybox;
+                fader.cullingMask = 0;
+                fader.fieldOfView = eye.fieldOfView;
+                fader.enabled = false;
+                faderGo.AddComponent<Skybox>();
+            }
         }
 
         Build();
@@ -71,6 +97,40 @@ public class TitleMenu : MonoBehaviour
         if (eye == null || eye.clearFlags != CameraClearFlags.Skybox) return;
         turn += Time.unscaledDeltaTime * 1.6f;
         eye.transform.rotation = Quaternion.Euler(4f + Mathf.Sin(turn * 0.02f) * 2f, turn, 0f);
+
+        if (fader == null || overlay == null) return;
+
+        if (fade < 0f && Time.unscaledTime > nextView)
+        {
+            // begin the next view: drawn by the second camera behind the overlay
+            int next = (view + 1) % views.Length;
+            fader.GetComponent<Skybox>().material = views[next];
+            if (faded == null || faded.width != Screen.width || faded.height != Screen.height)
+            {
+                if (faded != null) faded.Release();
+                faded = new RenderTexture(Mathf.Max(8, Screen.width), Mathf.Max(8, Screen.height), 0);
+            }
+            fader.targetTexture = faded;
+            overlay.texture = faded;
+            fader.enabled = true;
+            fade = 0f;
+        }
+
+        if (fade >= 0f)
+        {
+            fader.transform.rotation = eye.transform.rotation;
+            fade += Time.unscaledDeltaTime / Cross;
+            overlay.color = new Color(1f, 1f, 1f, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(fade)));
+            if (fade >= 1f)
+            {
+                view = (view + 1) % views.Length;
+                RenderSettings.skybox = views[view];
+                overlay.color = new Color(1f, 1f, 1f, 0f);
+                fader.enabled = false;
+                fade = -1f;
+                nextView = Time.unscaledTime + Dwell;
+            }
+        }
     }
 
     private void OnDestroy() { IsUp = false; }
@@ -232,18 +292,15 @@ public class TitleMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // a photograph behind, only if there is no panorama to turn through;
-        // and a shade toward the edges either way, so the paper reads
-        if (Resources.Load<Material>("Title/Panorama") == null)
-        {
-            var backGo = new GameObject("Backdrop");
-            backGo.transform.SetParent(canvasGo.transform, false);
-            var back = backGo.AddComponent<RawImage>();
-            var photo = Resources.Load<Texture2D>("Title/backdrop");
-            back.texture = photo != null ? photo : Texture2D.blackTexture;
-            back.color = new Color(0.62f, 0.62f, 0.62f, 1f);
-            Stretch(backGo.GetComponent<RectTransform>());
-        }
+        // the next view, laid over the current one while it fades in
+        var overGo = new GameObject("Next view");
+        overGo.transform.SetParent(canvasGo.transform, false);
+        overlay = overGo.AddComponent<RawImage>();
+        overlay.color = new Color(1f, 1f, 1f, 0f);
+        overlay.raycastTarget = false;
+        Stretch(overGo.GetComponent<RectTransform>());
+
+        // and a shade toward the edges, so the paper reads
         var shadeGo = new GameObject("Shade");
         shadeGo.transform.SetParent(canvasGo.transform, false);
         var shade = shadeGo.AddComponent<RawImage>();
