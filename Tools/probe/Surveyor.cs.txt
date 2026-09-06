@@ -1,0 +1,219 @@
+// A probe: the surveyor's feet. Walks, runs, turns, stops, jumps and draws
+// with a side camera on them, and measures how far a planted foot skids,
+// how high the feet ride off the ground, and how far the landing crouches.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private Transform player;
+    private Camera cam;
+    private float camSide = 3.6f, camAhead = 0f, camUp = 1.15f;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) { Mark("boot again, ignored"); return; }
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private float Ground(Vector3 at)
+    {
+        float best = float.MinValue;
+        foreach (var hit in Physics.RaycastAll(at + Vector3.up * 1.2f, Vector3.down, 3.2f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.collider.transform == player || hit.collider.transform.IsChildOf(player)) continue;
+            if (hit.point.y > best) best = hit.point.y;
+        }
+        return best > float.MinValue ? best : player.position.y;
+    }
+
+    private void LateUpdate()
+    {
+        if (cam == null || player == null) return;
+        Vector3 at = player.position + player.right * camSide + player.forward * camAhead + Vector3.up * camUp;
+        cam.transform.position = at;
+        cam.transform.LookAt(player.position + Vector3.up * 0.9f);
+    }
+
+    private IEnumerator Shot(string name)
+    {
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-sv-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.4f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Feet", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        var body = player.GetComponent<CharacterController>();
+        var surveyor = FindFirstObjectByType<Surveyor>();
+        if (inputs == null || surveyor == null) { Mark("no inputs/surveyor"); Mark("done"); yield break; }
+
+        var main = Camera.main;
+        cam = new GameObject("ProbeCam").AddComponent<Camera>();
+        cam.CopyFrom(main);
+        cam.depth = main.depth + 50f;
+        cam.fieldOfView = 42f;
+
+        Transform[] ankles = new Transform[2];
+        foreach (var t in player.GetComponentsInChildren<Transform>()) if (t.name == "ankle") ankles[t.localPosition.x < 0f || ankles[0] != null ? 1 : 0] = t;
+        if (ankles[0] == null) foreach (var t in player.GetComponentsInChildren<Transform>()) if (t.name == "ankle" && ankles[0] == null) ankles[0] = t;
+        float ankleHeight = ankles[0] != null ? ankles[0].position.y - player.position.y : 0.18f;
+        var bootMesh = ankles[0] != null ? ankles[0].GetComponentInChildren<MeshRenderer>() : null;
+        if (bootMesh != null) ankleHeight = ankles[0].position.y - bootMesh.bounds.min.y;
+        Mark("ankle height at rest " + ankleHeight.ToString("F3"));
+
+        // stand
+        inputs.move = Vector2.zero;
+        yield return new WaitForSecondsRealtime(1.2f);
+        yield return Shot("stand");
+
+        // walk, run: skid and float
+        foreach (var run in new[] { false, true })
+        {
+            inputs.sprint = run;
+            inputs.move = new Vector2(0f, 1f);
+            yield return new WaitForSecondsRealtime(1.2f);
+            Surveyor.ResetSkid();
+            float floatSum = 0f, floatMax = -9f, floatMin = 9f; int samples = 0; float speedSum = 0f;
+            int frames = 0, ctrlGrounded = 0, capsuleGrounded = 0, heldFrames = 0;
+            var ctrl = player.GetComponent<StarterAssets.ThirdPersonController>();
+            float t0 = Time.time;
+            bool shot = false;
+            while (Time.time - t0 < 3.5f)
+            {
+                for (int s = 0; s < 2; s++)
+                {
+                    if (ankles[s] == null || !surveyor.Planted(s)) continue;
+                    float off = ankles[s].position.y - ankleHeight - Ground(ankles[s].position);
+                    floatSum += off; floatMax = Mathf.Max(floatMax, off); floatMin = Mathf.Min(floatMin, off); samples++;
+                }
+                speedSum += new Vector3(body.velocity.x, 0f, body.velocity.z).magnitude;
+                frames++; if (ctrl != null && ctrl.Grounded) ctrlGrounded++; if (body.isGrounded) capsuleGrounded++; if (surveyor.Planted(0) || surveyor.Planted(1)) heldFrames++;
+                if (!shot && Time.time - t0 > 1.4f) { shot = true; yield return Shot(run ? "run" : "walk"); }
+                yield return null;
+            }
+            Mark((run ? "RUN" : "WALK") + ": skid " + (100f * Surveyor.Skid / Mathf.Max(0.01f, Surveyor.Covered)).ToString("F1") + "% of " + Surveyor.Covered.ToString("F1") + " m"
+                 + " | planted foot off ground mean " + (floatSum / Mathf.Max(1, samples)).ToString("F3") + " min " + floatMin.ToString("F3") + " max " + floatMax.ToString("F3")
+                 + " | speed " + (speedSum / Mathf.Max(1, frames)).ToString("F2")
+                 + " | grounded: controller " + (100 * ctrlGrounded / Mathf.Max(1, frames)) + "% capsule " + (100 * capsuleGrounded / Mathf.Max(1, frames)) + "% a foot held " + (100 * heldFrames / Mathf.Max(1, frames)) + "%");
+        }
+
+        // stop: the feet come back under the hips
+        inputs.sprint = false;
+        inputs.move = Vector2.zero;
+        yield return new WaitForSecondsRealtime(1.5f);
+        {
+            string s = "STOP:";
+            for (int f = 0; f < 2; f++)
+            {
+                Vector3 hip = ankles[f].parent.parent.position; // knee -> hip
+                Vector3 foot = surveyor.PlantedAt(f);
+                s += " foot" + f + (surveyor.Planted(f) ? " planted" : " up") + " " + Vector2.Distance(new Vector2(hip.x, hip.z), new Vector2(foot.x, foot.z)).ToString("F2") + " m from under its hip";
+            }
+            Mark(s);
+        }
+        yield return Shot("stop");
+
+        // turn: a slow shuffle round, watched from the front quarter
+        inputs.analogMovement = true;
+        camSide = 2.6f; camAhead = 2.6f; camUp = 1.0f;
+        float yaw0 = player.eulerAngles.y;
+        inputs.move = new Vector2(0.28f, 0f);
+        yield return new WaitForSecondsRealtime(0.5f);
+        yield return Shot("turn");
+        inputs.move = new Vector2(0f, -0.28f);
+        yield return new WaitForSecondsRealtime(0.8f);
+        inputs.move = Vector2.zero;
+        inputs.analogMovement = false;
+        yield return new WaitForSecondsRealtime(1.4f);
+        {
+            string s = "TURN: body turned " + Mathf.Abs(Mathf.DeltaAngle(yaw0, player.eulerAngles.y)).ToString("F0") + " deg;";
+            for (int f = 0; f < 2; f++)
+            {
+                Vector3 hip = ankles[f].parent.parent.position;
+                Vector3 foot = surveyor.PlantedAt(f);
+                float footYaw = ankles[f].eulerAngles.y;
+                s += " foot" + f + " " + Vector2.Distance(new Vector2(hip.x, hip.z), new Vector2(foot.x, foot.z)).ToString("F2") + " m out, "
+                     + Mathf.Abs(Mathf.DeltaAngle(footYaw, player.eulerAngles.y)).ToString("F0") + " deg off the body";
+            }
+            Mark(s);
+        }
+        yield return Shot("turned");
+
+        // jump: feet clear, and the landing takes a crouch
+        camSide = 3.6f; camAhead = 0f; camUp = 1.15f;
+        inputs.move = new Vector2(0f, 1f);
+        yield return new WaitForSecondsRealtime(0.8f);
+        inputs.jump = true;
+        float dipMax = 0f, apex = player.position.y, floor0 = player.position.y; bool wasUp = false, landed = false; float tj = Time.time; bool airShot = false;
+        int airFrames = 0, airCtrlGrounded = 0, airHeld = 0; float landedAtT = 0f; bool landShot = false;
+        var ctrl2 = player.GetComponent<StarterAssets.ThirdPersonController>();
+        while (Time.time - tj < 3f)
+        {
+            bool up = !body.isGrounded;
+            if (up && !landed) { airFrames++; if (ctrl2 != null && ctrl2.Grounded) airCtrlGrounded++; if (surveyor.Planted(0) || surveyor.Planted(1)) airHeld++; }
+            if (up) { wasUp = true; apex = Mathf.Max(apex, player.position.y); }
+            if (up && !airShot && body.velocity.y < 0.5f) { airShot = true; yield return Shot("jump"); }
+            if (wasUp && !up && !landed) { landed = true; landedAtT = Time.time; }
+            if (landed) dipMax = Mathf.Max(dipMax, surveyor.Dip);
+            if (landed && !landShot && Time.time - landedAtT > 0.07f) { landShot = true; yield return Shot("land"); }
+            yield return null;
+        }
+        Mark("JUMP: left the ground " + wasUp + ", rose " + (apex - floor0).ToString("F2") + " m, landed " + landed + ", crouch on landing " + dipMax.ToString("F3") + " m | in the air " + airFrames + " frames, controller said grounded " + (100 * airCtrlGrounded / Mathf.Max(1, airFrames)) + "%, a foot held " + (100 * airHeld / Mathf.Max(1, airFrames)) + "%");
+        inputs.move = Vector2.zero;
+        yield return new WaitForSecondsRealtime(1f);
+
+        // draw: the glass up, feet planted
+        // the glass is raised by a held key, which cannot be pressed from here:
+        // so the sketching is switched off and its flag set by hand
+        var sketching = FindFirstObjectByType<Sketching>();
+        if (sketching != null) sketching.enabled = false;
+        try { typeof(Sketching).GetProperty("Working").SetValue(null, true); } catch (System.Exception e) { Mark("draw: " + e.Message); }
+        yield return new WaitForSecondsRealtime(0.8f);
+        Mark("DRAW: working " + Sketching.Working + ", feet planted " + surveyor.Planted(0) + " " + surveyor.Planted(1));
+        camSide = 2.4f; camAhead = 2.2f; camUp = 1.3f;
+        yield return Shot("draw");
+        try { typeof(Sketching).GetProperty("Working").SetValue(null, false); } catch { }
+        if (sketching != null) sketching.enabled = true;
+
+        Mark("done");
+    }
+}

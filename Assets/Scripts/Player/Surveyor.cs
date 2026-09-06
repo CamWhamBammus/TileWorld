@@ -14,6 +14,7 @@ public class Surveyor : MonoBehaviour
     private ChunkManager world;
     private Transform player;
     private CharacterController body;
+    private StarterAssets.ThirdPersonController controller;
 
     private SurveyorBuilder.Figure figure;
     private float height = 1.8f;
@@ -26,6 +27,43 @@ public class Surveyor : MonoBehaviour
     private float pace;
     private float drawing;      // how far into holding the glass up
     private float across, down; // where on the page the pencil is working
+
+    // The feet are planted: while one is on the ground it holds a point in
+    // the world and the leg is bent to reach it, so turning and slowing and
+    // speeding up leave no skid. A foot lifts when the stride says so, or
+    // when the body has gone too far from it to keep hold.
+    private float thigh = 0.38f, shin = 0.24f; // hip to knee, knee to ankle, measured
+    private float ankleHeight = 0.18f;          // the ankle above the sole, measured
+    private readonly Vector3[] planted = new Vector3[2];
+    private readonly float[] plantedYaw = new float[2];
+    private readonly float[] plantedAt = new float[2];
+    private readonly bool[] held = new bool[2];
+    private readonly float[] swing = new float[2];   // how far through a step, 0..1
+    private readonly float[] swingTime = new float[2];
+    private readonly Vector3[] liftedFrom = new Vector3[2];
+    private readonly float[] liftedYaw = new float[2];
+    private readonly bool[] stepping = new bool[2];  // a step taken standing, not striding
+    private bool feetHeld;      // whether the legs are being placed rather than posed
+    private float fallSpeed;    // the fastest we fell since leaving the ground
+    private float crouch, crouchRate; // a spring that takes the landing
+    private float sag;          // how far the hips drop to keep hold of the feet
+    private bool wasGrounded = true;
+    private float landedAt = -10f;
+    private float airborneSince = -1f; // when the capsule last lost the ground, or -1
+    private readonly Vector3[] footWas = new Vector3[2]; // where each foot ended the last frame, for the skid count
+
+    /// <summary>How far a foot skidded while it was meant to be planted, in metres, for the probes.</summary>
+    public static float Skid { get; private set; }
+    /// <summary>Ground covered while a foot was planted, to set the skid against.</summary>
+    public static float Covered { get; private set; }
+    /// <summary>How far the body is crouched on a landing, in metres, for the probes.</summary>
+    public float Dip => crouch;
+    /// <summary>Whether this foot is on the ground, for the probes.</summary>
+    public bool Planted(int side) => held[side];
+    /// <summary>Where this foot is planted, for the probes.</summary>
+    public Vector3 PlantedAt(int side) => planted[side];
+
+    public static void ResetSkid() { Skid = 0f; Covered = 0f; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -55,6 +93,7 @@ public class Surveyor : MonoBehaviour
         }
 
         body = player.GetComponent<CharacterController>();
+        controller = player.GetComponent<StarterAssets.ThirdPersonController>();
 
         if (body != null) height = body.height;
 
@@ -77,6 +116,25 @@ public class Surveyor : MonoBehaviour
         if (figure.Legs[0] != null && figure.Ankles[0] != null)
             lever = Vector3.Distance(figure.Legs[0].position, figure.Ankles[0].position);
 
+        if (figure.Legs[0] != null && figure.Knees[0] != null && figure.Ankles[0] != null)
+        {
+            thigh = Vector3.Distance(figure.Legs[0].position, figure.Knees[0].position);
+            shin = Vector3.Distance(figure.Knees[0].position, figure.Ankles[0].position);
+            ankleHeight = figure.Ankles[0].position.y - player.position.y;
+
+            // the sole is the bottom of the boot, not the bottom of the capsule
+            var boot = figure.Ankles[0].GetComponentInChildren<MeshRenderer>();
+            if (boot != null) ankleHeight = figure.Ankles[0].position.y - boot.bounds.min.y;
+        }
+
+        for (int side = 0; side < 2; side++)
+        {
+            planted[side] = Home(side);
+            plantedYaw[side] = player.eulerAngles.y;
+            plantedAt[side] = Time.time;
+            held[side] = true;
+        }
+
         Debug.Log("[Surveyor] Took over from the robot, " + height.ToString("F1") + " units tall.");
     }
 
@@ -92,7 +150,13 @@ public class Surveyor : MonoBehaviour
         pace = Mathf.Lerp(pace, moving.magnitude, 1f - Mathf.Exp(-8f * dt));
 
         bool afoot = pace > 0.15f;
-        bool grounded = body == null || body.isGrounded;
+        // The capsule's own flag flickers for a frame now and then on a walk,
+        // so the ground is only counted lost once it has been gone a moment.
+        bool touching = body == null || body.isGrounded;
+
+        if (!touching && airborneSince < 0f) airborneSince = Time.time;
+
+        bool grounded = touching || Time.time - airborneSince < 0.08f;
 
         // A leg on the ground has to travel backwards at exactly the speed the
         // world goes past, or the foot skates. So the stride is not a wave with
@@ -100,7 +164,7 @@ public class Surveyor : MonoBehaviour
         // rate falls out of how fast we are covering ground. At a walk the foot
         // is down for most of the stride; at a run it is barely down at all.
         stance = Mathf.Lerp(0.62f, 0.38f, Mathf.InverseLerp(2f, 5f, pace));
-        step = Reach * Mathf.Sin((20f + pace * 7f) * Mathf.Deg2Rad);
+        step = Reach * Mathf.Sin((16f + pace * 6f) * Mathf.Deg2Rad);
 
         bool wet = Swimming.Afloat;
 
@@ -122,8 +186,31 @@ public class Surveyor : MonoBehaviour
         across = Mathf.Sin(Time.time * 5.5f) * 0.7f + Mathf.Sin(Time.time * 2.3f) * 0.3f;
         down = Mathf.PingPong(Time.time * 0.21f, 1f) - 0.5f;
 
-        Limbs(dt, afoot, grounded && !wet, wet);
+        // The landing: how hard we came down sets how far the knees give,
+        // and a spring brings the body back up over the planted feet.
+        float vertical = body != null ? body.velocity.y : 0f;
+
+        if (!touching) fallSpeed = Mathf.Min(fallSpeed, vertical);
+
+        if (touching && airborneSince >= 0f && Time.time - airborneSince > 0.12f && fallSpeed < -2f)
+        {
+            // a spring with this much speed into it dips about a twentieth
+            // of that in metres before it turns: a hop gives a little, a
+            // long fall a lot
+            float hard = Mathf.InverseLerp(-2.5f, -10f, fallSpeed);
+            crouchRate += (1.8f + hard * 2.7f) * height / 1.8f;
+            landedAt = Time.time;
+        }
+
+        if (touching) { fallSpeed = 0f; airborneSince = -1f; }
+        wasGrounded = grounded;
+
+        crouchRate += (-crouch * 120f - crouchRate * 22f) * dt;
+        crouch = Mathf.Max(0f, crouch + crouchRate * dt);
+
         Carriage(dt, afoot && grounded && !wet, wet);
+        Limbs(dt, afoot, grounded && !wet, wet);
+        Feet(dt, afoot, grounded && !wet);
         Working();
     }
 
@@ -268,17 +355,263 @@ public class Surveyor : MonoBehaviour
                     holding ? -68f : -66f - down * 8f + across * 1.5f, drawing);
 
                 roll = Mathf.Lerp(roll, holding ? -30f : 28f + across * 5f, drawing);
-                hip = Mathf.Lerp(hip, 0f, drawing);
-                knee = Mathf.Lerp(knee, 0f, drawing);
-                ankle = Mathf.Lerp(ankle, 0f, drawing);
             }
 
-            Turn(figure.Legs[side], hip, dt, afoot || !grounded || wet, legRoll);
-            Turn(figure.Knees[side], knee, dt, afoot || !grounded || wet);
-            Turn(figure.Ankles[side], ankle, dt, afoot || !grounded || wet);
+            if (!grounded)
+            {
+                Turn(figure.Legs[side], hip, dt, true, legRoll);
+                Turn(figure.Knees[side], knee, dt, true);
+                Turn(figure.Ankles[side], ankle, dt, true);
+            }
+
             Turn(figure.Arms[side], shoulder, dt, true, roll);
             Turn(figure.Elbows[side], elbow, dt, true);
         }
+    }
+
+    /// <summary>How far the hips may drop after a foot before letting it go.</summary>
+    private float SagLimit => height * (0.02f + Mathf.Clamp(pace, 0f, 6f) * 0.006f);
+
+    /// <summary>Where a foot rests when standing: on the ground under its hip.</summary>
+    private Vector3 Home(int side)
+    {
+        Vector3 hip = figure.Legs[side].position;
+        return new Vector3(hip.x, GroundAt(hip) + ankleHeight, hip.z);
+    }
+
+    /// <summary>
+    /// The ground under a point, off whatever is there to stand on, ignoring
+    /// the player's own capsule. Falls back to the player's feet.
+    /// </summary>
+    private float GroundAt(Vector3 at)
+    {
+        float best = float.MinValue;
+        var hits = Physics.RaycastAll(at + Vector3.up * 1.2f, Vector3.down, 3.2f, ~0, QueryTriggerInteraction.Ignore);
+
+        foreach (var hit in hits)
+        {
+            if (hit.collider.transform == player || hit.collider.transform.IsChildOf(player)) continue;
+            if (hit.point.y > best) best = hit.point.y;
+        }
+
+        return best > float.MinValue ? best : player.position.y;
+    }
+
+    /// <summary>
+    /// Keeps the feet where they were put. A planted foot is a point in the
+    /// world; the leg is bent to reach it. On the move a foot lifts when its
+    /// half of the stride is up and swings to where the next step lands,
+    /// ahead of the hip by the reach the pace allows. Standing, a foot that
+    /// has been left behind by a turn or a shuffle steps back under its hip,
+    /// one at a time.
+    /// </summary>
+    private void Feet(float dt, bool afoot, bool active)
+    {
+        if (!active)
+        {
+            // in the air or the water the legs are posed instead; the feet
+            // will be planted afresh where they come down
+            feetHeld = false;
+            for (int side = 0; side < 2; side++) { held[side] = false; swing[side] = 0f; stepping[side] = false; }
+            return;
+        }
+
+        if (!feetHeld)
+        {
+            for (int side = 0; side < 2; side++)
+            {
+                Vector3 at = figure.Ankles[side].position;
+                planted[side] = new Vector3(at.x, GroundAt(at) + ankleHeight, at.z);
+                plantedYaw[side] = player.eulerAngles.y;
+                plantedAt[side] = Time.time;
+                held[side] = true;
+                stepping[side] = false;
+            }
+
+            feetHeld = true;
+        }
+
+        Vector3 forward = player.forward; forward.y = 0f; forward.Normalize();
+        float yaw = player.eulerAngles.y;
+        float rate = afoot ? pace * stance / Mathf.Max(0.05f, 2f * step) : 0f; // strides a second
+        float reach = (thigh + shin) * 0.985f;
+
+        for (int side = 0; side < 2; side++)
+        {
+            float phase = gait + (side == 0 ? 0f : 0.5f);
+            phase -= Mathf.Floor(phase);
+
+            Vector3 hip = figure.Legs[side].position;
+
+            if (held[side])
+            {
+                bool lift = false;
+
+                if (afoot && phase >= stance && phase < stance + 0.5f * (1f - stance)) lift = true;
+
+                // out of reach, past what dropping the hips can make up: let
+                // go rather than stretch -- though at a walk not while the
+                // other foot is in the air
+                Vector3 hipRest = hip + Vector3.up * sag;
+
+                if (Vector3.Distance(hipRest, planted[side]) > reach + SagLimit && (held[1 - side] || pace > 3.5f)) lift = true;
+
+                if (!afoot && !stepping[1 - side])
+                {
+                    // standing: step back under the hip if the body has turned
+                    // or drifted off the foot
+                    Vector3 home = Home(side);
+                    float away = Vector3.Distance(new Vector3(home.x, 0f, home.z), new Vector3(planted[side].x, 0f, planted[side].z));
+                    float turned = Mathf.Abs(Mathf.DeltaAngle(plantedYaw[side], yaw));
+
+                    if ((away > 0.10f || turned > 32f) && Time.time > plantedAt[side] + 0.12f) { lift = true; stepping[side] = true; }
+                }
+
+                if (lift)
+                {
+                    held[side] = false;
+                    swing[side] = 0f;
+                    liftedFrom[side] = planted[side];
+                    liftedYaw[side] = plantedYaw[side];
+                    swingTime[side] = afoot && rate > 0.01f ? Mathf.Clamp((1f - stance) / rate, 0.16f, 0.34f) : 0.30f;
+                }
+            }
+
+            if (held[side])
+            {
+                // heel down, roll flat, and up onto the toe before it lifts
+                float held = afoot ? Mathf.Clamp01((Time.time - plantedAt[side]) / Mathf.Max(0.1f, stance / Mathf.Max(0.01f, rate)))
+                                   : 1f;
+                float pitch = afoot ? (held < 0.5f ? Mathf.Lerp(-8f, 0f, held * 2f) : Mathf.Lerp(0f, 12f, (held - 0.5f) * 2f)) : 0f;
+
+                // the toe stays on the ground as the heel comes up, so the
+                // ankle rides up and forward on a pivot at the toe
+                float toe = 0.10f * height;
+                Vector3 at = planted[side]
+                             + Vector3.up * (toe * Mathf.Sin(Mathf.Max(0f, pitch) * Mathf.Deg2Rad))
+                             + Quaternion.Euler(0f, plantedYaw[side], 0f) * Vector3.forward * (toe * (1f - Mathf.Cos(Mathf.Max(0f, pitch) * Mathf.Deg2Rad)));
+
+                PlaceLeg(side, at, plantedYaw[side], pitch);
+
+                // the probes read this: a planted foot ought not to move
+                if (afoot && Time.time > plantedAt[side] + dt)
+                {
+                    Vector3 slid = figure.Ankles[side].position - footWas[side]; slid.y = 0f;
+                    Vector3 went = (body != null ? body.velocity : Vector3.zero) * dt; went.y = 0f;
+                    Skid += slid.magnitude;
+                    Covered += went.magnitude;
+                }
+
+                footWas[side] = figure.Ankles[side].position;
+            }
+            else
+            {
+                // swinging: from where it lifted to where it lands, which
+                // moves with the hip so a turn mid-step still lands under it
+                swing[side] = Mathf.Min(1f, swing[side] + dt / Mathf.Max(0.05f, swingTime[side]));
+
+                float t = swing[side];
+                float eased = t * t * (3f - 2f * t);
+
+                Vector3 landing;
+
+                if (afoot)
+                {
+                    Vector3 ahead = hip + forward * step;
+                    landing = new Vector3(ahead.x, GroundAt(ahead) + ankleHeight, ahead.z);
+                }
+                else landing = Home(side);
+
+                float clearance = afoot ? 0.035f * height + pace * 0.012f : 0.03f * height;
+                Vector3 at = Vector3.Lerp(liftedFrom[side], landing, eased) + Vector3.up * (Mathf.Sin(t * Mathf.PI) * clearance);
+                float footYaw = Mathf.LerpAngle(liftedYaw[side], yaw, eased);
+
+                // toe a shade up as it comes through, heel first as it lands
+                float pitch = Mathf.Lerp(-6f, -9f, t);
+
+                PlaceLeg(side, at, footYaw, pitch);
+
+                footWas[side] = figure.Ankles[side].position;
+
+                if (t >= 1f)
+                {
+                    // where it got to, not where it was aimed: a foot never
+                    // holds a point the leg cannot reach
+                    Vector3 got = figure.Ankles[side].position;
+                    planted[side] = new Vector3(got.x, landing.y, got.z);
+                    plantedYaw[side] = yaw;
+                    plantedAt[side] = Time.time;
+                    held[side] = true;
+                    stepping[side] = false;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Bends a leg so the ankle sits at a point, and lays the boot flat on
+    /// the ground facing a heading. The knee goes forward; which way the
+    /// shin folds is found by trying both and keeping the one that lands
+    /// the ankle on the mark, the same as the drawing arm.
+    /// </summary>
+    private void PlaceLeg(int side, Vector3 target, float yaw, float pitch)
+    {
+        Transform hipJoint = figure.Legs[side];
+        Transform kneeJoint = figure.Knees[side];
+        Transform ankleJoint = figure.Ankles[side];
+
+        if (hipJoint == null || kneeJoint == null || ankleJoint == null) return;
+
+        Vector3 out_ = target - hipJoint.position;
+        float span = Mathf.Clamp(out_.magnitude, Mathf.Abs(thigh - shin) + 0.01f, thigh + shin - 0.004f);
+
+        if (out_.sqrMagnitude < 0.0001f) return;
+
+        out_.Normalize();
+
+        // the knee rides forward of the line from hip to ankle
+        Vector3 pole = figure.Root.forward;
+        Vector3 axis = Vector3.Cross(out_, pole);
+
+        if (axis.sqrMagnitude < 0.0001f) axis = figure.Root.right;
+
+        axis.Normalize();
+
+        float lift = Mathf.Acos(Mathf.Clamp((thigh * thigh + span * span - shin * shin) / (2f * thigh * span), -1f, 1f)) * Mathf.Rad2Deg;
+        float fold = 180f - Mathf.Acos(Mathf.Clamp((thigh * thigh + shin * shin - span * span) / (2f * thigh * shin), -1f, 1f)) * Mathf.Rad2Deg;
+
+        Vector3 downThigh = Quaternion.AngleAxis(lift, axis) * out_;
+        Vector3 sideways = Vector3.Cross(downThigh, target - hipJoint.position);
+
+        if (sideways.sqrMagnitude < 0.0001f) sideways = figure.Root.right;
+
+        sideways.Normalize();
+
+        var turned = Quaternion.LookRotation(Vector3.Cross(sideways, -downThigh), -downThigh);
+        Vector3 kneeAt = hipJoint.position + downThigh * thigh;
+
+        float best = 0f, nearest = float.MaxValue;
+
+        foreach (float way in new[] { 1f, -1f })
+        {
+            Vector3 lower = (turned * Quaternion.Euler(way * fold, 0f, 0f)) * Vector3.down;
+            float missed = Vector3.Distance(kneeAt + lower * shin, target);
+
+            if (missed < nearest) { nearest = missed; best = way; }
+        }
+
+        // just landed: ease in over the first moments rather than snap from the jump pose
+        float blend = Mathf.Clamp01((Time.time - landedAt) / 0.14f);
+
+        var hipRot = turned;
+        var kneeRot = Quaternion.Euler(best * fold, 0f, 0f);
+
+        hipJoint.rotation = blend >= 1f ? hipRot : Quaternion.Slerp(hipJoint.rotation, hipRot, blend);
+        kneeJoint.localRotation = blend >= 1f ? kneeRot : Quaternion.Slerp(kneeJoint.localRotation, kneeRot, blend);
+
+        // the boot lies on the ground whatever the leg above it is doing
+        var boot = Quaternion.Euler(pitch, yaw, 0f);
+        ankleJoint.rotation = blend >= 1f ? boot : Quaternion.Slerp(ankleJoint.rotation, boot, blend);
     }
 
     /// <summary>
@@ -409,12 +742,31 @@ public class Surveyor : MonoBehaviour
 
         float lean = afoot ? Mathf.Sin(gait * Mathf.PI * 2f) * height * 0.007f * (1f - drawing) : 0f;
 
+        // The hips drop to keep hold of the feet: a leg reaching to a planted
+        // foot at the end of its step is longer than a leg hanging straight,
+        // and the difference is made up here rather than by the foot skidding
+        // in to meet it. That is where the bob of a walk really comes from.
+        float wanted = 0f;
+
+        if (feetHeld)
+        {
+            for (int side = 0; side < 2; side++)
+            {
+                if (!held[side] || figure.Legs[side] == null) continue;
+                Vector3 hipRest = figure.Legs[side].position + Vector3.up * sag;
+                wanted = Mathf.Max(wanted, Vector3.Distance(hipRest, planted[side]) - (thigh + shin) * 0.985f);
+            }
+        }
+
+        wanted = Mathf.Min(wanted, SagLimit);
+        sag = Mathf.Lerp(sag, wanted, 1f - Mathf.Exp(-22f * dt));
+
         var local = figure.Root.localPosition;
-        local.y = Mathf.Lerp(local.y, rise, 1f - Mathf.Exp(-12f * dt));
+        local.y = Mathf.Lerp(local.y, rise, 1f - Mathf.Exp(-12f * dt)) - crouch - sag;
         local.x = Mathf.Lerp(local.x, lean, 1f - Mathf.Exp(-12f * dt));
         figure.Root.localPosition = local;
 
-        float tip = Mathf.Clamp(pace * 1.1f, 0f, 7f) * (1f - drawing);
+        float tip = Mathf.Clamp(pace * 1.1f, 0f, 7f) * (1f - drawing) + crouch / height * 60f;
 
         if (wet) tip = 15f * (1f - drawing);      // leant into the water
 
