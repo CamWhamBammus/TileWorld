@@ -10,7 +10,7 @@ public static class MakePanorama
     [MenuItem("Tools/Tile World/Bake the title panorama")]
     public static void Go()
     {
-        foreach (string name in new[] { "dawn", "noon", "dusk", "night" }) Bake(name);
+        foreach (string name in new[] { "1-dawn", "2-morning", "3-noon", "4-dusk", "5-night" }) Bake(name);
         AssetDatabase.SaveAssets();
         EditorApplication.Exit(0);
     }
@@ -45,7 +45,7 @@ public static class MakePanorama
         var mat = new Material(Shader.Find("Skybox/Cubemap"));
         mat.SetTexture("_Tex", cube);
         // snow at noon blows out; the night is drawn a touch up, so it reads behind the paper
-        mat.SetFloat("_Exposure", name == "noon" ? 0.78f : name == "night" ? 1.25f : 1.0f);
+        mat.SetFloat("_Exposure", name.Contains("noon") ? 0.80f : name.Contains("night") ? 1.25f : 1.0f);
         AssetDatabase.CreateAsset(mat, "Assets/Resources/Title/View-" + name + ".mat");
         Debug.Log("PANO baked " + name + " at " + size);
     }

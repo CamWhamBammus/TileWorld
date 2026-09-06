@@ -52,7 +52,11 @@ public class _Probe : MonoBehaviour
         world.SetViewRadius(8);
         if (TimeOfDay.Instance != null) typeof(TimeOfDay).GetField("weather", flags).SetValue(TimeOfDay.Instance, false);
         // fog pulled in short of the edge of the drawn world, so the horizon fades rather than stops
-        if (TimeOfDay.Instance != null) { typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(TimeOfDay.Instance, 230f); }
+        if (TimeOfDay.Instance != null)
+        {
+            typeof(TimeOfDay).GetField("clearFogStart", flags).SetValue(TimeOfDay.Instance, 45f);
+            typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(TimeOfDay.Instance, 175f);
+        }
 
         var cam = Camera.main;
         foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
@@ -61,10 +65,11 @@ public class _Probe : MonoBehaviour
         // four views: a structure to stand near, the hour, where to stand from it, the name
         var views = new (int kind, float hour, Vector3 off, float up, string name)[]
         {
-            (4, 0.30f, new Vector3(-16f, 0f, 6f), 3.6f, "dawn"),
-            (3, 0.46f, new Vector3(-14f, 0f, 10f), 3.2f, "noon"),
-            (2, 0.72f, new Vector3(-18f, 0f, 12f), 4.0f, "dusk"),
-            (11, 0.965f, new Vector3(-12f, 0f, 8f), 3.0f, "night"),
+            (4, 0.30f, new Vector3(-12f, 0f, 5f), 2.2f, "1-dawn"),
+            (0, 0.38f, new Vector3(-20f, 0f, 13f), 2.4f, "2-morning"),
+            (8, 0.46f, new Vector3(-17f, 0f, 11f), 2.6f, "3-noon"),
+            (12, 0.72f, new Vector3(-13f, 0f, 9f), 2.4f, "4-dusk"),
+            (11, 0.965f, new Vector3(-10f, 0f, 7f), 2.2f, "5-night"),
         };
 
         var home = WorldGrid.WorldToChunk(player.position);

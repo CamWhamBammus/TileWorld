@@ -33,6 +33,7 @@ public class TimeOfDay : MonoBehaviour
     [SerializeField] private float noonIntensity = 1.25f;
     [Tooltip("Night has to stay navigable. Fully dark looks good in a screenshot and is unplayable.")]
     [SerializeField] private float moonIntensity = 0.42f;
+    [SerializeField] private float clearFogStart = 110f;
     [SerializeField] private float clearFogEnd = 430f;
     [SerializeField] private float overcastFogEnd = 160f;
 
@@ -185,7 +186,7 @@ public class TimeOfDay : MonoBehaviour
         Color fogNight = new Color(0.07f, 0.09f, 0.15f);
 
         RenderSettings.fogColor = Color.Lerp(fogNight, fogDay, day);
-        RenderSettings.fogStartDistance = Mathf.Lerp(110f, 25f, Overcast);
+        RenderSettings.fogStartDistance = Mathf.Lerp(clearFogStart, 25f, Overcast);
         RenderSettings.fogEndDistance = Mathf.Lerp(clearFogEnd, overcastFogEnd, Overcast) * Mathf.Lerp(0.55f, 1f, day);
     }
 

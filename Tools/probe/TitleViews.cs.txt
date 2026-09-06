@@ -1,0 +1,47 @@
+// A probe: every view behind the title, photographed twice, facing opposite ways.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var title = FindFirstObjectByType<TitleMenu>();
+        var views = (Material[])typeof(TitleMenu).GetField("views", flags).GetValue(title);
+        var cam = Camera.main;
+        title.enabled = false;   // hold the camera still
+        Mark("views " + views.Length);
+        for (int i = 0; i < views.Length; i++)
+        {
+            RenderSettings.skybox = views[i];
+            foreach (float yaw in new[] { 0f, 180f })
+            {
+                cam.transform.rotation = Quaternion.Euler(4f, yaw, 0f);
+                yield return null; yield return null;
+                ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-tv-" + views[i].name + "-" + (int)yaw + ".png"));
+                yield return new WaitForSecondsRealtime(0.6f);
+            }
+        }
+        Mark("done");
+    }
+}
