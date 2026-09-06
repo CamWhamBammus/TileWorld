@@ -356,16 +356,17 @@ public class DevTools : MonoBehaviour
 
         // Two pages: the places, and the animals. The tabs sit either side
         // of the heading; whichever is not showing is simply switched off.
-        pages = new GameObject[2];
-        for (int p = 0; p < 2; p++)
+        pages = new GameObject[3];
+        for (int p = 0; p < 3; p++)
         {
-            pages[p] = new GameObject(p == 0 ? "Places" : "Animals");
+            pages[p] = new GameObject(p == 0 ? "Places" : p == 1 ? "Animals" : "Title");
             pages[p].transform.SetParent(cardGo.transform, false);
             var pr = pages[p].AddComponent<RectTransform>();
             pr.anchorMin = Vector2.zero; pr.anchorMax = Vector2.one; pr.offsetMin = Vector2.zero; pr.offsetMax = Vector2.zero;
         }
         Button("Places", cardGo.transform, new Vector2(-380f, 438f), new Vector2(150f, 44f), () => ShowPage(0));
         Button("Animals", cardGo.transform, new Vector2(380f, 438f), new Vector2(150f, 44f), () => ShowPage(1));
+        Button("Title", cardGo.transform, new Vector2(380f, 388f), new Vector2(150f, 44f), () => ShowPage(2));
         var placesGo = pages[0];
         heading.color = new Color(0.85f, 0.87f, 0.90f);
 
@@ -429,6 +430,7 @@ public class DevTools : MonoBehaviour
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
         BuildAnimals(pages[1].transform);
+        BuildTitle(pages[2].transform);
         ShowPage(0);
 
         panel.SetActive(false);
@@ -512,6 +514,54 @@ public class DevTools : MonoBehaviour
     }
 
     private TMP_Text slowLabel;
+    private TMP_Text capturedLabel;
+
+    /// <summary>
+    /// The title page: capture the view from here for the title's backdrop.
+    /// Stand somewhere good, set the hour and the weather on the animals
+    /// page, and press it; the editor bakes what has been captured.
+    /// </summary>
+    private void BuildTitle(Transform page)
+    {
+        Label("How", page, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
+            .text = "THE TITLE'S BACKDROP";
+        Label("Why", page, 16f, new Vector2(0f, 300f), new Vector2(820f, 120f))
+            .text = "Stand somewhere worth looking at, set the hour and weather on the Animals page, and capture. "
+                  + "Six faces are rendered from where the camera is, with the world drawn out to the horizon. "
+                  + "Captured views wait beside the saves until you bake them in the editor "
+                  + "(Tools > Tile World > Bake the title panorama), which puts them behind the menu in the order captured.";
+
+        string[] names = { "dawn", "morning", "noon", "afternoon", "dusk", "night" };
+        for (int i = 0; i < names.Length; i++)
+        {
+            string name = names[i];
+            Button("Capture as " + name, page, new Vector2((i % 3 - 1f) * 290f, 190f - (i / 3) * 56f), new Vector2(280f, 50f), () => StartCoroutine(CaptureTitle(name)));
+        }
+
+        capturedLabel = Label("Captured", page, 17f, new Vector2(0f, 40f), new Vector2(880f, 30f));
+        Button("Throw the captured views away", page, new Vector2(0f, -20f), new Vector2(430f, 50f), () =>
+        {
+            PanoramaCapture.Clear();
+            Notices.Show("Dev: captured views thrown away.");
+            RefreshCaptured();
+        });
+        RefreshCaptured();
+    }
+
+    private void RefreshCaptured()
+    {
+        if (capturedLabel != null) capturedLabel.text = PanoramaCapture.Captured() + " view(s) captured, waiting to be baked";
+    }
+
+    private System.Collections.IEnumerator CaptureTitle(string name)
+    {
+        Toggle(false);
+        var cam = Camera.main;
+        if (cam == null) yield break;
+        // the same name captured again replaces it
+        yield return PanoramaCapture.Capture(cam, name, Notices.Show);
+        RefreshCaptured();
+    }
 
     /// <summary>A spot ten metres ahead, on ground, or as near as can be found.</summary>
     private Vector3 Ahead(float metres, float aside = 0f)

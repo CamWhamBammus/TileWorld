@@ -10,7 +10,52 @@ public static class MakePanorama
     [MenuItem("Tools/Tile World/Bake the title panorama")]
     public static void Go()
     {
-        foreach (string name in new[] { "1-dawn", "2-morning", "3-noon", "4-dusk", "5-night" }) Bake(name);
+        // Views captured in play wait beside the saves; brought in, they
+        // replace whatever is baked now.
+        string captured = System.IO.Path.Combine(Application.persistentDataPath, "title-views");
+        if (System.IO.Directory.Exists(captured))
+        {
+            var faces0 = System.IO.Directory.GetFiles(captured, "*-0.png");
+            if (faces0.Length > 0)
+            {
+                foreach (string old in System.IO.Directory.GetFiles("Assets/Resources/Title"))
+                    if (System.IO.Path.GetFileName(old).StartsWith("pano_") || System.IO.Path.GetFileName(old).StartsWith("View-"))
+                        AssetDatabase.DeleteAsset(old.Replace("\\", "/"));
+                var order = new System.Collections.Generic.List<string>();
+                foreach (string f0 in faces0)
+                {
+                    string name = System.IO.Path.GetFileName(f0); name = name.Substring(0, name.Length - 6);
+                    order.Add(name);
+                }
+                order.Sort((a, b) => System.IO.File.GetLastWriteTimeUtc(System.IO.Path.Combine(captured, a + "-0.png")).CompareTo(System.IO.File.GetLastWriteTimeUtc(System.IO.Path.Combine(captured, b + "-0.png"))));
+                for (int i = 0; i < order.Count; i++)
+                    for (int f = 0; f < 6; f++)
+                    {
+                        string src = System.IO.Path.Combine(captured, order[i] + "-" + f + ".png");
+                        var bytes = System.IO.File.ReadAllBytes(src);
+                        // faces come out of a 2D render upright; the cubemap wants them the other way up
+                        var tex = new Texture2D(2, 2); tex.LoadImage(bytes);
+                        var flipped = new Texture2D(tex.width, tex.height, TextureFormat.RGB24, false);
+                        var px = tex.GetPixels32();
+                        var outPx = new Color32[px.Length];
+                        for (int y = 0; y < tex.height; y++) System.Array.Copy(px, y * tex.width, outPx, (tex.height - 1 - y) * tex.width, tex.width);
+                        flipped.SetPixels32(outPx); flipped.Apply();
+                        System.IO.File.WriteAllBytes("Assets/Resources/Title/pano_" + (i + 1) + "-" + order[i] + "_" + f + ".jpg", flipped.EncodeToJPG(92));
+                    }
+                AssetDatabase.Refresh();
+                Debug.Log("PANO brought in " + order.Count + " captured view(s): " + string.Join(", ", order));
+            }
+        }
+
+        // whatever views are here, by the first face of each
+        var names = new System.Collections.Generic.List<string>();
+        foreach (string f in System.IO.Directory.GetFiles("Assets/Resources/Title", "pano_*_0.jpg"))
+        {
+            string n = System.IO.Path.GetFileName(f);
+            names.Add(n.Substring(5, n.Length - 5 - 6));
+        }
+        names.Sort();
+        foreach (string name in names) Bake(name);
         AssetDatabase.SaveAssets();
         EditorApplication.Exit(0);
     }

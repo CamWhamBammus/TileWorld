@@ -301,6 +301,22 @@ dayLengthMinutes, animals, ruins) and are read once, where they apply:
 "nothing here" for a world made without ruins. An old save without them
 plays as it always did. `Tools/probe/Title.cs.txt` walks the whole loop.
 
+## The title's backdrop
+
+Behind the title turns a panorama of the world: cubemaps baked from six
+faces each, in `Assets/Resources/Title` (`pano_<view>_<face>.jpg` and a
+`View-<view>` cubemap and material apiece). `TitleMenu` loads every material
+there and cross-fades between them. To make a view, stand somewhere in play,
+set the hour and weather on the dev tools' Animals page, and press "Capture
+as ..." on the Title page: `PanoramaCapture` draws the world out to eleven
+chunks, holds the fog to the sky's own colour at the horizon, renders each
+face with the camera turned that way (the world only submits what the
+camera can see, so a cubemap taken in one go had five faces of void), and
+writes the faces to `title-views/` beside the saves. In the editor, Tools >
+Tile World > Bake the title panorama brings captured views in, replacing
+what was baked, and bakes them. `Tools/probe/Panorama.cs.txt` did the same
+from fixed spots and made the five that ship.
+
 ## Dev tools
 
 F8 (editor and development builds only): jump to the nearest region of each
