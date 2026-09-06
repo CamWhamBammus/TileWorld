@@ -290,6 +290,14 @@ public class FieldGuideScreen : MonoBehaviour
                 else text.Append("<size=80%><i><color=").Append(Dim).Append(">   ").Append(plate.Ask).Append("</color></i></size>");
                 text.Append("\n");
             }
+
+            // a few lines on how it lives, once there is a plate of it
+            string notes = global::Fauna.Notes(subject.Fauna);
+            if (FieldGuide.Count(subject) > 0 && !string.IsNullOrEmpty(notes))
+            {
+                text.Append("\n<size=88%><color=").Append(Ink).Append(">").Append(notes).Append("</color></size>\n");
+            }
+
             body.text = text.ToString();
             return;
         }

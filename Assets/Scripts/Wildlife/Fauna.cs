@@ -119,6 +119,7 @@ public static class Fauna
         public string Country;      // where the guide wants it found: "in the woods at dusk"
         public string Habit;        // what the guide wants it seen doing: "grazing"
         public Doing Doing;         // and what that is, to the simulation
+        public string Notes;        // a few lines on how it lives, for the book once you have a plate of it
 
         public Voice Call;
 
@@ -168,6 +169,7 @@ public static class Fauna
             Found = "woods and low ground, dawn and dusk",
             Country = "in the woods at dusk",
             Habit = "grazing", Doing = Doing.Grazing,
+            Notes = "Deer keep to the edge of the woods and come out onto the low ground at dawn and dusk. A stag's antlers grow with him, and the young have none yet. When one sees you it calls, and the rest lift their heads and answer.",
 
             // a short chesty grunt, dropping as it ends
             Call = new Voice { Length = 0.40f, Pitch = 152f, Glide = -0.22f, WobbleRate = 7f,
@@ -201,6 +203,7 @@ public static class Fauna
             Found = "open ground, in daylight",
             Country = "in the open in daylight",
             Habit = "resting", Doing = Doing.Resting,
+            Notes = "Rabbits sit out in the open in daylight and go to ground the moment something moves. They don't stray far from the burrow. Stand still a while and they come back up.",
 
             // rabbits are near enough silent, so this is the foot drumming
             Call = new Voice { Length = 0.16f, Pitch = 74f, Glide = -0.45f, WobbleRate = 0f,
@@ -234,6 +237,7 @@ public static class Fauna
             Found = "low ground, at night",
             Country = "at night",
             Habit = "drinking", Doing = Doing.Drinking,
+            Notes = "Foxes are out at night on the low ground. They hunt rabbits, and marmots and frogs where they can get them, and carry off what they catch. They go down to the water to drink.",
 
             // the bark: high, thin and rough, and it carries a long way
             Call = new Voice { Length = 0.34f, Pitch = 590f, Glide = 0.30f, WobbleRate = 22f,
@@ -267,6 +271,7 @@ public static class Fauna
             Found = "high ground, any time",
             Country = "up high",
             Habit = "walking", Doing = Doing.Walking,
+            Notes = "Goats live on the high ground and go where nothing else can. They aren't much bothered by you. Both sexes carry horns, and the horns grow with age.",
 
             // the bleat, which is mostly its wobble
             Call = new Voice { Length = 0.62f, Pitch = 366f, Glide = -0.14f, WobbleRate = 15f,
@@ -303,6 +308,7 @@ public static class Fauna
             Found = "the sand, in the heat of the day",
             Country = "out on the sand in daylight",
             Habit = "sunning itself", Doing = Doing.Standing,
+            Notes = "Tortoises are creatures of the sand, out in the heat of the day. Come too close and one pulls in and sits tight until it is sure you have gone. It is a long wait.",
 
             // a hiss, which is all it has to say
             Call = new Voice { Length = 0.5f, Pitch = 90f, Glide = -0.1f, WobbleRate = 0f,
@@ -340,6 +346,7 @@ public static class Fauna
             Found = "the snowfields, after dark",
             Country = "on the snow after dark",
             Habit = "watching", Doing = Doing.Watching,
+            Notes = "Wolves run the snowfields after dark, in packs, and howl to one another across the country. A howl is answered. They hunt the hares and the rabbits, and will follow you a while at a distance.",
 
             // the howl: long, rising, and held
             Call = new Voice { Length = 1.9f, Pitch = 330f, Glide = 0.28f, WobbleRate = 2.6f,
@@ -379,6 +386,7 @@ public static class Fauna
             Found = "the shallows, standing still",
             Country = "standing in the shallows",
             Habit = "fishing", Doing = Doing.Grazing,
+            Notes = "Herons stand in the shallows and wait, then strike. They take the fish, and carry a catch up onto the bank to swallow it. Come too close and they lift off.",
 
             // a harsh croak, going down
             Call = new Voice { Length = 0.38f, Pitch = 230f, Glide = -0.30f, WobbleRate = 0f,
@@ -415,6 +423,7 @@ public static class Fauna
             Found = "the dead wood, rooting",
             Country = "in the dead wood",
             Habit = "rooting", Doing = Doing.Grazing,
+            Notes = "Boar root through the litter of the dead and fungal woods and leave the ground turned over behind them. They travel in family groups. A sow with young stands her ground.",
 
             // a grunt, low and rough
             Call = new Voice { Length = 0.32f, Pitch = 108f, Glide = -0.12f, WobbleRate = 9f,
@@ -450,6 +459,7 @@ public static class Fauna
             Found = "the dead wood, on the ground",
             Country = "in the dead wood",
             Habit = "pecking at the ground", Doing = Doing.Grazing,
+            Notes = "Ravens work the dead woods, the low ground and the bare rock, on the ground and in the trees, and take whatever is left lying. They call to one another. A dropped feather is usually one of theirs.",
 
             // a croak
             Call = new Voice { Length = 0.30f, Pitch = 175f, Glide = -0.18f, WobbleRate = 0f,
@@ -486,6 +496,7 @@ public static class Fauna
             Found = "the bare rock, sitting up",
             Country = "on the bare rock",
             Habit = "keeping watch", Doing = Doing.Standing,
+            Notes = "Marmots live on the bare rock and the peaks, in colonies, with one sat up on watch while the rest feed. At a whistle from the lookout the lot go to ground. They sit up to see over the stones.",
 
             // the whistle
             Call = new Voice { Length = 0.26f, Pitch = 2100f, Glide = -0.08f, WobbleRate = 0f,
@@ -522,6 +533,7 @@ public static class Fauna
             Found = "the strand and the shallows of the shore",
             Country = "on the shore",
             Habit = "standing its ground", Doing = Doing.Watching,
+            Notes = "Crabs work the strand and the shallows, sideways, and stand their ground with the claws up if you come close. They dig into the sand. A line of small prints along the tideline is a crab.",
 
             // a click
             Call = new Voice { Length = 0.08f, Pitch = 900f, Glide = -0.3f, WobbleRate = 0f,
@@ -556,6 +568,7 @@ public static class Fauna
             Found = "the low woods after dark, up on the ruins",
             Country = "on a ruin after dark",
             Habit = "watching", Doing = Doing.Watching,
+            Notes = "Owls sit up on the ruins after dark and watch. They leave the perch without a sound. By day they are gone.",
 
             // the hoot: soft, low, in two
             Call = new Voice { Length = 0.55f, Pitch = 370f, Glide = -0.06f, WobbleRate = 3.5f,
@@ -593,6 +606,7 @@ public static class Fauna
             Found = "the shallows of the ponds",
             Country = "at the edge of a pond",
             Habit = "calling", Doing = Doing.Standing,
+            Notes = "Frogs sit at the edge of the ponds and call, most of all at dusk and after rain, and a whole pond takes up the chorus. At the first sign of you they go under. Wait, and they come up again.",
 
             // the croak
             Call = new Voice { Length = 0.36f, Pitch = 135f, Glide = 0.05f, WobbleRate = 26f,
@@ -626,6 +640,7 @@ public static class Fauna
             Found = "over the water at dusk",
             Country = "over the water at dusk",
             Habit = "hunting", Doing = Doing.Walking,
+            Notes = "Bats come out over the water at dusk and hunt in rings above it, never settling where you can see. By full dark they are hard to make out against the sky.",
 
             // a squeak, at the top of hearing
             Call = new Voice { Length = 0.06f, Pitch = 3200f, Glide = -0.3f, WobbleRate = 0f,
@@ -662,6 +677,7 @@ public static class Fauna
             Found = "the low woods after dark, in the litter",
             Country = "in the low woods after dark",
             Habit = "curled up", Doing = Doing.Watching,
+            Notes = "Hedgehogs come out into the low woods and the hills after dark and work through the litter. One that is startled rolls up and stays rolled until you go. They leave small prints in soft ground.",
 
             // a snuffle
             Call = new Voice { Length = 0.2f, Pitch = 210f, Glide = 0.1f, WobbleRate = 30f,
@@ -695,6 +711,7 @@ public static class Fauna
             Found = "the deep water, rising at dusk",
             Country = "in the deep water at dusk",
             Habit = "rising", Doing = Doing.Walking,
+            Notes = "Fish keep to the deep water and rise at dusk, leaving rings on the surface. The herons take them. A ring on still water at dusk is usually one.",
 
             // the splash of it
             Call = new Voice { Length = 0.25f, Pitch = 120f, Glide = -0.4f, WobbleRate = 0f,
@@ -729,6 +746,7 @@ public static class Fauna
             Found = "over the high ground by day, a long way up",
             Country = "over the peaks",
             Habit = "circling", Doing = Doing.Walking,
+            Notes = "Eagles circle over the peaks and the high ground by day, a long way up, on set wings. They come down to a rock now and then, and are off again if you come near.",
 
             // a thin cry, falling
             Call = new Voice { Length = 0.7f, Pitch = 1400f, Glide = -0.35f, WobbleRate = 6f,
@@ -764,6 +782,7 @@ public static class Fauna
             Found = "the snowfields by day, white on the white",
             Country = "on the snow in daylight",
             Habit = "lying flat", Doing = Doing.Watching,
+            Notes = "Hares live on the snowfields and lie flat in a form until you are nearly on them, then run. They are white on the white. The wolves hunt them.",
 
             Call = new Voice { Length = 0.14f, Pitch = 80f, Glide = -0.4f, WobbleRate = 0f,
                                WobbleDepth = 0f, Rasp = 0f, Noise = 0.5f, Thump = 1f },
@@ -798,6 +817,7 @@ public static class Fauna
             Found = "the sand after dark",
             Country = "on the sand after dark",
             Habit = "with its sting up", Doing = Doing.Watching,
+            Notes = "Scorpions are out on the sand after dark with the sting up. By day they keep under the sand. Give them room.",
 
             // a dry scrape
             Call = new Voice { Length = 0.1f, Pitch = 500f, Glide = 0f, WobbleRate = 0f,
@@ -835,6 +855,7 @@ public static class Fauna
 
     /// <summary>What the guide wants one seen doing, as a word to follow "one".</summary>
     public static string Habit(FaunaKind kind) => All(kind).Habit;
+    public static string Notes(FaunaKind kind) => All(kind).Notes;
 
     /// <summary>And whether what it is doing now is that.</summary>
     public static bool Habit(FaunaKind kind, Doing doing) => All(kind).Doing == doing;

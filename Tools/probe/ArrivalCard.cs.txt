@@ -1,0 +1,43 @@
+// A probe: the arrival card on a brand new save, photographed.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        PlayerPrefs.DeleteKey("tileworld.taught");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            WorldLibrary.Enter(WorldLibrary.Create("Arrival probe", 4242));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        for (int i = 0; i < 8; i++) yield return new WaitForSecondsRealtime(1f);
+        var card = GameObject.Find("Arrival Canvas");
+        Mark("CARD: " + (card != null ? "up" : "not up"));
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-ar-card.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+        Mark("done");
+    }
+}

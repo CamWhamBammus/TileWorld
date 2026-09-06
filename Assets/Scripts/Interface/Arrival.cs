@@ -288,8 +288,11 @@ public class Arrival : MonoBehaviour
             + "found, and wrote down where they found it.\n"
             + "Most of the pages are still empty.\n\n"
             + "Hold F to draw whatever you are looking at.\n"
-            + "Press G to open the book.",
-            21f, FontStyles.Normal, new Vector2(0f, 24f), 300f);
+            + "Press G to open the book.\n\n"
+            + "Each animal's page wants a few drawings of it\n"
+            + "doing different things. They leave tracks in snow\n"
+            + "and sand, and call to each other when they see you.",
+            19f, FontStyles.Normal, new Vector2(0f, 14f), 340f);
 
         Line(card, font, "press space", 17f, FontStyles.Italic, new Vector2(0f, -206f), 40f);
     }

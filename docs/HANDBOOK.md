@@ -267,6 +267,15 @@ labels, compass, map and journal skip `Landmarks.IsSmall` kinds.
 `Tools/probe/Finds.cs.txt` counts them over 6561 chunks and photographs the
 nearest of each kind.
 
+### The book's words
+
+Each animal kind carries `Found` (the journal line), `Country` and `Habit`
+(what its page asks for) and `Notes`, a few plain lines on how it lives that
+the page shows once there is at least one plate of it (`FieldGuideScreen`,
+the plates branch). The arrival card (`Arrival`) mentions the plates, the
+tracks and the calls; `Tools/probe/ArrivalCard.cs.txt` clears the taught
+flag, makes a new world and photographs the card.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy
