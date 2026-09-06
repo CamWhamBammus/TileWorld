@@ -12,7 +12,7 @@ public static class PlayerBuild
     {
         var opts = new BuildPlayerOptions
         {
-            scenes = new[] { "Assets/Scenes/SampleScene.unity" },
+            scenes = new[] { "Assets/Scenes/Title.unity", "Assets/Scenes/SampleScene.unity" },
             locationPathName = "Builds/Dev/TileWorld.app",
             target = BuildTarget.StandaloneOSX,
             options = BuildOptions.Development,

@@ -180,6 +180,9 @@ public static class Landmarks
 
     public static Placement In(Vector2Int chunk, int worldSeed)
     {
+        // a world made without ruins has none, anywhere
+        if (WorldLibrary.Current != null && !WorldLibrary.Current.ruins) return new Placement { Exists = false, Chunk = chunk };
+
         if (placementsFor != worldSeed) { placements.Clear(); placementsFor = worldSeed; }
 
         long key = ((long)chunk.x << 32) ^ (uint)chunk.y;

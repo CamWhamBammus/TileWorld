@@ -33,6 +33,7 @@ public class Arrival : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (PlayerPrefs.GetInt(TaughtKey, 0) == 1) return;
 
         if (FindFirstObjectByType<Arrival>() == null)

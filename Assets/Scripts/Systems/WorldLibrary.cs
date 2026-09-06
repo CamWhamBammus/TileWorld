@@ -17,6 +17,17 @@ public class WorldSave
     public string lastPlayedUtc;
 
     public float timeOfDay = 0.30f;
+
+    // How the world was set up when it was made. Everything here is read
+    // when the world is entered and nowhere else, so an old save without
+    // them plays as it always did.
+    public bool weather = true;
+    public bool dayCycle = true;
+    public float startHour = 0.30f;
+    public float dayLengthMinutes = 20f;
+    public bool animals = true;
+    public bool ruins = true;
+
     public Vector3 playerPosition;
     public float playerYaw;
 
@@ -77,25 +88,15 @@ public static class WorldLibrary
 
         AdoptLegacySave();
 
-        // Come back to whatever was being played, so starting the game does not
-        // ask the question again; failing that, the most recent world.
-        string id = PlayerPrefs.GetString(CurrentKey, "");
-
-        if (!string.IsNullOrEmpty(id)) Current = Read(id);
-
-        if (Current == null)
-        {
-            var worlds = All();
-            if (worlds.Count > 0) Current = worlds[0];
-        }
-
-        if (Current != null)
-        {
-            PlayerPrefs.SetString(CurrentKey, Current.id);
-            Debug.Log("[Worlds] Entering '" + Current.name + "' (seed " + Current.seed
-                    + ", " + Current.Charted + " chunks charted).");
-        }
+        // The game opens on the title, which asks which world; nothing is
+        // entered here. What was played last is remembered, for the title to
+        // put first. (Playing the game scene straight from the editor still
+        // works: with nothing chosen it adopts a world of its own.)
+        LastId = PlayerPrefs.GetString(CurrentKey, "");
     }
+
+    /// <summary>The id of the world played last, for the title to offer first.</summary>
+    public static string LastId { get; private set; }
 
     /// <summary>
     /// Files a world that was started without going through the library, so a
@@ -202,7 +203,10 @@ public static class WorldLibrary
     }
 
     /// <summary>A new world. Seed of zero means pick one.</summary>
-    public static WorldSave Create(string name, int seed)
+    public static WorldSave Create(string name, int seed) => Create(name, seed, true, true, 0.30f, 20f, true, true);
+
+    /// <summary>A new world, set up as asked.</summary>
+    public static WorldSave Create(string name, int seed, bool weather, bool dayCycle, float startHour, float dayLength, bool animals, bool ruins)
     {
         if (seed == 0) seed = Random.Range(1, int.MaxValue);
 
@@ -211,7 +215,14 @@ public static class WorldLibrary
             id = NewId(),
             seed = seed,
             createdUtc = Now(),
-            lastPlayedUtc = Now()
+            lastPlayedUtc = Now(),
+            weather = weather,
+            dayCycle = dayCycle,
+            startHour = startHour,
+            timeOfDay = startHour,
+            dayLengthMinutes = dayLength,
+            animals = animals,
+            ruins = ruins
         };
 
         // Named after the ground it starts on, if nothing better was given.
@@ -261,8 +272,28 @@ public static class WorldLibrary
 
         ClearRuntimeState();
 
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(GameScene);
+    }
+
+    public const string GameScene = "SampleScene";
+    public const string TitleScene = "Title";
+
+    /// <summary>
+    /// Out of the world and back to the title: what has been found is
+    /// written first, and the world is put back on the shelf.
+    /// </summary>
+    public static void LeaveToMenu()
+    {
+        Object.FindFirstObjectByType<SaveCoordinator>()?.SaveNow();
+
+        if (Current != null) { PlayerPrefs.SetString(CurrentKey, Current.id); PlayerPrefs.Save(); LastId = Current.id; }
+        Current = null;
+
+        ClearRuntimeState();
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        UnityEngine.SceneManagement.SceneManager.LoadScene(TitleScene);
     }
 
     /// <summary>

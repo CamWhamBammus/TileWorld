@@ -38,6 +38,7 @@ public class DevTools : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<DevTools>() == null)
         {
             new GameObject("Dev Tools (runtime)").AddComponent<DevTools>();

@@ -176,7 +176,9 @@ Press M. Chunks you've walked through are shaded by height with water and snow m
 
 ## Worlds and saving
 
-The game saves every thirty seconds and on quit. Escape then Worlds shows all your worlds with name, seed, how much you've charted and when you last played. You can make a new one with whatever name and seed you want, or leave them blank and get random ones.
+The game opens on a title screen outside any world, like Minecraft's. It lists the worlds you've kept with their seed, how much you've charted, what you've found and when you last played. Pick one and press Play, or make a new one: name and seed (or leave them blank and get random ones), and how the world should be set up: weather on or off, a day that turns or a sky that stands still, the hour it starts at, how long a day lasts, and whether there are animals and ruins in it at all. Those are fixed when the world is made. Escape in a world gives you Main menu, which saves and goes back to the title.
+
+The game saves every thirty seconds, on quit, and on the way back to the title.
 
 ## Controls
 
@@ -187,7 +189,7 @@ The game saves every thirty seconds and on quit. Escape then Worlds shows all yo
 - E to rest at a structure you've found (night only)
 - Click the map to place a marker, right click to remove it
 - F9 saves the map as an image, F3 shows world stats
-- Escape closes whatever is open, or pauses
+- Escape closes whatever is open, or pauses; the pause menu has Main menu
 - F8 (editor and dev builds only) opens the dev tools. Places: teleport to the nearest region, water type or structure, replay the intro, wipe the save. Animals: put any kind down in front of you, stage a herd, a wolf pair or a fox hunting a rabbit, tell everything nearby to walk, run, rest, spook or hunt, set the hour, slow time, or jump to the nearest animal
 
 ## Running it

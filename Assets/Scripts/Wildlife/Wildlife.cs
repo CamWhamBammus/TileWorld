@@ -58,6 +58,9 @@ public class Wildlife : MonoBehaviour
         }
 
         player = world.PlayerTransform;
+
+        // a world made without animals has none come to it
+        if (WorldLibrary.Current != null && !WorldLibrary.Current.animals) enabled = false;
     }
 
     private void Update()

@@ -272,6 +272,24 @@ is derived from the measured leg, not tuned. `Swimming` corrects float by
 position, not force. The controller's step offset is 0.45 (`PlayerArmature`),
 which a stair tread of 0.12-0.17 clears and a 0.45 step does not.
 
+## The title and the worlds
+
+The build opens on `Assets/Scenes/Title.unity` (made by `MakeTitleScene`,
+first in the build settings), which holds only a camera, an event system and
+`TitleMenu`. `WorldLibrary.Boot` no longer enters a world on its own: the
+title asks. `WorldLibrary.Enter(save)` loads the game scene by name;
+`WorldLibrary.LeaveToMenu()` saves and loads the title. `TitleMenu.IsUp` is
+the flag the game's own interface checks so that nothing of it -- the pause
+menu, the opening, the dev tools -- wakes under the title. Playing the game
+scene straight from the editor still works: with nothing chosen it adopts a
+world of its own.
+
+A world's settings live on `WorldSave` (weather, dayCycle, startHour,
+dayLengthMinutes, animals, ruins) and are read once, where they apply:
+`TimeOfDay.Start`, `Wildlife.Start`, and `Landmarks.In`, which answers
+"nothing here" for a world made without ruins. An old save without them
+plays as it always did. `Tools/probe/Title.cs.txt` walks the whole loop.
+
 ## Dev tools
 
 F8 (editor and development builds only): jump to the nearest region of each

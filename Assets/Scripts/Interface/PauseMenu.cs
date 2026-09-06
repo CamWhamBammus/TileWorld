@@ -46,6 +46,7 @@ public class PauseMenu : MonoBehaviour
 
     private void Update()
     {
+        if (TitleMenu.IsUp) return;
         // The world list has its own Escape, and keeps it for a frame after it
         // closes so the same press does not unpause behind it.
         if (WorldsScreen.Blocking) return;
@@ -129,7 +130,7 @@ public class PauseMenu : MonoBehaviour
         readout = Label("Readout", cardGo.transform, 21f, new Vector2(0f, 150f), new Vector2(470f, 300f));
         readout.alignment = TextAlignmentOptions.Top;
 
-        Button("Worlds", new Vector2(0f, -30f), OpenWorlds);
+        Button("Main menu", new Vector2(0f, -30f), () => WorldLibrary.LeaveToMenu());
         Button("Draw further", new Vector2(0f, -92f), () => Adjust(+1));
         Button("Draw closer", new Vector2(0f, -154f), () => Adjust(-1));
         Button("Longer days", new Vector2(0f, -216f), () => AdjustDay(+5f));

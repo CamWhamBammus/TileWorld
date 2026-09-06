@@ -1,0 +1,86 @@
+// A probe: the title. Photographs the worlds page and the new-world page,
+// makes a world with every setting turned the unusual way, enters it, and
+// checks the settings took; then comes back to the title and checks the
+// world is listed, and forgets it.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot in scene " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        string dir = Application.persistentDataPath;
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+
+        var title = FindFirstObjectByType<TitleMenu>();
+        Mark("title up: " + TitleMenu.IsUp + " | menu found " + (title != null) + " | worlds kept " + WorldLibrary.All().Count + " | current " + (WorldLibrary.Current != null));
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-title-worlds.png"));
+        yield return new WaitForSecondsRealtime(1f);
+
+        typeof(TitleMenu).GetMethod("ShowNew", flags).Invoke(title, null);
+        yield return new WaitForSecondsRealtime(0.5f);
+        // every setting the unusual way
+        typeof(TitleMenu).GetField("weather", flags).SetValue(title, false);
+        typeof(TitleMenu).GetField("dayCycle", flags).SetValue(title, false);
+        typeof(TitleMenu).GetField("startAt", flags).SetValue(title, 2);
+        typeof(TitleMenu).GetField("dayLength", flags).SetValue(title, 2);
+        typeof(TitleMenu).GetField("animals", flags).SetValue(title, false);
+        typeof(TitleMenu).GetField("ruins", flags).SetValue(title, false);
+        typeof(TitleMenu).GetMethod("Settings", flags).Invoke(title, null);
+        ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("nameField", flags).GetValue(title)).text = "Probe world";
+        ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("seedField", flags).GetValue(title)).text = "4242";
+        yield return new WaitForSecondsRealtime(0.5f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-title-new.png"));
+        yield return new WaitForSecondsRealtime(1f);
+
+        typeof(TitleMenu).GetMethod("CreateAndPlay", flags).Invoke(title, null);
+        yield return new WaitForSecondsRealtime(12f);
+
+        var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        var cur = WorldLibrary.Current;
+        var tod = TimeOfDay.Instance;
+        bool paused = tod != null && (bool)typeof(TimeOfDay).GetField("paused", flags).GetValue(tod);
+        bool weatherOn = tod != null && (bool)typeof(TimeOfDay).GetField("weather", flags).GetValue(tod);
+        var wild = FindFirstObjectByType<Wildlife>();
+        int ruins = 0; for (int dx = -30; dx <= 30; dx++) for (int dz = -30; dz <= 30; dz++) if (Landmarks.In(new Vector2Int(dx, dz), cur != null ? cur.seed : 1).Exists) ruins++;
+        Mark("IN WORLD: scene " + scene + " | world '" + (cur != null ? cur.name : "none") + "' seed " + (cur != null ? cur.seed : 0)
+            + " | options weather " + (cur != null && cur.weather) + " cycle " + (cur != null && cur.dayCycle) + " start " + (cur != null ? cur.startHour : -1f) + " length " + (cur != null ? cur.dayLengthMinutes : -1f)
+            + " animals " + (cur != null && cur.animals) + " ruins " + (cur != null && cur.ruins)
+            + " | applied: sky paused " + paused + " at " + (tod != null ? tod.Normalized.ToString("F2") : "-") + ", weather " + weatherOn + ", day " + (tod != null ? tod.DayLengthMinutes : 0f) + " min"
+            + ", wildlife enabled " + (wild != null && wild.enabled) + ", ruins in 61x61 chunks " + ruins + " | title up " + TitleMenu.IsUp);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-title-inworld.png"));
+        yield return new WaitForSecondsRealtime(1f);
+
+        WorldLibrary.LeaveToMenu();
+        yield return new WaitForSecondsRealtime(4f);
+        var again = FindFirstObjectByType<TitleMenu>();
+        bool listed = WorldLibrary.All().Exists(w => w.name == "Probe world");
+        Mark("BACK: scene " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name + " | title " + (again != null) + " | probe world listed " + listed + " | current " + (WorldLibrary.Current != null) + " | last " + WorldLibrary.LastId);
+        ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-title-back.png"));
+        yield return new WaitForSecondsRealtime(1f);
+
+        foreach (var w in WorldLibrary.All()) if (w.name == "Probe world") WorldLibrary.Delete(w.id);
+        Mark("probe world forgotten; kept " + WorldLibrary.All().Count);
+        Mark("done");
+    }
+}

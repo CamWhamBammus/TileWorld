@@ -99,6 +99,16 @@ public class TimeOfDay : MonoBehaviour
 
         SilenceOtherSuns();
 
+        // how the world was set up: a still sky, no weather, a long or short day
+        if (WorldLibrary.Current != null)
+        {
+            var world = WorldLibrary.Current;
+            weather = world.weather;
+            paused = !world.dayCycle;
+            dayLengthMinutes = Mathf.Clamp(world.dayLengthMinutes, 2f, 90f);
+            if (!world.dayCycle) Normalized = world.startHour;
+        }
+
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
 
