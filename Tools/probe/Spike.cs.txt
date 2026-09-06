@@ -1,0 +1,95 @@
+// A probe: catches long frames at the widest view, on a sprint and after,
+// and says what came into the world in the same frame.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private bool watching; private float t0; private string stage = "";
+    private int lastRuins, lastAnimals, lastChunkGos, lastTracks;
+    private Transform collisionRoot, snowRoot, waterRoot;
+    private int longFrames; private float worst;
+
+    private int ChunkGos()
+    {
+        int n = 0;
+        if (collisionRoot != null) n += collisionRoot.childCount;
+        if (snowRoot != null) n += snowRoot.childCount;
+        if (waterRoot != null) n += waterRoot.childCount;
+        return n;
+    }
+
+    private void Update()
+    {
+        if (!watching) return;
+        float ms = Time.unscaledDeltaTime * 1000f;
+        int ruins = FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None).Length;
+        int animals = FindObjectsByType<Animal>(FindObjectsSortMode.None).Length;
+        int gos = ChunkGos();
+        if (ms > 30f)
+        {
+            longFrames++;
+            Mark("LONG " + ms.ToString("F0") + " ms at " + (Time.realtimeSinceStartup - t0).ToString("F1") + " s (" + stage + "): ruins " + lastRuins + "->" + ruins + ", animals " + lastAnimals + "->" + animals + ", chunk objects " + lastChunkGos + "->" + gos);
+        }
+        worst = Mathf.Max(worst, ms);
+        lastRuins = ruins; lastAnimals = animals; lastChunkGos = gos;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Spike", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        var player = world.PlayerTransform;
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1;
+        world.SetViewRadius(8);
+        yield return new WaitForSecondsRealtime(12f);
+        var c = GameObject.Find("Terrain Collision (runtime)"); collisionRoot = c != null ? c.transform : null;
+        var s = GameObject.Find("Snow (runtime)"); snowRoot = s != null ? s.transform : null;
+        var w = GameObject.Find("Water (runtime)"); waterRoot = w != null ? w.transform : null;
+
+        t0 = Time.realtimeSinceStartup; watching = true;
+        stage = "sprint"; inputs.sprint = true; inputs.move = new Vector2(0f, 1f);
+        yield return new WaitForSecondsRealtime(25f);
+        stage = "standing after"; inputs.move = Vector2.zero; inputs.sprint = false;
+        yield return new WaitForSecondsRealtime(45f);
+        stage = "sprint back"; inputs.sprint = true; inputs.move = new Vector2(0f, -1f);
+        yield return new WaitForSecondsRealtime(25f);
+        stage = "standing again"; inputs.move = Vector2.zero; inputs.sprint = false;
+        yield return new WaitForSecondsRealtime(30f);
+        watching = false;
+        Mark("SUMMARY: " + longFrames + " frames over 30 ms in 125 s, worst " + worst.ToString("F0") + " ms");
+        Mark("done");
+    }
+}

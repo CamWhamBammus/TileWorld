@@ -65,6 +65,11 @@ that went wrong before:
 - Ring searches over chunks must walk the perimeter of each ring, not the whole
   square per ring, or a 300-ring search never finishes.
 
+A probe's `Boot` (the `RuntimeInitializeOnLoadMethod`) fires twice now that
+the build opens on the title: once in the title scene and again when the
+world scene loads. Guard it with `if (FindFirstObjectByType<_Probe>() != null) return;`
+or every stage runs twice, fighting over the player. The newer probes do.
+
 ### Measuring
 
 Most bugs here were settled by a number, not by looking harder: the palette
@@ -371,6 +376,30 @@ within forty metres to walk, run, rest, graze, alert, spook or hunt
 (`Animal.Direct`, which nothing in the game itself uses). Hours and slow time
 are there too. The probe `Tools/probe/DevAnimals.cs.txt` presses the buttons
 by reflection and checks what they did.
+
+## Performance
+
+Measured with `Tools/probe/Perf.cs.txt` (frame times at the widest view,
+standing and sprinting, then each system switched off in turn),
+`Tools/probe/SaveTime.cs.txt` (a save under a stopwatch, and the worst
+frame over a long stand) and `Tools/probe/Spike.cs.txt` (every frame over
+30 ms across a sprint and a stand, with what came into the world in it).
+On the development Mac at 1400x900, view radius 8, vsync off:
+
+- a frame is about 2.5 ms standing or sprinting (p95 3 ms); switching off
+  any one system -- tracks, wildlife, the animals themselves, fireflies,
+  birdsong, wind, the compass, the labels, the clock, the surveyor -- moves
+  it by 0.2 ms at most, and hiding every renderer barely moves it, so the
+  frame is engine overhead, not the game;
+- a save takes under 2 ms; a 75 s stand had no frame over 17 ms;
+- the one long frame (47 ms) was `LandmarkSpawner.Refresh` building every
+  ruin and find within the view radius in one frame on the first chunk
+  crossing -- fifty of them. `Refresh` now queues them nearest first and
+  `BuildQueued` builds three a frame.
+
+Chunks build four a frame (`chunksPerFrame`) and gave no long frame at a
+sprint. If a hitch turns up, run `Spike.cs.txt` first: it names what arrived
+in the frame.
 
 ## Conventions
 

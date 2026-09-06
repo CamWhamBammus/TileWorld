@@ -78,6 +78,7 @@ public class LandmarkSpawner : MonoBehaviour
             Refresh(chunk);
         }
 
+        BuildQueued(3);
         CheckDiscovery();
         CheckRest();
     }
@@ -113,8 +114,32 @@ public class LandmarkSpawner : MonoBehaviour
         }
     }
 
+    private readonly List<Landmarks.Placement> queued = new List<Landmarks.Placement>();
+
+    private static int Chebyshev(Vector2Int v) => Mathf.Max(Mathf.Abs(v.x), Mathf.Abs(v.y));
+
+    /// <summary>Builds a few of what the last refresh found, nearest first.</summary>
+    private void BuildQueued(int most)
+    {
+        int made = 0;
+
+        while (queued.Count > 0 && made < most)
+        {
+            var placement = queued[0];
+            queued.RemoveAt(0);
+
+            if (live.ContainsKey(placement.Chunk)) continue;
+
+            live.Add(placement.Chunk, LandmarkBuilder.Build(placement, transform));
+            Debug.Log("[Landmarks] Built a " + Landmarks.NameOf(placement.Kind) + " at chunk " + placement.Chunk);
+            made++;
+        }
+    }
+
     private void Refresh(Vector2Int centre)
     {
+        queued.Clear();
+
         int seed = world.WorldSeed;
 
         int radius = LoadRadius;
@@ -137,9 +162,13 @@ public class LandmarkSpawner : MonoBehaviour
                 continue;
             }
 
-            live.Add(index, LandmarkBuilder.Build(placement, transform));
-            Debug.Log("[Landmarks] Built a " + Landmarks.NameOf(placement.Kind) + " at chunk " + index);
+            queued.Add(placement);
         }
+
+        // Nearest first, and a few a frame: the first crossing at a wide view
+        // finds fifty of these at once, and building them all in one frame
+        // was the longest frame in the game.
+        queued.Sort((a, b) => Chebyshev(a.Chunk - centre).CompareTo(Chebyshev(b.Chunk - centre)));
 
         scratch.Clear();
 

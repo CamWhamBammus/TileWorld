@@ -1,0 +1,126 @@
+// A probe: frame times at the widest view, standing and on the move, and
+// what each system costs by switching it off for a few seconds.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private readonly List<float> frames = new List<float>();
+    private bool recording;
+    private long allocAtStart; private int gcAtStart;
+
+    private void Update()
+    {
+        if (recording) frames.Add(Time.unscaledDeltaTime * 1000f);
+    }
+
+    private void Begin() { frames.Clear(); recording = true; allocAtStart = System.GC.GetTotalMemory(false); gcAtStart = System.GC.CollectionCount(0); }
+
+    private string End(string name)
+    {
+        recording = false;
+        var sorted = frames.OrderBy(f => f).ToList();
+        if (sorted.Count == 0) return name + ": no frames";
+        float mean = sorted.Average();
+        float p50 = sorted[sorted.Count / 2], p95 = sorted[(int)(sorted.Count * 0.95f)], max = sorted[sorted.Count - 1];
+        int hitches = sorted.Count(f => f > 33f);
+        long alloc = System.GC.GetTotalMemory(false) - allocAtStart;
+        int gcs = System.GC.CollectionCount(0) - gcAtStart;
+        return name + ": " + sorted.Count + " frames, mean " + mean.ToString("F1") + " ms, p50 " + p50.ToString("F1") + ", p95 " + p95.ToString("F1") + ", max " + max.ToString("F1")
+               + ", over 33 ms: " + hitches + ", managed +" + (alloc / 1024 / 1024f).ToString("F1") + " MB, GCs " + gcs;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Perf", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        var player = world.PlayerTransform;
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+
+        Mark("view radius was " + world.ViewRadius + "; screen " + Screen.width + "x" + Screen.height + "; vsync " + QualitySettings.vSyncCount + " target " + Application.targetFrameRate);
+        QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1;
+        world.SetViewRadius(8);
+        yield return new WaitForSecondsRealtime(14f);
+
+        Mark("SCENE: chunks " + FindObjectsByType<Transform>(FindObjectsSortMode.None).Count(t => t.name.StartsWith("Chunk")) + ", renderers " + FindObjectsByType<Renderer>(FindObjectsSortMode.None).Length
+             + ", animals " + FindObjectsByType<Animal>(FindObjectsSortMode.None).Length + ", game objects " + FindObjectsByType<Transform>(FindObjectsSortMode.None).Length
+             + ", managed " + (System.GC.GetTotalMemory(false) / 1024 / 1024) + " MB, allocated " + (UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / 1024 / 1024) + " MB");
+
+        // standing at radius 8
+        Begin(); yield return new WaitForSecondsRealtime(6f); Mark("STAND r8 " + End(""));
+
+        // walking: chunks stream in
+        inputs.sprint = true; inputs.move = new Vector2(0f, 1f);
+        Begin(); yield return new WaitForSecondsRealtime(20f); Mark("RUN r8 " + End(""));
+        inputs.move = Vector2.zero; inputs.sprint = false;
+        yield return new WaitForSecondsRealtime(4f);
+
+        // each system off in turn, standing
+        Begin(); yield return new WaitForSecondsRealtime(4f); Mark("STAND again " + End(""));
+
+        var systems = new[] { "Tracks", "Wildlife", "Fireflies", "BirdSong", "WindAmbience", "Ambience", "Sketching", "CompassBar", "WorldLabels", "Notices", "TimeOfDay", "RegionWatcher", "Surveyor" };
+        foreach (var name in systems)
+        {
+            var found = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).Where(b => b.GetType().Name == name && b.enabled).ToList();
+            if (found.Count == 0) { Mark("OFF " + name + ": not present"); continue; }
+            foreach (var b in found) b.enabled = false;
+            yield return new WaitForSecondsRealtime(0.5f);
+            Begin(); yield return new WaitForSecondsRealtime(3f); Mark("OFF " + name + " " + End(""));
+            foreach (var b in found) b.enabled = true;
+        }
+
+        // the animals themselves
+        var animals = FindObjectsByType<Animal>(FindObjectsSortMode.None);
+        foreach (var a in animals) a.enabled = false;
+        yield return new WaitForSecondsRealtime(0.5f);
+        Begin(); yield return new WaitForSecondsRealtime(3f); Mark("OFF animals (" + animals.Length + ") " + End(""));
+        foreach (var a in animals) a.enabled = true;
+
+        // and rendering: everything hidden, to see what is script and what is drawing
+        var renderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None).Where(r => r.enabled).ToList();
+        foreach (var r in renderers) r.enabled = false;
+        yield return new WaitForSecondsRealtime(0.5f);
+        Begin(); yield return new WaitForSecondsRealtime(3f); Mark("OFF all renderers (" + renderers.Count + ") " + End(""));
+        foreach (var r in renderers) r.enabled = true;
+
+        // a smaller world for scale
+        world.SetViewRadius(4);
+        yield return new WaitForSecondsRealtime(6f);
+        Begin(); yield return new WaitForSecondsRealtime(4f); Mark("STAND r4 " + End(""));
+
+        Mark("done");
+    }
+}
