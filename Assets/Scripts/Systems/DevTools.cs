@@ -495,6 +495,8 @@ public class DevTools : MonoBehaviour
                 Notices.Show("Dev: " + hour.Item1 + ".");
             });
         }
+        Button("rain", page, new Vector2(1.5f * 146f, -112f), new Vector2(138f, 46f), () => { TimeOfDay.Instance?.ForceOvercast(0.95f); Notices.Show("Dev: rain."); });
+        Button("clear", page, new Vector2(2.5f * 146f - 73f, -166f), new Vector2(210f, 46f), () => { TimeOfDay.Instance?.ForceOvercast(-1f); Notices.Show("Dev: the weather is its own again."); });
         slowLabel = Button("slow time", page, new Vector2(2.5f * 146f - 73f, -112f), new Vector2(210f, 46f), () =>
         {
             slow = !slow;

@@ -44,8 +44,10 @@ public static class PanoramaCapture
 
         var tod = TimeOfDay.Instance;
         float fogStart = 0f, fogEnd = 0f;
+        bool wasPaused = tod != null && tod.Paused;
         if (tod != null)
         {
+            tod.Paused = true;   // one sun for all six faces
             fogStart = (float)typeof(TimeOfDay).GetField("clearFogStart", flags).GetValue(tod);
             fogEnd = (float)typeof(TimeOfDay).GetField("clearFogEnd", flags).GetValue(tod);
             typeof(TimeOfDay).GetField("clearFogStart", flags).SetValue(tod, 50f);
@@ -103,6 +105,7 @@ public static class PanoramaCapture
         // everything back as it was
         if (tod != null)
         {
+            tod.Paused = wasPaused;
             tod.UnlockFog();
             typeof(TimeOfDay).GetField("clearFogStart", flags).SetValue(tod, fogStart);
             typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(tod, fogEnd);

@@ -42,6 +42,7 @@ public static class AnimalBuilder
         public Skin HindThigh;
         public Skin HindShin;
         public Skin Tail;
+        public Skin Crown;               // antlers or horns, sized to the animal
         public Skin EarLeft;
         public Skin EarRight;
         public Vector3 EarRootLeft;
@@ -89,6 +90,16 @@ public static class AnimalBuilder
 
         body.Head = Pivot(frame, "head", kit.Neck);
         Part(body.Head, "skull", kit.Head, palette, Vector3.zero);
+
+        // antlers and horns grow faster than the animal: a big stag carries a
+        // big head, a small one a modest one, and the young have none yet
+        if (kit.Crown.Mesh != null)
+        {
+            var crownAt = Pivot(body.Head, "crown", Vector3.zero);
+            float grown = Mathf.Pow(frameGo.transform.localScale.x, 1.7f);
+            crownAt.localScale = Vector3.one * grown;
+            Part(crownAt, "crown", kit.Crown, palette, Vector3.zero);
+        }
 
         body.Legs = new Transform[4];
         body.Knees = new Transform[4];
@@ -258,8 +269,10 @@ public static class AnimalBuilder
 
         Ears(kit, h, 0.050f, 0.06f, -0.02f, 0.150f, 0.19f, -0.08f, 0.040f, 0);
 
-        Antler(head, h, 1f);
-        Antler(head, h, -1f);
+        var crown = new List<CreatureMesh.Piece>();
+        Antler(crown, h, 1f);
+        Antler(crown, h, -1f);
+        kit.Crown = Wrap(crown);
 
         // a dark muzzle, which is the only two tone marking that reads at range
         Add(head, 2, CreatureMesh.Tube(
@@ -541,8 +554,10 @@ public static class AnimalBuilder
         // ears out and down, the way a goat carries them
         Ears(kit, h, 0.066f, 0.04f, -0.01f, 0.150f, -0.06f, -0.06f, 0.044f, 0);
 
-        Horn(head, h, 1f);
-        Horn(head, h, -1f);
+        var horns = new List<CreatureMesh.Piece>();
+        Horn(horns, h, 1f);
+        Horn(horns, h, -1f);
+        kit.Crown = Wrap(horns);
 
         Add(head, 2, CreatureMesh.Tube(
             new[] { new Vector3(0f, -0.05f * h, 0.22f * h), new Vector3(0f, -0.06f * h, 0.28f * h) },

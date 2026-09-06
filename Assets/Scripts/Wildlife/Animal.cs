@@ -100,6 +100,17 @@ public class Animal : MonoBehaviour
     private Animal quarry;
     private float nextHuntLook;
     private float nextFollow;
+
+    // Rain: an animal on the ground makes for the nearest tree and waits it
+    // out under it, and comes out when it clears.
+    private bool sheltering;
+    private float nextShelterLook;
+
+    /// <summary>Whether it is under a tree waiting out the rain.</summary>
+    public bool Sheltering => sheltering && state == State.Rest;
+
+    /// <summary>How many calls have been answered, for the tests.</summary>
+    public static int Replies;
     private float nextRooting;
     private Vector2Int lastTile = new Vector2Int(int.MinValue, int.MinValue);
 
@@ -290,6 +301,11 @@ public class Animal : MonoBehaviour
         traits = Fauna.Of(kind);
         Young = young;
         body = AnimalBuilder.Build(kind, transform, scale);
+        if (young && body.Head != null)
+        {
+            var crown = body.Head.Find("crown");
+            if (crown != null) crown.localScale = Vector3.one * 0.12f;   // no antlers yet
+        }
         neckAt = body.Head != null ? body.Head.localPosition : Vector3.zero;
 
         phase = Random.Range(0f, 10f);
@@ -441,6 +457,25 @@ public class Animal : MonoBehaviour
         {
             if (distance < traits.Bolts * Stalking.Wariness) { roosting = false; Flee(); }
             return;
+        }
+
+        // Rain: make for a tree, and stay under it until it passes
+        float overcastNow = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
+        bool grounded = !Fauna.All(Kind).Airborne && !Fauna.All(Kind).Surfaces && !Fauna.All(Kind).WadesOnly;
+        if (sheltering && overcastNow < 0.45f) { sheltering = false; if (state == State.Rest) Graze(); }
+        if (!sheltering && grounded && overcastNow > 0.7f && Time.time > nextShelterLook
+            && (state == State.Stand || state == State.Graze || state == State.Look || state == State.Wander))
+        {
+            nextShelterLook = Time.time + 6f;
+            if (Undergrowth.NearestTree(transform.position, 16f, out var trunk))
+            {
+                Vector3 toward = transform.position - trunk; toward.y = 0f;
+                if (toward.sqrMagnitude < 0.01f) toward = Vector3.forward;
+                target = trunk + toward.normalized * (traits.Size * 0.9f + 0.6f);
+                state = State.Wander;
+                until = Time.time + 20f;
+                sheltering = true;
+            }
         }
 
         // The hunt, kept up every frame: the quarry moves, so the target does.
@@ -721,6 +756,7 @@ public class Animal : MonoBehaviour
         {
             if (state == State.ToWater) Drinking();
             else if (state == State.Wander && Fauna.All(Kind).Airborne) Wander();   // never stops in the air
+            else if (state == State.Wander && sheltering) { state = State.Rest; restedSince = Time.time; until = Time.time + 300f; }   // under the tree, and stays
             else if (state == State.Wander) Graze();
             return;
         }
@@ -1671,7 +1707,7 @@ public class Animal : MonoBehaviour
     private System.Collections.IEnumerator SpeakBackLater(float delay)
     {
         yield return new WaitForSeconds(delay);
-        if (state != State.Flee && state != State.Hidden) Speak(false, true);
+        if (state != State.Flee && state != State.Hidden) { Replies++; Speak(false, true); }
     }
 
     private void Speak(bool alarmed, bool reply)

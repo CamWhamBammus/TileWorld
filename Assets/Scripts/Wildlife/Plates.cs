@@ -37,6 +37,7 @@ public static class Plates
     private static readonly Plate Moving = P("moving", "on the move", "draw it walking or running", (a, l) => a.Busy == Doing.Walking || a.Busy == Doing.Fleeing || a.Busy == Doing.Hunting);
     private static readonly Plate Resting = P("resting", "lying down", "draw it lying down", (a, l) => a.Busy == Doing.Resting);
     private static readonly Plate Flight = P("flight", "in flight", "draw it in the air", (a, l) => a.Aloft);
+    private static readonly Plate Shelter = P("shelter", "out of the rain", "draw it under a tree in the rain", (a, l) => a.Sheltering);
     private static bool Dusk(Look l) => l.Hour > 0.64f && l.Hour < 0.86f;
     private static bool Dark(Look l) => l.Hour > 0.80f || l.Hour < 0.20f;
 
@@ -48,21 +49,21 @@ public static class Plates
         switch (kind)
         {
             case FaunaKind.Deer:
-                plates = new[] { Standing, Moving, Resting,
+                plates = new[] { Standing, Moving, Resting, Shelter,
                     P("herd", "in a herd", "draw one with others about it", (a, l) => l.Company >= 2),
                     P("bellow", "bellowing at dusk", "draw a stag with its head up at dusk", (a, l) => a.Calling && Dusk(l)) };
                 break;
             case FaunaKind.Rabbit:
-                plates = new[] { Standing, Moving, Resting,
+                plates = new[] { Standing, Moving, Resting, Shelter,
                     P("situp", "sitting up", "draw one up on its haunches", (a, l) => a.Pose == "SitUp") };
                 break;
             case FaunaKind.Fox:
-                plates = new[] { Standing, Moving, Resting,
+                plates = new[] { Standing, Moving, Resting, Shelter,
                     P("night", "abroad at night", "draw one after dark", (a, l) => Dark(l)),
                     P("hunt", "hunting", "draw one after a rabbit", (a, l) => a.Busy == Doing.Hunting || a.Pose == "Pounce") };
                 break;
             case FaunaKind.Goat:
-                plates = new[] { Standing, Moving, Resting,
+                plates = new[] { Standing, Moving, Resting, Shelter,
                     P("heights", "on the heights", "draw one high up on the rock", (a, l) => l.Relief > 0.5f) };
                 break;
             case FaunaKind.Tortoise:
@@ -70,7 +71,7 @@ public static class Plates
                     P("shut", "shut in its shell", "get close, and draw it pulled in", (a, l) => a.Busy == Doing.Watching) };
                 break;
             case FaunaKind.Wolf:
-                plates = new[] { Standing, Moving, Resting,
+                plates = new[] { Standing, Moving, Resting, Shelter,
                     P("howl", "howling", "draw one with its muzzle to the sky", (a, l) => a.Calling),
                     P("pair", "the pair", "draw one with the other near", (a, l) => l.Company >= 1) };
                 break;
@@ -80,7 +81,7 @@ public static class Plates
                     P("catch", "with a fish", "draw it with a fish in its beak", (a, l) => a.HasCatch) };
                 break;
             case FaunaKind.Boar:
-                plates = new[] { Standing, Moving, Resting,
+                plates = new[] { Standing, Moving, Resting, Shelter,
                     P("rooting", "rooting", "draw it with its snout in the ground", (a, l) => a.Busy == Doing.Grazing),
                     P("sounder", "a sounder", "draw one with others about it", (a, l) => l.Company >= 2) };
                 break;

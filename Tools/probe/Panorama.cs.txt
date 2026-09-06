@@ -57,6 +57,7 @@ public class _Probe : MonoBehaviour
         // fog pulled in short of the edge of the drawn world, so the horizon fades rather than stops
         if (TimeOfDay.Instance != null)
         {
+            TimeOfDay.Instance.Paused = true;
             typeof(TimeOfDay).GetField("clearFogStart", flags).SetValue(TimeOfDay.Instance, 50f);
             typeof(TimeOfDay).GetField("clearFogEnd", flags).SetValue(TimeOfDay.Instance, 200f);
         }

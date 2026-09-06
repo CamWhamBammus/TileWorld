@@ -1,0 +1,170 @@
+// A probe for the animal loose ends: antlers sized to the deer, a deer
+// sheltering from forced rain, a call answered and counted, and rooting
+// that reads as earth.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Step2", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        var player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        string dir = Application.persistentDataPath;
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var stateField = typeof(Animal).GetField("state", flags);
+        var stateType = typeof(Animal).GetNestedType("State", System.Reflection.BindingFlags.NonPublic);
+        var untilField = typeof(Animal).GetField("until", flags);
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        var manager = FindFirstObjectByType<Wildlife>();
+        var living = (List<Animal>)typeof(Wildlife).GetField("living", flags).GetValue(manager);
+        foreach (var wild in living.ToArray()) if (wild != null) Destroy(wild.gameObject);
+        living.Clear();
+        manager.enabled = false;
+        if (TimeOfDay.Instance != null) { TimeOfDay.Instance.SetTime(0.42f); TimeOfDay.Instance.ForceOvercast(0f); }
+
+        // a lowland chunk, then open ground near trees
+        {
+            var homeChunk = WorldGrid.WorldToChunk(player.position);
+            bool got = false;
+            for (int r = 1; r < 60 && !got; r++)
+            for (int dx = -r; dx <= r && !got; dx++)
+            for (int dz = -r; dz <= r && !got; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                var chunk = new Vector2Int(homeChunk.x + dx, homeChunk.y + dz);
+                if (Regions.CharacterAt(chunk, seed) != Regions.Character.Forest) continue;
+                int cx = chunk.x * WorldGrid.TilesPerChunk + 7, cz = chunk.y * WorldGrid.TilesPerChunk + 7;
+                if (WaterSurface.IsUnderwater(cx, cz, seed) || SnowCover.IsSnowy(cx, cz, seed)) continue;
+                var c = WorldGrid.ChunkCenter(chunk);
+                body.enabled = false; player.position = new Vector3(c.x, WorldHeight.SurfaceY(cx, cz, seed) + 1f, c.z); body.enabled = true;
+                got = true;
+            }
+            yield return new WaitForSecondsRealtime(8f);
+        }
+        var origin = player.position; origin.y = WorldHeight.SurfaceY(Mathf.RoundToInt(origin.x / 2f), Mathf.RoundToInt(origin.z / 2f), seed);
+        body.enabled = false; player.position = origin + new Vector3(0f, 0.3f, -40f); body.enabled = true;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+
+        Animal Make(FaunaKind kind, Vector3 at, float scale = 0f, bool young = false)
+        {
+            var go = new GameObject("probe " + kind);
+            var an = go.AddComponent<Animal>();
+            an.Settle(kind, seed, player, at, scale, young);
+            living.Add(an);
+            return an;
+        }
+
+        // 1. antlers: three deer, small, big, young
+        {
+            var small = Make(FaunaKind.Deer, origin + new Vector3(-3f, 0f, 0f), 0.8f);
+            var big = Make(FaunaKind.Deer, origin + new Vector3(3f, 0f, 0f), 1.25f);
+            var young = Make(FaunaKind.Deer, origin + new Vector3(0f, 0f, 1.5f), 0.6f, true);
+            foreach (var d in new[] { small, big, young }) { stateField.SetValue(d, System.Enum.Parse(stateType, "Stand")); untilField.SetValue(d, Time.time + 100f); typeof(Animal).GetField("yaw", flags).SetValue(d, 90f); d.transform.rotation = Quaternion.Euler(0f, 90f, 0f); }
+            yield return new WaitForSecondsRealtime(1f);
+            string crowns = "";
+            foreach (var d in new[] { small, big, young }) { var c = d.transform.Find("frame/head/crown"); crowns += (c != null ? c.localScale.x.ToString("F2") : "none") + " "; }
+            Mark("ANTLERS: crown scale small/big/young = " + crowns);
+            var p = origin + Vector3.up * 1.2f;
+            cam.transform.position = p + new Vector3(0f, 0.6f, -7.5f);
+            cam.transform.rotation = Quaternion.LookRotation(p - cam.transform.position, Vector3.up);
+            HideInterface(); yield return null;
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-s2-antlers.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            Destroy(small.gameObject); Destroy(big.gameObject); Destroy(young.gameObject); living.Clear();
+        }
+
+        // 2. a call answered
+        {
+            var a = Make(FaunaKind.Deer, origin + new Vector3(-3f, 0f, 0f));
+            var b = Make(FaunaKind.Deer, origin + new Vector3(3f, 0f, 0f));
+            yield return new WaitForSecondsRealtime(1f);
+            int before = Animal.Replies;
+            typeof(Animal).GetMethod("Speak", flags, null, new[] { typeof(bool) }, null).Invoke(a, new object[] { false });
+            yield return new WaitForSecondsRealtime(4f);
+            Mark("REPLIES: " + (Animal.Replies - before) + " answered within four seconds");
+            Destroy(a.gameObject); Destroy(b.gameObject); living.Clear();
+        }
+
+        // 3. rain: a deer makes for a tree
+        {
+            Vector3 trunk;
+            bool tree = Undergrowth.NearestTree(origin, 30f, out trunk);
+            var deer = Make(FaunaKind.Deer, origin);
+            stateField.SetValue(deer, System.Enum.Parse(stateType, "Graze")); untilField.SetValue(deer, Time.time + 100f);
+            TimeOfDay.Instance.ForceOvercast(0.95f);
+            yield return new WaitForSecondsRealtime(1f);
+            float began = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - began < 40f && !deer.Sheltering) yield return new WaitForSecondsRealtime(0.5f);
+            Vector3 t2; bool near = Undergrowth.NearestTree(deer.transform.position, 6f, out t2);
+            Mark("SHELTER: tree within 30 m at start " + tree + " | sheltering " + deer.Sheltering + " after " + (Time.realtimeSinceStartup - began).ToString("F0") + " s | tree within 6 m of it now " + near
+                + (near ? " at " + Vector2.Distance(new Vector2(deer.transform.position.x, deer.transform.position.z), new Vector2(t2.x, t2.z)).ToString("F1") + " m" : ""));
+            var p = deer.transform.position;
+            cam.transform.position = p + new Vector3(3f, 1.4f, -4f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.up * 0.6f) - cam.transform.position, Vector3.up);
+            HideInterface(); yield return null;
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-s2-shelter.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            TimeOfDay.Instance.ForceOvercast(-1f);
+            Destroy(deer.gameObject); living.Clear();
+        }
+
+        // 4. rooting, from low down
+        {
+            var boar = Make(FaunaKind.Boar, origin + new Vector3(2f, 0f, 0f));
+            stateField.SetValue(boar, System.Enum.Parse(stateType, "Graze")); untilField.SetValue(boar, Time.time + 100f);
+            yield return new WaitForSecondsRealtime(11f);
+            var p = boar.transform.position;
+            cam.transform.position = p + new Vector3(-3.5f, 0.8f, -2.5f);
+            cam.transform.rotation = Quaternion.LookRotation((p + Vector3.forward * 0.5f) - cam.transform.position, Vector3.up);
+            HideInterface(); yield return null;
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-s2-rooting.png"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            Destroy(boar.gameObject);
+        }
+        Mark("done");
+    }
+}

@@ -123,7 +123,11 @@ public class TimeOfDay : MonoBehaviour
             Normalized = Mathf.Repeat(Normalized + Time.deltaTime / (dayLengthMinutes * 60f), 1f);
         }
 
-        if (weather)
+        if (forcedOvercast >= 0f)
+        {
+            Overcast = forcedOvercast;
+        }
+        else if (weather)
         {
             float t = Time.time / (weatherPeriodMinutes * 60f);
             float n = Mathf.PerlinNoise(weatherSeed + t, weatherSeed - t * 0.6f);
@@ -249,6 +253,13 @@ public class TimeOfDay : MonoBehaviour
     private Color fogLockColour;
     public void LockFog(Color colour) { fogLocked = true; fogLockColour = colour; }
     public void UnlockFog() { fogLocked = false; }
+
+    /// <summary>The clock held or let go: for a capture, so six faces see one sun.</summary>
+    public bool Paused { get => paused; set => paused = value; }
+
+    // The weather forced, for the dev tools and for tests: negative is no forcing.
+    private float forcedOvercast = -1f;
+    public void ForceOvercast(float overcast) { forcedOvercast = overcast; }
 
     /// <summary>Changes how long a day takes while running.</summary>
     public void SetDayLength(float minutes)

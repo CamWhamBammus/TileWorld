@@ -56,7 +56,7 @@ public class Tracks : MonoBehaviour
 
         paints[Sort.SnowPrint] = Paint.Flat(new Color(0.58f, 0.64f, 0.76f));
         paints[Sort.SandPrint] = Paint.Flat(new Color(0.60f, 0.48f, 0.30f));
-        paints[Sort.Rooting] = Paint.Flat(new Color(0.28f, 0.22f, 0.15f));
+        paints[Sort.Rooting] = Paint.Flat(new Color(0.46f, 0.34f, 0.20f));
         paints[Sort.PaleFeather] = Paint.Flat(new Color(0.90f, 0.90f, 0.87f));
         paints[Sort.DarkFeather] = Paint.Flat(new Color(0.09f, 0.09f, 0.11f));
         paints[Sort.Trail] = Paint.Flat(new Color(0.38f, 0.32f, 0.20f));
@@ -96,7 +96,7 @@ public class Tracks : MonoBehaviour
     public static void Root(Vector3 at, float size)
     {
         if (instance == null) return;
-        instance.Leave(new Mark { Sort = Sort.Rooting, At = at + Vector3.up * 0.015f, Yaw = Random.Range(0f, 360f), Size = size, Made = Time.time, Lasts = 900f });
+        instance.Leave(new Mark { Sort = Sort.Rooting, At = at + Vector3.up * 0.03f, Yaw = Random.Range(0f, 360f), Size = size * 1.3f, Made = Time.time, Lasts = 900f });
     }
 
     /// <summary>A feather, where a bird stood up and went.</summary>

@@ -199,6 +199,33 @@ public class Undergrowth : MonoBehaviour
         Draw();
     }
 
+    private static Undergrowth instance;
+
+    /// <summary>
+    /// The nearest tall thing standing within reach of a point -- a tree, by
+    /// its trunk -- or nothing. Read off the drawn instances, so only what is
+    /// near the player is known, which is where anything asking is.
+    /// </summary>
+    public static bool NearestTree(Vector3 at, float within, out Vector3 trunk)
+    {
+        trunk = at;
+        if (instance == null) instance = FindFirstObjectByType<Undergrowth>();
+        if (instance == null || instance.gathered == null) return false;
+        float best = within;
+        for (int i = 0; i < instance.every.Length && i < instance.gathered.Length; i++)
+        {
+            if (instance.gathered[i] == null) continue;
+            foreach (var m in instance.gathered[i])
+            {
+                if (m.lossyScale.y * instance.every[i].Size < 2.2f) continue;   // trees, not bushes
+                var p = m.GetPosition();
+                float d = Vector2.Distance(new Vector2(p.x, p.z), new Vector2(at.x, at.z));
+                if (d < best) { best = d; trunk = p; }
+            }
+        }
+        return best < within;
+    }
+
     /// <summary>Works out what stands in a chunk, from the ground and the seed.</summary>
     private Patch Sow(Vector2Int index)
     {
