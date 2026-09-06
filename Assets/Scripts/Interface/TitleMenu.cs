@@ -64,7 +64,7 @@ public class TitleMenu : MonoBehaviour
     {
         worldsPage.SetActive(true);
         newPage.SetActive(false);
-        heading.text = "<size=30><b>TILE WORLD</b></size>\n<size=17><color=#8B7860>a survey of an empty country</color></size>";
+        heading.text = "<size=30><b>TILE WORLD</b></size>\n<size=17><color=#8B7860>select a world</color></size>";
         Refresh();
     }
 
@@ -72,7 +72,7 @@ public class TitleMenu : MonoBehaviour
     {
         worldsPage.SetActive(false);
         newPage.SetActive(true);
-        heading.text = "<size=30><b>NEW WORLD</b></size>\n<size=17><color=#8B7860>how it should be set up</color></size>";
+        heading.text = "<size=30><b>NEW WORLD</b></size>\n<size=17><color=#8B7860>world settings</color></size>";
         nameField.text = "";
         seedField.text = Random.Range(1, 99999999).ToString();
         Settings();
@@ -97,7 +97,7 @@ public class TitleMenu : MonoBehaviour
         if (worlds.Count == 0)
         {
             var none = Label("None", worldsPage.transform, 19f, new Vector2(-190f, 120f), new Vector2(680f, 80f));
-            none.text = "No worlds yet.\n<size=80%>Make one, and it will be kept here.</size>";
+            none.text = "No worlds yet.\n<size=80%>Create one and it will show up here.</size>";
             none.color = ParchmentPanel.InkFaint;
             rows.Add(none.gameObject);
         }
@@ -117,7 +117,7 @@ public class TitleMenu : MonoBehaviour
         }
 
         playLabel.text = chosen != null ? "Play" : "Play";
-        forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Press again to forget it" : "Forget this world";
+        forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Press again to delete" : "Delete world";
     }
 
     private void Row(WorldSave world, float y)
@@ -140,7 +140,7 @@ public class TitleMenu : MonoBehaviour
 
         var text = Label("Text", go.transform, 19f, new Vector2(14f, 0f), new Vector2(640f, 64f));
         text.alignment = TextAlignmentOptions.Left;
-        string setup = (world.weather ? "" : "no weather · ") + (world.dayCycle ? "" : "still sky · ") + (world.animals ? "" : "no animals · ") + (world.ruins ? "" : "no ruins · ");
+        string setup = (world.weather ? "" : "no weather · ") + (world.dayCycle ? "" : "no day cycle · ") + (world.animals ? "" : "no animals · ") + (world.ruins ? "" : "no ruins · ");
         text.text = "<b>" + world.name + "</b>"
                   + "\n<size=78%><color=#8B7860>seed " + world.seed
                   + "  ·  " + world.Charted + " charted  ·  " + world.Landmarks + " found"
@@ -177,12 +177,12 @@ public class TitleMenu : MonoBehaviour
 
     private void Settings()
     {
-        weatherLabel.text = weather ? "weather comes and goes" : "always clear";
-        cycleLabel.text = dayCycle ? "the sun moves" : "the sky stands still";
+        weatherLabel.text = weather ? "on" : "off";
+        cycleLabel.text = dayCycle ? "on" : "off";
         startLabel.text = StartNames[startAt];
         lengthLabel.text = LengthNames[dayLength];
-        animalsLabel.text = animals ? "animals live here" : "no animals";
-        ruinsLabel.text = ruins ? "ruins stand here" : "no ruins";
+        animalsLabel.text = animals ? "on" : "off";
+        ruinsLabel.text = ruins ? "on" : "off";
         lengthLabel.color = dayCycle ? ParchmentPanel.Paper : new Color(0.9f, 0.85f, 0.75f, 0.45f);
     }
 
@@ -243,16 +243,16 @@ public class TitleMenu : MonoBehaviour
 
         var kept = Label("Kept", worldsPage.transform, 16f, new Vector2(-190f, 236f), new Vector2(680f, 26f));
         kept.alignment = TextAlignmentOptions.Left;
-        kept.text = "WORLDS KEPT";
+        kept.text = "YOUR WORLDS";
         kept.color = ParchmentPanel.InkFaint;
 
         playLabel = Button("Play", worldsPage.transform, new Vector2(370f, 200f), new Vector2(300f, 58f), () => Enter(chosen));
         Button("New world", worldsPage.transform, new Vector2(370f, 130f), new Vector2(300f, 58f), ShowNew);
-        forgetLabel = Button("Forget this world", worldsPage.transform, new Vector2(370f, 60f), new Vector2(300f, 50f), Forget);
+        forgetLabel = Button("Delete world", worldsPage.transform, new Vector2(370f, 60f), new Vector2(300f, 50f), Forget);
         Button("Quit", worldsPage.transform, new Vector2(370f, -230f), new Vector2(300f, 50f), Quit);
 
         var hint = Label("Hint", worldsPage.transform, 15f, new Vector2(-190f, -300f), new Vector2(680f, 30f));
-        hint.text = "Choose a world and press Play, or press its name twice.  Everything in a world comes from its seed.";
+        hint.text = "Select a world and press Play, or double click it.";
         hint.color = ParchmentPanel.InkFaint;
 
         // ---- the new world page
@@ -260,19 +260,19 @@ public class TitleMenu : MonoBehaviour
         newPage.transform.SetParent(card, false);
         Stretch(newPage.AddComponent<RectTransform>());
 
-        nameField = Field("Name", "a name, or leave it to the land", newPage.transform, new Vector2(-150f, 220f), 28);
-        seedField = Field("Seed", "a seed, or leave it to chance", newPage.transform, new Vector2(-150f, 160f), 16);
-        Button("another seed", newPage.transform, new Vector2(230f, 160f), new Vector2(200f, 46f), () => seedField.text = Random.Range(1, 99999999).ToString());
+        nameField = Field("Name", "World name (optional)", newPage.transform, new Vector2(-150f, 220f), 28);
+        seedField = Field("Seed", "Seed (leave blank for random)", newPage.transform, new Vector2(-150f, 160f), 16);
+        Button("Random seed", newPage.transform, new Vector2(230f, 160f), new Vector2(200f, 46f), () => seedField.text = Random.Range(1, 99999999).ToString());
 
         float y = 80f;
         weatherLabel = Setting(newPage.transform, "Weather", ref y, () => { weather = !weather; Settings(); });
-        cycleLabel = Setting(newPage.transform, "Day and night", ref y, () => { dayCycle = !dayCycle; Settings(); });
-        startLabel = Setting(newPage.transform, "Starts at", ref y, () => { startAt = (startAt + 1) % StartNames.Length; Settings(); });
-        lengthLabel = Setting(newPage.transform, "A day lasts", ref y, () => { dayLength = (dayLength + 1) % LengthNames.Length; Settings(); });
+        cycleLabel = Setting(newPage.transform, "Day cycle", ref y, () => { dayCycle = !dayCycle; Settings(); });
+        startLabel = Setting(newPage.transform, "Start time", ref y, () => { startAt = (startAt + 1) % StartNames.Length; Settings(); });
+        lengthLabel = Setting(newPage.transform, "Day length", ref y, () => { dayLength = (dayLength + 1) % LengthNames.Length; Settings(); });
         animalsLabel = Setting(newPage.transform, "Animals", ref y, () => { animals = !animals; Settings(); });
         ruinsLabel = Setting(newPage.transform, "Ruins", ref y, () => { ruins = !ruins; Settings(); });
 
-        Button("Create and play", newPage.transform, new Vector2(-150f, -280f), new Vector2(360f, 58f), CreateAndPlay);
+        Button("Create world", newPage.transform, new Vector2(-150f, -280f), new Vector2(360f, 58f), CreateAndPlay);
         Button("Back", newPage.transform, new Vector2(230f, -280f), new Vector2(200f, 58f), ShowWorlds);
     }
 
