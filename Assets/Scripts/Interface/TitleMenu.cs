@@ -38,6 +38,9 @@ public class TitleMenu : MonoBehaviour
     private static readonly string[] LengthNames = { "10 minutes", "20 minutes", "40 minutes" };
     private static readonly float[] LengthMinutes = { 10f, 20f, 40f };
 
+    private Camera eye;
+    private float turn;
+
     private void Awake()
     {
         IsUp = true;
@@ -46,8 +49,28 @@ public class TitleMenu : MonoBehaviour
         Time.timeScale = 1f;
 
         font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+
+        // the country behind the menu: a panorama rendered from a lakeside,
+        // as a skybox the camera turns slowly through
+        eye = Camera.main;
+        var panorama = Resources.Load<Material>("Title/Panorama");
+        if (eye != null && panorama != null)
+        {
+            RenderSettings.skybox = panorama;
+            eye.clearFlags = CameraClearFlags.Skybox;
+            eye.fieldOfView = 58f;
+            turn = Random.Range(0f, 360f);
+        }
+
         Build();
         ShowWorlds();
+    }
+
+    private void LateUpdate()
+    {
+        if (eye == null || eye.clearFlags != CameraClearFlags.Skybox) return;
+        turn += Time.unscaledDeltaTime * 1.6f;
+        eye.transform.rotation = Quaternion.Euler(4f + Mathf.Sin(turn * 0.02f) * 2f, turn, 0f);
     }
 
     private void OnDestroy() { IsUp = false; }
@@ -209,19 +232,23 @@ public class TitleMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // the country behind, darkened toward the edges
-        var backGo = new GameObject("Backdrop");
-        backGo.transform.SetParent(canvasGo.transform, false);
-        var back = backGo.AddComponent<RawImage>();
-        var photo = Resources.Load<Texture2D>("Title/backdrop");
-        back.texture = photo != null ? photo : Texture2D.blackTexture;
-        back.color = new Color(0.62f, 0.62f, 0.62f, 1f);
-        Stretch(backGo.GetComponent<RectTransform>());
+        // a photograph behind, only if there is no panorama to turn through;
+        // and a shade toward the edges either way, so the paper reads
+        if (Resources.Load<Material>("Title/Panorama") == null)
+        {
+            var backGo = new GameObject("Backdrop");
+            backGo.transform.SetParent(canvasGo.transform, false);
+            var back = backGo.AddComponent<RawImage>();
+            var photo = Resources.Load<Texture2D>("Title/backdrop");
+            back.texture = photo != null ? photo : Texture2D.blackTexture;
+            back.color = new Color(0.62f, 0.62f, 0.62f, 1f);
+            Stretch(backGo.GetComponent<RectTransform>());
+        }
         var shadeGo = new GameObject("Shade");
         shadeGo.transform.SetParent(canvasGo.transform, false);
         var shade = shadeGo.AddComponent<RawImage>();
         shade.texture = ParchmentPanel.Shadow(64, 64);
-        shade.color = new Color(0f, 0f, 0f, 0.55f);
+        shade.color = new Color(0f, 0f, 0f, 0.42f);
         Stretch(shadeGo.GetComponent<RectTransform>());
 
         // the paper

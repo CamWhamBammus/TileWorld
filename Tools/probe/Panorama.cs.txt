@@ -1,0 +1,110 @@
+// A probe: renders a cubemap of the country from a good spot -- by a lake
+// with a lighthouse on it, at dawn, weather off, the view at its widest --
+// and writes the six faces out for the title to turn slowly behind the menu.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot in " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+
+        // from the title, into whichever world is first
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Panorama", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        Transform player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+
+        world.SetViewRadius(8);
+        if (TimeOfDay.Instance != null)
+        {
+            TimeOfDay.Instance.SetTime(0.31f);
+            typeof(TimeOfDay).GetField("weather", flags).SetValue(TimeOfDay.Instance, false);
+        }
+
+        // the nearest lighthouse: a lake, a shore, a tower to look at
+        var home = WorldGrid.WorldToChunk(player.position);
+        Landmarks.Placement at = default; bool found = false;
+        for (int r = 0; r < 90 && !found; r++)
+        for (int dx = -r; dx <= r && !found; dx++)
+        for (int dz = -r; dz <= r && !found; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            var p = Landmarks.In(new Vector2Int(home.x + dx, home.y + dz), seed);
+            if (p.Exists && p.Kind == (LandmarkKind)4) { at = p; found = true; }
+        }
+        Mark("lighthouse " + found);
+        var turn = Quaternion.Euler(0f, at.Yaw, 0f);
+        // on the shore behind the hut, the pier and the lake out in front
+        Vector3 stand = at.Position + turn * new Vector3(-16f, 0f, 6f);
+        int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+        float ground = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level);
+        body.enabled = false; player.position = new Vector3(stand.x, ground + 0.5f, stand.z); body.enabled = true;
+        yield return new WaitForSecondsRealtime(20f);
+
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+        foreach (var an in FindObjectsByType<Animal>(FindObjectsSortMode.None)) Destroy(an.gameObject);
+        // the surveyor out of the picture
+        foreach (var rend in player.GetComponentsInChildren<Renderer>()) rend.enabled = false;
+        yield return new WaitForSecondsRealtime(1f);
+
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        cam.transform.position = new Vector3(stand.x, ground + 3.2f, stand.z);
+        cam.transform.rotation = Quaternion.identity;
+        yield return null;
+
+        var rt = new RenderTexture(1024, 1024, 24) { dimension = UnityEngine.Rendering.TextureDimension.Cube };
+        rt.Create();
+        bool ok = cam.RenderToCubemap(rt, 63);
+        Mark("cubemap rendered " + ok);
+
+        var face = new Texture2D(1024, 1024, TextureFormat.RGB24, false);
+        for (int i = 0; i < 6; i++)
+        {
+            Graphics.SetRenderTarget(rt, 0, (CubemapFace)i);
+            face.ReadPixels(new Rect(0, 0, 1024, 1024), 0, 0);
+            face.Apply();
+            File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "pano-" + i + ".png"), face.EncodeToPNG());
+        }
+        Graphics.SetRenderTarget(null);
+        Mark("faces written");
+        Mark("done");
+    }
+}

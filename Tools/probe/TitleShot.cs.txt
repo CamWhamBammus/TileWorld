@@ -1,0 +1,36 @@
+// A probe: two photographs of the title a few seconds apart, to see the country turn behind it.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var cam = Camera.main;
+        Mark("title " + TitleMenu.IsUp + " | skybox " + (RenderSettings.skybox != null ? RenderSettings.skybox.name : "none") + " | clear " + (cam != null ? cam.clearFlags.ToString() : "-"));
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-title-a.png"));
+        yield return new WaitForSecondsRealtime(6f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-title-b.png"));
+        yield return new WaitForSecondsRealtime(1f);
+        Mark("done");
+    }
+}
