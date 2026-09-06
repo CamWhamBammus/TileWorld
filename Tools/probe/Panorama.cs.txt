@@ -68,11 +68,11 @@ public class _Probe : MonoBehaviour
         // four views: a structure to stand near, the hour, where to stand from it, the name
         var views = new (int kind, float hour, Vector3 off, float up, string name)[]
         {
-            (4, 0.30f, new Vector3(-12f, 0f, 5f), 2.2f, "1-dawn"),
+            (4, 0.30f, new Vector3(-12f, 0f, 5f), 3.4f, "1-dawn"),
             (0, 0.38f, new Vector3(-20f, 0f, 13f), 2.4f, "2-morning"),
             (8, 0.46f, new Vector3(-17f, 0f, 11f), 2.6f, "3-noon"),
-            (12, 0.72f, new Vector3(-13f, 0f, 9f), 2.4f, "4-dusk"),
-            (11, 0.965f, new Vector3(-10f, 0f, 7f), 2.2f, "5-night"),
+            (12, 0.72f, new Vector3(-13f, 0f, 9f), 3.4f, "4-dusk"),
+            (11, 0.965f, new Vector3(-10f, 0f, 7f), 3.2f, "5-night"),
         };
 
         var home = WorldGrid.WorldToChunk(player.position);
@@ -108,6 +108,62 @@ public class _Probe : MonoBehaviour
             foreach (var an in FindObjectsByType<Animal>(FindObjectsSortMode.None)) if (an.Kind != FaunaKind.Deer && an.Kind != FaunaKind.Heron) Destroy(an.gameObject);
             yield return new WaitForSecondsRealtime(1f);
 
+            // The spot itself: within twenty metres of the structure, the tile
+            // that suits the view -- sand by the water at dusk, snow at noon,
+            // otherwise any dry ground -- with the fewest tall things about it
+            // and the structure still in sight.
+            {
+                int TallNear(Vector3 at, float within)
+                {
+                    int count = 0;
+                    try
+                    {
+                        var under = FindFirstObjectByType<Undergrowth>();
+                        var every = (Flora.Sprout[])typeof(Undergrowth).GetField("every", flags).GetValue(under);
+                        var gathered = (Matrix4x4[][])typeof(Undergrowth).GetField("gathered", flags).GetValue(under);
+                        for (int i = 0; every != null && gathered != null && i < every.Length && i < gathered.Length; i++)
+                        {
+                            if (gathered[i] == null) continue;
+                            foreach (var m in gathered[i])
+                            {
+                                if (m.lossyScale.y * every[i].Size < 1.4f) continue;
+                                var pos = m.GetPosition(); pos.y = 0f; var flat = at; flat.y = 0f;
+                                if (Vector3.Distance(pos, flat) < within) count++;
+                            }
+                        }
+                    }
+                    catch { }
+                    return count;
+                }
+                int sx = Mathf.RoundToInt(at.Position.x / WorldGrid.TileSize), sz = Mathf.RoundToInt(at.Position.z / WorldGrid.TileSize);
+                var about = Landmarks.All(at.Kind);
+                float clear = Mathf.Max(about.Ahead, Mathf.Max(about.Behind, about.Aside)) * WorldGrid.TileSize + 8f;   // past the whole of the structure
+                Vector3 bestSpot = stand; float bestSpotScore = float.MaxValue;
+                for (int dx = -22; dx <= 22; dx++) for (int dz = -22; dz <= 22; dz++)
+                {
+                    int tx2 = sx + dx, tz2 = sz + dz;
+                    float d = Mathf.Sqrt(dx * dx + dz * dz) * WorldGrid.TileSize;
+                    if (d < clear || d > clear + 18f) continue;
+                    // flat about it: no terrace steps within four tiles
+                    float lo = float.MaxValue, hi = float.MinValue;
+                    for (int i = -4; i <= 4; i++) for (int j = -4; j <= 4; j++) { float hh = WorldHeight.SurfaceY(tx2 + i, tz2 + j, seed); lo = Mathf.Min(lo, hh); hi = Mathf.Max(hi, hh); }
+                    if (hi - lo > 0.3f) continue;
+                    bool wet = WaterSurface.IsUnderwater(tx2, tz2, seed);
+                    bool snowy = SnowCover.IsSnowy(tx2, tz2, seed);
+                    var here = Regions.CharacterAtTile(tx2, tz2, seed);
+                    bool suits = v.name.Contains("dusk") ? (!wet && here == Regions.Character.Water)
+                               : v.name.Contains("noon") ? (!wet && snowy)
+                               : (!wet && !snowy);
+                    if (!suits) continue;
+                    var p3 = new Vector3(tx2 * WorldGrid.TileSize, 0f, tz2 * WorldGrid.TileSize);
+                    float score = TallNear(p3, 8f) * 10f + TallNear(p3, 14f) + Mathf.Abs(d - clear - 6f) * 0.2f;
+                    if (score < bestSpotScore) { bestSpotScore = score; bestSpot = p3; }
+                }
+                stand = bestSpot;
+                tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize); tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+                ground = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level);
+                Mark(v.name + ": spot " + stand.ToString("F0") + " score " + bestSpotScore.ToString("F1"));
+            }
             cam.transform.position = new Vector3(stand.x, ground + v.up, stand.z);
             cam.transform.rotation = Quaternion.identity;
             cam.farClipPlane = 240f;
@@ -141,15 +197,41 @@ public class _Probe : MonoBehaviour
             Mark(v.name + ": horizon sky " + ColorUtility.ToHtmlStringRGB(sky));
             yield return null; yield return null;
 
-            bool ok = cam.RenderToCubemap(rt, 63);
-            for (int i = 0; i < 6; i++)
+            // Six faces, each rendered with the camera actually turned that way
+            // and a frame allowed to pass first: the tiles, the plants and the
+            // animals are only submitted for what the camera can see, so a
+            // cubemap taken all at once had a world in one face and void in
+            // the other five.
+            var face2d = new RenderTexture(2048, 2048, 24);
+            face2d.Create();
+            var faceTex = new Texture2D(2048, 2048, TextureFormat.RGB24, false);
+            cam.fieldOfView = 90f;
+            cam.aspect = 1f;
+            var looks = new Quaternion[]
             {
-                Graphics.SetRenderTarget(rt, 0, (CubemapFace)i);
-                face.ReadPixels(new Rect(0, 0, 2048, 2048), 0, 0);
-                face.Apply();
-                File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "pano-" + v.name + "-" + i + ".png"), face.EncodeToPNG());
+                Quaternion.Euler(0f, 90f, 0f),     // +X
+                Quaternion.Euler(0f, -90f, 0f),    // -X
+                Quaternion.Euler(-90f, 0f, 0f),    // +Y, up
+                Quaternion.Euler(90f, 0f, 0f),     // -Y, down
+                Quaternion.Euler(0f, 0f, 0f),      // +Z
+                Quaternion.Euler(0f, 180f, 0f),    // -Z
+            };
+            bool ok = true;
+            for (int f = 0; f < 6; f++)
+            {
+                cam.transform.rotation = looks[f];
+                yield return null; yield return null;          // the world catches up with the turn
+                cam.targetTexture = face2d;
+                cam.Render();
+                RenderTexture.active = face2d;
+                faceTex.ReadPixels(new Rect(0, 0, 2048, 2048), 0, 0);
+                faceTex.Apply();
+                RenderTexture.active = null;
+                cam.targetTexture = null;
+                File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "pano-" + v.name + "-" + f + ".png"), faceTex.EncodeToPNG());
             }
-            Graphics.SetRenderTarget(null);
+            cam.ResetAspect();
+            face2d.Release();
             Mark(v.name + ": rendered " + ok);
         }
         Mark("done");
