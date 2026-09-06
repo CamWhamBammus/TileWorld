@@ -1,0 +1,50 @@
+// A probe: the title's options page photographed, the settings changed and
+// read back, the sound under the title checked.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(4f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var title = FindFirstObjectByType<TitleMenu>();
+        var amb = FindFirstObjectByType<TitleAmbience>();
+        var sources = amb != null ? amb.GetComponents<AudioSource>() : new AudioSource[0];
+        bool windOn = false; foreach (var s in sources) if (s.loop && s.isPlaying) windOn = true;
+        Mark("ambience: sources " + sources.Length + " wind playing " + windOn + " | listener volume " + AudioListener.volume.ToString("F2"));
+
+        float v0 = Settings.Volume; int r0 = Settings.ViewRadius; float l0 = Settings.LookSpeed;
+        typeof(TitleMenu).GetMethod("ShowOptions", flags).Invoke(title, null);
+        yield return new WaitForSecondsRealtime(0.6f);
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-options.png"));
+        yield return new WaitForSecondsRealtime(1f);
+
+        Settings.Volume = 0.5f; Settings.ViewRadius = 6; Settings.LookSpeed = 1.4f;
+        typeof(TitleMenu).GetMethod("Options", flags).Invoke(title, null);
+        var radiusLabel = (TMPro.TMP_Text)typeof(TitleMenu).GetField("radiusLabel", flags).GetValue(title);
+        Mark("set: volume " + Settings.Volume + " radius " + Settings.ViewRadius + " look " + Settings.LookSpeed + " | label '" + radiusLabel.text + "' | listener " + AudioListener.volume.ToString("F2"));
+        Settings.Volume = v0; Settings.ViewRadius = r0; Settings.LookSpeed = l0;
+        Mark("restored: " + Settings.Volume + " " + Settings.ViewRadius + " " + Settings.LookSpeed);
+        Mark("done");
+    }
+}

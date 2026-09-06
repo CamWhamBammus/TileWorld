@@ -176,7 +176,7 @@ Press M. Chunks you've walked through are shaded by height with water and snow m
 
 ## Worlds and saving
 
-The game opens on a title screen outside any world, like Minecraft's. It lists the worlds you've kept with their seed, how much you've charted, what you've found and when you last played. Pick one and press Play, or make a new one: name and seed (or leave them blank for random ones), plus world settings: weather on/off, day cycle on/off, start time, day length, animals on/off and ruins on/off. Those are fixed when the world is created. Escape in a world gives you Main menu, which saves and goes back to the title.
+The game opens on a title screen outside any world, like Minecraft's. It lists the worlds you've kept with their seed, how much you've charted, what you've found and when you last played. Pick one and press Play, or make a new one: name and seed (or leave them blank for random ones), plus world settings: weather on/off, day cycle on/off, start time, day length, animals on/off and ruins on/off. Those are fixed when the world is created. Escape in a world gives you Main menu, which saves and goes back to the title. The title also has Options: volume, view distance, mouse look speed and fullscreen, kept between runs.
 
 The game saves every thirty seconds, on quit, and on the way back to the title.
 

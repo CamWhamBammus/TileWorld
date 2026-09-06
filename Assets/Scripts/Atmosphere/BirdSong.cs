@@ -52,7 +52,7 @@ public class BirdSong : MonoBehaviour
     }
 
     /// <summary>A few notes, each a swept sine under a quick envelope.</summary>
-    private AudioClip BuildCall(int variant)
+    public static AudioClip BuildCall(int variant)
     {
         const int rate = 44100;
         var rng = new System.Random(1000 + variant);

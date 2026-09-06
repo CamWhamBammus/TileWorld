@@ -87,6 +87,7 @@ public class ChunkManager : MonoBehaviour
         if (clamped == viewRadius) return;
 
         viewRadius = clamped;
+        Settings.ViewRadius = clamped;
         RefreshVisibleChunks(force: true);
     }
 
@@ -153,6 +154,8 @@ public class ChunkManager : MonoBehaviour
         {
             return;
         }
+
+        viewRadius = Settings.ViewRadius;
 
         if (WorldLibrary.HasCurrent)
         {

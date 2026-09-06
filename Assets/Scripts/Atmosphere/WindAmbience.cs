@@ -54,7 +54,10 @@ public class WindAmbience : MonoBehaviour
     /// Low passed noise with a slow swell. The filter is what turns hiss into
     /// wind; the swell is what stops it sounding like a broken speaker.
     /// </summary>
-    private AudioClip Build()
+    private AudioClip Build() => BuildWind(seconds);
+
+    /// <summary>The wind, as a loop of so many seconds.</summary>
+    public static AudioClip BuildWind(int seconds)
     {
         const int rate = 44100;
         int samples = rate * seconds;

@@ -20,7 +20,8 @@ public class TitleMenu : MonoBehaviour
 
     private TMP_FontAsset font;
     private Transform card;
-    private GameObject worldsPage, newPage;
+    private GameObject worldsPage, newPage, optionsPage;
+    private TMP_Text volumeLabel, radiusLabel, lookLabel, fullLabel;
     private readonly List<GameObject> rows = new List<GameObject>();
     private WorldSave chosen;
     private string pendingForget;
@@ -90,6 +91,25 @@ public class TitleMenu : MonoBehaviour
 
         Build();
         ShowWorlds();
+        Settings.Apply();
+        gameObject.AddComponent<TitleAmbience>();
+    }
+
+    private void ShowOptions()
+    {
+        worldsPage.SetActive(false);
+        newPage.SetActive(false);
+        optionsPage.SetActive(true);
+        heading.text = "<size=30><b>OPTIONS</b></size>\n<size=17><color=#8B7860>kept between runs</color></size>";
+        Options();
+    }
+
+    private void Options()
+    {
+        volumeLabel.text = Mathf.RoundToInt(Settings.Volume * 100f) + "%";
+        radiusLabel.text = Settings.ViewRadius + " chunks (" + (Settings.ViewRadius * WorldGrid.ChunkWorldSize) + " m)";
+        lookLabel.text = Settings.LookSpeed.ToString("F1") + "x";
+        fullLabel.text = Settings.Fullscreen ? "on" : "off";
     }
 
     private void LateUpdate()
@@ -138,7 +158,7 @@ public class TitleMenu : MonoBehaviour
     private void Update()
     {
         // Escape from the new world page goes back; from the list, nothing
-        if (Input.GetKeyDown(KeyCode.Escape) && newPage != null && newPage.activeSelf) ShowWorlds();
+        if (Input.GetKeyDown(KeyCode.Escape) && ((newPage != null && newPage.activeSelf) || (optionsPage != null && optionsPage.activeSelf))) ShowWorlds();
     }
 
     // -------------------------------------------------------------- pages
@@ -147,6 +167,7 @@ public class TitleMenu : MonoBehaviour
     {
         worldsPage.SetActive(true);
         newPage.SetActive(false);
+        if (optionsPage != null) optionsPage.SetActive(false);
         heading.text = "<size=30><b>TILE WORLD</b></size>\n<size=17><color=#8B7860>select a world</color></size>";
         Refresh();
     }
@@ -155,10 +176,11 @@ public class TitleMenu : MonoBehaviour
     {
         worldsPage.SetActive(false);
         newPage.SetActive(true);
+        if (optionsPage != null) optionsPage.SetActive(false);
         heading.text = "<size=30><b>NEW WORLD</b></size>\n<size=17><color=#8B7860>world settings</color></size>";
         nameField.text = "";
         seedField.text = Random.Range(1, 99999999).ToString();
-        Settings();
+        NewWorldSettings();
     }
 
     private void Refresh()
@@ -258,7 +280,7 @@ public class TitleMenu : MonoBehaviour
         WorldLibrary.Enter(world);
     }
 
-    private void Settings()
+    private void NewWorldSettings()
     {
         weatherLabel.text = weather ? "on" : "off";
         cycleLabel.text = dayCycle ? "on" : "off";
@@ -333,6 +355,7 @@ public class TitleMenu : MonoBehaviour
         playLabel = Button("Play", worldsPage.transform, new Vector2(370f, 200f), new Vector2(300f, 58f), () => Enter(chosen));
         Button("New world", worldsPage.transform, new Vector2(370f, 130f), new Vector2(300f, 58f), ShowNew);
         forgetLabel = Button("Delete world", worldsPage.transform, new Vector2(370f, 60f), new Vector2(300f, 50f), Forget);
+        Button("Options", worldsPage.transform, new Vector2(370f, -160f), new Vector2(300f, 50f), ShowOptions);
         Button("Quit", worldsPage.transform, new Vector2(370f, -230f), new Vector2(300f, 50f), Quit);
 
         var hint = Label("Hint", worldsPage.transform, 15f, new Vector2(-190f, -300f), new Vector2(680f, 30f));
@@ -349,15 +372,46 @@ public class TitleMenu : MonoBehaviour
         Button("Random seed", newPage.transform, new Vector2(230f, 160f), new Vector2(200f, 46f), () => seedField.text = Random.Range(1, 99999999).ToString());
 
         float y = 80f;
-        weatherLabel = Setting(newPage.transform, "Weather", ref y, () => { weather = !weather; Settings(); });
-        cycleLabel = Setting(newPage.transform, "Day cycle", ref y, () => { dayCycle = !dayCycle; Settings(); });
-        startLabel = Setting(newPage.transform, "Start time", ref y, () => { startAt = (startAt + 1) % StartNames.Length; Settings(); });
-        lengthLabel = Setting(newPage.transform, "Day length", ref y, () => { dayLength = (dayLength + 1) % LengthNames.Length; Settings(); });
-        animalsLabel = Setting(newPage.transform, "Animals", ref y, () => { animals = !animals; Settings(); });
-        ruinsLabel = Setting(newPage.transform, "Ruins", ref y, () => { ruins = !ruins; Settings(); });
+        weatherLabel = Setting(newPage.transform, "Weather", ref y, () => { weather = !weather; NewWorldSettings(); });
+        cycleLabel = Setting(newPage.transform, "Day cycle", ref y, () => { dayCycle = !dayCycle; NewWorldSettings(); });
+        startLabel = Setting(newPage.transform, "Start time", ref y, () => { startAt = (startAt + 1) % StartNames.Length; NewWorldSettings(); });
+        lengthLabel = Setting(newPage.transform, "Day length", ref y, () => { dayLength = (dayLength + 1) % LengthNames.Length; NewWorldSettings(); });
+        animalsLabel = Setting(newPage.transform, "Animals", ref y, () => { animals = !animals; NewWorldSettings(); });
+        ruinsLabel = Setting(newPage.transform, "Ruins", ref y, () => { ruins = !ruins; NewWorldSettings(); });
 
         Button("Create world", newPage.transform, new Vector2(-150f, -280f), new Vector2(360f, 58f), CreateAndPlay);
         Button("Back", newPage.transform, new Vector2(230f, -280f), new Vector2(200f, 58f), ShowWorlds);
+
+        // ---- the options page
+        optionsPage = new GameObject("Options");
+        optionsPage.transform.SetParent(card, false);
+        Stretch(optionsPage.AddComponent<RectTransform>());
+
+        float oy = 190f;
+        volumeLabel = Adjuster(optionsPage.transform, "Volume", ref oy, () => Settings.Volume -= 0.1f, () => Settings.Volume += 0.1f);
+        radiusLabel = Adjuster(optionsPage.transform, "View distance", ref oy, () => Settings.ViewRadius -= 1, () => Settings.ViewRadius += 1);
+        lookLabel = Adjuster(optionsPage.transform, "Mouse look speed", ref oy, () => Settings.LookSpeed -= 0.1f, () => Settings.LookSpeed += 0.1f);
+        fullLabel = Adjuster(optionsPage.transform, "Fullscreen", ref oy, () => Settings.Fullscreen = !Settings.Fullscreen, () => Settings.Fullscreen = !Settings.Fullscreen);
+
+        var note = Label("Note", optionsPage.transform, 15f, new Vector2(0f, -120f), new Vector2(820f, 60f));
+        note.text = "View distance takes effect when a world is entered. Further is slower.";
+        note.color = ParchmentPanel.InkFaint;
+
+        Button("Back", optionsPage.transform, new Vector2(0f, -280f), new Vector2(240f, 58f), ShowWorlds);
+        optionsPage.SetActive(false);
+    }
+
+    /// <summary>One setting with a less and a more either side of its value.</summary>
+    private TMP_Text Adjuster(Transform page, string name, ref float y, UnityEngine.Events.UnityAction less, UnityEngine.Events.UnityAction more)
+    {
+        var label = Label(name, page, 19f, new Vector2(-300f, y), new Vector2(300f, 40f));
+        label.alignment = TextAlignmentOptions.Right;
+        label.text = name;
+        Button("−", page, new Vector2(-90f, y), new Vector2(56f, 44f), () => { less(); Options(); });
+        var value = Label(name + " value", page, 19f, new Vector2(60f, y), new Vector2(220f, 40f));
+        Button("+", page, new Vector2(210f, y), new Vector2(56f, 44f), () => { more(); Options(); });
+        y -= 58f;
+        return value;
     }
 
     /// <summary>One setting: its name on the left, what it is set to on a button on the right.</summary>
