@@ -1,30 +1,47 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// Rain, when the weather has closed in. Overcast could be seen in the light
 /// and heard in the wind, but nothing was actually falling.
+///
+/// The streaks are not objects: their positions live in arrays and they are
+/// drawn in one instanced call, so there can be a good many of them for
+/// nothing. They ride with the camera in a disc around it, lean with a wind
+/// of their own that wanders, and fall to the ground or the water under
+/// them -- a streak reaching water rings it. Far more drops land than are
+/// drawn, so the water within sight is ringed on its own account, densest
+/// near and thinning with distance, as far as the fog.
 /// </summary>
 public class Rain : MonoBehaviour
 {
-    [SerializeField] private int drops = 260;
-    [SerializeField] private float radius = 14f;
-    [SerializeField] private float height = 12f;
-    [SerializeField] private float fallSpeed = 26f;
-
+    [SerializeField] private int drops = 800;
+    [SerializeField] private float radius = 24f;
+    [SerializeField] private float height = 18f;
+    [SerializeField] private float fallSpeed = 24f;
     [Tooltip("Overcast has to be at least this heavy before it rains.")]
     [SerializeField, Range(0f, 1f)] private float threshold = 0.55f;
+    [Tooltip("How far out the water is ringed, in metres.")]
+    [SerializeField] private float ringReach = 64f;
 
     /// <summary>How hard it is raining, 0 to 1, for anything that wants to know.</summary>
     public static float Intensity { get; private set; }
     /// <summary>The overcast it takes before anything falls.</summary>
     public static float Threshold { get; private set; } = 0.55f;
+    /// <summary>The wind the rain leans with, in metres a second across the ground.</summary>
+    public static Vector3 Wind { get; private set; }
 
     private Transform view;
-    private Transform[] streaks;
-    private float[] floors;     // the ground or the water under each streak, in world y
     private ChunkManager world;
-    private float ringsOwed;    // rings on the water the rain has yet to make this frame
-    private Material material;
+    private Vector3[] local;        // where each streak is, relative to the camera
+    private float[] speed;          // how fast it falls
+    private float[] length;         // how long a streak it draws
+    private float[] floors;         // the ground or the water under it, in world y (0 = not yet known)
+    private readonly List<Matrix4x4> batch = new List<Matrix4x4>(1024);
+    private Mesh streak;
+    private Material paint;
+    private float ringsOwed;
+    private float windSeed;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -37,45 +54,34 @@ public class Rain : MonoBehaviour
 
     private void Start()
     {
-        // A built player only carries shaders something in it referenced, so
-        // the unlit one is often not there and Shader.Find comes back null.
-        // Making a material out of that throws, and the throw repeats every
-        // frame after it: in a thirty second run of the built game this cost
-        // twelve hundred exceptions apiece.
-        Shader unlit = Shaders.First("Universal Render Pipeline/Unlit",
-                                   "Universal Render Pipeline/Lit",
-                                   "Unlit/Color");
+        paint = Paint.Flat(new Color(0.80f, 0.86f, 0.92f));
 
-        if (unlit == null)
+        if (paint == null)
         {
-            Debug.LogWarning("[Rain] No shader to draw with, so there will be none.");
+            Debug.LogWarning("[Rain] No paint to draw with, so there will be none.");
             enabled = false;
             return;
         }
 
-        material = new Material(unlit);
-
-        var colour = new Color(0.72f, 0.80f, 0.86f, 0.5f);
-        material.SetColor("_BaseColor", colour);
-        material.color = colour;
-
-        streaks = new Transform[drops];
+        streak = Streak();
+        local = new Vector3[drops];
+        speed = new float[drops];
+        length = new float[drops];
         floors = new float[drops];
+        windSeed = Random.value * 100f;
 
         for (int i = 0; i < drops; i++)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "drop";
-            go.transform.SetParent(transform, false);
-            go.transform.localScale = new Vector3(0.025f, Random.Range(0.35f, 0.7f), 0.025f);
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
-
-            var collider = go.GetComponent<Collider>();
-            if (collider != null) Destroy(collider);
-
-            go.transform.localPosition = RandomStart();
-            streaks[i] = go.transform;
+            local[i] = RandomStart();
+            speed[i] = fallSpeed * Random.Range(0.85f, 1.15f);
+            length[i] = Random.Range(0.4f, 0.8f);
         }
+    }
+
+    private Vector3 RandomStart()
+    {
+        var flat = Random.insideUnitCircle * radius;
+        return new Vector3(flat.x, Random.Range(0f, height), flat.y);
     }
 
     /// <summary>The ground or the water under a point: whichever is higher, a little under its surface.</summary>
@@ -90,14 +96,10 @@ public class Rain : MonoBehaviour
         return WorldHeight.SurfaceY(tileX, tileZ, seed) + 0.05f;
     }
 
-    private Vector3 RandomStart()
-    {
-        var flat = Random.insideUnitCircle * radius;
-        return new Vector3(flat.x, Random.Range(0f, height), flat.y);
-    }
-
     private void LateUpdate()
     {
+        if (local == null) return;
+
         if (view == null)
         {
             var cam = Camera.main;
@@ -107,53 +109,113 @@ public class Rain : MonoBehaviour
 
         float overcast = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
         bool raining = overcast >= threshold;
-
-        // Rides with the camera, so a fixed handful of drops covers any distance.
-        transform.position = view.position;
-
         float intensity = raining ? Mathf.InverseLerp(threshold, 1f, overcast) : 0f;
-        int active = Mathf.RoundToInt(streaks.Length * intensity);
         Intensity = intensity;
         Threshold = threshold;
 
-        // more drops land than are drawn: the water gets rings for the rest
-        ringsOwed += Time.deltaTime * 420f * intensity;
+        // a wind of its own, wandering in direction and strength
+        float t = Time.time * 0.05f + windSeed;
+        float angle = Mathf.PerlinNoise(t, 0.3f) * Mathf.PI * 4f;
+        float strength = Mathf.Lerp(1.5f, 5f, Mathf.PerlinNoise(0.7f, t * 1.3f)) * Mathf.Lerp(0.6f, 1f, intensity);
+        Wind = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * strength;
 
-        while (ringsOwed >= 1f)
+        // rides with the camera, so a fixed handful of drops covers any distance
+        transform.position = view.position;
+        int active = Mathf.RoundToInt(drops * intensity);
+        float dt = Time.deltaTime;
+        int seed = world != null ? world.WorldSeed : 0;
+
+        batch.Clear();
+
+        for (int i = 0; i < active; i++)
         {
-            ringsOwed -= 1f;
-            var flat = Random.insideUnitCircle * radius;
-            Splashes.Raindrop(transform.position + new Vector3(flat.x, 0f, flat.y), world != null ? world.WorldSeed : 0);
-        }
-
-
-        for (int i = 0; i < streaks.Length; i++)
-        {
-            var streak = streaks[i];
-            bool on = i < active;
-
-            if (streak.gameObject.activeSelf != on) streak.gameObject.SetActive(on);
-            if (!on) continue;
-
-            var local = streak.localPosition;
-            local.y -= fallSpeed * Time.deltaTime;
+            var p = local[i];
+            p.y -= speed[i] * dt;
+            p.x += Wind.x * dt;
+            p.z += Wind.z * dt;
 
             // A drop falls to the ground or the water under it, not to a fixed
             // depth below the camera: the camera rides well above the ground,
             // and the rain used to stop in mid-air. One reaching the water
             // rings it.
-            if (floors[i] == 0f) floors[i] = FloorUnder(transform.position + local);
+            if (floors[i] == 0f) floors[i] = FloorUnder(transform.position + p);
 
-            if (transform.position.y + local.y <= floors[i])
+            if (transform.position.y + p.y <= floors[i])
             {
-                Vector3 at = transform.position + local;
-                if (floors[i] <= WaterSurface.Level + 0.001f) Splashes.Raindrop(at, world != null ? world.WorldSeed : 0);
-
-                local = RandomStart();
-                floors[i] = FloorUnder(transform.position + local);
+                if (floors[i] <= WaterSurface.Level + 0.001f) Splashes.Raindrop(transform.position + p, seed, 1f);
+                p = RandomStart();
+                floors[i] = FloorUnder(transform.position + p);
+            }
+            else if (p.x * p.x + p.z * p.z > radius * radius * 1.3f)
+            {
+                // blown out of the disc: back in at the top
+                p = RandomStart();
+                floors[i] = FloorUnder(transform.position + p);
             }
 
-            streak.localPosition = local;
+            local[i] = p;
+
+            // leant along the way it is falling
+            var going = new Vector3(Wind.x, -speed[i], Wind.z);
+            var lean = Quaternion.FromToRotation(Vector3.down, going.normalized);
+            batch.Add(Matrix4x4.TRS(transform.position + p, lean, new Vector3(1f, length[i], 1f)));
         }
+
+        for (int i = active; i < drops; i++) floors[i] = 0f;
+
+        if (batch.Count > 0)
+        {
+            var rp = new RenderParams(paint) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
+            for (int from = 0; from < batch.Count; from += 1000)
+                Graphics.RenderMeshInstanced(rp, streak, 0, batch, Mathf.Min(1000, batch.Count - from), from);
+        }
+
+        // The water within sight is ringed on its own account: far more drops
+        // land than are drawn. Densest near the camera and thinning with
+        // distance, and bigger further off so a ring still reads out there.
+        ringsOwed += dt * 5500f * intensity;
+
+        while (ringsOwed >= 1f)
+        {
+            ringsOwed -= 1f;
+
+            float r = ringReach * Mathf.Sqrt(Random.value);
+            float keep = 1f / (1f + (r / 16f) * (r / 16f));
+            if (Random.value > keep) continue;
+
+            float a = Random.value * Mathf.PI * 2f;
+            var at = transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+            Splashes.Raindrop(at, seed, 1f + r / 40f);
+        }
+    }
+
+    /// <summary>A thin bar a unit long down its own y, for a streak of rain.</summary>
+    private static Mesh Streak()
+    {
+        const float w = 0.016f;
+        Vector3[] v =
+        {
+            new Vector3(-w, -0.5f, -w), new Vector3(w, -0.5f, -w), new Vector3(w, -0.5f, w), new Vector3(-w, -0.5f, w),
+            new Vector3(-w, 0.5f, -w), new Vector3(w, 0.5f, -w), new Vector3(w, 0.5f, w), new Vector3(-w, 0.5f, w)
+        };
+        int[][] faces = { new[] { 0, 1, 5, 4 }, new[] { 1, 2, 6, 5 }, new[] { 2, 3, 7, 6 }, new[] { 3, 0, 4, 7 } };
+
+        var verts = new List<Vector3>();
+        var tris = new List<int>();
+
+        foreach (var f in faces)
+        {
+            int n = verts.Count;
+            verts.Add(v[f[0]]); verts.Add(v[f[1]]); verts.Add(v[f[2]]); verts.Add(v[f[3]]);
+            tris.Add(n); tris.Add(n + 2); tris.Add(n + 1);
+            tris.Add(n); tris.Add(n + 3); tris.Add(n + 2);
+        }
+
+        var m = new Mesh { name = "streak" };
+        m.SetVertices(verts);
+        m.SetTriangles(tris, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+        return m;
     }
 }

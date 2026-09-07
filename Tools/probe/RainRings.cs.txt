@@ -108,15 +108,25 @@ public class _Probe : MonoBehaviour
         Mark("BY HAND: a raindrop at " + spot.ToString("F1") + " -> rain rings " + Splashes.RainAlive + " (underwater there: " + WaterSurface.IsUnderwater(Mathf.RoundToInt(spot.x / WorldGrid.TileSize), Mathf.RoundToInt(spot.z / WorldGrid.TileSize), seed) + ")");
         yield return new WaitForEndOfFrame();
         ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-rain.png"));
-        Mark("RAIN: rings on the water " + Splashes.RainAlive + ", overcast " + TimeOfDay.Instance.Overcast.ToString("F2"));
+        Splashes.RainSpread(Camera.main.transform.position, out int near, out int mid, out int far);
+        Mark("RAIN: rings on the water " + Splashes.RainAlive + " (within 15 m " + near + ", 15-40 m " + mid + ", beyond " + far + "), overcast " + TimeOfDay.Instance.Overcast.ToString("F2") + ", wind " + Rain.Wind.magnitude.ToString("F1") + " m/s");
+
+        // what it costs: frames over two seconds raining, then two seconds after
+        int frames = 0; float t0 = Time.realtimeSinceStartup;
+        while (Time.realtimeSinceStartup - t0 < 2f) { frames++; yield return null; }
+        float raining = 2000f / frames;
         yield return new WaitForSecondsRealtime(1f);
-        cam.transform.position = shore + Vector3.up * 3.2f - into * 1f;
-        cam.transform.LookAt(new Vector3(shore.x, WaterSurface.Level, shore.z) + into * 5f);
+        cam.transform.position = shore + Vector3.up * 6f - into * 4f;
+        cam.transform.LookAt(new Vector3(shore.x, WaterSurface.Level, shore.z) + into * 30f);
         yield return new WaitForEndOfFrame();
         ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-rain2.png"));
         yield return new WaitForSecondsRealtime(0.5f);
-        TimeOfDay.Instance.ForceOvercast(-1f);
+        TimeOfDay.Instance.ForceOvercast(0f);
         yield return new WaitForSecondsRealtime(2f);
+        frames = 0; t0 = Time.realtimeSinceStartup;
+        while (Time.realtimeSinceStartup - t0 < 2f) { frames++; yield return null; }
+        Mark("COST: " + raining.ToString("F2") + " ms a frame in a downpour, " + (2000f / frames).ToString("F2") + " ms clear");
+        TimeOfDay.Instance.ForceOvercast(-1f);
         Mark("after: rain rings " + Splashes.RainAlive);
         Mark("done");
     }

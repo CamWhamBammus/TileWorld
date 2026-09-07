@@ -45,13 +45,13 @@ public class Splashes : MonoBehaviour
     private readonly List<Matrix4x4> rippleBatch = new List<Matrix4x4>(1024);
     private Mesh thinRing;
     private Material ringPaint;
-    private const int MostRipples = 900;
+    private const int MostRipples = 2400;
 
     /// <summary>How many rain rings are on the water, for the probes.</summary>
     public static int RainAlive => instance != null ? instance.ripples.Count : 0;
 
     /// <summary>A raindrop landing on the water: a small ring, quickly gone. Only where the water is.</summary>
-    public static void Raindrop(Vector3 at, int worldSeed)
+    public static void Raindrop(Vector3 at, int worldSeed, float scale = 1f)
     {
         var it = Ensure();
         if (it == null) return;
@@ -59,7 +59,20 @@ public class Splashes : MonoBehaviour
         if (!WaterSurface.IsUnderwater(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), worldSeed)) return;
 
         if (it.ripples.Count >= MostRipples) it.ripples.RemoveAt(0);
-        it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) });
+        it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) * scale });
+    }
+
+    /// <summary>How the rain's rings are spread from a point, for the probes: within 15 m, 15 to 40, and beyond.</summary>
+    public static void RainSpread(Vector3 from, out int near, out int mid, out int far)
+    {
+        near = mid = far = 0;
+        if (instance == null) return;
+
+        foreach (var r in instance.ripples)
+        {
+            float d = Vector2.Distance(new Vector2(r.At.x, r.At.z), new Vector2(from.x, from.z));
+            if (d < 15f) near++; else if (d < 40f) mid++; else far++;
+        }
     }
 
     /// <summary>How many drops are in the air, for the probes.</summary>
