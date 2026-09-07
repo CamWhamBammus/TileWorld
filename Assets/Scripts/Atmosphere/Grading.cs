@@ -112,6 +112,9 @@ public class Grading : MonoBehaviour
             data.antialiasingQuality = AntialiasingQuality.High;
             data.requiresDepthOption = CameraOverrideOption.On;
             data.requiresColorOption = CameraOverrideOption.On;
+
+            // room for a sky: the clouds are a kilometre off, and the stars were past the old far plane
+            if (view.farClipPlane < 3000f) view.farClipPlane = 3000f;
         }
 
         volume.weight = Enabled ? 1f : 0f;

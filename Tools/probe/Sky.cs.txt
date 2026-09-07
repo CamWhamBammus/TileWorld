@@ -1,0 +1,103 @@
+// A probe for the sky: from an open shore, the same view of the sky at a
+// clear noon, cloudy, overcast, a clear sunset and a clear night, with the
+// clouds counted and the cost taken.
+using System.Collections;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private Camera cam; private Transform player;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Shot(string name, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        cam.transform.position = at; cam.transform.LookAt(lookAt);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-sk-" + name + ".png"));
+        Mark(name + ": cumulus " + Clouds.Cumulus + ", sheet " + Clouds.SheetCover.ToString("F2") + ", cirrus " + Clouds.CirrusAlpha.ToString("F2") + ", overcast " + TimeOfDay.Instance.Overcast.ToString("F2") + ", time " + TimeOfDay.Instance.Normalized.ToString("F2"));
+        yield return new WaitForSecondsRealtime(0.4f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Sky", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+        QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1;
+
+        var tools = FindFirstObjectByType<DevTools>();
+        var goWater = typeof(DevTools).GetMethod("GoToWater", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (tools != null && goWater != null) { goWater.Invoke(tools, new object[] { WaterSurface.Body.Lake }); yield return new WaitForSecondsRealtime(6f); }
+
+        cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        cam.fieldOfView = 70f;
+        var clock = TimeOfDay.Instance;
+        clock.Paused = true;
+        Mark("CAMERA: far clip " + cam.farClipPlane);
+
+        Vector3 eye = player.position + Vector3.up * 1.7f;
+        Vector3 skyward = eye + player.forward * 30f + Vector3.up * 16f;     // the horizon low in the frame, the sky most of it
+        Vector3 vista = eye + player.forward * 40f + Vector3.up * 6f;
+
+        clock.ForceOvercast(0f); clock.SetTime(0.5f); yield return new WaitForSecondsRealtime(6f);
+        yield return Shot("clear-noon", eye, skyward);
+        clock.ForceOvercast(0.4f); yield return new WaitForSecondsRealtime(9f);
+        yield return Shot("cloudy", eye, skyward);
+        yield return Shot("cloudy-vista", eye, vista);
+        int frames = 0; float t0 = Time.realtimeSinceStartup;
+        while (Time.realtimeSinceStartup - t0 < 2f) { frames++; yield return null; }
+        Mark("COST cloudy sky: " + (2000f / frames).ToString("F2") + " ms a frame with " + Clouds.Cumulus + " clouds");
+        clock.ForceOvercast(0.8f); yield return new WaitForSecondsRealtime(9f);
+        yield return Shot("overcast", eye, skyward);
+        clock.ForceOvercast(0f); clock.SetTime(0.75f); yield return new WaitForSecondsRealtime(9f);
+        yield return Shot("sunset", eye, skyward);
+        var sun = RenderSettings.sun; Vector3 toSun = -sun.transform.forward;
+        yield return Shot("sunset-sun", eye, eye + new Vector3(toSun.x, 0f, toSun.z).normalized * 30f + Vector3.up * 9f);
+        clock.SetTime(0.97f); yield return new WaitForSecondsRealtime(4f);
+        yield return Shot("night", eye, skyward);
+
+        clock.ForceOvercast(-1f); clock.Paused = false;
+        Mark("done");
+    }
+}

@@ -465,6 +465,28 @@ at night, the moon on a lake, a deer under the glass, and the world from
 under the water, with counts for shafts, motes, lean, lanterns and the
 depth of field.
 
+### Clouds
+
+`Clouds` (in `Atmosphere/`) is three layers, all by `TimeOfDay.Overcast`.
+Cumulus: up to 95 clusters within 1250 m at about 210 m up, each one mesh
+from a bank of 24 shapes (five to ten jittered, bottom-flattened icosahedron
+lumps), drawn with `Graphics.RenderMesh` one at a time, drifting on
+`Rain.Wind` at two and a half times the ground wind and wrapping back to the
+windward side when they pass the reach; they come and go a few a second so
+a change of weather is a drift, not a switch, and they are lost under a
+full ceiling. The sheet: a 3 km disc at 340 m whose cover is a four-octave
+value noise in the shader thresholded by coverage, from half overcast up.
+Cirrus: the same disc at 620 m, squashed and turned, thin, in clear
+weather only. The shader is `TileWorld/Cloud` (kept in the build by
+`Resources/Cloud.mat`): mode 0 lights lumps by the sun on their faces,
+darker underneath, with a silver lining when the sun is behind them, and by
+the moon through the `_MoonDir`/`_MoonColor` globals; mode 1 is the sheet.
+Neither takes the fog; both melt toward the fog colour with distance and
+fade out toward the horizon. `Grading` pushes the camera's far plane to
+3000 m, which also brings the stars (900 m off) back into view -- they were
+past the old 500 m plane. `Tools/probe/Sky.cs.txt` photographs the same
+sky clear, cloudy, overcast, at sunset and at night and counts the clouds.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy

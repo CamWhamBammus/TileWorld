@@ -208,6 +208,12 @@ public class TimeOfDay : MonoBehaviour
         Clouds();
         Moon(height);
 
+        // the sun as the clouds see it: up there it is still lit a while after the ground loses it,
+        // and it is the low sun's colour that they take
+        float aloft = Mathf.Clamp01((height + 0.07f) * 7f) * Mathf.Lerp(1f, 0.5f, Overcast);
+        Shader.SetGlobalColor("_CloudSun", sunColour * (noonIntensity * 0.9f * aloft));
+        Shader.SetGlobalVector("_CloudSunDir", -sun.transform.forward);
+
         // Fog follows the sky so the horizon never cuts a hard line.
         Color fogDay = Color.Lerp(new Color(0.66f, 0.776f, 0.882f), new Color(0.96f, 0.72f, 0.52f), horizon * 0.8f);
         Color fogNight = new Color(0.07f, 0.09f, 0.15f);
