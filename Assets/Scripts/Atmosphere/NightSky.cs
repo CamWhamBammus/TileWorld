@@ -115,9 +115,10 @@ public class NightSky : MonoBehaviour
             Vector3 d = (u0 * Mathf.Cos(a) + v0 * Mathf.Sin(a)).normalized;
             if (d.y < -0.1f) continue;
             float alpha = 0.035f * Mathf.Clamp01((d.y + 0.1f) * 4f) * (0.6f + 0.4f * Mathf.PerlinNoise(a * 3f, 0.5f));
-            Vector3 right = Vector3.Cross(d, bandAxis).normalized, up = bandAxis;
+            // the quad faces the camera: both its axes lie across the line of sight, one along the band
+            Vector3 right = Vector3.Cross(d, bandAxis).normalized, up = Vector3.Cross(right, d).normalized;
             Vector3 at = d * (Distance * 1.02f);
-            float w = 130f, h = 70f;      // wide along the band, soft across it
+            float w = 70f, h = 130f;      // wide along the band, soft across it
             int v = verts.Count;
             verts.Add(at - right * w - up * h); verts.Add(at + right * w - up * h); verts.Add(at + right * w + up * h); verts.Add(at - right * w + up * h);
             var c = new Color(0.7f, 0.78f, 1f, alpha);

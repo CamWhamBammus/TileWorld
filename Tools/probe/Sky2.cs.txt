@@ -116,8 +116,7 @@ public class _Probe : MonoBehaviour
         Flocks.Summon();
         yield return new WaitForSecondsRealtime(4f);
         Mark("BIRDS: " + Flocks.Birds + " birds in " + Flocks.Count + " flock(s)");
-        Vector3 ahead = eye + player.forward * 200f + Vector3.up * 120f;
-        yield return Shot("birds", eye, ahead);
+        yield return Shot("birds", eye, Flocks.Nearest);
 
         clock.ForceOvercast(-1f); clock.Paused = false;
         Mark("done");

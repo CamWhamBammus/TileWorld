@@ -19,6 +19,7 @@ public class Flocks : MonoBehaviour
     /// <summary>For the probes: birds aloft, flocks, and a way to call one up.</summary>
     public static int Birds { get; private set; }
     public static int Count => instance != null ? instance.flocks.Count : 0;
+    public static Vector3 Nearest => instance != null && instance.flocks.Count > 0 ? instance.flocks[instance.flocks.Count - 1].Lead : Vector3.zero;
 
     private static Flocks instance;
     private readonly List<Flock> flocks = new List<Flock>();
