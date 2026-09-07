@@ -121,9 +121,11 @@ Shader "TileWorld/Water"
                     float cycle = frac(_Time.y / _Period + v.uv.y);
                     float coming = cycle < 0.3 ? 1 : 0;
                     float off = (v.uv.x - front) / 1.7;
-                    float crest = exp(-off * off) * lerp(0.55, 1, coming);
-                    float behind = (v.uv.x < front) * saturate((front - v.uv.x) / 3) * 0.25;
-                    ws.y += _Crest * (crest + behind);
+                    float crest = exp(-off * off) * lerp(0.35, 1, coming);
+                    float behind = (v.uv.x < front) * saturate((front - v.uv.x) / 3) * 0.25 * coming;
+                    float t2 = (v.uv.x - front + 2.2) / 2.0;
+                    float trough = exp(-t2 * t2) * 0.3 * (1 - coming);
+                    ws.y += _Crest * (crest + behind - trough);
                 }
                 o.positionWS = ws;
                 o.positionCS = TransformWorldToHClip(ws);
@@ -176,10 +178,13 @@ Shader "TileWorld/Water"
                     float band = exp(-off * off) * lerp(0.6, 1, coming) * breakup;
                     // the foam thins out to sea rather than stopping where the sheet does
                     band *= smoothstep(_Back - 1.5, _Back + 2.5, dist);
-                    float lines = smoothstep(0.85, 1, frac(dist * 0.9 + Noise(i.positionWS.xz * 0.6) * 0.5)) * (dist > 0 && dist < front) * (1 - coming) * 0.25 * breakup;
                     float edge = 1 - smoothstep(front - 0.35, front + 0.3, dist);      // the sheet stops at the front, softly
-                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = saturate(band * 0.9 + lines * 0.5); }
-                    else { water = lerp(water, _Foam.rgb, saturate(band + lines)); alpha = max(edge * (dist > -0.01 ? 1 : 1), band * 0.9); }
+                    // going back, the water lying behind the front drains from the top down and the sand shows through;
+                    // the sea's own side keeps its water
+                    float drain = coming > 0.5 ? 1 : smoothstep(front - 3.2, front - 0.6, dist);
+                    float sheetAlpha = edge * (dist > -0.01 ? drain : 1);
+                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = band * 0.9; }
+                    else { water = lerp(water, _Foam.rgb, saturate(band)); alpha = max(sheetAlpha, band * 0.9); }
                 }
 
                 // the sun on it

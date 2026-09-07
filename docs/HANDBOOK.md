@@ -533,7 +533,13 @@ has a crest: the vertex shader lifts the sheet by `_Crest` (0.16 m) in a
 bump at the front, taller coming in, with the water behind it standing a
 quarter as high while it holds, and each tile is cut three by three so the
 bump rolls rather than steps. The foam thins out to sea over the last
-metres of the sheet and softens past the front instead of stopping. The front runs
+metres of the sheet and softens past the front instead of stopping. The
+lines of foam once left on the sand are gone: they read as stripes. On the
+way back the water lying behind the front drains from the top down
+(`drain`, a smoothstep over the three metres behind the front), so the sand
+comes back through in a band that follows the front out; the crest is a
+third its height going out, the water behind it no longer stands higher,
+and a shallow trough follows the front. The front runs
 from four metres out to six and a half up the sand on a fourteen-second
 cycle: in over the first third, held a moment at the top, drawn back over
 the rest, offset by the phase so the coast does not move as one. Lakes
