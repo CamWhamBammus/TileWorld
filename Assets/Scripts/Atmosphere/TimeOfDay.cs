@@ -287,7 +287,7 @@ public class TimeOfDay : MonoBehaviour
             if (glow == null) return;
             moonPaint = new Material(glow);
             haloPaint = new Material(glow);
-            moonDisc = MoonQuad("Moon (runtime)", moonPaint);
+            moonDisc = MoonQuad("Moon disc (runtime)", moonPaint);   // the moon light is "Moon (runtime)" already
             moonHalo = MoonQuad("Moon halo (runtime)", haloPaint);
         }
 

@@ -127,7 +127,8 @@ public class _Probe : MonoBehaviour
         var sun = RenderSettings.sun;
         Vector3 towardSun = -sun.transform.forward; towardSun.y = 0f; towardSun.Normalize();
         Mark("DAWN WOOD: light shafts " + LightShafts.Count + " at strength " + LightShafts.Strength.ToString("F2") + ", motes " + Motes.Current + " " + Motes.Alive + ", plants leaning up to " + Undergrowth.SwayDegrees.ToString("F1") + " deg");
-        yield return Shot("dawn-wood", player.position + Vector3.up * 1.7f - towardSun * 3f, player.position + Vector3.up * 2.5f + towardSun * 20f);
+        Vector3 acrossSun = Vector3.Cross(Vector3.up, towardSun);
+        yield return Shot("dawn-wood", player.position + Vector3.up * 1.7f - acrossSun * 4f + towardSun * 6f, player.position + Vector3.up * 3f + acrossSun * 16f + towardSun * 6f);
         yield return Frames("in the wood, everything on", 2f);
         yield return Profile("in the wood", 2f);
         Undergrowth.Wind = false; yield return null; yield return Frames("wind off", 2f); Undergrowth.Wind = true;
@@ -197,17 +198,25 @@ public class _Probe : MonoBehaviour
             goWater.Invoke(tools, new object[] { WaterSurface.Body.Lake });
             yield return new WaitForSecondsRealtime(6f);
             Follow();
-            var moonObj = GameObject.Find("Moon (runtime)");
+            clock.SetTime(0.90f);       // a lower moon, about fifty degrees up
+            yield return new WaitForSecondsRealtime(1.5f);
+            var moonObj = GameObject.Find("Moon disc (runtime)");
             if (moonObj != null)
             {
+                var mr = moonObj.GetComponent<MeshRenderer>();
+                Vector3 rel = moonObj.transform.position - cam.transform.position;
+                float elevation = Mathf.Asin(rel.normalized.y) * Mathf.Rad2Deg;
+                Mark("MOON OBJECT: active " + moonObj.activeInHierarchy + ", " + rel.magnitude.ToString("F0") + " m off at " + elevation.ToString("F0") + " deg up, scale " + moonObj.transform.localScale.x.ToString("F1")
+                     + ", renderer " + (mr != null ? "on, visible " + mr.isVisible + ", shader " + mr.sharedMaterial.shader.name + ", colour " + mr.sharedMaterial.GetColor("_Color") + ", queue " + mr.sharedMaterial.renderQueue : "none")
+                     + ", showing " + clock.MoonShowing.ToString("F2"));
                 // the moon itself, from above the trees by the shore
                 yield return Shot("moon", player.position + Vector3.up * 26f, moonObj.transform.position);
-                // and its glint: the moon is high at this hour, so its light lies on the water nearly
-                // under it -- from eight metres up, looking steeply down along its bearing over the lake
+                // and its glint: from a few metres up, looking down along its bearing at the moon's own depression
                 Vector3 bearing = moonObj.transform.position - player.position; bearing.y = 0f; bearing.Normalize();
                 Vector3 overWater = player.position + player.forward * 9f; overWater.y = WaterSurface.Level;
-                Vector3 eye = overWater + Vector3.up * 8f - bearing * 2.2f;
-                yield return Shot("moon-water", eye, overWater + bearing * 1.5f);
+                float depression = elevation * Mathf.Deg2Rad;
+                Vector3 eye = overWater + Vector3.up * 5f - bearing * (5f / Mathf.Tan(depression));
+                yield return Shot("moon-water", eye, overWater + bearing * 2f);
             }
         }
 
