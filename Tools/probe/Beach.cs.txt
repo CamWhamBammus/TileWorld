@@ -101,11 +101,10 @@ public class _Probe : MonoBehaviour
             var mat = washRend.sharedMaterial;
             Mark("WASH RENDERER: enabled " + washRend.enabled + ", visible " + washRend.isVisible + ", bounds " + washRend.bounds.center.ToString("F0") + " size " + washRend.bounds.size.ToString("F0")
                  + ", shader " + (mat != null ? mat.shader.name + " supported " + mat.shader.isSupported + " queue " + mat.renderQueue : "no material") + ", camera at " + cam.transform.position.ToString("F0"));
-            // the same quads in the glow material: if these show, the mesh is fine and the wash shader is not
-            var glow = new Material(Resources.Load<Material>("Glow")); glow.SetColor("_Color", new Color(1f, 0.2f, 0.2f, 0.8f));
-            washRend.sharedMaterial = glow;
-            yield return Shot("wave-glowtest", eye, at);
             washRend.sharedMaterial = mat;
+            yield return Shot("wave-above", washRend.bounds.center + Vector3.up * 12f, washRend.bounds.center);
+            yield return new WaitForSecondsRealtime(2.5f);
+            yield return Shot("wave-above2", washRend.bounds.center + Vector3.up * 12f, washRend.bounds.center);
         }
         if (washRoot != null) washRoot.SetActive(false);
         yield return Shot("wave-nowash", eye, at);

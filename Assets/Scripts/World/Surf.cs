@@ -34,37 +34,69 @@ public static class Surf
     {
         int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
         int originZ = chunkIndex.y * WorldGrid.TilesPerChunk;
-        var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var tris = new List<int>();
-        float half = WorldGrid.TileSize * 0.5f;
+        int n = WorldGrid.TilesPerChunk;
 
-        for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
-        for (int j = 0; j < WorldGrid.TilesPerChunk; j++)
+        // The distance from the waterline for every tile in the chunk and a
+        // ring round it, or NaN where the wash does not go. Each quad's
+        // corners then take the mean of the tiles round them, so the value
+        // runs smoothly across a tile and the front sweeps rather than
+        // jumping two metres at a time.
+        var dist = new float[n + 2, n + 2];
+        var height = new float[n + 2, n + 2];
+
+        for (int i = -1; i <= n; i++)
+        for (int j = -1; j <= n; j++)
         {
             int tileX = originX + i, tileZ = originZ + j;
-            float dist, y;
+            float d = float.NaN, y = 0f;
 
             if (IsStrand(tileX, tileZ, worldSeed))
             {
                 int toWater = Nearest(tileX, tileZ, worldSeed, true, Reach);
-                if (toWater < 0) continue;
-                dist = (toWater - 0.5f) * WorldGrid.TileSize;
-                y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.03f;
+                if (toWater > 0) { d = (toWater - 0.5f) * WorldGrid.TileSize; y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.03f; }
             }
             else if (IsShallows(tileX, tileZ, worldSeed))
             {
                 int toSand = Nearest(tileX, tileZ, worldSeed, false, Out);
-                if (toSand < 0) continue;
-                dist = -(toSand - 0.5f) * WorldGrid.TileSize;
-                y = WaterSurface.Level + 0.02f;
+                if (toSand > 0) { d = -(toSand - 0.5f) * WorldGrid.TileSize; y = WaterSurface.Level + 0.02f; }
             }
-            else continue;
 
-            float phase = Mathf.PerlinNoise(tileX * 0.018f + worldSeed * 0.01f, tileZ * 0.018f);
+            dist[i + 1, j + 1] = d;
+            height[i + 1, j + 1] = y;
+        }
+
+        float Corner(int ci, int cj, float own)
+        {
+            // the corner between tiles (ci-1..ci, cj-1..cj): the mean of those that have a value
+            float sum = 0f; int count = 0;
+            for (int a = ci - 1; a <= ci; a++)
+            for (int b = cj - 1; b <= cj; b++)
+            {
+                if (a < -1 || b < -1 || a > n || b > n) continue;
+                float v = dist[a + 1, b + 1];
+                if (float.IsNaN(v)) continue;
+                sum += v; count++;
+            }
+            return count > 0 ? sum / count : own;
+        }
+
+        var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var tris = new List<int>();
+        float half = WorldGrid.TileSize * 0.5f;
+
+        for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+        {
+            float own = dist[i + 1, j + 1];
+            if (float.IsNaN(own)) continue;
+
+            float y = height[i + 1, j + 1];
+            float phase = Mathf.PerlinNoise((originX + i) * 0.018f + worldSeed * 0.01f, (originZ + j) * 0.018f);
             float x = i * WorldGrid.TileSize, z = j * WorldGrid.TileSize;
             int v = verts.Count;
-            verts.Add(new Vector3(x - half, y, z - half)); verts.Add(new Vector3(x - half, y, z + half));
-            verts.Add(new Vector3(x + half, y, z + half)); verts.Add(new Vector3(x + half, y, z - half));
-            for (int k = 0; k < 4; k++) uvs.Add(new Vector2(dist, phase));
+            verts.Add(new Vector3(x - half, y, z - half)); uvs.Add(new Vector2(Corner(i, j, own), phase));
+            verts.Add(new Vector3(x - half, y, z + half)); uvs.Add(new Vector2(Corner(i, j + 1, own), phase));
+            verts.Add(new Vector3(x + half, y, z + half)); uvs.Add(new Vector2(Corner(i + 1, j + 1, own), phase));
+            verts.Add(new Vector3(x + half, y, z - half)); uvs.Add(new Vector2(Corner(i + 1, j, own), phase));
             tris.Add(v); tris.Add(v + 1); tris.Add(v + 2); tris.Add(v); tris.Add(v + 2); tris.Add(v + 3);
         }
 
