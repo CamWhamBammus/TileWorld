@@ -71,18 +71,17 @@ Shader "TileWorld/Wash"
                 float coming = cycle < 0.36 ? 1 : 0;
                 float t = _Time.y;
 
-                // the foam at the front, broken up along the shore
-                float breakup = Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.7 + 0.45;
-                float band = exp(-pow((dist - front) / 0.75, 2));
-                float foam = band * lerp(0.55, 1, coming) * breakup;
+                // the foam at the front, broken up along the shore: this is the wave
+                float breakup = Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.8 + 0.4;
+                float band = exp(-pow((dist - front) / 0.9, 2));
+                float foam = band * lerp(0.6, 1, coming) * breakup * 0.95;
 
-                // the sheet of water behind the front, thinning as it goes back
-                float behind = saturate(front - dist);
-                float sheet = (dist < front) * saturate(1 - (front - dist) / 7.0) * 0.28;
-                sheet *= dist > -0.5 ? 1 : 0.4;
+                // a thin sheet of water just behind the front, gone a few metres back
+                float sheet = (dist < front) * saturate(1 - (front - dist) / 3.5) * 0.11;
+                sheet *= dist > -0.5 ? 1 : 0.5;
 
-                // lines of foam left on the sand as the wave draws back
-                float lines = smoothstep(0.82, 1, frac(dist * 0.9 + Noise(i.positionWS.xz * 0.6) * 0.5)) * (dist > 0 && dist < front) * (1 - coming) * 0.35 * breakup;
+                // faint lines of foam left on the sand as the wave draws back
+                float lines = smoothstep(0.85, 1, frac(dist * 0.9 + Noise(i.positionWS.xz * 0.6) * 0.5)) * (dist > 0 && dist < front) * (1 - coming) * 0.22 * breakup;
 
                 float a = saturate(foam + sheet + lines);
                 float3 col = lerp(_Film.rgb, _Foam.rgb, saturate((foam + lines) / max(a, 0.001)));

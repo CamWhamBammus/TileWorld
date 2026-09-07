@@ -103,7 +103,9 @@ public class _Probe : MonoBehaviour
         Vector3 firstAfter = Fireflies.First;
         float moved = Vector3.Distance(new Vector3(firstBefore.x, 0f, firstBefore.z), new Vector3(firstAfter.x, 0f, firstAfter.z));
         Mark("FIREFLIES: " + outBefore + " out; the player moved " + Vector3.Distance(playerBefore, player.position).ToString("F1") + " m and the first firefly moved " + moved.ToString("F2") + " m (its own wandering, not the player's)");
-        yield return Shot("fireflies", player.position + Vector3.up * 1.6f - player.forward * 2f, player.position + player.forward * 12f + Vector3.up * 1.5f);
+        Vector3 nearFly = Fireflies.First;
+        Vector3 flyEye = nearFly + Vector3.up * 2.5f - (nearFly - player.position).normalized * 6f;
+        yield return Shot("fireflies", flyEye, nearFly + Vector3.up * 0.5f);
 
         clock.ForceOvercast(-1f); clock.Paused = false;
         Mark("done");
