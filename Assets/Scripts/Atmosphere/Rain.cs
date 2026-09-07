@@ -16,6 +16,9 @@ public class Rain : MonoBehaviour
 
     private Transform view;
     private Transform[] streaks;
+    private float[] floors;     // the ground or the water under each streak, in world y
+    private ChunkManager world;
+    private float ringsOwed;    // rings on the water the rain has yet to make this frame
     private Material material;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -52,6 +55,7 @@ public class Rain : MonoBehaviour
         material.color = colour;
 
         streaks = new Transform[drops];
+        floors = new float[drops];
 
         for (int i = 0; i < drops; i++)
         {
@@ -67,6 +71,18 @@ public class Rain : MonoBehaviour
             go.transform.localPosition = RandomStart();
             streaks[i] = go.transform;
         }
+    }
+
+    /// <summary>The ground or the water under a point: whichever is higher, a little under its surface.</summary>
+    private float FloorUnder(Vector3 at)
+    {
+        if (world == null) world = FindFirstObjectByType<ChunkManager>();
+        int seed = world != null ? world.WorldSeed : 0;
+        int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+
+        if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return WaterSurface.Level;
+
+        return WorldHeight.SurfaceY(tileX, tileZ, seed) + 0.05f;
     }
 
     private Vector3 RandomStart()
@@ -90,7 +106,19 @@ public class Rain : MonoBehaviour
         // Rides with the camera, so a fixed handful of drops covers any distance.
         transform.position = view.position;
 
-        int active = raining ? Mathf.RoundToInt(streaks.Length * Mathf.InverseLerp(threshold, 1f, overcast)) : 0;
+        float intensity = raining ? Mathf.InverseLerp(threshold, 1f, overcast) : 0f;
+        int active = Mathf.RoundToInt(streaks.Length * intensity);
+
+        // more drops land than are drawn: the water gets rings for the rest
+        ringsOwed += Time.deltaTime * 420f * intensity;
+
+        while (ringsOwed >= 1f)
+        {
+            ringsOwed -= 1f;
+            var flat = Random.insideUnitCircle * radius;
+            Splashes.Raindrop(transform.position + new Vector3(flat.x, 0f, flat.y), world != null ? world.WorldSeed : 0);
+        }
+
 
         for (int i = 0; i < streaks.Length; i++)
         {
@@ -103,7 +131,20 @@ public class Rain : MonoBehaviour
             var local = streak.localPosition;
             local.y -= fallSpeed * Time.deltaTime;
 
-            if (local.y < -3f) local = RandomStart();
+            // A drop falls to the ground or the water under it, not to a fixed
+            // depth below the camera: the camera rides well above the ground,
+            // and the rain used to stop in mid-air. One reaching the water
+            // rings it.
+            if (floors[i] == 0f) floors[i] = FloorUnder(transform.position + local);
+
+            if (transform.position.y + local.y <= floors[i])
+            {
+                Vector3 at = transform.position + local;
+                if (floors[i] <= WaterSurface.Level + 0.001f) Splashes.Raindrop(at, world != null ? world.WorldSeed : 0);
+
+                local = RandomStart();
+                floors[i] = FloorUnder(transform.position + local);
+            }
 
             streak.localPosition = local;
         }

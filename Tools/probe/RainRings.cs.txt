@@ -1,0 +1,123 @@
+// A probe: rain over a lake, photographed from the shore, with the rings counted.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Rain", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        var player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+
+        // the nearest shore tile with water three tiles out in some direction
+        int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        int bestX = 0, bestZ = 0, bestDx = 0, bestDz = 0; bool found = false;
+        int[] dirs = { 1, 0, -1, 0, 0, 1, 0, -1 };
+        for (int r = 4; r < 110 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = px + dx, tz = pz + dz;
+            if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            for (int d = 0; d < 4 && !found; d++)
+            {
+                int wet = 0;
+                for (int k = 2; k <= 8; k++) if (WaterSurface.IsUnderwater(tx + dirs[d * 2] * k, tz + dirs[d * 2 + 1] * k, seed)) wet++;
+                if (wet >= 6) { bestX = tx; bestZ = tz; bestDx = dirs[d * 2]; bestDz = dirs[d * 2 + 1]; found = true; }
+            }
+        }
+        if (!found) { Mark("no shore"); Mark("done"); yield break; }
+
+        Vector3 shore = new Vector3(bestX * WorldGrid.TileSize, WorldHeight.SurfaceY(bestX, bestZ, seed) + 1f, bestZ * WorldGrid.TileSize);
+        Vector3 into = new Vector3(bestDx, 0f, bestDz);
+        body.enabled = false; player.position = shore; player.rotation = Quaternion.LookRotation(into); body.enabled = true;
+        yield return new WaitForSecondsRealtime(3f);
+
+        var main = Camera.main;
+        var cam = new GameObject("ProbeCam").AddComponent<Camera>();
+        cam.CopyFrom(main); cam.depth = main.depth + 50f; cam.fieldOfView = 50f;
+        cam.transform.position = shore + Vector3.up * 1.6f - into * 1.5f;
+        cam.transform.LookAt(new Vector3(shore.x, WaterSurface.Level, shore.z) + into * 9f);
+
+        Mark("dry: rain rings " + Splashes.RainAlive + ", overcast " + TimeOfDay.Instance.Overcast.ToString("F2"));
+        TimeOfDay.Instance.ForceOvercast(1f);
+        yield return new WaitForSecondsRealtime(4f);
+
+        var rain = FindFirstObjectByType<Rain>();
+        if (rain == null) Mark("RAIN COMPONENT: none in the scene");
+        else
+        {
+            int active = 0, overWater = 0; float lo = 999f, hi = -999f;
+            foreach (Transform t in rain.transform)
+            {
+                if (!t.gameObject.activeSelf) continue;
+                active++;
+                float y = t.position.y; lo = Mathf.Min(lo, y); hi = Mathf.Max(hi, y);
+                if (WaterSurface.IsUnderwater(Mathf.RoundToInt(t.position.x / WorldGrid.TileSize), Mathf.RoundToInt(t.position.z / WorldGrid.TileSize), seed)) overWater++;
+            }
+            Mark("RAIN COMPONENT: enabled " + rain.enabled + ", at " + rain.transform.position.ToString("F1") + ", main camera at " + (Camera.main != null ? Camera.main.transform.position.ToString("F1") : "none")
+                 + ", active streaks " + active + " (" + rain.transform.childCount + " made), over water " + overWater + ", streak y " + lo.ToString("F1") + " to " + hi.ToString("F1") + ", water level " + WaterSurface.Level.ToString("F1") + ", shore " + shore.y.ToString("F1"));
+        }
+        Vector3 spot = new Vector3(shore.x, WaterSurface.Level, shore.z) + into * 6f;
+        Splashes.Raindrop(spot, seed);
+        yield return null;
+        Mark("BY HAND: a raindrop at " + spot.ToString("F1") + " -> rain rings " + Splashes.RainAlive + " (underwater there: " + WaterSurface.IsUnderwater(Mathf.RoundToInt(spot.x / WorldGrid.TileSize), Mathf.RoundToInt(spot.z / WorldGrid.TileSize), seed) + ")");
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-rain.png"));
+        Mark("RAIN: rings on the water " + Splashes.RainAlive + ", overcast " + TimeOfDay.Instance.Overcast.ToString("F2"));
+        yield return new WaitForSecondsRealtime(1f);
+        cam.transform.position = shore + Vector3.up * 3.2f - into * 1f;
+        cam.transform.LookAt(new Vector3(shore.x, WaterSurface.Level, shore.z) + into * 5f);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-rain2.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+        TimeOfDay.Instance.ForceOvercast(-1f);
+        yield return new WaitForSecondsRealtime(2f);
+        Mark("after: rain rings " + Splashes.RainAlive);
+        Mark("done");
+    }
+}

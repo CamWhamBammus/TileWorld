@@ -1,0 +1,53 @@
+// A probe: writes the made sounds out as WAV files, to listen to and to measure.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void Wav(string path, AudioClip clip)
+    {
+        var data = new float[clip.samples * clip.channels];
+        clip.GetData(data, 0);
+        using (var w = new BinaryWriter(File.Create(path)))
+        {
+            int bytes = data.Length * 2;
+            w.Write(System.Text.Encoding.ASCII.GetBytes("RIFF")); w.Write(36 + bytes); w.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+            w.Write(System.Text.Encoding.ASCII.GetBytes("fmt ")); w.Write(16); w.Write((short)1); w.Write((short)clip.channels);
+            w.Write(clip.frequency); w.Write(clip.frequency * clip.channels * 2); w.Write((short)(clip.channels * 2)); w.Write((short)16);
+            w.Write(System.Text.Encoding.ASCII.GetBytes("data")); w.Write(bytes);
+            foreach (var f in data) w.Write((short)Mathf.RoundToInt(Mathf.Clamp(f, -1f, 1f) * 32767f));
+        }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+        var made = new GameObject("Splashes (probe)").AddComponent<Splashes>();
+        yield return null;
+        string dir = Path.Combine(Path.GetDirectoryName(Stages), "sounds");
+        Directory.CreateDirectory(dir);
+        int n = 0;
+        foreach (var pair in Splashes.Clips()) { Wav(Path.Combine(dir, pair.Key + ".wav"), pair.Value); n++; }
+        Mark("WROTE " + n + " sounds to " + dir);
+        Mark("done");
+    }
+}

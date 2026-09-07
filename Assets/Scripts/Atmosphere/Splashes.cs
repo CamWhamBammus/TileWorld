@@ -24,12 +24,43 @@ public class Splashes : MonoBehaviour
     private readonly List<Matrix4x4> batch = new List<Matrix4x4>(512);
     private Mesh lump;
     private Material paint;
-    private AudioClip[] plish, plunge;
+    private AudioClip[] plish, plunge, strokes;
+
+    /// <summary>The clips by name, for a probe to write out and listen to.</summary>
+    public static IEnumerable<KeyValuePair<string, AudioClip>> Clips()
+    {
+        if (instance == null) yield break;
+        for (int i = 0; i < instance.plish.Length; i++) yield return new KeyValuePair<string, AudioClip>("step" + i, instance.plish[i]);
+        for (int i = 0; i < instance.plunge.Length; i++) yield return new KeyValuePair<string, AudioClip>("plunge" + i, instance.plunge[i]);
+        for (int i = 0; i < instance.strokes.Length; i++) yield return new KeyValuePair<string, AudioClip>("stroke" + i, instance.strokes[i]);
+    }
     private readonly AudioSource[] voices = new AudioSource[4];
     private int nextVoice;
     private float lastSound;
 
     private const int Most = 480;
+
+    private struct Ripple { public Vector3 At; public float Made, Lasts, Size; }
+    private readonly List<Ripple> ripples = new List<Ripple>(1024);
+    private readonly List<Matrix4x4> rippleBatch = new List<Matrix4x4>(1024);
+    private Mesh thinRing;
+    private Material ringPaint;
+    private const int MostRipples = 900;
+
+    /// <summary>How many rain rings are on the water, for the probes.</summary>
+    public static int RainAlive => instance != null ? instance.ripples.Count : 0;
+
+    /// <summary>A raindrop landing on the water: a small ring, quickly gone. Only where the water is.</summary>
+    public static void Raindrop(Vector3 at, int worldSeed)
+    {
+        var it = Ensure();
+        if (it == null) return;
+
+        if (!WaterSurface.IsUnderwater(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), worldSeed)) return;
+
+        if (it.ripples.Count >= MostRipples) it.ripples.RemoveAt(0);
+        it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.45f, 0.7f), Size = Random.Range(0.28f, 0.5f) });
+    }
 
     /// <summary>How many drops are in the air, for the probes.</summary>
     public static int Alive => instance != null ? instance.drops.Count : 0;
@@ -57,9 +88,12 @@ public class Splashes : MonoBehaviour
         instance = this;
         lump = Lump();
         paint = Paint.Flat(new Color(0.93f, 0.97f, 1.0f));
+        thinRing = ThinRing(24, 0.5f, 0.47f);
+        ringPaint = Paint.Flat(new Color(0.80f, 0.89f, 0.95f));
 
-        plish = new[] { Splash(0.13f, 2600f, 0.35f, 11), Splash(0.16f, 2200f, 0.3f, 12), Splash(0.11f, 3000f, 0.4f, 13) };
-        plunge = new[] { Splash(0.42f, 1500f, 1.0f, 21), Splash(0.5f, 1300f, 1.0f, 22) };
+        plish = new[] { Splash(Kind.Step, 11), Splash(Kind.Step, 12), Splash(Kind.Step, 13), Splash(Kind.Step, 14) };
+        plunge = new[] { Splash(Kind.Plunge, 21), Splash(Kind.Plunge, 22) };
+        strokes = new[] { Splash(Kind.Stroke, 31), Splash(Kind.Stroke, 32) };
 
         for (int i = 0; i < voices.Length; i++)
         {
@@ -122,7 +156,7 @@ public class Splashes : MonoBehaviour
 
         Tracks.Ring(at, Mathf.Lerp(1.2f, 1.8f, strength), 2.6f);
         it.Throw(at, 3 + Mathf.RoundToInt(strength * 6f), 1.3f, 1.0f, 0.07f);
-        it.Sound(at, it.plish, Mathf.Lerp(0.1f, 0.25f, strength), Random.Range(0.7f, 0.9f), 0.25f);
+        it.Sound(at, it.strokes, Mathf.Lerp(0.12f, 0.28f, strength), Random.Range(0.9f, 1.1f), 0.25f);
     }
 
     /// <summary>The wake of something moving through water: a ring and nothing else.</summary>
@@ -184,10 +218,62 @@ public class Splashes : MonoBehaviour
             batch.Add(Matrix4x4.TRS(d.At, turn, new Vector3(d.Size, d.Size, d.Size * 1.8f)));
         }
 
-        if (batch.Count == 0 || paint == null) return;
+        if (batch.Count > 0 && paint != null)
+        {
+            var rp = new RenderParams(paint) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
+            Graphics.RenderMeshInstanced(rp, lump, 0, batch, batch.Count, 0);
+        }
 
-        var rp = new RenderParams(paint) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
-        Graphics.RenderMeshInstanced(rp, lump, 0, batch, batch.Count, 0);
+        // the rain's rings: spreading, and gone
+        rippleBatch.Clear();
+
+        for (int i = ripples.Count - 1; i >= 0; i--)
+        {
+            var r = ripples[i];
+            float age = (now - r.Made) / r.Lasts;
+
+            if (age >= 1f) { ripples.RemoveAt(i); continue; }
+
+            float size = r.Size * Mathf.Lerp(0.2f, 1f, Mathf.Sqrt(age));
+            rippleBatch.Add(Matrix4x4.TRS(r.At, Quaternion.identity, new Vector3(size, 1f, size)));
+        }
+
+        if (rippleBatch.Count > 0 && ringPaint != null)
+        {
+            var rp = new RenderParams(ringPaint) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
+            for (int from = 0; from < rippleBatch.Count; from += 1000)
+                Graphics.RenderMeshInstanced(rp, thinRing, 0, rippleBatch, Mathf.Min(1000, rippleBatch.Count - from), from);
+        }
+    }
+
+    /// <summary>A flat thin ring in the ground plane, a unit across.</summary>
+    private static Mesh ThinRing(int sides, float outer, float inner)
+    {
+        var verts = new List<Vector3>();
+        var tris = new List<int>();
+
+        for (int i = 0; i < sides; i++)
+        {
+            float a = i / (float)sides * Mathf.PI * 2f;
+            verts.Add(new Vector3(Mathf.Cos(a) * outer, 0f, Mathf.Sin(a) * outer));
+            verts.Add(new Vector3(Mathf.Cos(a) * inner, 0f, Mathf.Sin(a) * inner));
+        }
+
+        for (int i = 0; i < sides; i++)
+        {
+            int o0 = i * 2, i0 = i * 2 + 1, o1 = ((i + 1) % sides) * 2, i1 = ((i + 1) % sides) * 2 + 1;
+            tris.Add(o0); tris.Add(o1); tris.Add(i0);
+            tris.Add(i0); tris.Add(o1); tris.Add(i1);
+        }
+
+        var m = new Mesh { name = "thin ring" };
+        m.SetVertices(verts);
+        m.SetTriangles(tris, 0);
+        var normals = new Vector3[verts.Count];
+        for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.up;
+        m.SetNormals(normals);
+        m.RecalculateBounds();
+        return m;
     }
 
     /// <summary>A small flat-shaded lump, a unit across, that reads as a drop from any side.</summary>
@@ -238,45 +324,140 @@ public class Splashes : MonoBehaviour
         by = "?";
     }
 
+    private enum Kind { Step, Plunge, Stroke }
+
     /// <summary>
-    /// A splash: noise that starts bright and has the top taken off it as it
-    /// dies away, with a low knock at the front for the bigger ones. The
-    /// "body" is how much of that knock there is.
+    /// A splash, made rather than recorded. Water's sound is mostly bubbles:
+    /// each one a short sine that rises a little in pitch as it shrinks and
+    /// dies in a few tens of milliseconds, the big ones low and loud, the
+    /// small ones high and quick. A splash is a few dozen of them, most in
+    /// the first moments, over a spray of band-limited noise that gurgles
+    /// rather than hisses, and a slower slosh behind it as the water settles.
+    /// A body going in adds a low knock at the front and bigger bubbles as
+    /// the water closes over it.
     /// </summary>
-    private static AudioClip Splash(float seconds, float brightHz, float body, int seed)
+    private static AudioClip Splash(Kind kind, int seed)
     {
-        const int rate = 22050;
+        const int rate = 44100;
+        var rng = new System.Random(seed);
+        float U(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+        float LogU(float a, float b) => Mathf.Exp(U(Mathf.Log(a), Mathf.Log(b)));
+
+        float seconds; int bubbleCount; float fLow, fHigh, spreadOver, tauLow, tauHigh;
+        float sprayFrom, sprayTo, sprayDecay, sprayLevel;
+        float sloshFc, sloshDelay, sloshAttack, sloshDecay, sloshLevel;
+        float knock, closing;
+
+        switch (kind)
+        {
+            case Kind.Plunge:
+                seconds = 0.9f; bubbleCount = 42; fLow = 160f; fHigh = 1800f; spreadOver = 0.26f; tauLow = 0.02f; tauHigh = 0.07f;
+                sprayFrom = 2600f; sprayTo = 900f; sprayDecay = 0.2f; sprayLevel = 0.5f;
+                sloshFc = 520f; sloshDelay = 0.06f; sloshAttack = 0.05f; sloshDecay = 0.3f; sloshLevel = 0.36f;
+                knock = 0.9f; closing = 1f;
+                break;
+            case Kind.Stroke:
+                seconds = 0.45f; bubbleCount = 9; fLow = 280f; fHigh = 1400f; spreadOver = 0.22f; tauLow = 0.02f; tauHigh = 0.05f;
+                sprayFrom = 1800f; sprayTo = 900f; sprayDecay = 0.12f; sprayLevel = 0.2f;
+                sloshFc = 600f; sloshDelay = 0.05f; sloshAttack = 0.06f; sloshDecay = 0.18f; sloshLevel = 0.3f;
+                knock = 0f; closing = 0f;
+                break;
+            default:
+                seconds = 0.36f; bubbleCount = 14; fLow = 340f; fHigh = 2000f; spreadOver = 0.16f; tauLow = 0.012f; tauHigh = 0.035f;
+                sprayFrom = 2100f; sprayTo = 850f; sprayDecay = 0.1f; sprayLevel = 0.3f;
+                sloshFc = 650f; sloshDelay = 0.04f; sloshAttack = 0.04f; sloshDecay = 0.15f; sloshLevel = 0.4f;
+                knock = 0f; closing = 0f;
+                break;
+        }
+
         int samples = Mathf.RoundToInt(seconds * rate);
         var data = new float[samples];
-        var rng = new System.Random(seed);
 
+        // the bubbles: when each starts, its pitch, how long it lasts, how loud
+        int count = bubbleCount + (closing > 0f ? 10 : 0);
+        var start = new float[count]; var f0 = new float[count]; var tau = new float[count]; var amp = new float[count];
+
+        for (int b = 0; b < count; b++)
+        {
+            bool late = b >= bubbleCount;   // the water closing over a body: bigger, a moment after
+            float t = late ? U(0.22f, 0.45f) : Mathf.Pow((float)rng.NextDouble(), 1.7f) * spreadOver;
+            float f = late ? LogU(fLow, fLow * 3f) : LogU(fLow, fHigh);
+            start[b] = t;
+            f0[b] = f;
+            tau[b] = U(tauLow, tauHigh) * Mathf.Clamp(Mathf.Sqrt(600f / f), 0.6f, 1.8f);   // big bubbles ring longer
+            amp[b] = Mathf.Pow(600f / f, 0.35f) * U(0.35f, 1f) * (late ? 0.7f : 1f);
+        }
+
+        var phase = new float[count];
+
+        // the spray: white noise through a resonant band-pass that falls in pitch as it dies
         float low = 0f, band = 0f;
+        float gurgle = 0f; float gurgle2 = 0f;
+        float sLow = 0f, sBand = 0f;
         float knockPhase = 0f;
 
         for (int i = 0; i < samples; i++)
         {
-            float t = i / (float)samples;
-
-            // the envelope: up in a few milliseconds, then away
-            float env = Mathf.Min(1f, i / (rate * 0.004f)) * Mathf.Pow(1f - t, 1.6f);
-
-            // the noise, through a low-pass whose cutoff falls as the splash dies
-            float cutoff = Mathf.Lerp(brightHz, 350f, t * t);
-            float k = Mathf.Clamp01(cutoff / rate * 6.28f);
+            float t = i / (float)rate;
             float white = (float)(rng.NextDouble() * 2.0 - 1.0);
-            low += k * (white - low);
-            band += 0.5f * (low - band);
-            float hiss = low - band * 0.6f;
 
-            // the knock: a short low thud, for a body going in
-            float knockHz = Mathf.Lerp(180f, 70f, t * 3f);
-            knockPhase += knockHz / rate * 6.28f;
-            float knock = Mathf.Sin(knockPhase) * Mathf.Exp(-t * 14f) * body;
+            // the gurgle: slow noise, so nothing here is a steady tone or a steady hiss
+            gurgle += 0.0035f * (white * 40f - gurgle);
+            gurgle2 += 0.0012f * (white * 60f - gurgle2);
+            float gurgling = Mathf.Clamp(0.55f + 0.45f * Mathf.Clamp(gurgle, -1f, 1f), 0.1f, 1f);
 
-            data[i] = Mathf.Clamp(hiss * 1.6f * env + knock * 0.5f, -1f, 1f);
+            // the bubbles
+            float bubbles = 0f;
+            for (int b = 0; b < count; b++)
+            {
+                float dt = t - start[b];
+                if (dt < 0f || dt > tau[b] * 6f) continue;
+                float freq = f0[b] * (1f + 0.35f * dt / tau[b]);   // rising as it shrinks
+                phase[b] += freq / rate * 6.2831853f;
+                float rise = Mathf.Min(1f, dt / 0.0012f);
+                bubbles += Mathf.Sin(phase[b]) * amp[b] * rise * Mathf.Exp(-dt / tau[b]);
+            }
+
+            // the spray
+            float sprayEnv = Mathf.Min(1f, t / 0.006f) * Mathf.Exp(-t / sprayDecay);
+            float fc = Mathf.Lerp(sprayFrom, sprayTo, Mathf.Clamp01(t / (sprayDecay * 2.5f)));
+            float f = 2f * Mathf.Sin(3.1415926f * fc / rate);
+            low += f * band;
+            float high = white - low - 0.8f * band;
+            band += f * high;
+            float spray = band * sprayEnv * gurgling * sprayLevel * 2.2f;
+
+            // the slosh: lower, later, slower, and gurgling on its own clock
+            float st = t - sloshDelay;
+            float sloshEnv = st < 0f ? 0f : Mathf.Min(1f, st / sloshAttack) * Mathf.Exp(-st / sloshDecay);
+            float sf = 2f * Mathf.Sin(3.1415926f * sloshFc / rate);
+            sLow += sf * sBand;
+            float sHigh = white - sLow - 1.1f * sBand;
+            sBand += sf * sHigh;
+            float slosh = sBand * sloshEnv * Mathf.Clamp(0.5f + 0.5f * Mathf.Clamp(gurgle2, -1f, 1f), 0.05f, 1f) * sloshLevel * 2.6f;
+
+            // the knock, for a body going in
+            float thud = 0f;
+            if (knock > 0f)
+            {
+                knockPhase += Mathf.Lerp(120f, 55f, Mathf.Clamp01(t / 0.12f)) / rate * 6.2831853f;
+                thud = Mathf.Sin(knockPhase) * Mathf.Exp(-t / 0.09f) * knock;
+            }
+
+            data[i] = bubbles * 0.26f + spray * 1.7f + slosh * 1.5f + thud;
         }
 
-        var clip = AudioClip.Create("Splash" + seed, samples, 1, rate, false);
+        // brought to a common level, and the last few milliseconds eased out
+        float peak = 0.0001f;
+        for (int i = 0; i < samples; i++) peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+        int tail = Mathf.RoundToInt(rate * 0.012f);
+        for (int i = 0; i < samples; i++)
+        {
+            float ease = i > samples - tail ? (samples - i) / (float)tail : 1f;
+            data[i] = Mathf.Clamp(data[i] / peak * 0.9f * ease, -1f, 1f);
+        }
+
+        var clip = AudioClip.Create("Splash" + kind + seed, samples, 1, rate, false);
         clip.SetData(data, 0);
         return clip;
     }

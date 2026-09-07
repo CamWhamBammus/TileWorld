@@ -173,8 +173,19 @@ Snow never lies on a water floor.
 `Splashes` (in `Atmosphere/`) is what water does about things going into it.
 It draws drops as small flat-shaded lumps in one `RenderMeshInstanced` call,
 leaves rings through `Tracks.Ring(at, size, lasts)`, and makes its own
-sound: a burst of noise through a low-pass whose cutoff falls as it dies,
-with a low knock for a body going in. The calls are `Step` (a foot in the
+sound. Water's sound is mostly bubbles, so the synthesis (`Splash(Kind,
+seed)`) is a few dozen short sines that rise in pitch as they decay -- big
+ones low and loud, small ones high and quick, most in the first moments --
+over a spray of band-limited noise (a state-variable band-pass falling in
+pitch, gurgled by slow noise rather than a steady hiss) and a slower, lower
+slosh behind; a body going in adds a low knock and bigger bubbles as the
+water closes. `Tools/probe/Sounds.cs.txt` writes the clips out as WAV to
+`Tools/.check/sounds/`, and the Python after it in the session measures
+each: peak time, spectral centroid and flatness (hiss is flat, near 0.5;
+water is tonal, under 0.2). Rain rings the water too: `Rain` calls
+`Splashes.Raindrop` where a streak crosses the water level over a wet tile,
+and `Splashes` keeps those rings in its own list with a thin annulus of its
+own, up to nine hundred, drawn in batches of a thousand. The calls are `Step` (a foot in the
 shallows), `Plunge` (going in), `Stroke` (a swimmer's arm) and `Wake` (a
 ring only). `Surveyor` calls them when a swung foot lands in water, when
 `Swimming.Afloat` first goes true (harder for a fall or a run), once a
