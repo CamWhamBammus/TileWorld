@@ -80,6 +80,9 @@ public class Kit : ScriptableObject
 
         public Builder(int seed) { rng = new System.Random(seed); }
 
+        /// <summary>Where the lamps are, in the structure's own frame, for lighting them at night.</summary>
+        public readonly List<Vector3> Lamps = new List<Vector3>();
+
         private float Rand(float a, float b) => a + (float)rng.NextDouble() * (b - a);
 
         /// <summary>Three greys for stonework, mostly the middle one.</summary>
@@ -699,6 +702,7 @@ public class Kit : ScriptableObject
             var arm = top + Vector3.down * 0.1f;
             Log(arm, arm + turn * Vector3.forward * 0.5f, 0.04f, Swatch.DarkWood, 5);
             var lamp = arm + turn * Vector3.forward * 0.45f + Vector3.down * 0.32f;
+            Lamps.Add(lamp);
             Block(lamp, new Vector3(0.22f, 0.3f, 0.22f), Swatch.Pane);
             Block(lamp + Vector3.up * 0.17f, new Vector3(0.28f, 0.05f, 0.28f), Swatch.Iron);
             Block(lamp + Vector3.down * 0.17f, new Vector3(0.26f, 0.04f, 0.26f), Swatch.Iron);
@@ -1168,6 +1172,9 @@ public class Kit : ScriptableObject
 
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             go.AddComponent<MeshRenderer>().sharedMaterial = paint;
+
+            // the lamps light at night
+            if (Lamps.Count > 0) go.AddComponent<LanternLights>().Lamps = Lamps.ToArray();
 
             foreach (var (centre, size, turn) in solids)
             {

@@ -58,6 +58,9 @@ public class Sketching : MonoBehaviour
     /// </summary>
     public static bool Working { get; private set; }
 
+    /// <summary>How far off the thing under the glass is, for the depth of field; 0 when there is none.</summary>
+    public static float FocusDistance { get; private set; }
+
     private float zoom = 20f;
     private float restingView = -1f;
 
@@ -203,6 +206,7 @@ public class Sketching : MonoBehaviour
         if (!drawing) drewThisHold = false;
 
         Glass(drawing);
+        FocusDistance = have && drawing ? Vector3.Distance(Eye().transform.position, working.Aim) : 0f;
 
         if (!have || !steady || !drawing)
         {

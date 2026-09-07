@@ -1,0 +1,232 @@
+// A probe for the ten upgrades: reads the pipeline back, then goes to a
+// wood at dawn (shafts, leaves, wind), a partly cloudy noon (cloud shadows),
+// the low ground (seeds), a shrine at night (lanterns, the moon), a lake at
+// night (the moon on the water), a deer under the glass (depth of field),
+// and under the water (the submerged look), photographing each.
+using System.Collections;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
+using Unity.Profiling;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private Camera cam; private Transform player;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Shot(string name, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        cam.transform.position = at; cam.transform.LookAt(lookAt);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-l2-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.4f);
+    }
+
+    private void Follow()
+    {
+        cam.transform.position = player.position + Vector3.up * 1.7f - player.forward * 2.5f;
+        cam.transform.LookAt(player.position + player.forward * 10f + Vector3.up * 1.2f);
+    }
+
+    private IEnumerator Profile(string name, float seconds)
+    {
+        string[] names = { "PlayerLoop", "Camera.Render", "Gfx.WaitForPresentOnGfxThread", "Gfx.WaitForRenderThread", "Undergrowth.LateUpdate()", "Grading.LateUpdate()", "TimeOfDay.Update()", "Motes.LateUpdate()", "LightShafts.LateUpdate()", "Rain.LateUpdate()", "Animal.Update()", "ChunkManager.Update()", "LandmarkSpawner.Update()", "Wildlife.Update()", "Tracks.Update()", "Splashes.Update()", "Surveyor.Update()", "LanternLights.Update()", "Undergrowth.NearestTree", "Physics.Processing", "Physics.Simulate" };
+        var recorders = new ProfilerRecorder[names.Length];
+        for (int i = 0; i < names.Length; i++) recorders[i] = ProfilerRecorder.StartNew(new ProfilerCategory(names[i].Contains("Gfx") || names[i].Contains("Camera") ? "Render" : "Scripts"), names[i], 60);
+        yield return null;
+        var sums = new double[names.Length]; int frames = 0; float t0 = Time.realtimeSinceStartup;
+        while (Time.realtimeSinceStartup - t0 < seconds)
+        {
+            for (int i = 0; i < names.Length; i++) if (recorders[i].Valid) sums[i] += recorders[i].LastValue / 1e6;
+            frames++;
+            yield return null;
+        }
+        string line = "PROFILE " + name + " (ms a frame):";
+        for (int i = 0; i < names.Length; i++) { if (!recorders[i].Valid) continue; double ms = sums[i] / Mathf.Max(1, frames); if (ms > 0.05) line += " " + names[i] + " " + ms.ToString("F2") + ";"; recorders[i].Dispose(); }
+        Mark(line);
+    }
+
+    private IEnumerator Frames(string name, float seconds)
+    {
+        int frames = 0; float t0 = Time.realtimeSinceStartup;
+        while (Time.realtimeSinceStartup - t0 < seconds) { frames++; yield return null; }
+        Mark("COST " + name + ": " + (seconds * 1000f / frames).ToString("F2") + " ms a frame");
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Look2", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+        QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1;
+
+        var rp = UniversalRenderPipeline.asset;
+        Mark("PIPELINE: msaa " + rp.msaaSampleCount + ", shadow distance " + rp.shadowDistance + ", cascades " + rp.shadowCascadeCount + ", soft shadows " + rp.supportsSoftShadows + ", far clip " + Camera.main.farClipPlane);
+
+        var tools = FindFirstObjectByType<DevTools>();
+        var flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        var goTo = typeof(DevTools).GetMethod("GoTo", flags, null, new[] { typeof(Regions.Character) }, null);
+        var goStructure = typeof(DevTools).GetMethod("GoToStructure", flags);
+        var goWater = typeof(DevTools).GetMethod("GoToWater", flags);
+        var summon = typeof(DevTools).GetMethod("Summon", flags);
+        if (tools == null || goTo == null) { Mark("no dev tools"); Mark("done"); yield break; }
+
+        cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        var clock = TimeOfDay.Instance;
+        clock.Paused = true;
+        clock.ForceOvercast(0f);
+
+        // ---- a wood at dawn: shafts, leaves, wind
+        goTo.Invoke(tools, new object[] { Regions.Character.Forest });
+        yield return new WaitForSecondsRealtime(6f);
+        Follow();
+        clock.SetTime(0.27f);
+        yield return new WaitForSecondsRealtime(3f);
+        var sun = RenderSettings.sun;
+        Vector3 towardSun = -sun.transform.forward; towardSun.y = 0f; towardSun.Normalize();
+        Mark("DAWN WOOD: light shafts " + LightShafts.Count + " at strength " + LightShafts.Strength.ToString("F2") + ", motes " + Motes.Current + " " + Motes.Alive + ", plants leaning up to " + Undergrowth.SwayDegrees.ToString("F1") + " deg");
+        yield return Shot("dawn-wood", player.position + Vector3.up * 1.7f - towardSun * 3f, player.position + Vector3.up * 2.5f + towardSun * 20f);
+        yield return Frames("in the wood, everything on", 2f);
+        yield return Profile("in the wood", 2f);
+        Undergrowth.Wind = false; yield return null; yield return Frames("wind off", 2f); Undergrowth.Wind = true;
+        var shafts = FindFirstObjectByType<LightShafts>(); var motes = FindFirstObjectByType<Motes>();
+        if (shafts != null) shafts.enabled = false; if (motes != null) motes.enabled = false;
+        yield return null; yield return Frames("shafts and motes off", 2f);
+        if (shafts != null) shafts.enabled = true; if (motes != null) motes.enabled = true;
+        float shadowsWere = rp.shadowDistance; rp.shadowDistance = 50f; yield return null; yield return Frames("shadows back to 50 m", 2f); rp.shadowDistance = shadowsWere;
+        int msaaWas = rp.msaaSampleCount; rp.msaaSampleCount = 1; yield return null; yield return Frames("msaa off", 2f); rp.msaaSampleCount = msaaWas;
+        Grading.Enabled = false; yield return null; yield return Frames("grade off", 2f); Grading.Enabled = true;
+
+        // ---- partly cloudy noon: cloud shadows
+        clock.SetTime(0.5f); clock.ForceOvercast(0.4f);
+        yield return new WaitForSecondsRealtime(2f);
+        Mark("CLOUDS: cloud shadows " + clock.CloudShadows + ", overcast " + clock.Overcast.ToString("F2"));
+        yield return Shot("clouds", player.position + Vector3.up * 14f - towardSun * 12f, player.position + towardSun * 30f);
+        clock.ForceOvercast(0f);
+
+        // ---- the low ground: seeds
+        goTo.Invoke(tools, new object[] { Regions.Character.Lowland });
+        yield return new WaitForSecondsRealtime(7f);
+        Follow();
+        yield return new WaitForSecondsRealtime(3f);
+        Mark("LOW GROUND: motes " + Motes.Current + " " + Motes.Alive + ", plants leaning up to " + Undergrowth.SwayDegrees.ToString("F1") + " deg, plants drawn " + Undergrowth.Instances + " of which near " + Undergrowth.NearInstances);
+        yield return Shot("lowland", player.position + Vector3.up * 1.6f - player.forward * 2f, player.position + player.forward * 12f + Vector3.up * 1.2f);
+
+        // ---- a deer under the glass, here on the low ground: depth of field
+        if (summon != null)
+        {
+            summon.Invoke(tools, new object[] { FaunaKind.Deer, false });
+            yield return new WaitForSecondsRealtime(2f);
+            Animal deer = null; float nearest = 999f;
+            foreach (var a in FindObjectsByType<Animal>(FindObjectsSortMode.None)) { if (a.Kind != FaunaKind.Deer) continue; float d = Vector3.Distance(a.transform.position, player.position); if (d < nearest) { nearest = d; deer = a; } }
+            var sketching = FindFirstObjectByType<Sketching>();
+            if (sketching != null) sketching.enabled = false;
+            Vector3 deerAt = deer != null ? deer.transform.position : player.position + player.forward * 9f;
+            float focus = Vector3.Distance(player.position + Vector3.up * 1.6f, deerAt);
+            typeof(Sketching).GetProperty("Working").SetValue(null, true);
+            typeof(Sketching).GetProperty("FocusDistance").SetValue(null, focus);
+            yield return new WaitForSecondsRealtime(0.6f);
+            Mark("GLASS: depth of field on " + (Grading.Instance != null && Grading.Instance.Focused) + " at " + (Grading.Instance != null ? Grading.Instance.FocusedAt.ToString("F1") : "?") + " m, a deer " + nearest.ToString("F1") + " m off");
+            yield return Shot("glass", player.position + Vector3.up * 1.6f, deerAt + Vector3.up * 0.8f);
+            typeof(Sketching).GetProperty("Working").SetValue(null, false);
+            typeof(Sketching).GetProperty("FocusDistance").SetValue(null, 0f);
+            if (sketching != null) sketching.enabled = true;
+        }
+
+        // ---- a shrine at night: lanterns and the moon
+        if (goStructure != null)
+        {
+            goStructure.Invoke(tools, new object[] { LandmarkKind.WaysideShrine });
+            yield return new WaitForSecondsRealtime(7f);
+            Follow();
+            clock.SetTime(0.96f);
+            yield return new WaitForSecondsRealtime(3f);
+            LanternLights shrine = null; float nearestShrine = 999f;
+            foreach (var l in FindObjectsByType<LanternLights>(FindObjectsSortMode.None)) { float d = Vector3.Distance(l.transform.position, player.position); if (d < nearestShrine) { nearestShrine = d; shrine = l; } }
+            Vector3 lamp = shrine != null && shrine.Lamps != null && shrine.Lamps.Length > 0 ? shrine.transform.TransformPoint(shrine.Lamps[0]) : player.position + player.forward * 10f;
+            Mark("NIGHT SHRINE: lanterns burning " + LanternLights.Lit + ", the nearest " + nearestShrine.ToString("F0") + " m off, moon showing " + clock.MoonShowing.ToString("F2"));
+            Vector3 from = lamp + (player.position - lamp).normalized * 7f + Vector3.up * 0.6f;
+            yield return Shot("lanterns", from, lamp - Vector3.up * 0.6f);
+        }
+
+        // ---- a lake at night: the moon on the water
+        if (goWater != null)
+        {
+            goWater.Invoke(tools, new object[] { WaterSurface.Body.Lake });
+            yield return new WaitForSecondsRealtime(6f);
+            Follow();
+            var moonObj = GameObject.Find("Moon (runtime)");
+            if (moonObj != null)
+            {
+                // the moon itself, from the open shore
+                yield return Shot("moon", player.position + Vector3.up * 1.7f, moonObj.transform.position);
+                // and its glint: along its bearing, low over the water
+                Vector3 bearing = moonObj.transform.position - player.position; bearing.y = 0f; bearing.Normalize();
+                Vector3 eye = new Vector3(player.position.x, WaterSurface.Level + 1.2f, player.position.z);
+                yield return Shot("moon-water", eye, eye + bearing * 25f - Vector3.up * 1.6f);
+            }
+        }
+
+        clock.SetTime(0.5f);
+        yield return new WaitForSecondsRealtime(1.5f);
+
+        // ---- under the water
+        if (goWater != null)
+        {
+            goWater.Invoke(tools, new object[] { WaterSurface.Body.Lake });
+            yield return new WaitForSecondsRealtime(5f);
+            Vector3 under = player.position + player.forward * 8f; under.y = WaterSurface.Level - 0.9f;
+            body.enabled = false; player.position = under; body.enabled = true;
+            cam.transform.position = new Vector3(under.x, WaterSurface.Level - 0.6f, under.z);
+            cam.transform.LookAt(new Vector3(under.x, WaterSurface.Level - 0.9f, under.z) + player.forward * 10f);
+            yield return new WaitForSecondsRealtime(1.5f);
+            Mark("UNDER: submerged " + (Grading.Instance != null && Grading.Instance.Submerged) + ", camera " + (cam.transform.position.y - WaterSurface.Level).ToString("F2") + " m from the level");
+            yield return Shot("underwater", new Vector3(under.x, WaterSurface.Level - 0.6f, under.z), new Vector3(under.x, WaterSurface.Level - 0.9f, under.z) + player.forward * 10f);
+        }
+
+        clock.ForceOvercast(-1f); clock.Paused = false;
+        Mark("done");
+    }
+}

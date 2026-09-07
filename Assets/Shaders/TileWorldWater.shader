@@ -48,6 +48,10 @@ Shader "TileWorld/Water"
             float _DepthFade, _FoamDepth, _WaveHeight, _WaveScale, _Speed, _Sparkle, _Refract, _Fresnel;
             CBUFFER_END
 
+            // the moon, set by the clock: where it is, and how bright
+            float4 _MoonDir;
+            float4 _MoonColor;
+
             struct Attributes { float4 positionOS : POSITION; };
 
             struct Varyings
@@ -123,6 +127,11 @@ Shader "TileWorld/Water"
                 float glint = pow(saturate(dot(n, h)), 140) * _Sparkle;
                 float soft = pow(saturate(dot(n, h)), 12) * 0.08;
                 water += sun.color * (glint + soft);
+
+                // and the moon on it, when there is one
+                float3 hm = normalize(_MoonDir.xyz + view);
+                float moonGlint = pow(saturate(dot(n, hm)), 160) * _Sparkle * 1.4 + pow(saturate(dot(n, hm)), 10) * 0.05;
+                water += _MoonColor.rgb * moonGlint;
 
                 // the sky in it at a low angle: the fog's colour stands for the sky
                 float fresnel = pow(1 - saturate(dot(view, n)), 3) * _Fresnel;

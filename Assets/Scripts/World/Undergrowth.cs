@@ -45,6 +45,26 @@ public class Undergrowth : MonoBehaviour
 
     private bool shifted = true;
     private Matrix4x4[][] gathered;
+    // The wind touches only what is near. Each kind is split into the far
+    // instances, drawn as they are, and the near ones, leaned every frame;
+    // the split is remade when the plants change or the player has walked
+    // a few metres, not every frame -- copying every instance in a dense
+    // wood each frame cost more than everything else put together.
+    private Matrix4x4[][] far, near, leaned;
+    private int[] farCount, nearCount;
+    private Vector3 splitAt = new Vector3(float.MaxValue, 0f, 0f);
+    private bool needSplit = true;
+    private float splitTime;
+    private const float NearReach = 40f;
+
+    /// <summary>The most any plant is leaning this frame, in degrees, for the probes.</summary>
+    public static float SwayDegrees { get; private set; }
+    /// <summary>How many plants are drawn, and how many of them are near enough to lean, for the probes.</summary>
+    public static int Instances { get; private set; }
+    public static int NearInstances { get; private set; }
+
+    /// <summary>The wind can be switched off, to see what it costs.</summary>
+    public static bool Wind = true;
     private int[] counts;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -391,7 +411,7 @@ public class Undergrowth : MonoBehaviour
     /// </summary>
     private void Gather()
     {
-        shifted = false;
+        shifted = false; needSplit = true;
 
         if (gathered == null)
         {
@@ -425,24 +445,99 @@ public class Undergrowth : MonoBehaviour
         }
     }
 
+    /// <summary>Splits every kind into the far and the near, about the player.</summary>
+    private void Split()
+    {
+        if (far == null)
+        {
+            far = new Matrix4x4[every.Length][]; near = new Matrix4x4[every.Length][]; leaned = new Matrix4x4[every.Length][];
+            farCount = new int[every.Length]; nearCount = new int[every.Length];
+        }
+
+        float px = player.position.x, pz = player.position.z;
+        int all = 0, close = 0;
+
+        for (int kind = 0; kind < every.Length; kind++)
+        {
+            int count = counts[kind];
+            if (count == 0) { farCount[kind] = nearCount[kind] = 0; continue; }
+
+            var from = gathered[kind];
+            if (far[kind] == null || far[kind].Length < from.Length) { far[kind] = new Matrix4x4[from.Length]; near[kind] = new Matrix4x4[from.Length]; leaned[kind] = new Matrix4x4[from.Length]; }
+
+            int f = 0, n = 0;
+            for (int i = 0; i < count; i++)
+            {
+                var m = from[i];
+                float dx = m.m03 - px, dz = m.m23 - pz;
+                if (dx * dx + dz * dz > NearReach * NearReach) far[kind][f++] = m; else near[kind][n++] = m;
+            }
+
+            farCount[kind] = f; nearCount[kind] = n;
+            all += count; close += n;
+        }
+
+        Instances = all; NearInstances = close;
+        splitAt = player.position; splitTime = Time.time;
+    }
+
     private void Draw()
     {
         if (gathered == null) return;
-
         look.worldBounds = new Bounds(player.position, Vector3.one * (WorldGrid.ChunkWorldSize * (reach * 2 + 2)));
+
+        // A fresh split when the plants changed, the player has walked a
+        // few metres, or a while has passed: a few metres of drift in what
+        // counts as near is invisible.
+        if (far == null || needSplit || Vector3.Distance(player.position, splitAt) > 3f || Time.time - splitTime > 2f) Split();
+        needSplit = false;
+
+        // The wind: the rain's, or a breeze. What is near leans from its
+        // foot with a gust that moves over the ground; grass and reeds a
+        // good way, trees a little. Further off, nothing moves, and nobody
+        // can tell.
+        Vector3 wind = Rain.Wind.sqrMagnitude > 0.01f ? Rain.Wind : new Vector3(0.9f, 0f, 0.5f);
+        float blow = Mathf.Clamp(wind.magnitude / 4f, 0.3f, 1.6f);
+        Vector3 leanAxis = Vector3.Cross(Vector3.up, wind.normalized).normalized;
+        float t = Time.time;
+        float most = 0f;
 
         for (int kind = 0; kind < every.Length; kind++)
         {
             var mesh = every[kind].Mesh;
-
             if (mesh == null || counts[kind] == 0) continue;
 
-            for (int i = 0; i < counts[kind]; i += 1023)
+            for (int i = 0; i < farCount[kind]; i += 1023)
+                Graphics.RenderMeshInstanced(look, mesh, 0, far[kind], Mathf.Min(1023, farCount[kind] - i), i);
+
+            int n = nearCount[kind];
+            if (n == 0) continue;
+
+            var from = near[kind]; var to = leaned[kind];
+            float give = every[kind].Size * 1f < 1.6f ? 1f : 0.12f;
+
+            for (int i = 0; i < n; i++)
             {
-                Graphics.RenderMeshInstanced(look, mesh, 0, gathered[kind],
-                    Mathf.Min(1023, counts[kind] - i), i);
+                var m = from[i];
+
+                if (!Wind) { to[i] = m; continue; }
+
+                float tall = new Vector3(m.m01, m.m11, m.m21).magnitude * every[kind].Size;
+                float bend = tall < 1.6f ? 1f : 0.12f;   // grass bends, trees barely
+                float gust = Mathf.PerlinNoise(m.m03 * 0.06f + t * 0.55f, m.m23 * 0.06f - t * 0.3f) - 0.35f;
+                float degrees = (2.5f + gust * 12f) * blow * bend;
+                most = Mathf.Max(most, degrees);
+
+                var r = Quaternion.AngleAxis(degrees, leanAxis);
+                Vector3 foot = new Vector3(m.m03, m.m13, m.m23);
+                to[i] = Matrix4x4.TRS(foot - r * foot, r, Vector3.one) * m;
             }
+
+            for (int i = 0; i < n; i += 1023)
+                Graphics.RenderMeshInstanced(look, mesh, 0, to, Mathf.Min(1023, n - i), i);
         }
+
+        SwayDegrees = most;
     }
 
     private static uint Hash(int x, int y, int seed)

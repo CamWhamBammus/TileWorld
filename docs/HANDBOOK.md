@@ -415,6 +415,56 @@ photographs the same shore graded and ungraded, at dusk, at night, in the
 rain, close on the water with the surveyor wading, and a frozen lake, and
 counts magenta pixels -- the colour of a shader that failed to compile.
 
+### Ten more, none of them touching a tile
+
+All of these act on the image, the lights, the air or on things drawn by
+code, so the tiles can be replaced under them.
+
+- **Pipeline** (`PC_RPAsset`, `PC_Renderer`): MSAA 4, shadow distance 130 m
+  with cascade splits 0.05/0.15/0.4, normal bias 0.65, SSAO intensity 0.7
+  radius 0.55.
+- **Sky** (`TimeOfDay.Apply`): the procedural sky's sun swells and softens
+  near the horizon (`_SunSize`, `_SunSizeConvergence`), the tint warms at the
+  gold hour, and `_GroundColor` is the haze colour so the horizon is a band.
+- **Cloud shadows** (`TimeOfDay.Clouds`): three wrapping fbm cookies of
+  rising contrast on the sun (`Light.cookie`, `lightCookieSize` 260 m),
+  chosen by overcast band, drifting with `Rain.Wind` through
+  `lightCookieOffset`; none when clear or fully overcast.
+- **Moon** (`TimeOfDay.Moon`): a disc and a halo 850 m off along the moon
+  light, drawn with `TileWorld/Glow` (unlit, additive, no fog; kept in the
+  build by `Resources/Glow.mat`), fading under cloud; `_MoonDir` and
+  `_MoonColor` are set as shader globals and the water shader adds a moon
+  glint from them.
+- **Grade additions** (`Grading`): Bokeh depth of field when
+  `Sketching.Working` at `Sketching.FocusDistance` (the distance to what is
+  under the glass); film grain by night and rain; and under the water
+  (`Submerged`) a blue-green filter, lens distortion, chromatic aberration
+  and a closed vignette.
+- **Lanterns** (`Kit.Builder.Lamps`, `LanternLights`): the kit records each
+  lamp it hangs, `Finish` attaches `LanternLights`, and at night the lamps
+  within 55 m of the camera get a warm point light and a glow disc, up to
+  eight burning across the world, flickering by noise.
+- **Motes** (`Motes`): leaves in the woods (three tints, a folded lozenge,
+  tumbling), seeds over the low ground, dust over the sand -- by the
+  camera's country, about a hundred up within 22 m, riding `Rain.Wind` and
+  a sway, gone when they land or drift off, most knocked down by rain.
+- **Light shafts** (`LightShafts`): when the sun is a little above the
+  horizon and the sky clear, up to fourteen quads beside trunks near the
+  camera (`Undergrowth.NearestTree`), each running twelve metres down the
+  light's line to the ground, facing the camera about that line, fading to
+  nothing at the top, drawn with the glow shader.
+- **Wind** (`Undergrowth.Draw`): everything within 40 m of the player leans
+  from its foot toward the wind by a gust of Perlin noise that moves over
+  the ground -- grass and reeds up to about 12 degrees, trees an eighth of
+  that -- by rewriting the instance matrices into a second array each frame
+  (`SwayDegrees` for the probes). Further off, nothing moves.
+
+`Tools/probe/Look2.cs.txt` reads the pipeline back, then photographs a
+wood at dawn, a partly cloudy noon, the low ground, a shrine and the moon
+at night, the moon on a lake, a deer under the glass, and the world from
+under the water, with counts for shafts, motes, lean, lanterns and the
+depth of field.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy

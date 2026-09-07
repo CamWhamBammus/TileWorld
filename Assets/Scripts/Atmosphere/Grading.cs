@@ -27,6 +27,16 @@ public class Grading : MonoBehaviour
     private ColorAdjustments colour;
     private WhiteBalance balance;
     private LiftGammaGain lift;
+    private DepthOfField dof;
+    private FilmGrain grain;
+    private LensDistortion lens;
+    private ChromaticAberration fringe;
+
+    /// <summary>Whether the depth of field is on, and how far it is focused, for the probes.</summary>
+    public bool Focused => dof != null && dof.active;
+    public float FocusedAt => dof != null ? dof.focusDistance.value : 0f;
+    /// <summary>Whether the camera is under the water, for the probes.</summary>
+    public bool Submerged { get; private set; }
     private Camera view;
     private ChunkManager world;
 
@@ -55,6 +65,19 @@ public class Grading : MonoBehaviour
         colour = profile.Add<ColorAdjustments>(true);
         balance = profile.Add<WhiteBalance>(true);
         lift = profile.Add<LiftGammaGain>(true);
+        dof = profile.Add<DepthOfField>(true);
+        grain = profile.Add<FilmGrain>(true);
+        lens = profile.Add<LensDistortion>(true);
+        fringe = profile.Add<ChromaticAberration>(true);
+
+        dof.mode.Override(DepthOfFieldMode.Bokeh);
+        dof.focalLength.Override(70f);
+        dof.aperture.Override(4.5f);
+        dof.active = false;
+        grain.type.Override(FilmGrainLookup.Thin1);
+        grain.intensity.Override(0f);
+        lens.intensity.Override(0f);
+        fringe.intensity.Override(0f);
 
         tone.mode.Override(TonemappingMode.Neutral);
         bloom.threshold.Override(0.95f);
@@ -138,5 +161,30 @@ public class Grading : MonoBehaviour
 
         // the vignette closes a little at night and in a downpour
         vignette.intensity.Override(0.2f + night * 0.08f + rain * 0.08f);
+
+        // grain: a little at night and in the rain, none in the sun
+        grain.intensity.Override(night * 0.22f + rain * 0.12f);
+
+        // the glass up: everything but the subject softens
+        float focus = Sketching.FocusDistance;
+        bool focusing = Sketching.Working && focus > 0.5f;
+        dof.active = focusing;
+        if (focusing) dof.focusDistance.Override(focus);
+
+        // under the water: blue-green, bent at the edges, colour bleeding
+        Submerged = view.transform.position.y < WaterSurface.Level;
+        if (Submerged)
+        {
+            colour.colorFilter.Override(new Color(0.55f, 0.82f, 0.86f));
+            colour.saturation.Override(-14f);
+            lens.intensity.Override(-0.28f);
+            fringe.intensity.Override(0.4f);
+            vignette.intensity.Override(0.4f);
+        }
+        else
+        {
+            lens.intensity.Override(0f);
+            fringe.intensity.Override(0f);
+        }
     }
 }

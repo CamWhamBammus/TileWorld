@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Drives the sun, the sky, the ambient light and the weather.
@@ -46,6 +47,16 @@ public class TimeOfDay : MonoBehaviour
     public float Overcast { get; private set; }
 
     private Light sun;
+    private Texture2D[] cloudCookies;       // light, medium, heavy: the sun through broken cloud
+    private UniversalAdditionalLightData sunData;
+    private Vector2 cloudDrift;
+    private Transform moonDisc, moonHalo;
+    private Material moonPaint, haloPaint;
+
+    /// <summary>Whether cloud shadows are drifting over the land, for the probes.</summary>
+    public bool CloudShadows => sun != null && sun.cookie != null;
+    /// <summary>How bright the moon shows, 0 to 1, for the probes.</summary>
+    public float MoonShowing { get; private set; }
     private Light moon;
     private Material sky;
     private float weatherSeed;
@@ -180,12 +191,22 @@ public class TimeOfDay : MonoBehaviour
             // Thicker atmosphere at the horizon reddens sunrise and sunset.
             sky.SetFloat("_AtmosphereThickness", Mathf.Lerp(1.0f, 2.1f, horizon) + Overcast * 0.4f);
             sky.SetFloat("_Exposure", Mathf.Lerp(0.55f, 1.3f, day) * Mathf.Lerp(1f, 0.62f, Overcast));
-
-            // deep blue after dark rather than black, so there is still a horizon
+            // the sun swells and softens as it nears the horizon
+            sky.SetFloat("_SunSize", Mathf.Lerp(0.035f, 0.065f, horizon));
+            sky.SetFloat("_SunSizeConvergence", Mathf.Lerp(6f, 3.2f, horizon));
+            // deep blue after dark rather than black, so there is still a horizon;
+            // warmer at the gold hour
             Color dayTint = Color.Lerp(new Color(0.45f, 0.60f, 0.78f), new Color(0.55f, 0.56f, 0.58f), Overcast);
+            dayTint = Color.Lerp(dayTint, new Color(0.62f, 0.55f, 0.55f), horizon * day * 0.5f);
             sky.SetColor("_SkyTint", Color.Lerp(new Color(0.16f, 0.22f, 0.42f), dayTint, day));
-            sky.SetColor("_GroundColor", new Color(0.28f, 0.30f, 0.26f));
+            // the ground under the horizon is the haze's colour, so the horizon is a band and not a line
+            Color haze = Color.Lerp(new Color(0.58f, 0.66f, 0.74f), new Color(0.88f, 0.70f, 0.55f), horizon * 0.7f);
+            haze = Color.Lerp(haze, new Color(0.50f, 0.52f, 0.55f), Overcast);
+            sky.SetColor("_GroundColor", Color.Lerp(new Color(0.10f, 0.12f, 0.18f), haze, day));
         }
+
+        Clouds();
+        Moon(height);
 
         // Fog follows the sky so the horizon never cuts a hard line.
         Color fogDay = Color.Lerp(new Color(0.66f, 0.776f, 0.882f), new Color(0.96f, 0.72f, 0.52f), horizon * 0.8f);
@@ -194,6 +215,130 @@ public class TimeOfDay : MonoBehaviour
         RenderSettings.fogColor = fogLocked ? fogLockColour : Color.Lerp(fogNight, fogDay, day);
         RenderSettings.fogStartDistance = Mathf.Lerp(clearFogStart, 25f, Overcast);
         RenderSettings.fogEndDistance = Mathf.Lerp(clearFogEnd, overcastFogEnd, Overcast) * Mathf.Lerp(0.55f, 1f, day);
+    }
+
+    /// <summary>
+    /// The sun through broken cloud: a soft cookie on the light, drifting
+    /// with the wind, in one of three weights by how overcast it is. Clear
+    /// skies and a full overcast get none: nothing to cast, or all shadow.
+    /// </summary>
+    private void Clouds()
+    {
+        if (cloudCookies == null)
+        {
+            cloudCookies = new[] { CloudCookie(0.18f, 11), CloudCookie(0.38f, 12), CloudCookie(0.6f, 13) };
+            sunData = sun.GetUniversalAdditionalLightData();
+            sunData.lightCookieSize = new Vector2(260f, 260f);
+        }
+
+        Texture2D want = Overcast < 0.15f ? null : Overcast < 0.45f ? cloudCookies[0] : Overcast < 0.75f ? cloudCookies[1] : cloudCookies[2];
+        if (sun.cookie != want) sun.cookie = want;
+
+        if (want != null && sunData != null)
+        {
+            Vector3 wind = Rain.Wind.sqrMagnitude > 0.01f ? Rain.Wind : new Vector3(1.2f, 0f, 0.6f);
+            cloudDrift += new Vector2(wind.x, wind.z) * (Time.deltaTime * 0.9f / 260f);
+            sunData.lightCookieOffset = cloudDrift;
+        }
+    }
+
+    /// <summary>A soft cloud pattern, in a tile that wraps: the sun through it is mostly light with darker patches drifting by.</summary>
+    private static Texture2D CloudCookie(float contrast, int seed)
+    {
+        const int size = 256;
+        var tex = new Texture2D(size, size, TextureFormat.R8, false) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear, name = "cloud cookie " + seed };
+        var pixels = new Color[size * size];
+
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            // fbm on a torus, so the tile wraps without a seam
+            float u = x / (float)size * Mathf.PI * 2f, v = y / (float)size * Mathf.PI * 2f;
+            float nx = Mathf.Cos(u) * 1.5f + seed * 3f, ny = Mathf.Sin(u) * 1.5f, nz = Mathf.Cos(v) * 1.5f + seed * 7f, nw = Mathf.Sin(v) * 1.5f;
+            float n = 0f, amp = 0.55f, freq = 1f;
+            for (int o = 0; o < 4; o++)
+            {
+                n += amp * (Mathf.PerlinNoise(nx * freq + nz * freq * 0.7f, ny * freq + nw * freq * 0.7f) - 0.5f);
+                amp *= 0.5f; freq *= 2.1f;
+            }
+            float light = Mathf.Clamp01(1f - contrast * 1.6f * Mathf.Max(0f, n + 0.15f) * 3f);
+            light = Mathf.Lerp(1f - contrast, 1f, light);
+            pixels[y * size + x] = new Color(light, light, light, 1f);
+        }
+
+        tex.SetPixels(pixels);
+        tex.Apply(false, true);
+        return tex;
+    }
+
+    /// <summary>
+    /// The moon: a disc and a soft halo, far off in the moon light's
+    /// direction, showing by night and fading under cloud. Drawn with the
+    /// glow shader so the fog does not take it.
+    /// </summary>
+    private void Moon(float height)
+    {
+        var view = Camera.main;
+        if (view == null) return;
+
+        if (moonDisc == null)
+        {
+            var glow = Resources.Load<Material>("Glow");
+            if (glow == null) return;
+            moonPaint = new Material(glow);
+            haloPaint = new Material(glow);
+            moonDisc = MoonQuad("Moon (runtime)", moonPaint);
+            moonHalo = MoonQuad("Moon halo (runtime)", haloPaint);
+        }
+
+        float night = Mathf.Clamp01(-height * 2.5f);
+        MoonShowing = night * (1f - Overcast * 0.85f);
+        Vector3 toward = -moon.transform.forward;
+        float far = Mathf.Min(850f, view.farClipPlane * 0.9f);
+
+        moonDisc.position = view.transform.position + toward * far;
+        moonDisc.rotation = Quaternion.LookRotation(-toward, Vector3.up);
+        moonDisc.localScale = Vector3.one * (far * 0.032f);
+        moonHalo.position = moonDisc.position;
+        moonHalo.rotation = moonDisc.rotation;
+        moonHalo.localScale = Vector3.one * (far * 0.09f);
+
+        moonPaint.SetColor("_Color", new Color(0.96f, 0.97f, 1f, MoonShowing));
+        moonPaint.SetFloat("_Strength", 2.4f);
+        haloPaint.SetColor("_Color", new Color(0.7f, 0.78f, 1f, MoonShowing * 0.16f));
+        haloPaint.SetFloat("_Strength", 1.2f);
+        moonDisc.gameObject.SetActive(MoonShowing > 0.01f);
+        moonHalo.gameObject.SetActive(MoonShowing > 0.01f);
+
+        // and the water knows where it is
+        Shader.SetGlobalVector("_MoonDir", toward);
+        Shader.SetGlobalColor("_MoonColor", moon.color * (MoonShowing * 1.6f));
+    }
+
+    private static Transform MoonQuad(string name, Material paint)
+    {
+        var go = new GameObject(name);
+        var mesh = new Mesh { name = name };
+        // a disc, as a fan, with alpha full at the middle and gone at the rim
+        const int sides = 24;
+        var verts = new Vector3[sides + 1]; var cols = new Color[sides + 1]; var uvs = new Vector2[sides + 1]; var tris = new int[sides * 3];
+        verts[0] = Vector3.zero; cols[0] = Color.white; uvs[0] = new Vector2(0.5f, 0.5f);
+        for (int i = 0; i < sides; i++)
+        {
+            float a = i / (float)sides * Mathf.PI * 2f;
+            verts[i + 1] = new Vector3(Mathf.Cos(a) * 0.5f, Mathf.Sin(a) * 0.5f, 0f);
+            cols[i + 1] = new Color(1f, 1f, 1f, 0f);
+            uvs[i + 1] = new Vector2(0.5f, 0.5f);
+            tris[i * 3] = 0; tris[i * 3 + 1] = i + 1; tris[i * 3 + 2] = (i + 1) % sides + 1;
+        }
+        mesh.vertices = verts; mesh.colors = cols; mesh.uv = uvs; mesh.triangles = tris;
+        mesh.RecalculateBounds();
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = paint;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        return go.transform;
     }
 
     /// <summary>
