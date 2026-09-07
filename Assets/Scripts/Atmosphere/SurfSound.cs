@@ -6,6 +6,7 @@ using UnityEngine;
 /// </summary>
 public class SurfSound : MonoBehaviour
 {
+    private static readonly int WashTime = Shader.PropertyToID("_WashTime");
     /// <summary>How loud the surf is now, for the probes.</summary>
     public static float Level { get; private set; }
 
@@ -32,6 +33,7 @@ public class SurfSound : MonoBehaviour
 
     private void Update()
     {
+        Shader.SetGlobalFloat(WashTime, Surf.Now);
         if (world == null) { world = FindFirstObjectByType<ChunkManager>(); if (world == null) return; }
         var player = world.PlayerTransform;
         if (player == null) return;

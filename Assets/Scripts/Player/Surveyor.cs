@@ -232,9 +232,7 @@ public class Surveyor : MonoBehaviour
     {
         if (at.y > WaterSurface.Level - 0.02f) return false;
 
-        int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
-        int tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
-        return WaterSurface.IsOpenWater(tileX, tileZ, world != null ? world.WorldSeed : 0);
+        return Surf.Covered(at, world != null ? world.WorldSeed : 0);
     }
 
     /// <summary>

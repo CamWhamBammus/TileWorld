@@ -21,7 +21,7 @@ Shader "TileWorld/Water"
         _Wash ("Wash (0 water, 1 water up the sand, 2 foam only)", Float) = 0
         _Period ("Wash period", Float) = 14
         _Reach ("Wash reach", Float) = 6.5
-        _Back ("Wash retreat", Float) = -4
+        _Back ("Wash retreat", Float) = -5
         _Crest ("Wash crest height", Float) = 0.16
     }
 
@@ -52,6 +52,7 @@ Shader "TileWorld/Water"
             float4 _Shallow, _Deep, _Foam;
             float _DepthFade, _FoamDepth, _WaveHeight, _WaveScale, _Speed, _Sparkle, _Refract, _Fresnel;
             float _Wash, _Period, _Reach, _Back, _Crest;
+            float _WashTime;      // the wave's clock, set from the game so the game can ask where the wave is
             CBUFFER_END
 
             // the moon, set by the clock: where it is, and how bright
@@ -80,7 +81,7 @@ Shader "TileWorld/Water"
             // of the cycle, held a moment at the top, and drawn back slowly
             float Front(float phase)
             {
-                float cycle = frac(_Time.y / _Period + phase);
+                float cycle = frac(_WashTime / _Period + phase);
                 float f = cycle < 0.3 ? smoothstep(0, 1, cycle / 0.3)
                         : cycle < 0.42 ? 1
                         : 1 - smoothstep(0, 1, (cycle - 0.42) / 0.58);
@@ -118,7 +119,7 @@ Shader "TileWorld/Water"
                 if (_Wash > 0.5)
                 {
                     float front = Front(v.uv.y);
-                    float cycle = frac(_Time.y / _Period + v.uv.y);
+                    float cycle = frac(_WashTime / _Period + v.uv.y);
                     float coming = cycle < 0.3 ? 1 : 0;
                     float off = (v.uv.x - front) / 1.7;
                     float crest = exp(-off * off) * lerp(0.35, 1, coming);
@@ -157,7 +158,7 @@ Shader "TileWorld/Water"
                 float fade = saturate(depth / _DepthFade);
                 float4 tint = lerp(_Shallow, _Deep, fade);
                 // a wash on the sand is thin, but it is still water: a floor to its colour
-                if (_Wash > 0.5) tint.a = max(tint.a, 0.2);
+                if (_Wash > 0.5) tint.a = max(tint.a, 0.45);
                 float3 water = lerp(bed, tint.rgb, tint.a);
 
                 // foam at the shore and round anything in it, breaking up as it goes
@@ -171,20 +172,24 @@ Shader "TileWorld/Water"
                 {
                     float dist = i.wash.x;
                     float front = Front(i.wash.y);
-                    float cycle = frac(_Time.y / _Period + i.wash.y);
+                    float cycle = frac(_WashTime / _Period + i.wash.y);
                     float coming = cycle < 0.3 ? 1 : 0;
                     float breakup = saturate(Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.9 + 0.3);
-                    float off = (dist - front) / 0.85;
-                    float band = exp(-off * off) * lerp(0.6, 1, coming) * breakup;
+                    // the sheet stops at the front, softly: nothing is drawn beyond it, water or foam
+                    float edge = 1 - smoothstep(front - 0.3, front + 0.25, dist);
+                    // a white line along the edge itself, and a trail of foam behind it, never ahead of it
+                    float lineOff = (dist - front + 0.2) / 0.32;
+                    float edgeFoam = exp(-lineOff * lineOff) * saturate(breakup * 0.6 + 0.55);
+                    float back = max(front - dist, 0) / 1.8;
+                    float trail = exp(-back * back) * (dist < front ? 1 : 0) * lerp(0.35, 0.55, coming) * breakup;
                     // the foam thins out to sea rather than stopping where the sheet does
-                    band *= smoothstep(_Back - 1.5, _Back + 2.5, dist);
-                    float edge = 1 - smoothstep(front - 0.35, front + 0.3, dist);      // the sheet stops at the front, softly
-                    // going back, the sheet stays joined to the sea but thins toward the front, so the sand
-                    // shows through the last few metres of it as it slides away; coming in it is full
-                    float thin = coming > 0.5 ? 1 : lerp(0.4, 1, saturate((front - dist) / 4.5));
+                    float band = max(edgeFoam, trail) * smoothstep(_Back - 1.5, _Back + 2.5, dist);
+                    // going back the sheet thins toward its edge, so the sand shows through the last metres of it
+                    // as it slides away; coming in it is full
+                    float thin = coming > 0.5 ? 1 : lerp(0.55, 1, saturate((front - dist) / 4.5));
                     float sheetAlpha = edge * (dist > -0.01 ? thin : 1);
-                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = band * 0.9; }
-                    else { water = lerp(water, _Foam.rgb, saturate(band)); alpha = max(sheetAlpha, band * 0.9); }
+                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = band * 0.9 * edge; }
+                    else { water = lerp(water, _Foam.rgb, saturate(band)); alpha = max(sheetAlpha, band * edge); }
                 }
 
                 // the sun on it

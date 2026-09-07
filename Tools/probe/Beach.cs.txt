@@ -101,6 +101,28 @@ public class _Probe : MonoBehaviour
             yield return new WaitForSecondsRealtime(5f);
             yield return Shot("wave-above2", b.center + Vector3.up * 12f, b.center);
         }
+        // the beach profile along the player's facing: depth below the water level, and who owns each tile
+        var profile = new System.Text.StringBuilder("BEACH profile:");
+        for (int step = -4; step <= 14; step++)
+        {
+            Vector3 w = player.position + player.forward * step * WorldGrid.TileSize;
+            int tx = Mathf.RoundToInt(w.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(w.z / WorldGrid.TileSize);
+            float depth = WaterSurface.Level - WorldHeight.SurfaceY(tx, tz, seed);
+            string who = Surf.IsStrand(tx, tz, seed) ? "strand" : Surf.IsSurfShallows(tx, tz, seed) ? "shallows" : WaterSurface.IsUnderwater(tx, tz, seed) ? "sea" : "land";
+            profile.Append(" " + step + ":" + depth.ToString("F2") + who[0]);
+        }
+        Mark(profile.ToString());
+        // from behind the player looking out to sea through a whole wave, as the player sees it,
+        // and whether the water is over the shallows just ahead in each frame
+        var covered = new System.Text.StringBuilder("BEACH covered ahead:");
+        for (int f = 0; f < 8; f++)
+        {
+            covered.Append(" " + f + ":" + (Surf.Covered(player.position + player.forward * WorldGrid.TileSize * 2f, seed) ? "water" : "sand"));
+            if (f == 7) Mark(covered.ToString());
+            Vector3 tideAt = player.position + player.forward * 5f; tideAt.y = WaterSurface.Level;
+            yield return Shot("tide-" + f, player.position + Vector3.up * 2.4f - player.forward * 3.5f, tideAt);
+            yield return new WaitForSecondsRealtime(1.7f);
+        }
         var washRoot = GameObject.Find("Wash (runtime)");
         if (washRoot != null) washRoot.SetActive(false);
         yield return Shot("wave-nowash", eye, at);

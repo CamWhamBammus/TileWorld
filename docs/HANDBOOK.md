@@ -523,29 +523,41 @@ above the water. Each vertex carries its distance from the waterline in
 metres in uv.x (negative in the water; the corners take the mean of the
 tiles round them so the value runs smoothly across a tile) and a Perlin
 phase in uv.y. Both sheets use the water shader (`TileWorld/Water`) in its
-wash modes: `_Wash` 1 on the strand draws real water -- the same shader,
-with its refraction, sheen and glint, a floor on its tint so a thin sheet
-still reads as water -- that stops at the wave's front with foam riding the
-front and lines of foam left as it goes back; the shallows'
-sheet, five tiles out, is water in the same mode drawn under the sand's
-where they meet (`_Wash` 2, foam only, is still there but unused). The wave
-has a crest: the vertex shader lifts the sheet by `_Crest` (0.16 m) in a
-bump at the front, taller coming in, with the water behind it standing a
-quarter as high while it holds, and each tile is cut three by three so the
-bump rolls rather than steps. The foam thins out to sea over the last
-metres of the sheet and softens past the front instead of stopping. The
-lines of foam once left on the sand are gone: they read as stripes. On the
-way back the sheet stays joined to the sea and thins toward the front
-(`thin`, from 0.4 at the front to full four and a half metres behind it),
-so the sand shows through the last of it as it slides away; a first
-version removed the water between the front and the sea instead, which
-left the foam riding a front with bare sand behind it. The crest is a
-third its height going out, the water behind it no longer stands higher,
-and a shallow trough follows the front. The front runs
-from four metres out to six and a half up the sand on a fourteen-second
+wash mode (`_Wash` 1): real water, with the shader's refraction, sheen
+and glint, and a floor of 0.45 on its tint so a thin sheet still reads as
+water. The rule is that the white line is the water's edge. The sheet
+stops at the wave's front (`edge`, soft over half a metre), the line sits
+on that edge (`edgeFoam`, a narrow bump centred 20 cm behind it), a trail
+of foam fades out behind the line (`trail`, gone within two metres, never
+ahead of it), and nothing is drawn past the front, water or foam. For that
+to hold on the sea side as well, the shallows have no fixed surface:
+`Surf.IsSurfShallows` (open water in a Water region, no deeper than 0.6 m,
+sand within five tiles) is left out of `WaterSurface.BuildMesh`, so those
+tiles' only water is the shallows' sheet, which draws back with the front
+and bares their sand on every wave. Deeper water keeps the sea's own
+surface, so on a steep shore the wave never draws back far. On the way
+out the sheet on the sand thins toward its edge (`thin`, 0.55 at the front
+to full four and a half metres behind it), so the sand shows through the
+last of it as it slides away. The wave has a crest: the vertex shader lifts
+the sheet by `_Crest` (0.16 m) in a bump at the front, taller coming in, a
+third as tall going out with a shallow trough behind it, and each tile is
+cut three by three so the bump rolls rather than steps. The front runs
+from five metres out to six and a half up the sand on a fourteen-second
 cycle: in over the first third, held a moment at the top, drawn back over
-the rest, offset by the phase so the coast does not move as one. Lakes
-get none. `SurfSound` looks for the nearest strand tile twice a second and
+the rest, offset by a Perlin phase per tile so the coast does not move as
+one. The wave's clock is `_WashTime`, a global that `SurfSound` sets every
+frame from `Surf.Now`; `Surf.Covered(point, seed)` runs the same front on
+the CPU, so the Surveyor's wading and the rain's rings know whether there
+is water over the shallows right now instead of trusting the tile map, and
+the Beach probe's `covered ahead` line is there to check that the two
+agree with the frames (they did not until the shader stopped using
+`_Time`, whose zero is not the game's). Two things that cost time: `line`
+is an HLSL keyword, and a variable by that name fails the shader with
+"unexpected token"; and when the water shader fails, `CreateMaterial`
+returns null and the wash silently draws nothing while the sea, on the
+build's fallback, still looks fine -- the build log's `Shader error` lines
+are the only sign. `_Wash` 2 (foam only) is still in the shader but
+unused. Lakes get none. `SurfSound` looks for the nearest strand tile twice a second and
 plays a made loop of two swells on the same period, louder the nearer.
 Two things that cost a few runs: one distance per tile left the foam band
 -- a metre wide -- falling between two-metre steps and never landing on a

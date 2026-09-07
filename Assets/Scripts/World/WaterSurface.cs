@@ -115,6 +115,8 @@ public static class WaterSurface
 
             if (!IsUnderwater(tileX, tileZ, worldSeed)) continue;
             if (IsFrozen(tileX, tileZ, worldSeed) != frozen) continue;
+            // the surf's shallows have no fixed surface: the wash is their water, and it draws back
+            if (!frozen && Surf.IsSurfShallows(tileX, tileZ, worldSeed)) continue;
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;
 

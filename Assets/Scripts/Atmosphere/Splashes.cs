@@ -122,7 +122,7 @@ public class Splashes : MonoBehaviour
         var it = Ensure();
         if (it == null) return;
 
-        if (!WaterSurface.IsOpenWater(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), worldSeed)) return;
+        if (!Surf.Covered(at, worldSeed)) return;
 
         if (it.ripples.Count >= MostRipples) it.ripples.RemoveAt(0);
         it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) * scale });

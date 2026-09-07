@@ -23,12 +23,49 @@ public static class Surf
         return Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Water;
     }
 
-    /// <summary>Open water off a beach, shallow.</summary>
-    private static bool IsShallows(int tileX, int tileZ, int seed)
+    /// <summary>
+    /// Open water off a beach, shallow enough that the wave's backwash bares
+    /// it: these tiles have no fixed sea surface -- the wash sheet is their
+    /// water, and it stops at the wave's front, so the foam line is always
+    /// the water's farthest point and the sand shows behind it going out.
+    /// </summary>
+    public static bool IsSurfShallows(int tileX, int tileZ, int seed)
     {
         if (!WaterSurface.IsOpenWater(tileX, tileZ, seed)) return false;
-        if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 1.4f) return false;
-        return Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Water;
+        if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 0.6f) return false;
+        if (Regions.CharacterAtTile(tileX, tileZ, seed, false) != Regions.Character.Water) return false;
+        return Nearest(tileX, tileZ, seed, false, Out) > 0;
+    }
+
+    private static bool IsShallows(int tileX, int tileZ, int seed) => IsSurfShallows(tileX, tileZ, seed);
+
+    // the wave's timing, the same numbers the water shader uses in wash mode; the clock is handed
+    // to the shader every frame, so the game and the picture agree about where the wave is
+    private const float Period = 14f, ReachMetres = 6.5f, Back = -5f;
+    public static float Now => Time.time;
+
+    /// <summary>Where the wave's front is now, in metres from the waterline (out to sea is negative), for a tile's phase.</summary>
+    private static float Front(float phase)
+    {
+        float cycle = Mathf.Repeat(Now / Period + phase, 1f);
+        float f = cycle < 0.3f ? Mathf.SmoothStep(0f, 1f, cycle / 0.3f)
+                : cycle < 0.42f ? 1f
+                : 1f - Mathf.SmoothStep(0f, 1f, (cycle - 0.42f) / 0.58f);
+        return Mathf.Lerp(Back, ReachMetres, f);
+    }
+
+    /// <summary>
+    /// Whether there is water over a point right now. Off the surf this is
+    /// the tile map; in the surf's shallows it is where the wave is, so
+    /// nothing splashes on sand the water has drawn back from.
+    /// </summary>
+    public static bool Covered(Vector3 at, int seed)
+    {
+        int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+        if (!IsSurfShallows(tileX, tileZ, seed)) return WaterSurface.IsOpenWater(tileX, tileZ, seed);
+        float d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
+        float phase = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
+        return d < Front(phase) - 0.3f;
     }
 
     /// <summary>The water that runs up the sand: quads over the strand only.</summary>
@@ -145,6 +182,7 @@ public static class Surf
         var m = new Material(water);
         m.SetFloat("_Wash", 1f);
         m.SetFloat("_WaveHeight", 0.012f);
+        m.SetFloat("_Back", -5f);
         m.renderQueue = 3004;
         return m;
     }
@@ -157,6 +195,7 @@ public static class Surf
         var m = new Material(water);
         m.SetFloat("_Wash", 1f);
         m.SetFloat("_WaveHeight", 0.02f);
+        m.SetFloat("_Back", -5f);
         m.renderQueue = 3003;
         return m;
     }
