@@ -57,8 +57,8 @@ public class Flocks : MonoBehaviour
         float bearing = across ? view.eulerAngles.y + Random.Range(-40f, 40f) : Random.Range(0f, 360f);
         Vector3 dir = Quaternion.Euler(0f, bearing, 0f) * Vector3.forward;
         Vector3 side = Vector3.Cross(Vector3.up, dir);
-        float far = across ? 260f : Random.Range(250f, 450f);
-        Vector3 start = view.position + dir * far + side * (across ? 220f : Random.Range(-300f, 300f)) + Vector3.up * Random.Range(90f, 170f);
+        float far = across ? 170f : Random.Range(160f, 320f);
+        Vector3 start = view.position + dir * far + side * (across ? 160f : Random.Range(-220f, 220f)) + Vector3.up * Random.Range(60f, 130f);
         Vector3 heading = across ? -side : Quaternion.Euler(0f, Random.Range(50f, 130f) * (Random.value < 0.5f ? 1f : -1f), 0f) * dir;
 
         int n = Random.Range(7, 16);
@@ -95,7 +95,7 @@ public class Flocks : MonoBehaviour
         {
             var f = flocks[k];
             f.Lead += f.Heading * (f.Speed * dt);
-            if (Vector3.Distance(f.Lead, view.transform.position) > 750f && t - f.Born > 20f) { flocks.RemoveAt(k); continue; }
+            if (Vector3.Distance(f.Lead, view.transform.position) > 600f && t - f.Born > 20f) { flocks.RemoveAt(k); continue; }
 
             Vector3 side = Vector3.Cross(Vector3.up, f.Heading);
             var turn = Quaternion.LookRotation(f.Heading, Vector3.up);
@@ -104,7 +104,7 @@ public class Flocks : MonoBehaviour
                 Vector3 at = f.Lead + f.Heading * f.Along[i] + side * f.Aside[i] + Vector3.up * (Mathf.Sin(t * 0.7f + f.Phase[i]) * 1.2f);
                 // the beat: the wings swing from raised to lowered, a chevron mirrored through its plane
                 float flap = Mathf.Sin(t * 8f * f.Bob[i] + f.Phase[i]);
-                batch.Add(Matrix4x4.TRS(at, turn, new Vector3(1.6f, 0.9f * flap, 1.6f)));
+                batch.Add(Matrix4x4.TRS(at, turn, new Vector3(3.2f, 1.6f * flap, 3.2f)));
             }
         }
 

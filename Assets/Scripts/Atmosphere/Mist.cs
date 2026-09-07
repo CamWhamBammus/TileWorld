@@ -54,7 +54,7 @@ public class Mist : MonoBehaviour
 
         Vector3 wind = Rain.Wind.sqrMagnitude > 0.01f ? Rain.Wind : new Vector3(0.9f, 0f, 0.5f);
         drift += new Vector2(wind.x, wind.z) * (Time.deltaTime * 0.25f);
-        paint.SetFloat("_Alpha", Strength * 0.6f);
+        paint.SetFloat("_Alpha", Strength * 0.42f);
         paint.SetVector("_Drift", new Vector4(drift.x, drift.y, 0f, 0f));
 
         Vector3 eye = view.transform.position;
