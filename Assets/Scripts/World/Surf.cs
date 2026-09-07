@@ -62,10 +62,41 @@ public static class Surf
     public static bool Covered(Vector3 at, int seed)
     {
         int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
-        if (!IsSurfShallows(tileX, tileZ, seed)) return WaterSurface.IsOpenWater(tileX, tileZ, seed);
-        float d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
+        float d;
+        if (IsStrand(tileX, tileZ, seed))
+        {
+            int toWater = Nearest(tileX, tileZ, seed, true, Reach);
+            if (toWater < 0) return false;
+            d = (toWater - 0.5f) * WorldGrid.TileSize;
+        }
+        else if (IsSurfShallows(tileX, tileZ, seed)) d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
+        else return WaterSurface.IsOpenWater(tileX, tileZ, seed);
         float phase = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
         return d < Front(phase) - 0.3f;
+    }
+
+    public static bool Covered(Vector3 at) => Covered(at, SeedNow);
+
+    /// <summary>Whether a point is on the strand, where the wash runs over sand that is above the water level.</summary>
+    public static bool OnStrand(Vector3 at, int seed) => IsStrand(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), seed);
+
+    /// <summary>The height of the water's face at a point: the water level, or the wash's sheet where it runs up the sand.</summary>
+    public static float SurfaceAt(Vector3 at)
+    {
+        int seed = SeedNow;
+        int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+        if (IsStrand(tileX, tileZ, seed)) return WorldHeight.SurfaceY(tileX, tileZ, seed) + 0.06f;
+        return WaterSurface.Level;
+    }
+
+    private static ChunkManager world;
+    private static int SeedNow
+    {
+        get
+        {
+            if (world == null) world = Object.FindFirstObjectByType<ChunkManager>();
+            return world != null ? world.WorldSeed : 0;
+        }
     }
 
     /// <summary>The water that runs up the sand: quads over the strand only.</summary>

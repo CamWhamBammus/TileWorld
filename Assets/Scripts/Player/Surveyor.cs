@@ -227,12 +227,16 @@ public class Surveyor : MonoBehaviour
         return WaterSurface.IsFrozen(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), world != null ? world.WorldSeed : 0);
     }
 
-    /// <summary>Whether a point is in a lake or the sea: under the water level, on a tile the water covers.</summary>
+    /// <summary>
+    /// Whether a point is in the water: under the water level on a tile the
+    /// water covers, or on the strand while the wash is over it, since that
+    /// sand is above the level and still gets wet.
+    /// </summary>
     private bool InWater(Vector3 at)
     {
-        if (at.y > WaterSurface.Level - 0.02f) return false;
-
-        return Surf.Covered(at, world != null ? world.WorldSeed : 0);
+        int seed = world != null ? world.WorldSeed : 0;
+        if (!Surf.OnStrand(at, seed) && at.y > WaterSurface.Level - 0.02f) return false;
+        return Surf.Covered(at, seed);
     }
 
     /// <summary>

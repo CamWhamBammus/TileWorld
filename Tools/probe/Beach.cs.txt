@@ -123,6 +123,24 @@ public class _Probe : MonoBehaviour
             yield return Shot("tide-" + f, player.position + Vector3.up * 2.4f - player.forward * 3.5f, tideAt);
             yield return new WaitForSecondsRealtime(1.7f);
         }
+        // wading the strand through a whole wave: along the shore and back, a second each way, logging
+        // whether the water is over the player, whether they count as swimming, and the rings left
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        var wade = new System.Text.StringBuilder("BEACH wade:");
+        int splashesBefore = Splashes.Played; int wetSteps = 0, drySteps = 0, swam = 0; float walked = 0f;
+        Vector3 lastAt = player.position;
+        for (int f = 0; f < 16; f++)
+        {
+            inputs.move = new Vector2(f % 2 == 0 ? 1f : -1f, 0f);
+            yield return new WaitForSecondsRealtime(1f);
+            bool over = Surf.Covered(player.position, seed);
+            wade.Append(over ? " W" : " -"); if (over) wetSteps++; else drySteps++;
+            walked += Vector3.Distance(lastAt, player.position); lastAt = player.position;
+            if (Swimming.InWater) swam++;
+            if (f == 5) { inputs.move = Vector2.zero; yield return Shot("wade", player.position + Vector3.up * 2.2f - player.forward * 3f + player.right * 1.5f, player.position + Vector3.up * 0.2f); }
+        }
+        inputs.move = Vector2.zero;
+        Mark(wade + " | wet seconds " + wetSteps + ", dry " + drySteps + ", swimming seconds " + swam + ", splashes " + (Splashes.Played - splashesBefore) + ", walked " + walked.ToString("F1") + " m");
         var washRoot = GameObject.Find("Wash (runtime)");
         if (washRoot != null) washRoot.SetActive(false);
         yield return Shot("wave-nowash", eye, at);

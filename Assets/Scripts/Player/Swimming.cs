@@ -127,8 +127,11 @@ public class Swimming : MonoBehaviour
 
         // Separate thresholds for getting in and out, so bobbing at the surface
         // cannot flicker the state and spam everything that listens to it.
-        if (!swimming && depth > enterDepth) Enter();
-        else if (swimming && depth < exitDepth) Exit();
+        // deep enough, and the water actually there: in the surf the shallows
+        // bare themselves between waves, and nobody swims on wet sand
+        bool covered = Surf.Covered(player.position, world != null ? world.WorldSeed : 0);
+        if (!swimming && depth > enterDepth && covered) Enter();
+        else if (swimming && (depth < exitDepth || !covered)) Exit();
 
         // Off the bottom or on it, which is the same question the lift below is
         // already answering, and so cannot disagree with it.

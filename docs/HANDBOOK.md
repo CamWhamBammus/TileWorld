@@ -551,7 +551,16 @@ the CPU, so the Surveyor's wading and the rain's rings know whether there
 is water over the shallows right now instead of trusting the tile map, and
 the Beach probe's `covered ahead` line is there to check that the two
 agree with the frames (they did not until the shader stopped using
-`_Time`, whose zero is not the game's). Two things that cost time: `line`
+`_Time`, whose zero is not the game's). `Covered` knows the strand as well
+as the shallows, so the wash running over the sand counts as water
+underfoot: the Surveyor's `InWater` skips its below-the-level test on the
+strand, `Surf.SurfaceAt` gives the height of the water's face (the wash
+sheet's, up the sand) so `Splashes` puts its rings on it (a step's ring on
+the sand's lump, not under it), and `Swimming` only goes in where the
+water is actually there, so nobody wades at swimming pace over sand the
+wave has left. The Beach probe's `wade` line walks the shore for a wave and
+counts: ten seconds of sixteen with water over the player, none of them
+swimming, forty splashes over thirty-two metres. Two things that cost time: `line`
 is an HLSL keyword, and a variable by that name fails the shader with
 "unexpected token"; and when the water shader fails, `CreateMaterial`
 returns null and the wash silently draws nothing while the sea, on the

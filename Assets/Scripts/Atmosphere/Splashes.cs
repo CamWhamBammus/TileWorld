@@ -125,7 +125,7 @@ public class Splashes : MonoBehaviour
         if (!Surf.Covered(at, worldSeed)) return;
 
         if (it.ripples.Count >= MostRipples) it.ripples.RemoveAt(0);
-        it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) * scale });
+        it.ripples.Add(new Ripple { At = new Vector3(at.x, Surf.SurfaceAt(at) + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) * scale });
     }
 
     /// <summary>How the rain's rings are spread from a point, for the probes: within 15 m, 15 to 40, and beyond.</summary>
@@ -210,7 +210,7 @@ public class Splashes : MonoBehaviour
         if (it == null) return;
 
         strength = Mathf.Clamp01(strength);
-        at.y = WaterSurface.Level;
+        at.y = Mathf.Max(Surf.SurfaceAt(at), at.y + 0.02f);      // a foot on a lump of sand: the ring on the lump
 
         Tracks.Ring(at, Mathf.Lerp(0.55f, 1.3f, strength), Mathf.Lerp(1.1f, 1.7f, strength));
         it.Throw(at, 4 + Mathf.RoundToInt(strength * 12f), Mathf.Lerp(1.2f, 2.8f, strength), Mathf.Lerp(0.5f, 1.5f, strength), Mathf.Lerp(0.06f, 0.1f, strength));
@@ -224,7 +224,7 @@ public class Splashes : MonoBehaviour
         if (it == null) return;
 
         strength = Mathf.Clamp01(strength);
-        at.y = WaterSurface.Level;
+        at.y = Surf.SurfaceAt(at);
 
         Tracks.Ring(at, Mathf.Lerp(1.6f, 2.8f, strength), 3.2f);
         Tracks.Ring(at, Mathf.Lerp(0.9f, 1.5f, strength), 2.0f);
@@ -239,7 +239,7 @@ public class Splashes : MonoBehaviour
         if (it == null) return;
 
         strength = Mathf.Clamp01(strength);
-        at.y = WaterSurface.Level;
+        at.y = Surf.SurfaceAt(at);
 
         Tracks.Ring(at, Mathf.Lerp(1.2f, 1.8f, strength), 2.6f);
         it.Throw(at, 3 + Mathf.RoundToInt(strength * 6f), 1.3f, 1.0f, 0.07f);
@@ -251,7 +251,7 @@ public class Splashes : MonoBehaviour
     {
         if (Ensure() == null) return;
 
-        at.y = WaterSurface.Level;
+        at.y = Mathf.Max(Surf.SurfaceAt(at), at.y + 0.02f);
         Tracks.Ring(at, size, 1.6f);
     }
 
