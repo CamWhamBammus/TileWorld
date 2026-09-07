@@ -25,6 +25,31 @@ public class Tracks : MonoBehaviour
         public float Made;
         public float Lasts;
         public FaunaKind Kind;
+        public bool Boot;           // the surveyor's, not an animal's: longer, and not a track to read
+    }
+
+    /// <summary>How many boot prints have been left, for the probes.</summary>
+    public static int Boots { get; private set; }
+
+    /// <summary>The surveyor's boot coming down: a print in snow or sand, longer than a paw's.</summary>
+    public static void Boot(Vector3 at, float yaw, int seed)
+    {
+        if (instance == null) return;
+        int tx = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+        if (WaterSurface.IsUnderwater(tx, tz, seed)) return;
+
+        Sort sort;
+        if (SnowCover.IsSnowy(tx, tz, seed)) sort = Sort.SnowPrint;
+        else
+        {
+            var here = Regions.CharacterAtTile(tx, tz, seed);
+            if (here == Regions.Character.Desert || here == Regions.Character.Water) sort = Sort.SandPrint;
+            else return;
+        }
+
+        at.y = WorldHeight.SurfaceY(tx, tz, seed) + Animal.FootingAt(tx, tz, seed) + 0.012f;
+        instance.Leave(new Mark { Sort = sort, At = at, Yaw = yaw, Size = 0.17f, Made = Time.time, Lasts = sort == Sort.SnowPrint ? 240f : 150f, Boot = true });
+        Boots++;
     }
 
     private static Tracks instance;
@@ -145,6 +170,7 @@ public class Tracks : MonoBehaviour
         foreach (var m in instance.marks)
         {
             float d = Vector3.Distance(m.At, at);
+            if (m.Boot) continue;    // your own prints are not a track to read
             if (d < best) { best = d; sort = m.Sort; kind = m.Kind; }
         }
         return best < within;
@@ -182,7 +208,7 @@ public class Tracks : MonoBehaviour
                 continue;
             }
 
-            batches[m.Sort].Add(Matrix4x4.TRS(m.At, Quaternion.Euler(0f, m.Yaw, 0f), new Vector3(s, 1f, s)));
+            batches[m.Sort].Add(Matrix4x4.TRS(m.At, Quaternion.Euler(0f, m.Yaw, 0f), new Vector3(s, 1f, m.Boot ? s * 1.8f : s)));
         }
 
         // the trails: worn tiles, fading slowly when nothing crosses them

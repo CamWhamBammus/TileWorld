@@ -32,6 +32,16 @@ public class Rain : MonoBehaviour
     public static Vector3 Wind { get; private set; }
     /// <summary>Whether what is falling is snow: it is, in the snow country.</summary>
     public static bool Snowing { get; private set; }
+    /// <summary>How loud the rain itself is, for the probes.</summary>
+    public static float BedLevel { get; private set; }
+    /// <summary>Lightning strikes and thunder heard so far, for the probes.</summary>
+    public static int Strikes { get; private set; }
+    public static int Rumbles { get; private set; }
+
+    private AudioSource bed, thunder;
+    private AudioClip[] rumbles;
+    private float nextStrike;
+    private float wet;
 
     private Transform view;
     private ChunkManager world;
@@ -76,6 +86,19 @@ public class Rain : MonoBehaviour
         length = new float[drops];
         floors = new float[drops];
         windSeed = Random.value * 100f;
+
+        bed = gameObject.AddComponent<AudioSource>();
+        bed.clip = RainBed(4f, 61);
+        bed.loop = true;
+        bed.spatialBlend = 0f;
+        bed.volume = 0f;
+        bed.playOnAwake = false;
+
+        thunder = gameObject.AddComponent<AudioSource>();
+        thunder.spatialBlend = 0f;
+        thunder.playOnAwake = false;
+        rumbles = new[] { Rumble(71), Rumble(72) };
+        nextStrike = Time.time + 6f;
 
         for (int i = 0; i < drops; i++)
         {
@@ -137,6 +160,29 @@ public class Rain : MonoBehaviour
         // in the snow country it snows: slow, swaying, white, and nothing rings
         Snowing = Regions.CharacterAtTile(Mathf.RoundToInt(view.position.x / WorldGrid.TileSize), Mathf.RoundToInt(view.position.z / WorldGrid.TileSize), seed) == Regions.Character.Snow;
         float slow = Snowing ? 0.07f : 1f;
+
+        // the rain itself, heard everywhere it falls; snow is quiet
+        BedLevel = Mathf.Lerp(BedLevel, Snowing ? 0f : 0.38f * intensity, 1f - Mathf.Exp(-1.5f * dt));
+        if (bed != null)
+        {
+            bed.volume = BedLevel;
+            if (BedLevel > 0.01f && !bed.isPlaying) bed.Play();
+            else if (BedLevel <= 0.01f && bed.isPlaying) bed.Pause();
+        }
+
+        // a downpour brings lightning: a flash now, the thunder after it
+        if (intensity > 0.7f && !Snowing && Time.time > nextStrike)
+        {
+            nextStrike = Time.time + Random.Range(9f, 26f);
+            if (TimeOfDay.Instance != null) TimeOfDay.Instance.Flash(Random.Range(0.7f, 1f));
+            Strikes++;
+            StartCoroutine(Thunder(Random.Range(1.2f, 4.5f)));
+        }
+        else if (intensity <= 0.7f) nextStrike = Mathf.Max(nextStrike, Time.time + 6f);
+
+        // the ground: wet in the rain, drying after
+        wet = Mathf.Clamp01(wet + (!Snowing && intensity > 0f ? 0.12f * intensity : -0.028f) * dt);
+        if (world != null) world.SetWetness(wet);
 
         batch.Clear();
 
@@ -220,6 +266,86 @@ public class Rain : MonoBehaviour
             var at = transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
             Splashes.Raindrop(at, seed, 1f + r / 40f);
         }
+    }
+
+    private System.Collections.IEnumerator Thunder(float after)
+    {
+        yield return new WaitForSeconds(after);
+        if (thunder == null) yield break;
+        thunder.pitch = Random.Range(0.8f, 1.1f);
+        thunder.PlayOneShot(rumbles[Random.Range(0, rumbles.Length)], Mathf.Lerp(0.9f, 0.45f, Mathf.InverseLerp(1.2f, 4.5f, after)));
+        Rumbles++;
+    }
+
+    /// <summary>
+    /// Rain heard: broadband noise shaped by two band-passes, one low and
+    /// one high, gurgled by slow noise so it is not a steady hiss. Loops.
+    /// </summary>
+    private static AudioClip RainBed(float seconds, int seed)
+    {
+        const int rate = 22050;
+        int samples = Mathf.RoundToInt(seconds * rate);
+        var data = new float[samples];
+        var rng = new System.Random(seed);
+        float lowA = 0f, bandA = 0f, lowB = 0f, bandB = 0f, gurgle = 0f, gurgle2 = 0f;
+        float fA = 2f * Mathf.Sin(3.1415926f * 900f / rate), fB = 2f * Mathf.Sin(3.1415926f * 3800f / rate);
+
+        for (int i = 0; i < samples; i++)
+        {
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+            gurgle += 0.003f * (white * 40f - gurgle);
+            gurgle2 += 0.0008f * (white * 80f - gurgle2);
+            lowA += fA * bandA; float highA = white - lowA - 1.4f * bandA; bandA += fA * highA;
+            lowB += fB * bandB; float highB = white - lowB - 1.1f * bandB; bandB += fB * highB;
+            float g = 0.7f + 0.3f * Mathf.Clamp(gurgle, -1f, 1f);
+            float g2 = 0.8f + 0.2f * Mathf.Clamp(gurgle2, -1f, 1f);
+            data[i] = (bandA * 0.9f + bandB * 0.5f) * g * g2;
+        }
+
+        float peak = 0.0001f;
+        for (int i = 0; i < samples; i++) peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+        int fade = Mathf.RoundToInt(rate * 0.04f);
+        for (int i = 0; i < samples; i++)
+        {
+            float edge = Mathf.Min(1f, Mathf.Min(i, samples - 1 - i) / (float)fade);
+            data[i] = data[i] / peak * 0.8f * edge;
+        }
+
+        var clip = AudioClip.Create("RainBed", samples, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
+
+    /// <summary>Thunder: low noise that rolls, a few swells over three seconds, rising fast and dying slow.</summary>
+    private static AudioClip Rumble(int seed)
+    {
+        const int rate = 22050;
+        var rng = new System.Random(seed);
+        float seconds = 2.8f + (float)rng.NextDouble() * 1.2f;
+        int samples = Mathf.RoundToInt(seconds * rate);
+        var data = new float[samples];
+        float low = 0f, band = 0f, low2 = 0f, band2 = 0f;
+        float f = 2f * Mathf.Sin(3.1415926f * 65f / rate), f2 = 2f * Mathf.Sin(3.1415926f * 150f / rate);
+        float rollHz = 1.2f + (float)rng.NextDouble() * 1.2f, rollPhase = (float)rng.NextDouble() * 6.28f;
+
+        for (int i = 0; i < samples; i++)
+        {
+            float t = i / (float)samples;
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+            low += f * band; float high = white - low - 0.7f * band; band += f * high;
+            low2 += f2 * band2; float high2 = white - low2 - 0.9f * band2; band2 += f2 * high2;
+            float env = Mathf.Min(1f, i / (rate * 0.06f)) * Mathf.Pow(1f - t, 1.3f);
+            float roll = 0.65f + 0.35f * Mathf.Sin(rollPhase + t * seconds * rollHz * 6.2831853f);
+            data[i] = (band * 1.0f + band2 * 0.45f) * env * roll;
+        }
+
+        float peak = 0.0001f;
+        for (int i = 0; i < samples; i++) peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+        for (int i = 0; i < samples; i++) data[i] = data[i] / peak * 0.9f;
+
+        var clip = AudioClip.Create("Thunder" + seed, samples, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
     }
 
     /// <summary>A small flat-shaded lump, a unit across, for a flake of snow.</summary>

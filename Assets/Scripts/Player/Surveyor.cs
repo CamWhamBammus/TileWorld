@@ -52,6 +52,9 @@ public class Surveyor : MonoBehaviour
     private bool wasWet;
     private float nextWake;
     private float lastStroke;
+    private float nextBreath;
+    private float dripUntil, nextDrip;
+    private float speedChangeRate = -1f;    // the controller's own, kept while the ice has it
     private float airborneSince = -1f; // when the capsule last lost the ground, or -1
     private readonly Vector3[] footWas = new Vector3[2]; // where each foot ended the last frame, for the skid count
 
@@ -218,6 +221,12 @@ public class Surveyor : MonoBehaviour
         Water(dt, afoot, wet);
     }
 
+    /// <summary>Whether a point is on a frozen lake.</summary>
+    private bool OnIce(Vector3 at)
+    {
+        return WaterSurface.IsFrozen(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), world != null ? world.WorldSeed : 0);
+    }
+
     /// <summary>Whether a point is in a lake or the sea: under the water level, on a tile the water covers.</summary>
     private bool InWater(Vector3 at)
     {
@@ -246,7 +255,35 @@ public class Surveyor : MonoBehaviour
             Splashes.By("surveyor"); Splashes.Plunge(body, 0.35f + hard * 0.65f);
         }
 
+        // and out again: dripping for a while
+        if (!wet && wasWet) dripUntil = Time.time + 7f;
+
         wasWet = wet;
+
+        if (!wet && Time.time < dripUntil && Time.time > nextDrip)
+        {
+            nextDrip = Time.time + Mathf.Lerp(0.08f, 0.3f, Mathf.InverseLerp(0f, 7f, dripUntil - Time.time) < 0.5f ? 1f : 0.3f);
+            Vector3 from = body + Vector3.up * Random.Range(0.25f, 1.45f) + player.right * Random.Range(-0.18f, 0.18f) + player.forward * Random.Range(-0.12f, 0.12f);
+            Splashes.Drip(from, body.y + 0.02f);
+        }
+
+        // the cold: breath in the snow country, faster on the move
+        bool cold = world != null && Regions.CharacterAtTile(Mathf.RoundToInt(body.x / WorldGrid.TileSize), Mathf.RoundToInt(body.z / WorldGrid.TileSize), world.WorldSeed) == Regions.Character.Snow;
+
+        if (cold && !wet && figure.Head != null && Time.time > nextBreath)
+        {
+            nextBreath = Time.time + Mathf.Lerp(3.2f, 1.5f, Mathf.InverseLerp(0f, 5.5f, pace)) + Random.Range(-0.3f, 0.3f);
+            Vector3 mouth = figure.Head.position + figure.Head.forward * 0.13f - Vector3.up * 0.04f;
+            Splashes.Puff(mouth, figure.Head.forward * 0.8f + Vector3.up * 0.15f);
+        }
+
+        // the ice: the controller takes longer to get going and to stop on it
+        if (controller != null)
+        {
+            if (speedChangeRate < 0f) speedChangeRate = controller.SpeedChangeRate;
+            bool onIce = !wet && OnIce(body);
+            controller.SpeedChangeRate = onIce ? 1.6f : speedChangeRate;
+        }
 
         // wading, the feet leave the rings; at a run the body pushes a bow wave too
         if (wading && pace > 3.5f && Time.time > nextWake)
@@ -606,6 +643,13 @@ public class Surveyor : MonoBehaviour
                     {
                         float deep = Mathf.InverseLerp(0.02f, 0.5f, WaterSurface.Level - sole.y);
                         Splashes.By("surveyor"); Splashes.Step(sole, Mathf.InverseLerp(0.8f, 5.5f, pace) * 0.75f + deep * 0.25f);
+                    }
+                    else if (afoot)
+                    {
+                        // a print in snow or sand, and the ice complaining now and then
+                        int seedNow = world != null ? world.WorldSeed : 0;
+                        Tracks.Boot(sole, yaw, seedNow);
+                        if (OnIce(sole) && Random.value < 0.4f) Splashes.Creak(sole);
                     }
                     plantedAt[side] = Time.time;
                     held[side] = true;

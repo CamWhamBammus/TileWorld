@@ -875,7 +875,7 @@ public static class Fauna
     {
         var it = All(kind);
 
-        if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed))
+        if (WaterSurface.IsOpenWater(tileX, tileZ, worldSeed))
         {
             float deep = WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, worldSeed);
             if (it.Wades <= 0f || deep > it.Wades || deep < it.WadesLeast) return false;

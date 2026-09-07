@@ -140,6 +140,121 @@ public static class WaterSurface
         return mesh;
     }
 
+    /// <summary>
+    /// Cracks in the ice: chains of thin dark strips just above it, seeded by
+    /// tile, turning as they go. A frozen lake was a flat sheet.
+    /// </summary>
+    public static Mesh BuildIceCrackMesh(Vector2Int chunkIndex, int worldSeed)
+    {
+        int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
+        int originZ = chunkIndex.y * WorldGrid.TilesPerChunk;
+        var vertices = new List<Vector3>();
+        var triangles = new List<int>();
+        float y = Level + 0.012f;
+
+        for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
+        for (int j = 0; j < WorldGrid.TilesPerChunk; j++)
+        {
+            int tileX = originX + i, tileZ = originZ + j;
+            if (!IsFrozen(tileX, tileZ, worldSeed)) continue;
+            if (Hash(tileX, tileZ, worldSeed ^ 0x1CE) % 9 != 0) continue;
+
+            var rng = new System.Random(Hash(tileX, tileZ, worldSeed ^ 0x2CE));
+            float x = i * WorldGrid.TileSize + (float)rng.NextDouble() - 0.5f;
+            float z = j * WorldGrid.TileSize + (float)rng.NextDouble() - 0.5f;
+            float heading = (float)rng.NextDouble() * Mathf.PI * 2f;
+            int segments = 3 + rng.Next(4);
+
+            for (int k = 0; k < segments; k++)
+            {
+                float length = 1.2f + (float)rng.NextDouble() * 1.1f;
+                float nx = x + Mathf.Cos(heading) * length, nz = z + Mathf.Sin(heading) * length;
+
+                // stays on the ice: a crack does not run up the bank
+                int mx = Mathf.RoundToInt((originX * WorldGrid.TileSize + (x + nx) * 0.5f) / WorldGrid.TileSize);
+                int mz = Mathf.RoundToInt((originZ * WorldGrid.TileSize + (z + nz) * 0.5f) / WorldGrid.TileSize);
+                if (!IsFrozen(mx, mz, worldSeed)) break;
+
+                float width = 0.04f + (float)rng.NextDouble() * 0.03f;
+                float px = -Mathf.Sin(heading) * width, pz = Mathf.Cos(heading) * width;
+                int v = vertices.Count;
+                vertices.Add(new Vector3(x - px, y, z - pz));
+                vertices.Add(new Vector3(x + px, y, z + pz));
+                vertices.Add(new Vector3(nx + px, y, nz + pz));
+                vertices.Add(new Vector3(nx - px, y, nz - pz));
+                triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 1);
+                triangles.Add(v); triangles.Add(v + 3); triangles.Add(v + 2);
+
+                x = nx; z = nz;
+                heading += ((float)rng.NextDouble() - 0.5f) * 1.2f;
+            }
+        }
+
+        if (vertices.Count == 0) return null;
+        return Sheet(vertices, triangles, "Cracks " + chunkIndex);
+    }
+
+    /// <summary>
+    /// Snow drifted onto the ice: thin slabs on the frozen tiles the noise
+    /// picks, and along every edge where the lake meets the bank.
+    /// </summary>
+    public static Mesh BuildIceDriftMesh(Vector2Int chunkIndex, int worldSeed)
+    {
+        int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
+        int originZ = chunkIndex.y * WorldGrid.TilesPerChunk;
+        var vertices = new List<Vector3>();
+        var triangles = new List<int>();
+        float y = Level + 0.05f;
+        float half = WorldGrid.TileSize * 0.5f;
+
+        for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
+        for (int j = 0; j < WorldGrid.TilesPerChunk; j++)
+        {
+            int tileX = originX + i, tileZ = originZ + j;
+            if (!IsFrozen(tileX, tileZ, worldSeed)) continue;
+
+            bool edge = !IsUnderwater(tileX + 1, tileZ, worldSeed) || !IsUnderwater(tileX - 1, tileZ, worldSeed)
+                     || !IsUnderwater(tileX, tileZ + 1, worldSeed) || !IsUnderwater(tileX, tileZ - 1, worldSeed);
+            float drift = Mathf.PerlinNoise(tileX * 0.21f + worldSeed * 0.013f, tileZ * 0.21f - worldSeed * 0.007f);
+            if (!edge && drift < 0.58f) continue;
+
+            float spread = edge ? 0.98f : Mathf.Lerp(0.55f, 0.95f, Mathf.InverseLerp(0.58f, 0.8f, drift));
+            float x = i * WorldGrid.TileSize, z = j * WorldGrid.TileSize;
+            float hx = half * spread, hz = half * spread;
+            int v = vertices.Count;
+            vertices.Add(new Vector3(x - hx, y, z - hz));
+            vertices.Add(new Vector3(x - hx, y, z + hz));
+            vertices.Add(new Vector3(x + hx, y, z + hz));
+            vertices.Add(new Vector3(x + hx, y, z - hz));
+            triangles.Add(v); triangles.Add(v + 1); triangles.Add(v + 2);
+            triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 3);
+        }
+
+        if (vertices.Count == 0) return null;
+        return Sheet(vertices, triangles, "Drifts " + chunkIndex);
+    }
+
+    private static Mesh Sheet(List<Vector3> vertices, List<int> triangles, string name)
+    {
+        var mesh = new Mesh { name = name };
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    /// <summary>The colour of a crack: the dark of the water under the ice.</summary>
+    public static Material CreateCrackMaterial() => Paint.Flat(new Color(0.34f, 0.47f, 0.58f));
+
+    private static int Hash(int x, int y, int seed)
+    {
+        uint h = (uint)(x * 374761393 + y * 668265263 + seed * 1442695040888963407L);
+        h = (h ^ (h >> 13)) * 1274126177u;
+        h ^= h >> 16;
+        return (int)(h & 0x7FFFFFFF);
+    }
+
     /// <summary>Ice: opaque, pale, with a sheen; the bed under it is not seen.</summary>
     public static Material CreateIceMaterial()
     {

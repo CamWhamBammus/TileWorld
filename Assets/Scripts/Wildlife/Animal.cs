@@ -210,6 +210,7 @@ public class Animal : MonoBehaviour
     /// </summary>
     public static float FootingAt(int tileX, int tileZ, int seed)
     {
+        if (WaterSurface.IsFrozen(tileX, tileZ, seed)) return 0f;        // the ice is flat and stood on
         if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return -0.05f;
         if (SnowCover.IsSnowy(tileX, tileZ, seed)) return 0.17f;
         return -0.05f;
@@ -822,7 +823,7 @@ public class Animal : MonoBehaviour
         int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
         int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
 
-        float ground = WorldHeight.SurfaceY(x, z, seed);
+        float ground = WaterSurface.WalkingY(x, z, seed);
 
         // Close the gap quickly but never instantly, and never let it wade far
         // from the surface if it has been dropped a long way.
@@ -834,10 +835,10 @@ public class Animal : MonoBehaviour
         transform.position = at;
 
         // the lie of the land, from the tiles either side of it
-        float west = WorldHeight.SurfaceY(x - 1, z, seed);
-        float east = WorldHeight.SurfaceY(x + 1, z, seed);
-        float south = WorldHeight.SurfaceY(x, z - 1, seed);
-        float north = WorldHeight.SurfaceY(x, z + 1, seed);
+        float west = WaterSurface.WalkingY(x - 1, z, seed);
+        float east = WaterSurface.WalkingY(x + 1, z, seed);
+        float south = WaterSurface.WalkingY(x, z - 1, seed);
+        float north = WaterSurface.WalkingY(x, z + 1, seed);
 
         var normal = new Vector3(west - east, 2f * WorldGrid.TileSize, south - north).normalized;
 
@@ -1878,13 +1879,13 @@ public class Animal : MonoBehaviour
             int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
             int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
 
-            if (!WaterSurface.IsUnderwater(x, z, seed)) continue;
+            if (!WaterSurface.IsOpenWater(x, z, seed)) continue;
 
             // stand on the bank rather than wade in
             for (int dx = -1; dx <= 1; dx++)
             for (int dz = -1; dz <= 1; dz++)
             {
-                if (WaterSurface.IsUnderwater(x + dx, z + dz, seed)) continue;
+                if (WaterSurface.IsOpenWater(x + dx, z + dz, seed)) continue;
 
                 var bank = new Vector3((x + dx) * WorldGrid.TileSize, 0f, (z + dz) * WorldGrid.TileSize);
 
@@ -1955,7 +1956,7 @@ public class Animal : MonoBehaviour
             if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
             int tx = cx + dx, tz = cz + dz;
             if (!Fauna.Ground(Kind, tx, tz, seed)) continue;
-            float y = Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.IsUnderwater(tx, tz, seed) ? WaterSurface.Level - Fauna.All(Kind).Wades : 0f);
+            float y = Mathf.Max(WaterSurface.WalkingY(tx, tz, seed), WaterSurface.IsOpenWater(tx, tz, seed) ? WaterSurface.Level - Fauna.All(Kind).Wades : 0f);
             return new Vector3(tx * WorldGrid.TileSize, y, tz * WorldGrid.TileSize);
         }
 
@@ -1982,7 +1983,7 @@ public class Animal : MonoBehaviour
         }
 
         // Nothing here climbs a cliff to get away from you.
-        return Mathf.Abs(WorldHeight.SurfaceY(x, z, seed) - transform.position.y) < 8f;
+        return Mathf.Abs(WaterSurface.WalkingY(x, z, seed) - transform.position.y) < 8f;
     }
 
     private Vector3 Ground(Vector3 at)
@@ -1990,7 +1991,7 @@ public class Animal : MonoBehaviour
         int x = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
         int z = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
 
-        at.y = WorldHeight.SurfaceY(x, z, seed);
+        at.y = WaterSurface.WalkingY(x, z, seed);
 
         return at;
     }

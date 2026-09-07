@@ -197,6 +197,25 @@ Everything that asks "is this water" for a foot, a ring or a splash asks
 camera's tile): the same arrays, at a fourteenth of the speed, swaying, drawn
 as white lumps, and nothing rings.
 
+On the ice: `WaterSurface.BuildIceCrackMesh` lays chains of thin dark strips
+(one tile in nine seeds a chain of three to six segments that stays on the
+ice) and `BuildIceDriftMesh` lays thin snow slabs where Perlin noise says and
+along every edge with the bank; both are overlays in `ChunkManager` like the
+ice. `Fauna.Ground` and `Animal` ask `IsOpenWater` and `WalkingY`, so a frozen
+lake is ground to an animal: a hare put down on it stands on it
+(`Fauna.Ground` true there). The surveyor on ice: `Surveyor.OnIce` drops the
+controller's `SpeedChangeRate` from 10 to 1.6, so getting going and stopping
+take a while (about a metre and a half of slide from a walk), and a step has
+a two-in-five chance of a creak (`Splashes.Creak`, a low bending tone).
+Boot prints: `Tracks.Boot` on every planted foot, in snow and sand, drawn
+longer than a paw and skipped by `Tracks.Near` so they are not read as an
+animal's. Breath: in the snow country `Surveyor.Water` puffs every three
+seconds standing, every second and a half running (`Splashes.Puff`: lumps
+that slow, rise, swell and go). Drips: for seven seconds after leaving the
+water, drops off the figure that fall to the ground under it
+(`Splashes.Drip` with a floor). The map draws a chunk mostly under ice in
+an ice colour.
+
 `Splashes` (in `Atmosphere/`) is what water does about things going into it.
 It draws drops as small flat-shaded lumps in one `RenderMeshInstanced` call,
 leaves rings through `Tracks.Ring(at, size, lasts)`, and makes its own
@@ -209,7 +228,18 @@ slosh behind; a body going in adds a low knock and bigger bubbles as the
 water closes. `Tools/probe/Sounds.cs.txt` writes the clips out as WAV to
 `Tools/.check/sounds/`, and the Python after it in the session measures
 each: peak time, spectral centroid and flatness (hiss is flat, near 0.5;
-water is tonal, under 0.2). Rain rings the water too. `Rain` keeps its streaks in arrays and draws them
+water is tonal, under 0.2). Rain is heard everywhere it falls: `Rain` keeps a looping bed (`RainBed`,
+noise through a low and a high band-pass, gurgled) at 0.38 of the
+intensity, silent in snow. A downpour (intensity past 0.7, not snowing)
+strikes every nine to twenty-six seconds: `TimeOfDay.Flash` lifts the sun
+and the ambient for a tenth of a second, and a `Rumble` (low noise that
+rolls) plays one to four and a half seconds later, quieter the later. The
+ground wets at 0.12 a second of intensity and dries at 0.028 a second
+(`ChunkManager.SetWetness`), which raises `_Smoothness` toward 0.6 on runtime
+copies of the ground tiles' materials -- copies, so the assets are not
+changed by a play session in the editor.
+
+Rain rings the water too. `Rain` keeps its streaks in arrays and draws them
 in one `RenderMeshInstanced` call (800 of them, in a 24 m disc 18 m high
 that rides with the camera, leaning with a wind of its own that wanders by
 Perlin noise); it used to be 260 cube GameObjects moved by hand. A streak
@@ -450,7 +480,9 @@ or a downpour (`TimeOfDay.ForceOvercast`; rain falls past `Rain.Threshold`,
 0.55), lets it be its own again, gives a minute of rain, shows the overcast,
 whether it is raining and how hard (`Rain.Intensity`) and whether the sky is
 held (`TimeOfDay.OvercastHeld`), and has the hours and slow time. **Title**
-captures the backdrop views. The probe `Tools/probe/DevAnimals.cs.txt`
+captures the backdrop views. The Places page's water row has a fourth button,
+the nearest frozen lake (`NearestFrozen`, `GoToFrozen`: stand on the bank
+facing the ice). The probe `Tools/probe/DevAnimals.cs.txt`
 presses the animal buttons by reflection and checks what they did;
 `Tools/probe/DevPages.cs.txt` opens every page, photographs it, checks that
 no two buttons on it overlap and none is outside the card, and presses

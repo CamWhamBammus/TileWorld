@@ -310,7 +310,74 @@ public class DevTools : MonoBehaviour
                 : pair.Key + "   <size=15>none near</size>";
         }
 
+        if (frozenLabel != null)
+        {
+            bool found = NearestFrozen(out _, out float away);
+            frozenLabel.text = found
+                ? "Frozen lake   <size=15>" + Mathf.RoundToInt(away) + " m</size>"
+                : "Frozen lake   <size=15>none near</size>";
+        }
+
         if (wipeLabel != null) wipeLabel.text = "Put this world back to nothing";
+    }
+
+    private TMP_Text frozenLabel;
+
+    /// <summary>The nearest frozen tile: water in the snow country.</summary>
+    private bool NearestFrozen(out Vector2Int tile, out float away)
+    {
+        tile = default;
+        away = 0f;
+        if (player == null) return false;
+
+        int seed = world.WorldSeed;
+        int fromX = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize);
+        int fromZ = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        const int Step = 3;
+        const int Rings = 170;
+
+        for (int r = 0; r < Rings; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = fromX + dx * Step, tz = fromZ + dz * Step;
+            if (!WaterSurface.IsFrozen(tx, tz, seed)) continue;
+            tile = new Vector2Int(tx, tz);
+            away = Vector2.Distance(new Vector2(fromX, fromZ), new Vector2(tx, tz)) * WorldGrid.TileSize;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void GoToFrozen()
+    {
+        if (!NearestFrozen(out var tile, out _) || body == null)
+        {
+            Notices.Show("Dev: no frozen lake within reach.");
+            return;
+        }
+
+        int seed = world.WorldSeed;
+
+        // stand on the bank and look out over the ice
+        for (int step = 1; step < 40; step++)
+        for (int side = 0; side < 8; side++)
+        {
+            float a = side / 8f * Mathf.PI * 2f;
+            int dx = tile.x + Mathf.RoundToInt(Mathf.Cos(a) * step);
+            int dz = tile.y + Mathf.RoundToInt(Mathf.Sin(a) * step);
+            if (WaterSurface.IsUnderwater(dx, dz, seed)) continue;
+
+            body.enabled = false;
+            player.position = new Vector3(dx * WorldGrid.TileSize, WorldHeight.SurfaceY(dx, dz, seed) + 1.4f, dz * WorldGrid.TileSize);
+            player.rotation = Quaternion.LookRotation(new Vector3(tile.x - dx, 0f, tile.y - dz).normalized);
+            body.enabled = true;
+            Toggle(false);
+            Notices.Show("Dev: on the bank of a frozen lake.");
+            return;
+        }
     }
 
     private void Build()
@@ -398,10 +465,11 @@ public class DevTools : MonoBehaviour
         for (int i = 0; i < bodies.Length; i++)
         {
             var kind = bodies[i];
-
             waters[kind] = Button(kind.ToString(), placesGo.transform,
-                new Vector2((i - 1) * 300f, 66f), new Vector2(285f, 52f), () => GoToWater(kind));
+                new Vector2((i - 1.5f) * 222f, 66f), new Vector2(212f, 52f), () => GoToWater(kind));
         }
+
+        frozenLabel = Button("Frozen lake", placesGo.transform, new Vector2(1.5f * 222f, 66f), new Vector2(212f, 52f), GoToFrozen);
 
         Label("Built", placesGo.transform, 17f, new Vector2(0f, 16f), new Vector2(880f, 30f))
             .text = "GO TO THE NEAREST STRUCTURE";

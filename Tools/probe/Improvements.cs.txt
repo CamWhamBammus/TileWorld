@@ -1,0 +1,278 @@
+// A probe for the winter and the storm: lightning and thunder and the bed of
+// rain, wet ground drying, the dev tools' way to a frozen lake, cracks and
+// drifts on it, breath in the cold, boot prints, creaks and the slide on the
+// ice, a hare put down on it, and dripping after a swim.
+using System.Collections;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private const string Only = "__KINDS__";     // "ice" runs only the frozen lake stages
+    private Camera cam; private Transform player;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Shot(string name)
+    {
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-im-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private void Side(float back, float up)
+    {
+        cam.transform.position = player.position + player.right * back + player.forward * 1.5f + Vector3.up * up;
+        cam.transform.LookAt(player.position + Vector3.up * 0.9f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Winter", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        var controller = player.GetComponent<StarterAssets.ThirdPersonController>();
+        var yawField = typeof(StarterAssets.ThirdPersonController).GetField("_cinemachineTargetYaw", BindingFlags.NonPublic | BindingFlags.Instance);
+        int seed = world.WorldSeed;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+        var main = Camera.main;
+        cam = new GameObject("ProbeCam").AddComponent<Camera>();
+        cam.CopyFrom(main); cam.depth = main.depth + 50f; cam.fieldOfView = 45f;
+
+        // ---- a shore with open water, for the storm and the swim
+        int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        int bestX = 0, bestZ = 0, bestDx = 0, bestDz = 0; bool found = false;
+        int[] dirs = { 1, 0, -1, 0, 0, 1, 0, -1 };
+        for (int r = 4; r < 110 && !found; r += 2)
+        for (int dx = -r; dx <= r && !found; dx += 2)
+        for (int dz = -r; dz <= r && !found; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = px + dx, tz = pz + dz;
+            if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            for (int d = 0; d < 4 && !found; d++)
+            {
+                bool deep = false; int wetCount = 0;
+                for (int k = 1; k <= 14; k++)
+                {
+                    int sx = tx + dirs[d * 2] * k, sz = tz + dirs[d * 2 + 1] * k;
+                    if (!WaterSurface.IsOpenWater(sx, sz, seed)) { if (k > 2) break; else continue; }
+                    wetCount++;
+                    if (WaterSurface.Level - WorldHeight.SurfaceY(sx, sz, seed) > 1.6f) { deep = true; break; }
+                }
+                if (deep && wetCount >= 3) { bestX = tx; bestZ = tz; bestDx = dirs[d * 2]; bestDz = dirs[d * 2 + 1]; found = true; }
+            }
+        }
+        if (!found) { Mark("no shore with deep water"); Mark("done"); yield break; }
+        Vector3 shore = new Vector3(bestX * WorldGrid.TileSize, WorldHeight.SurfaceY(bestX, bestZ, seed) + 1f, bestZ * WorldGrid.TileSize);
+        Vector3 into = new Vector3(bestDx, 0f, bestDz);
+        float intoYaw = Quaternion.LookRotation(into).eulerAngles.y;
+
+        body.enabled = false; player.position = shore - into * 2f; player.rotation = Quaternion.LookRotation(into); body.enabled = true;
+        if (yawField != null) yawField.SetValue(controller, intoYaw);
+        yield return new WaitForSecondsRealtime(3f);
+
+        // ---- the storm
+        bool onlyIce = Only == "ice";
+        if (!onlyIce)
+        {
+        TimeOfDay.Instance.ForceOvercast(1f);
+        float wet0 = world.Wetness;
+        yield return new WaitForSecondsRealtime(3f);
+        int strikesBefore = Rain.Strikes; bool flashShot = false; float t0 = Time.time;
+        cam.transform.position = shore + Vector3.up * 2f - into * 4f; cam.transform.LookAt(new Vector3(shore.x, WaterSurface.Level, shore.z) + into * 12f);
+        while (Time.time - t0 < 40f && !flashShot)
+        {
+            if (Rain.Strikes > strikesBefore && TimeOfDay.Instance.Flashing > 0.4f) { flashShot = true; yield return Shot("flash"); }
+            yield return null;
+        }
+        yield return new WaitForSecondsRealtime(5f);
+        Mark("STORM: rain heard " + Rain.BedLevel.ToString("F2") + ", patter " + Splashes.Patter.ToString("F2") + ", strikes " + (Rain.Strikes - strikesBefore) + " (photographed " + flashShot + "), thunder heard " + Rain.Rumbles + ", ground wetness " + world.Wetness.ToString("F2") + " (was " + wet0.ToString("F2") + ")");
+        float wetRain = world.Wetness;
+        TimeOfDay.Instance.ForceOvercast(0f);
+        yield return new WaitForSecondsRealtime(8f);
+        Mark("DRYING: wetness " + world.Wetness.ToString("F2") + " eight seconds after the rain stopped, rain heard " + Rain.BedLevel.ToString("F2"));
+        TimeOfDay.Instance.ForceOvercast(-1f);
+        }
+
+        // ---- the dev tools' frozen lake
+        var tools = FindFirstObjectByType<DevTools>();
+        var goFrozen = typeof(DevTools).GetMethod("GoToFrozen", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (tools == null || goFrozen == null) { Mark("no dev tools"); Mark("done"); yield break; }
+        Vector3 before = player.position;
+        goFrozen.Invoke(tools, null);
+        yield return new WaitForSecondsRealtime(6f);
+        int ptx = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), ptz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        int frozenNear = 0; for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) if (WaterSurface.IsFrozen(ptx + dx, ptz + dz, seed)) frozenNear++;
+        var chunkHere = WorldGrid.WorldToChunk(player.position + player.forward * 6f);
+        int crackVerts = 0, driftVerts = 0;
+        var cracks = GameObject.Find("Cracks " + chunkHere); var drifts = GameObject.Find("Drifts " + chunkHere);
+        if (cracks != null && cracks.GetComponent<MeshFilter>() != null && cracks.GetComponent<MeshFilter>().sharedMesh != null) crackVerts = cracks.GetComponent<MeshFilter>().sharedMesh.vertexCount;
+        if (drifts != null && drifts.GetComponent<MeshFilter>() != null && drifts.GetComponent<MeshFilter>().sharedMesh != null) driftVerts = drifts.GetComponent<MeshFilter>().sharedMesh.vertexCount;
+        int iceAhead = -1;
+        for (int k = 1; k <= 20 && iceAhead < 0; k++)
+        {
+            Vector3 ahead = player.position + player.forward * (k * WorldGrid.TileSize);
+            if (WaterSurface.IsFrozen(Mathf.RoundToInt(ahead.x / WorldGrid.TileSize), Mathf.RoundToInt(ahead.z / WorldGrid.TileSize), seed)) iceAhead = k;
+        }
+        Mark("FROZEN LAKE: went " + Vector3.Distance(before, player.position).ToString("F0") + " m to " + player.position.ToString("F0") + ", frozen tiles within 6: " + frozenNear + ", ice straight ahead at " + iceAhead + " tiles, cracks verts " + crackVerts + ", drifts verts " + driftVerts + " in the chunk ahead, snowing " + Rain.Snowing);
+        cam.transform.position = player.position + Vector3.up * 3.5f - player.forward * 2f; cam.transform.LookAt(player.position + player.forward * 10f + Vector3.up * 0.2f);
+        yield return Shot("ice");
+
+        // ---- breath in the cold
+        int puffs0 = Splashes.Puffs; float tb = Time.time; bool breathShot = false;
+        cam.transform.position = player.position + player.forward * 2.6f + player.right * 1.4f + Vector3.up * 1.7f; cam.transform.LookAt(player.position + Vector3.up * 1.45f);
+        while (Time.time - tb < 9f)
+        {
+            if (!breathShot && Splashes.Puffs > puffs0) { yield return new WaitForSecondsRealtime(0.35f); breathShot = true; yield return Shot("breath"); }
+            yield return null;
+        }
+        Mark("BREATH: " + (Splashes.Puffs - puffs0) + " breaths in nine seconds standing in the cold, photographed " + breathShot);
+
+        // ---- out onto the ice: prints on the bank, creaks, and the slide
+        int boots0 = Tracks.Boots, creaks0 = Splashes.Creaks;
+        float iceYaw = player.eulerAngles.y;
+        if (yawField != null) yawField.SetValue(controller, iceYaw);
+        inputs.move = new Vector2(0f, 1f);
+        yield return new WaitForSecondsRealtime(3f);
+        int bootsOnBank = Tracks.Boots - boots0;
+        inputs.move = Vector2.zero;
+
+        // onto the ice itself: the nearest frozen tile, a step inside its edge
+        int ix = 0, iz = 0; float nearestIce = 999f;
+        int cx0 = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), cz0 = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        for (int dx = -14; dx <= 14; dx++) for (int dz = -14; dz <= 14; dz++)
+        {
+            if (!WaterSurface.IsFrozen(cx0 + dx, cz0 + dz, seed)) continue;
+            int inside = 0;
+            for (int ex = -1; ex <= 1; ex++) for (int ez = -1; ez <= 1; ez++) if (WaterSurface.IsFrozen(cx0 + dx + ex, cz0 + dz + ez, seed)) inside++;
+            if (inside < 9) continue;
+            float d = Mathf.Sqrt(dx * dx + dz * dz);
+            if (d < nearestIce) { nearestIce = d; ix = cx0 + dx; iz = cz0 + dz; }
+        }
+        bool onIce = false;
+        if (nearestIce < 999f)
+        {
+            Vector3 onto = new Vector3(ix * WorldGrid.TileSize, WaterSurface.Level + 1.2f, iz * WorldGrid.TileSize);
+
+            // the way with the most ice ahead of it
+            int bestRun = 0; float bestAngle = 0f;
+            for (int d = 0; d < 8; d++)
+            {
+                float a = d / 8f * Mathf.PI * 2f; int run = 0;
+                for (int k = 1; k <= 20; k++)
+                {
+                    int tx = ix + Mathf.RoundToInt(Mathf.Cos(a) * k), tz = iz + Mathf.RoundToInt(Mathf.Sin(a) * k);
+                    if (!WaterSurface.IsFrozen(tx, tz, seed)) break;
+                    run = k;
+                }
+                if (run > bestRun) { bestRun = run; bestAngle = a; }
+            }
+            Vector3 across = new Vector3(Mathf.Cos(bestAngle), 0f, Mathf.Sin(bestAngle));
+            body.enabled = false; player.position = onto; player.rotation = Quaternion.LookRotation(across); body.enabled = true;
+            if (yawField != null) yawField.SetValue(controller, Quaternion.LookRotation(across).eulerAngles.y);
+            yield return new WaitForSecondsRealtime(2.5f);
+            float rateStanding = controller.SpeedChangeRate;
+            bool groundForHare = Fauna.Ground(FaunaKind.Hare, ix, iz, seed);
+            creaks0 = Splashes.Creaks;
+            inputs.move = new Vector2(0f, 1f);
+            float tw = Time.time;
+            yield return new WaitForSecondsRealtime(1.2f);
+            float heading = Vector3.SignedAngle(across, player.forward, Vector3.up);
+            float camYaw = Mathf.DeltaAngle(Quaternion.LookRotation(across).eulerAngles.y, Camera.main.transform.eulerAngles.y);
+            Mark("ICE RUN: " + bestRun + " tiles of ice that way; standing on it the speed change rate is " + rateStanding.ToString("F1") + ", ground suits a hare there " + groundForHare + "; after 1.2 s walking the figure faces " + heading.ToString("F0") + " deg off the way and the camera " + camYaw.ToString("F0") + " deg off");
+            onIce = true;
+        }
+        int ptx2 = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), ptz2 = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        onIce = WaterSurface.IsFrozen(ptx2, ptz2, seed);
+        Vector3 released = player.position; float rate = controller.SpeedChangeRate;
+        inputs.move = Vector2.zero;
+        yield return new WaitForSecondsRealtime(1.6f);
+        float slid = Vector3.Distance(new Vector3(released.x, 0f, released.z), new Vector3(player.position.x, 0f, player.position.z));
+        Mark("ICE WALK: boot prints on the bank " + bootsOnBank + ", creaks " + (Splashes.Creaks - creaks0) + ", on the ice at the end " + onIce + ", speed change rate there " + rate.ToString("F1") + ", slid " + slid.ToString("F2") + " m after letting go");
+        Side(4f, 1.5f);
+        yield return Shot("slide");
+
+        // ---- a hare put down on the ice
+        var summon = typeof(DevTools).GetMethod("Summon", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (summon != null)
+        {
+            int haresBefore = 0; foreach (var a in FindObjectsByType<Animal>(FindObjectsSortMode.None)) if (a.Kind == FaunaKind.Hare) haresBefore++;
+            summon.Invoke(tools, new object[] { FaunaKind.Hare, false });
+            yield return new WaitForSecondsRealtime(3f);
+            Animal hare = null; float nearest = 999f;
+            foreach (var a in FindObjectsByType<Animal>(FindObjectsSortMode.None)) { if (a.Kind != FaunaKind.Hare) continue; float d = Vector3.Distance(a.transform.position, player.position); if (d < nearest) { nearest = d; hare = a; } }
+            if (hare == null) Mark("HARE: none appeared");
+            else
+            {
+                int hx = Mathf.RoundToInt(hare.transform.position.x / WorldGrid.TileSize), hz = Mathf.RoundToInt(hare.transform.position.z / WorldGrid.TileSize);
+                Mark("HARE: " + nearest.ToString("F1") + " m away, on a frozen tile " + WaterSurface.IsFrozen(hx, hz, seed) + ", " + (hare.transform.position.y - WaterSurface.Level).ToString("F2") + " m above the water level, ground suits a hare there " + Fauna.Ground(FaunaKind.Hare, hx, hz, seed));
+                cam.transform.position = hare.transform.position + (player.position - hare.transform.position).normalized * 3f + Vector3.up * 1.2f; cam.transform.LookAt(hare.transform.position + Vector3.up * 0.2f);
+                yield return Shot("hare");
+            }
+        }
+
+        if (onlyIce) { Mark("done"); yield break; }
+
+        // ---- a swim, and dripping after
+        body.enabled = false; player.position = shore - into * 2f; player.rotation = Quaternion.LookRotation(into); body.enabled = true;
+        if (yawField != null) yawField.SetValue(controller, intoYaw);
+        yield return new WaitForSecondsRealtime(3f);
+        // in off the top over the deep water, a moment afloat, then straight out onto the shore
+        int deepX = bestX, deepZ = bestZ;
+        for (int k = 1; k <= 14; k++) { int sx = bestX + bestDx * k, sz = bestZ + bestDz * k; if (WaterSurface.IsOpenWater(sx, sz, seed) && WaterSurface.Level - WorldHeight.SurfaceY(sx, sz, seed) > 1.6f) { deepX = sx; deepZ = sz; break; } }
+        body.enabled = false; player.position = new Vector3(deepX * WorldGrid.TileSize, WaterSurface.Level + 1.5f, deepZ * WorldGrid.TileSize); body.enabled = true;
+        float ts = Time.time;
+        while (!Swimming.Afloat && Time.time - ts < 6f) yield return null;
+        bool swam = Swimming.Afloat;
+        yield return new WaitForSecondsRealtime(1.5f);
+        body.enabled = false; player.position = shore - into * 1f; player.rotation = Quaternion.LookRotation(-into); body.enabled = true;
+        yield return new WaitForSecondsRealtime(0.5f);
+        int drips0 = Splashes.Drips;
+        yield return new WaitForSecondsRealtime(0.6f);
+        Side(3.2f, 1.2f);
+        yield return Shot("drips");
+        yield return new WaitForSecondsRealtime(3f);
+        Mark("DRIPS: swam " + swam + ", out of the water " + !Swimming.InWater + ", drips in the four seconds after " + (Splashes.Drips - drips0));
+
+        Mark("done");
+    }
+}

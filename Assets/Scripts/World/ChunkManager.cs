@@ -141,6 +141,35 @@ public class ChunkManager : MonoBehaviour
     private readonly List<Vector2Int> iceScratch = new List<Vector2Int>();
     private Transform iceRoot;
     private Material iceMaterial;
+    private readonly Dictionary<Vector2Int, GameObject> crackPatches = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> crackScratch = new List<Vector2Int>();
+    private readonly Dictionary<Vector2Int, GameObject> driftPatches = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> driftScratch = new List<Vector2Int>();
+    private Transform crackRoot, driftRoot;
+    private Material crackMaterial, driftMaterial;
+
+    // The ground's own materials, copied at runtime so their sheen can be
+    // raised in the rain without touching the assets they came from.
+    private readonly List<Material> wetable = new List<Material>();
+    private readonly List<float> drySheen = new List<float>();
+    private float wetness;
+
+    /// <summary>How wet the ground is, 0 to 1: the rain raises it, the sun takes it away.</summary>
+    public float Wetness => wetness;
+
+    /// <summary>Sets how wet the ground looks: a sheen on every ground tile's material.</summary>
+    public void SetWetness(float wet)
+    {
+        wet = Mathf.Clamp01(wet);
+        if (Mathf.Abs(wet - wetness) < 0.002f) return;
+        wetness = wet;
+
+        for (int i = 0; i < wetable.Count; i++)
+        {
+            if (wetable[i] == null) continue;
+            wetable[i].SetFloat("_Smoothness", Mathf.Lerp(drySheen[i], 0.6f, wet));
+        }
+    }
 
     private readonly Dictionary<Vector2Int, GameObject> snowPatches = new Dictionary<Vector2Int, GameObject>();
     private readonly List<Vector2Int> snowScratch = new List<Vector2Int>();
@@ -188,6 +217,12 @@ public class ChunkManager : MonoBehaviour
             iceRoot = new GameObject("Ice (runtime)").transform;
             iceRoot.SetParent(transform, worldPositionStays: true);
             iceMaterial = WaterSurface.CreateIceMaterial();
+            crackRoot = new GameObject("Cracks (runtime)").transform;
+            crackRoot.SetParent(transform, worldPositionStays: true);
+            crackMaterial = WaterSurface.CreateCrackMaterial();
+            driftRoot = new GameObject("Drifts (runtime)").transform;
+            driftRoot.SetParent(transform, worldPositionStays: true);
+            driftMaterial = SnowCover.CreateMaterial();
         }
 
         if (snow)
@@ -304,6 +339,8 @@ public class ChunkManager : MonoBehaviour
         {
             RefreshOverlay(waterPatches, waterScratch, waterRoot, waterMaterial, WaterSurface.BuildMesh, "Water");
             RefreshOverlay(icePatches, iceScratch, iceRoot, iceMaterial, WaterSurface.BuildIceMesh, "Ice");
+            RefreshOverlay(crackPatches, crackScratch, crackRoot, crackMaterial, WaterSurface.BuildIceCrackMesh, "Cracks");
+            RefreshOverlay(driftPatches, driftScratch, driftRoot, driftMaterial, WaterSurface.BuildIceDriftMesh, "Drifts");
         }
 
         if (snow)
@@ -555,6 +592,15 @@ public class ChunkManager : MonoBehaviour
 
         Mesh mesh = def.MeshGetter();
         Material material = overrideDrawMaterial != null ? overrideDrawMaterial : def.MaterialGetter();
+
+        // a runtime copy, so the rain can put a sheen on it without the asset changing
+        if (overrideDrawMaterial == null && material != null)
+        {
+            material = new Material(material) { name = material.name + " (ground)" };
+            wetable.Add(material);
+            drySheen.Add(material.HasProperty("_Smoothness") ? material.GetFloat("_Smoothness") : 0f);
+            if (wetness > 0f) material.SetFloat("_Smoothness", Mathf.Lerp(drySheen[drySheen.Count - 1], 0.6f, wetness));
+        }
 
         return (mesh, material);
     }

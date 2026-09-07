@@ -162,7 +162,9 @@ public class TimeOfDay : MonoBehaviour
         float clouds = 1f - Overcast * 0.68f;
 
         sun.color = Color.Lerp(sunColour, new Color(0.82f, 0.84f, 0.88f), Overcast * 0.6f);
-        sun.intensity = day * noonIntensity * clouds;
+        // a flash of lightning lights everything for a moment and is gone
+        flash = Mathf.MoveTowards(flash, 0f, Time.deltaTime * 9f);
+        sun.intensity = day * noonIntensity * clouds + flash * 2.2f;
         sun.enabled = sun.intensity > 0.005f;
         sun.shadowStrength = Mathf.Lerp(0.85f, 0.35f, Overcast);
 
@@ -170,7 +172,7 @@ public class TimeOfDay : MonoBehaviour
         moon.enabled = moon.intensity > 0.005f;
 
         // Ambient comes from the sky, so this scales the whole scene's floor light.
-        RenderSettings.ambientIntensity = Mathf.Lerp(0.30f, 1f, day) * Mathf.Lerp(1f, 0.75f, Overcast);
+        RenderSettings.ambientIntensity = Mathf.Lerp(0.30f, 1f, day) * Mathf.Lerp(1f, 0.75f, Overcast) + flash * 1.6f;
         RenderSettings.reflectionIntensity = RenderSettings.ambientIntensity;
 
         if (sky != null)
@@ -263,6 +265,14 @@ public class TimeOfDay : MonoBehaviour
 
     /// <summary>Whether the sky is being held at a level rather than being its own.</summary>
     public bool OvercastHeld => forcedOvercast >= 0f;
+
+    private float flash;
+
+    /// <summary>Lightning: everything lit for a moment. Strength 0 to 1.</summary>
+    public void Flash(float strength) { flash = Mathf.Max(flash, Mathf.Clamp01(strength)); }
+
+    /// <summary>How much of a flash is still lighting things, for the probes.</summary>
+    public float Flashing => flash;
 
     /// <summary>Changes how long a day takes while running.</summary>
     public void SetDayLength(float minutes)

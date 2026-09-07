@@ -16,6 +16,67 @@ public class Splashes : MonoBehaviour
     {
         public Vector3 At, Going;
         public float Size, Made, Lasts;
+        public bool Breath;         // rises and swells rather than falls
+        public float Floor;         // gone below this, for a drip on land
+    }
+
+    /// <summary>Counts for the probes.</summary>
+    public static int Puffs { get; private set; }
+    public static int Drips { get; private set; }
+    public static int Creaks { get; private set; }
+
+    /// <summary>A breath in the cold: a few pale lumps that drift forward, swell and go.</summary>
+    public static void Puff(Vector3 at, Vector3 dir)
+    {
+        var it = Ensure();
+        if (it == null) return;
+
+        int count = 5 + Random.Range(0, 4);
+        for (int i = 0; i < count; i++)
+        {
+            if (it.drops.Count >= Most) it.drops.RemoveAt(0);
+            it.drops.Add(new Drop
+            {
+                At = at + Random.insideUnitSphere * 0.05f,
+                Going = dir * Random.Range(0.35f, 0.7f) + Random.insideUnitSphere * 0.18f + Vector3.up * 0.08f,
+                Size = Random.Range(0.035f, 0.06f),
+                Made = Time.time,
+                Lasts = Random.Range(0.9f, 1.3f),
+                Breath = true,
+                Floor = float.MinValue
+            });
+        }
+
+        Puffs++;
+    }
+
+    /// <summary>A drip off something wet: one drop, falling to the ground under it.</summary>
+    public static void Drip(Vector3 at, float floor)
+    {
+        var it = Ensure();
+        if (it == null) return;
+
+        if (it.drops.Count >= Most) it.drops.RemoveAt(0);
+        it.drops.Add(new Drop
+        {
+            At = at,
+            Going = Random.insideUnitSphere * 0.15f,
+            Size = Random.Range(0.04f, 0.065f),
+            Made = Time.time,
+            Lasts = 1.5f,
+            Floor = floor
+        });
+
+        Drips++;
+    }
+
+    /// <summary>The ice creaking under a step.</summary>
+    public static void Creak(Vector3 at)
+    {
+        var it = Ensure();
+        if (it == null) return;
+        it.Sound(at, it.creaks, Random.Range(0.25f, 0.45f), Random.Range(0.85f, 1.2f), 1.2f);
+        Creaks++;
     }
 
     private static Splashes instance;
@@ -24,7 +85,7 @@ public class Splashes : MonoBehaviour
     private readonly List<Matrix4x4> batch = new List<Matrix4x4>(512);
     private Mesh lump;
     private Material paint;
-    private AudioClip[] plish, plunge, strokes;
+    private AudioClip[] plish, plunge, strokes, creaks;
 
     /// <summary>The clips by name, for a probe to write out and listen to.</summary>
     public static IEnumerable<KeyValuePair<string, AudioClip>> Clips()
@@ -112,6 +173,7 @@ public class Splashes : MonoBehaviour
         plish = new[] { Splash(Kind.Step, 11), Splash(Kind.Step, 12), Splash(Kind.Step, 13), Splash(Kind.Step, 14) };
         plunge = new[] { Splash(Kind.Plunge, 21), Splash(Kind.Plunge, 22) };
         strokes = new[] { Splash(Kind.Stroke, 31), Splash(Kind.Stroke, 32) };
+        creaks = new[] { CreakClip(51), CreakClip(52), CreakClip(53) };
 
         patter = gameObject.AddComponent<AudioSource>();
         patter.clip = RainOnWater(4f, 41);
@@ -210,7 +272,8 @@ public class Splashes : MonoBehaviour
                 Going = new Vector3(Mathf.Cos(a) * spread, up * Random.Range(0.55f, 1.15f), Mathf.Sin(a) * spread),
                 Size = size * Random.Range(0.6f, 1.4f),
                 Made = Time.time,
-                Lasts = 1.4f
+                Lasts = 1.4f,
+                Floor = float.MinValue
             });
         }
     }
@@ -237,11 +300,28 @@ public class Splashes : MonoBehaviour
         for (int i = drops.Count - 1; i >= 0; i--)
         {
             var d = drops[i];
+            float age = (now - d.Made) / d.Lasts;
+
+            if (d.Breath)
+            {
+                // slows, drifts up a little, swells, and is gone
+                d.Going *= Mathf.Exp(-1.8f * dt);
+                d.Going.y += 0.12f * dt;
+                d.At += d.Going * dt;
+
+                if (age >= 1f) { drops.RemoveAt(i); continue; }
+
+                drops[i] = d;
+                float swell = d.Size * Mathf.Lerp(1f, 3.2f, age) * (age > 0.75f ? Mathf.InverseLerp(1f, 0.75f, age) : 1f);
+                batch.Add(Matrix4x4.TRS(d.At, Quaternion.Euler(age * 90f, age * 130f, 0f), new Vector3(swell, swell, swell)));
+                continue;
+            }
+
             d.Going.y -= 9.8f * dt;
             d.At += d.Going * dt;
 
-            // back into the water, or lost in the air after a while
-            if ((d.At.y < level - 0.02f && d.Going.y < 0f) || now - d.Made > d.Lasts)
+            // back into the water, onto the ground, or lost in the air after a while
+            if ((d.At.y < level - 0.02f && d.Going.y < 0f) || d.At.y < d.Floor || now - d.Made > d.Lasts)
             {
                 drops.RemoveAt(i);
                 continue;
@@ -311,6 +391,44 @@ public class Splashes : MonoBehaviour
     }
 
     // ------------------------------------------------------------ the sound
+
+    /// <summary>
+    /// Ice creaking: a low tone that bends about as it goes, with a grain of
+    /// noise on it, the way a sheet complains under a step.
+    /// </summary>
+    private static AudioClip CreakClip(int seed)
+    {
+        const int rate = 22050;
+        var rng = new System.Random(seed);
+        float seconds = 0.3f + (float)rng.NextDouble() * 0.25f;
+        int samples = Mathf.RoundToInt(seconds * rate);
+        var data = new float[samples];
+        float phase = 0f, wobblePhase = (float)rng.NextDouble() * 6.28f;
+        float f0 = 70f + (float)rng.NextDouble() * 90f;
+        float wobbleHz = 5f + (float)rng.NextDouble() * 6f;
+        float low = 0f;
+
+        for (int i = 0; i < samples; i++)
+        {
+            float t = i / (float)samples;
+            float env = Mathf.Min(1f, i / (rate * 0.02f)) * Mathf.Sin(t * Mathf.PI);
+            wobblePhase += wobbleHz / rate * 6.2831853f;
+            float freq = f0 * (1f + 0.35f * Mathf.Sin(wobblePhase) + 0.6f * t);
+            phase += freq / rate * 6.2831853f;
+            float tone = Mathf.Sin(phase) * 0.6f + Mathf.Sin(phase * 2.01f) * 0.25f + Mathf.Sin(phase * 3.02f) * 0.1f;
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+            low += 0.12f * (white - low);
+            data[i] = (tone + low * 0.5f) * env;
+        }
+
+        float peak = 0.0001f;
+        for (int i = 0; i < samples; i++) peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+        for (int i = 0; i < samples; i++) data[i] = data[i] / peak * 0.85f;
+
+        var clip = AudioClip.Create("Creak" + seed, samples, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
 
     /// <summary>
     /// Rain on water, to loop: a thick scatter of the smallest bubbles, high
