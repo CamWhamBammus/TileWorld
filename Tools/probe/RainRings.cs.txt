@@ -159,10 +159,28 @@ public class _Probe : MonoBehaviour
         for (int dx = -10; dx <= 10; dx++) for (int dz = -10; dz <= 10; dz++) if (WaterSurface.IsFrozen(fx + dx, fz + dz, seed)) iceTiles++;
         Mark("SNOW: at " + bank.ToString("F0") + ", snowing " + Rain.Snowing + ", rain rings " + Splashes.RainAlive + ", patter " + Splashes.Patter.ToString("F2") + ", ice tiles within 10: " + iceTiles + ", ice objects " + GameObject.Find("Ice (runtime)").transform.childCount);
 
+        // what the ice actually is here: the patch, its mesh, its material, and what a ray finds
+        var chunkAt = WorldGrid.WorldToChunk(bank + onto * 6f);
+        var icePatch = GameObject.Find("Ice " + chunkAt); var waterPatch = GameObject.Find("Water " + chunkAt);
+        string iceSay = icePatch == null ? "no ice patch" : "ice patch verts " + (icePatch.GetComponent<MeshFilter>() != null && icePatch.GetComponent<MeshFilter>().sharedMesh != null ? icePatch.GetComponent<MeshFilter>().sharedMesh.vertexCount.ToString() : "none");
+        var iceRend = icePatch != null ? icePatch.GetComponent<MeshRenderer>() : null;
+        if (iceRend != null) iceSay += ", shader " + iceRend.sharedMaterial.shader.name + ", queue " + iceRend.sharedMaterial.renderQueue + ", surface " + (iceRend.sharedMaterial.HasProperty("_Surface") ? iceRend.sharedMaterial.GetFloat("_Surface").ToString("F0") : "?") + ", colour " + iceRend.sharedMaterial.color + ", enabled " + iceRend.enabled;
+        string waterSay = waterPatch == null ? "no water patch" : "water patch verts " + (waterPatch.GetComponent<MeshFilter>() != null && waterPatch.GetComponent<MeshFilter>().sharedMesh != null ? waterPatch.GetComponent<MeshFilter>().sharedMesh.vertexCount.ToString() : "none");
+        int frozen = 0, open = 0;
+        for (int dx = -12; dx <= 12; dx++) for (int dz = -12; dz <= 12; dz++) { if (WaterSurface.IsFrozen(fx + dx, fz + dz, seed)) frozen++; else if (WaterSurface.IsUnderwater(fx + dx, fz + dz, seed)) open++; }
+        string raySay = "ray: nothing";
+        if (Physics.Raycast(bank + onto * 6f + Vector3.up * 3f, Vector3.down, out var hit, 20f)) raySay = "ray hit " + hit.collider.name + " at y " + hit.point.y.ToString("F2") + " (level " + WaterSurface.Level.ToString("F2") + ")";
+        Mark("ICE CHECK: chunk " + chunkAt + ": " + iceSay + "; " + waterSay + "; tiles within 12: frozen " + frozen + ", open " + open + "; " + raySay);
+
         cam.transform.position = bank + Vector3.up * 2.4f - onto * 3f;
         cam.transform.LookAt(new Vector3(bank.x, WaterSurface.Level, bank.z) + onto * 12f);
         yield return new WaitForEndOfFrame();
         ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-snow.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+        cam.transform.position = bank + onto * 10f + Vector3.up * 28f;
+        cam.transform.rotation = Quaternion.LookRotation(Vector3.down, onto);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-above.png"));
         yield return new WaitForSecondsRealtime(0.5f);
 
         // and out onto the ice
