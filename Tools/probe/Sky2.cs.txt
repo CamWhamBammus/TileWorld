@@ -1,0 +1,125 @@
+// A probe for the five: the night sky with its Milky Way and a shooting
+// star, mist on the lake at dawn, the sun's glow and flare at sunset, a
+// rainbow after rain, and a flock of birds crossing.
+using System.Collections;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private Camera cam; private Transform player;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Shot(string name, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        cam.transform.position = at; cam.transform.LookAt(lookAt);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-s2-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.4f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Sky2", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+
+        var tools = FindFirstObjectByType<DevTools>();
+        var goWater = typeof(DevTools).GetMethod("GoToWater", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (tools != null && goWater != null) { goWater.Invoke(tools, new object[] { WaterSurface.Body.Lake }); yield return new WaitForSecondsRealtime(6f); }
+
+        cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        cam.fieldOfView = 70f;
+        var clock = TimeOfDay.Instance;
+        clock.Paused = true;
+        clock.ForceOvercast(0f);
+        var sun = RenderSettings.sun;
+
+        Vector3 eye = player.position + Vector3.up * 1.7f;
+        Vector3 skyward = eye + player.forward * 30f + Vector3.up * 22f;
+        Vector3 overLake = eye + player.forward * 40f - Vector3.up * 0.5f;
+
+        // ---- the night sky
+        clock.SetTime(0.02f);   // the small hours, the moon low
+        yield return new WaitForSecondsRealtime(4f);
+        Mark("NIGHT: stars " + NightSky.Stars + ", night " + NightSky.Night.ToString("F2") + ", old starfield objects " + (FindFirstObjectByType<Starfield>() != null));
+        yield return Shot("night-sky", eye, skyward);
+        float t0 = Time.time; bool caught = false;
+        while (Time.time - t0 < 60f) { if (NightSky.Shooting) { caught = true; yield return Shot("shooting-star", eye, skyward); break; } yield return null; }
+        Mark("SHOOTING STAR: caught one " + caught + ", fallen so far " + NightSky.ShotSoFar);
+
+        // ---- mist at dawn
+        clock.SetTime(0.255f);
+        yield return new WaitForSecondsRealtime(4f);
+        Mark("DAWN: mist " + Mist.Strength.ToString("F2") + ", sun flare " + SunGlow.Flare.ToString("F2"));
+        yield return Shot("dawn-mist", eye, overLake);
+
+        // ---- the sun at sunset, in the frame
+        clock.SetTime(0.745f);
+        yield return new WaitForSecondsRealtime(3f);
+        Vector3 toSun = -sun.transform.forward;
+        yield return Shot("sunset-flare", eye, eye + toSun * 40f);
+        Mark("SUNSET: flare " + SunGlow.Flare.ToString("F2") + " with the sun in the frame");
+
+        // ---- a rainbow: rain, then the sun
+        clock.SetTime(0.5f); clock.ForceOvercast(1f);
+        yield return new WaitForSecondsRealtime(12f);
+        float wet = world.Wetness;
+        clock.ForceOvercast(0f); clock.SetTime(0.33f);
+        yield return new WaitForSecondsRealtime(6f);
+        Vector3 antiSun = sun.transform.forward; antiSun.y = 0f; antiSun.Normalize();
+        Mark("RAINBOW: ground wetness " + wet.ToString("F2") + " after the rain, rainbow " + Rainbow.Strength.ToString("F2"));
+        yield return Shot("rainbow", eye, eye + antiSun * 40f + Vector3.up * 24f);
+
+        // ---- birds
+        clock.SetTime(0.45f);
+        Flocks.Summon();
+        yield return new WaitForSecondsRealtime(4f);
+        Mark("BIRDS: " + Flocks.Birds + " birds in " + Flocks.Count + " flock(s)");
+        Vector3 ahead = eye + player.forward * 200f + Vector3.up * 120f;
+        yield return Shot("birds", eye, ahead);
+
+        clock.ForceOvercast(-1f); clock.Paused = false;
+        Mark("done");
+    }
+}

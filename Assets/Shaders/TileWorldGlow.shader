@@ -8,6 +8,7 @@ Shader "TileWorld/Glow"
     {
         _Color ("Colour", Color) = (1, 1, 1, 1)
         _Strength ("Strength", Float) = 1
+        _TwinkleRate ("Twinkle rate", Float) = 0
     }
 
     SubShader
@@ -31,6 +32,7 @@ Shader "TileWorld/Glow"
             CBUFFER_START(UnityPerMaterial)
             float4 _Color;
             float _Strength;
+            float _TwinkleRate;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; float4 color : COLOR; float2 uv : TEXCOORD0; };
@@ -51,6 +53,8 @@ Shader "TileWorld/Glow"
                 float edge = 1 - abs(i.uv.x * 2 - 1);
                 edge = edge * edge * (3 - 2 * edge);
                 float a = i.color.a * _Color.a * edge;
+                // stars: each with its own phase, kept in the second uv
+                if (_TwinkleRate > 0) a *= 0.55 + 0.45 * sin(_Time.y * _TwinkleRate + i.uv.y * 97.0);
                 return half4(_Color.rgb * i.color.rgb * _Strength, a);
             }
             ENDHLSL

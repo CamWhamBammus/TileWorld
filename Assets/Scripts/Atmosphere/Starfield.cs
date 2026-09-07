@@ -16,7 +16,9 @@ public class Starfield : MonoBehaviour
     private float[] twinkle;
     private Material material;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    // Superseded by NightSky, which draws the stars in one mesh with a shader
+    // the fog cannot take; these quads were fogged to nothing at 900 m. Kept
+    // for the record, not spawned.
     private static void Spawn()
     {
         if (FindFirstObjectByType<Starfield>() == null)

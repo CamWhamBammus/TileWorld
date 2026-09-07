@@ -487,6 +487,33 @@ fade out toward the horizon. `Grading` pushes the camera's far plane to
 past the old 500 m plane. `Tools/probe/Sky.cs.txt` photographs the same
 sky clear, cloudy, overcast, at sunset and at night and counts the clouds.
 
+### The sky's company
+
+Five more in `Atmosphere/`, all on the glow or cloud shaders and all
+tile-independent. `NightSky`: about 2300 stars in one mesh on a 900 m
+sphere round the camera (900 of the sky's own, the brightest big and a few
+coloured, and 1400 faint ones within a few degrees of a tilted great
+circle for the Milky Way, with a band of soft quads glowing behind it),
+each star twinkling on a phase kept in its second uv (`_TwinkleRate` on the
+glow shader), and a shooting star -- a glow disc slerped across the sky in
+0.7 s -- every 18 to 55 s. The old `Starfield` is no longer spawned: its
+quads used the unlit shader, which fogs, and at 900 m they were fogged to
+nothing. `SunGlow`: a core and a halo 880 m along the sun's line, the halo
+swelling near the horizon, and four ghost discs strung from the sun's
+viewport position through the frame's centre when the sun is in it.
+`Mist`: the cloud shader's sheet mode on a 260 m disc at the water level
+plus 1.1 m, which is also the floor of the hollows, so it lies on lakes and
+in dips and nowhere the ground rises through it; by the clock (0.19 to
+0.35), heavier after rain. `Rainbow`: two rings of quads about the
+anti-solar axis at 40.4-42.4 and 50.4-53.4 degrees, six colour bands, the
+second reversed and fainter, shown by ground wetness with the sun up and
+under forty-two degrees, and eased in and out; the terrain hides what is
+under the horizon. `Flocks`: a V of seven to fifteen dark chevrons 90 to
+170 m up, 250 to 450 m off, each beating its wings by mirroring the mesh
+through its plane, every 45 to 110 s by day; `Flocks.Summon()` calls one
+across the view. `Tools/probe/Sky2.cs.txt` photographs them all and waits
+up to a minute for a shooting star.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy
