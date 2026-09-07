@@ -226,7 +226,7 @@ public class TimeOfDay : MonoBehaviour
     {
         if (cloudCookies == null)
         {
-            cloudCookies = new[] { CloudCookie(0.18f, 11), CloudCookie(0.38f, 12), CloudCookie(0.6f, 13) };
+            cloudCookies = new[] { CloudCookie(0.3f, 11), CloudCookie(0.48f, 12), CloudCookie(0.66f, 13) };
             sunData = sun.GetUniversalAdditionalLightData();
             sunData.lightCookieSize = new Vector2(260f, 260f);
         }

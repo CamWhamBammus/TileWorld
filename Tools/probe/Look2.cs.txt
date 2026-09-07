@@ -200,12 +200,14 @@ public class _Probe : MonoBehaviour
             var moonObj = GameObject.Find("Moon (runtime)");
             if (moonObj != null)
             {
-                // the moon itself, from the open shore
-                yield return Shot("moon", player.position + Vector3.up * 1.7f, moonObj.transform.position);
-                // and its glint: along its bearing, low over the water
+                // the moon itself, from above the trees by the shore
+                yield return Shot("moon", player.position + Vector3.up * 26f, moonObj.transform.position);
+                // and its glint: the moon is high at this hour, so its light lies on the water nearly
+                // under it -- from eight metres up, looking steeply down along its bearing over the lake
                 Vector3 bearing = moonObj.transform.position - player.position; bearing.y = 0f; bearing.Normalize();
-                Vector3 eye = new Vector3(player.position.x, WaterSurface.Level + 1.2f, player.position.z);
-                yield return Shot("moon-water", eye, eye + bearing * 25f - Vector3.up * 1.6f);
+                Vector3 overWater = player.position + player.forward * 9f; overWater.y = WaterSurface.Level;
+                Vector3 eye = overWater + Vector3.up * 8f - bearing * 2.2f;
+                yield return Shot("moon-water", eye, overWater + bearing * 1.5f);
             }
         }
 

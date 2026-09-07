@@ -83,7 +83,7 @@ public class LightShafts : MonoBehaviour
             Vector3 bottom = bases[i];
             Vector3 top = bottom - along * 12f;
             Vector3 right = Vector3.Cross(along, eye - (bottom + top) * 0.5f).normalized * (widths[i] * 0.5f);
-            float a = 0.42f * Strength;
+            float a = 0.62f * Strength;
             int v = n * 4;
             verts[v] = bottom - right; verts[v + 1] = bottom + right; verts[v + 2] = top + right; verts[v + 3] = top - right;
             cols[v] = new Color(glow.r, glow.g, glow.b, a * 0.9f); cols[v + 1] = cols[v];
