@@ -58,6 +58,8 @@ Snow covers the ground above the snowline and all of a snowfield, with a ragged 
 
 A full day and night takes twenty minutes. Dawn and dusk go orange, night is dark but you can still see, there are stars, and the sky, ambient light and fog all follow the sun. Weather drifts on its own: it clears and clouds over, and when it closes in the light goes flat, shadows soften, the fog pulls in and it rains. Wind picks up with altitude and bad weather, birds sing in the lowlands during the day. All the sound is generated in code, there are no recordings.
 
+The picture is graded: tonemapped so sunsets don't clip, a little bloom on the sun and the water, a soft vignette, and a colour grade that follows the clock and the weather. Dawn and dusk are warm, rain is grey and washed out, the snow country is blue-white, and night lifts the shadows a little blue instead of going black. The water has its own shader: clear and green in the shallows, dark in the deep, the bed seen through it and bent a little, the sun glinting off a surface that moves, and foam along the shore and around anything standing in it.
+
 ## Structures
 
 There are fifteen kinds of structure and each belongs to one kind of region, so if you want to find a biome you can look for what was built there:

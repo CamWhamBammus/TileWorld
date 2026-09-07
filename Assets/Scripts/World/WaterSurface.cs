@@ -263,9 +263,16 @@ public static class WaterSurface
         return m;
     }
 
-    /// <summary>Translucent, unlit enough to read as water without a shader of its own.</summary>
+    /// <summary>
+    /// The water's own shader if it is there (Resources/Water, which keeps it
+    /// in the build): depth colour, the bed seen through it, glints, foam.
+    /// Otherwise the old translucent tint.
+    /// </summary>
     public static Material CreateMaterial()
     {
+        var own = Resources.Load<Material>("Water");
+        if (own != null && own.shader != null && own.shader.isSupported) return new Material(own);
+
         Shader lit = Shaders.First("Universal Render Pipeline/Lit", "Standard");
         var m = new Material(lit);
 

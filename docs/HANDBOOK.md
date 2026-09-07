@@ -382,6 +382,39 @@ the plates branch). The arrival card (`Arrival`) mentions the plates, the
 tracks and the calls; `Tools/probe/ArrivalCard.cs.txt` clears the taught
 flag, makes a new world and photographs the card.
 
+## The picture
+
+`Grading` (in `Atmosphere/`) puts a global `Volume` over the game camera with
+a runtime `VolumeProfile` -- `Tonemapping` (Neutral), `Bloom`, `Vignette`,
+`ColorAdjustments`, `WhiteBalance`, `LiftGammaGain` -- and turns on the
+camera's post-processing and SMAA through `UniversalAdditionalCameraData`.
+Every frame it drives the grade from `TimeOfDay` (the sun's height, the
+gold hour near the horizon, night) and the weather (`Overcast`,
+`Rain.Intensity`) and the camera's region (snow): exposure, contrast,
+saturation, a colour filter, white balance, a blue lift in the shadows at
+night, more bloom at the gold hour. `Grading.Enabled = false` is the raw
+picture, for comparing. The PC renderer's `postProcessData` is set, which is
+what keeps the post-processing shaders in a build. The title scene is left
+alone.
+
+The water is `Assets/Shaders/TileWorldWater.shader`, kept in the build by
+`Resources/Water.mat` (a material referencing it -- a shader found only by
+`Shader.Find` is stripped), which `WaterSurface.CreateMaterial` instances.
+It needs the depth and opaque textures (on in `PC_RPAsset`, and forced on
+the camera by `Grading`). Everything is worked from world position and
+`_Time`: the mesh is bare quads. Depth of water = scene eye depth minus
+surface eye depth; colour lerps shallow to deep over `_DepthFade`; the bed
+is the opaque texture sampled through a refraction offset, unless that
+would drag in something above the surface; foam where the depth is under
+`_FoamDepth`, broken by a moving pattern; the sun's glint is a Blinn
+highlight on a procedural normal; the sky at a low angle is the fog colour
+by a Fresnel term; fog mixed in by hand. It writes opaque (`Blend Off`,
+`ZWrite Off`) since it composes the bed itself, so rings and drops just
+above the surface still win the depth test. `Tools/probe/Look.cs.txt`
+photographs the same shore graded and ungraded, at dusk, at night, in the
+rain, close on the water with the surveyor wading, and a frozen lake, and
+counts magenta pixels -- the colour of a shader that failed to compile.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy
