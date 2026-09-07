@@ -526,8 +526,14 @@ phase in uv.y. Both sheets use the water shader (`TileWorld/Water`) in its
 wash modes: `_Wash` 1 on the strand draws real water -- the same shader,
 with its refraction, sheen and glint, a floor on its tint so a thin sheet
 still reads as water -- that stops at the wave's front with foam riding the
-front and lines of foam left as it goes back; `_Wash` 2 over the shallows
-draws foam only, where the wave breaks before it runs up. The front runs
+front and lines of foam left as it goes back; the shallows'
+sheet, five tiles out, is water in the same mode drawn under the sand's
+where they meet (`_Wash` 2, foam only, is still there but unused). The wave
+has a crest: the vertex shader lifts the sheet by `_Crest` (0.16 m) in a
+bump at the front, taller coming in, with the water behind it standing a
+quarter as high while it holds, and each tile is cut three by three so the
+bump rolls rather than steps. The foam thins out to sea over the last
+metres of the sheet and softens past the front instead of stopping. The front runs
 from four metres out to six and a half up the sand on a fourteen-second
 cycle: in over the first third, held a moment at the top, drawn back over
 the rest, offset by the phase so the coast does not move as one. Lakes
