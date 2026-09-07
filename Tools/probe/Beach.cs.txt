@@ -86,8 +86,8 @@ public class _Probe : MonoBehaviour
         Mark("BEACH: strand tiles within 8: " + strand + ", wash mesh verts in this chunk " + washVerts + " (" + washVerts / 4 + " quads), distances " + uvMin.ToString("F1") + " to " + uvMax.ToString("F1") + " m, surf heard " + SurfSound.Level.ToString("F2"));
         // low along the shore, looking at the waterline, three moments of the wave
         Vector3 along = Vector3.Cross(Vector3.up, player.forward).normalized;
-        Vector3 eye = player.position + Vector3.up * 1.6f - player.forward * 2f + along * 3f;
-        Vector3 at = player.position + player.forward * 6f; at.y = WaterSurface.Level;
+        Vector3 eye = player.position + Vector3.up * 1.1f - player.forward * 1f + along * 5f;
+        Vector3 at = player.position + player.forward * 5f; at.y = WaterSurface.Level + 0.2f;
         yield return Shot("wave-a", eye, at);
         yield return new WaitForSecondsRealtime(4.5f);
         yield return Shot("wave-b", eye, at);

@@ -12,7 +12,8 @@ public static class Surf
 {
     private const float StrandHeight = 0.7f;    // how far above the water the sand still counts as beach, the same as the tiles'
     private const int Reach = 5;                 // tiles of sand the wash can reach
-    private const int Out = 3;                   // tiles of shallows it starts from
+    private const int Out = 5;                   // tiles of shallows it starts from
+    private const int Cut = 3;                   // each tile cut this many across, so a crest rolls rather than steps
 
     /// <summary>Dry sand on an open shore, low enough for the wash to reach.</summary>
     public static bool IsStrand(int tileX, int tileZ, int seed)
@@ -94,17 +95,26 @@ public static class Surf
         {
             float own = dist[i + 1, j + 1];
             if (float.IsNaN(own)) continue;
-            if ((own >= 0f) != sand) continue;        // the sand for the water, the shallows for the foam
+            if ((own >= 0f) != sand) continue;        // the sand sheet and the shallows sheet
 
             float y = height[i + 1, j + 1];
             float phase = Mathf.PerlinNoise((originX + i) * 0.018f + worldSeed * 0.01f, (originZ + j) * 0.018f);
             float x = i * WorldGrid.TileSize, z = j * WorldGrid.TileSize;
-            int v = verts.Count;
-            verts.Add(new Vector3(x - half, y, z - half)); uvs.Add(new Vector2(Corner(i, j, own), phase));
-            verts.Add(new Vector3(x - half, y, z + half)); uvs.Add(new Vector2(Corner(i, j + 1, own), phase));
-            verts.Add(new Vector3(x + half, y, z + half)); uvs.Add(new Vector2(Corner(i + 1, j + 1, own), phase));
-            verts.Add(new Vector3(x + half, y, z - half)); uvs.Add(new Vector2(Corner(i + 1, j, own), phase));
-            tris.Add(v); tris.Add(v + 1); tris.Add(v + 2); tris.Add(v); tris.Add(v + 2); tris.Add(v + 3);
+
+            // the four corners' distances, and a grid of Cut x Cut quads between them
+            float d00 = Corner(i, j, own), d01 = Corner(i, j + 1, own), d11 = Corner(i + 1, j + 1, own), d10 = Corner(i + 1, j, own);
+            for (int a = 0; a < Cut; a++)
+            for (int b = 0; b < Cut; b++)
+            {
+                float u0 = a / (float)Cut, u1 = (a + 1) / (float)Cut, w0 = b / (float)Cut, w1 = (b + 1) / (float)Cut;
+                float D(float u, float w) => Mathf.Lerp(Mathf.Lerp(d00, d10, u), Mathf.Lerp(d01, d11, u), w);
+                int v = verts.Count;
+                verts.Add(new Vector3(x - half + u0 * WorldGrid.TileSize, y, z - half + w0 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u0, w0), phase));
+                verts.Add(new Vector3(x - half + u0 * WorldGrid.TileSize, y, z - half + w1 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u0, w1), phase));
+                verts.Add(new Vector3(x - half + u1 * WorldGrid.TileSize, y, z - half + w1 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u1, w1), phase));
+                verts.Add(new Vector3(x - half + u1 * WorldGrid.TileSize, y, z - half + w0 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u1, w0), phase));
+                tris.Add(v); tris.Add(v + 1); tris.Add(v + 2); tris.Add(v); tris.Add(v + 2); tris.Add(v + 3);
+            }
         }
 
         if (verts.Count == 0) return null;
@@ -139,15 +149,15 @@ public static class Surf
         return m;
     }
 
-    /// <summary>The same in foam-only mode, over the shallows.</summary>
+    /// <summary>The shallows' sheet: water too, so the crest rises out there, drawn under the sand's sheet where they meet.</summary>
     public static Material CreateFoamMaterial()
     {
         var water = Resources.Load<Material>("Water");
         if (water == null || water.shader == null || !water.shader.isSupported) return null;
         var m = new Material(water);
-        m.SetFloat("_Wash", 2f);
-        m.SetFloat("_WaveHeight", 0.0f);
-        m.renderQueue = 3006;
+        m.SetFloat("_Wash", 1f);
+        m.SetFloat("_WaveHeight", 0.02f);
+        m.renderQueue = 3003;
         return m;
     }
 }

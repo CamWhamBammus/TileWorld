@@ -22,6 +22,7 @@ Shader "TileWorld/Water"
         _Period ("Wash period", Float) = 14
         _Reach ("Wash reach", Float) = 6.5
         _Back ("Wash retreat", Float) = -4
+        _Crest ("Wash crest height", Float) = 0.16
     }
 
     SubShader
@@ -50,7 +51,7 @@ Shader "TileWorld/Water"
             CBUFFER_START(UnityPerMaterial)
             float4 _Shallow, _Deep, _Foam;
             float _DepthFade, _FoamDepth, _WaveHeight, _WaveScale, _Speed, _Sparkle, _Refract, _Fresnel;
-            float _Wash, _Period, _Reach, _Back;
+            float _Wash, _Period, _Reach, _Back, _Crest;
             CBUFFER_END
 
             // the moon, set by the clock: where it is, and how bright
@@ -111,6 +112,19 @@ Shader "TileWorld/Water"
                 Varyings o;
                 float3 ws = TransformObjectToWorld(v.positionOS.xyz);
                 ws.y += Height(ws.xz, _Time.y * _Speed);
+
+                // the wash rises as the wave passes: a crest at the front, taller coming in,
+                // and the water behind it standing a little higher while it holds
+                if (_Wash > 0.5)
+                {
+                    float front = Front(v.uv.y);
+                    float cycle = frac(_Time.y / _Period + v.uv.y);
+                    float coming = cycle < 0.3 ? 1 : 0;
+                    float off = (v.uv.x - front) / 1.7;
+                    float crest = exp(-off * off) * lerp(0.55, 1, coming);
+                    float behind = (v.uv.x < front) * saturate((front - v.uv.x) / 3) * 0.25;
+                    ws.y += _Crest * (crest + behind);
+                }
                 o.positionWS = ws;
                 o.positionCS = TransformWorldToHClip(ws);
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
@@ -157,13 +171,15 @@ Shader "TileWorld/Water"
                     float front = Front(i.wash.y);
                     float cycle = frac(_Time.y / _Period + i.wash.y);
                     float coming = cycle < 0.3 ? 1 : 0;
-                    float breakup = Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.8 + 0.4;
-                    float off = (dist - front) / 1.2;
-                    float band = exp(-off * off) * lerp(0.65, 1, coming) * breakup;
+                    float breakup = saturate(Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.9 + 0.3);
+                    float off = (dist - front) / 0.85;
+                    float band = exp(-off * off) * lerp(0.6, 1, coming) * breakup;
+                    // the foam thins out to sea rather than stopping where the sheet does
+                    band *= smoothstep(_Back - 1.5, _Back + 2.5, dist);
                     float lines = smoothstep(0.85, 1, frac(dist * 0.9 + Noise(i.positionWS.xz * 0.6) * 0.5)) * (dist > 0 && dist < front) * (1 - coming) * 0.25 * breakup;
-                    float edge = 1 - smoothstep(front - 0.3, front + 0.25, dist);      // the sheet stops at the front
-                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = saturate(band * 0.9 + lines * 0.5) * (dist < front + 0.5); }
-                    else { water = lerp(water, _Foam.rgb, saturate(band + lines)); alpha = max(edge, band * 0.9); }
+                    float edge = 1 - smoothstep(front - 0.35, front + 0.3, dist);      // the sheet stops at the front, softly
+                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = saturate(band * 0.9 + lines * 0.5); }
+                    else { water = lerp(water, _Foam.rgb, saturate(band + lines)); alpha = max(edge * (dist > -0.01 ? 1 : 1), band * 0.9); }
                 }
 
                 // the sun on it
