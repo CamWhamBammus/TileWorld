@@ -1,0 +1,111 @@
+// A probe: the wash on a beach through one wave, with the surf heard; and
+// the fireflies at night, checked to stay put when the player moves.
+using System.Collections;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private Camera cam; private Transform player;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private IEnumerator Shot(string name, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        cam.transform.position = at; cam.transform.LookAt(lookAt);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-bc-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Beach", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        int seed = world.WorldSeed;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+
+        var tools = FindFirstObjectByType<DevTools>();
+        var flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        var goWater = typeof(DevTools).GetMethod("GoToWater", flags);
+        var goTo = typeof(DevTools).GetMethod("GoTo", flags, null, new[] { typeof(Regions.Character) }, null);
+        cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        var clock = TimeOfDay.Instance; clock.Paused = true; clock.ForceOvercast(0f); clock.SetTime(0.45f);
+
+        // ---- the beach
+        goWater.Invoke(tools, new object[] { WaterSurface.Body.Beach });
+        yield return new WaitForSecondsRealtime(7f);
+        var chunk = WorldGrid.WorldToChunk(player.position);
+        int washVerts = 0; var washGo = GameObject.Find("Wash " + chunk);
+        if (washGo != null && washGo.GetComponent<MeshFilter>() != null && washGo.GetComponent<MeshFilter>().sharedMesh != null) washVerts = washGo.GetComponent<MeshFilter>().sharedMesh.vertexCount;
+        int strand = 0; int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        for (int dx = -8; dx <= 8; dx++) for (int dz = -8; dz <= 8; dz++) if (Surf.IsStrand(px + dx, pz + dz, seed)) strand++;
+        Mark("BEACH: strand tiles within 8: " + strand + ", wash mesh verts in this chunk " + washVerts + " (" + washVerts / 4 + " quads), surf heard " + SurfSound.Level.ToString("F2"));
+        // low along the shore, looking at the waterline, three moments of the wave
+        Vector3 along = Vector3.Cross(Vector3.up, player.forward).normalized;
+        Vector3 eye = player.position + Vector3.up * 1.6f - player.forward * 2f + along * 3f;
+        Vector3 at = player.position + player.forward * 6f; at.y = WaterSurface.Level;
+        yield return Shot("wave-a", eye, at);
+        yield return new WaitForSecondsRealtime(2.2f);
+        yield return Shot("wave-b", eye, at);
+        yield return new WaitForSecondsRealtime(2.2f);
+        yield return Shot("wave-c", eye, at);
+        yield return Shot("wave-high", player.position + Vector3.up * 9f - player.forward * 4f, player.position + player.forward * 10f);
+
+        // ---- the fireflies
+        goTo.Invoke(tools, new object[] { Regions.Character.Lowland });
+        yield return new WaitForSecondsRealtime(6f);
+        clock.SetTime(0.9f);
+        yield return new WaitForSecondsRealtime(8f);
+        int outBefore = Fireflies.Out; Vector3 firstBefore = Fireflies.First; Vector3 playerBefore = player.position;
+        body.enabled = false; player.position += player.right * 12f; body.enabled = true;
+        yield return new WaitForSecondsRealtime(1.5f);
+        Vector3 firstAfter = Fireflies.First;
+        float moved = Vector3.Distance(new Vector3(firstBefore.x, 0f, firstBefore.z), new Vector3(firstAfter.x, 0f, firstAfter.z));
+        Mark("FIREFLIES: " + outBefore + " out; the player moved " + Vector3.Distance(playerBefore, player.position).ToString("F1") + " m and the first firefly moved " + moved.ToString("F2") + " m (its own wandering, not the player's)");
+        yield return Shot("fireflies", player.position + Vector3.up * 1.6f - player.forward * 2f, player.position + player.forward * 12f + Vector3.up * 1.5f);
+
+        clock.ForceOvercast(-1f); clock.Paused = false;
+        Mark("done");
+    }
+}

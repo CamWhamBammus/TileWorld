@@ -514,6 +514,30 @@ through its plane, every 45 to 110 s by day; `Flocks.Summon()` calls one
 across the view. `Tools/probe/Sky2.cs.txt` photographs them all and waits
 up to a minute for a shooting star.
 
+### The wash, and the fireflies
+
+`Surf.BuildWashMesh` (in `World/`) lays quads over the strand -- dry sand on
+an open shore within 0.7 m of the water level, the same rule as the sand
+tiles -- and the shallows just out from it, each vertex carrying its
+distance from the waterline in metres in uv.x (negative in the water) and
+a Perlin phase in uv.y. `TileWorld/Wash` (kept in the build by
+`Resources/Wash.mat`) moves a front from four metres out to six and a half
+up the sand on a 7.5 s cycle, in fast and out slow, offset by the phase so
+the coast does not move as one; a band of foam at the front broken up by
+noise, a thin sheet behind it thinning as it draws back, and lines of foam
+left on the sand. It is an overlay in `ChunkManager` like the ice. Lakes
+get none. `SurfSound` looks for the nearest strand tile twice a second and
+plays a made loop of two swells at the wash's period, louder the nearer.
+
+`Fireflies` was rewritten: each fly has a place in the world and a heading
+that wanders by noise, and hangs where it is as the player walks by (the
+old ones were offsets from the player and came along). New ones come up
+ahead as the player moves and the ones left behind go. They are glow discs
+drawn instanced -- the glow shader takes `multi_compile_instancing` now --
+and pulse. `Tools/probe/Beach.cs.txt` photographs a wave at three moments
+and moves the player twelve metres to check the first firefly does not
+move with them.
+
 ## Snow, planting, tiles
 
 Snow is a thick slab per tile with a skirt over the edge, flush with a snowy

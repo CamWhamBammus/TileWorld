@@ -147,6 +147,10 @@ public class ChunkManager : MonoBehaviour
     private readonly List<Vector2Int> driftScratch = new List<Vector2Int>();
     private Transform crackRoot, driftRoot;
     private Material crackMaterial, driftMaterial;
+    private readonly Dictionary<Vector2Int, GameObject> washPatches = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> washScratch = new List<Vector2Int>();
+    private Transform washRoot;
+    private Material washMaterial;
 
     // The ground's own materials, copied at runtime so their sheen can be
     // raised in the rain without touching the assets they came from.
@@ -223,6 +227,9 @@ public class ChunkManager : MonoBehaviour
             driftRoot = new GameObject("Drifts (runtime)").transform;
             driftRoot.SetParent(transform, worldPositionStays: true);
             driftMaterial = SnowCover.CreateMaterial();
+            washRoot = new GameObject("Wash (runtime)").transform;
+            washRoot.SetParent(transform, worldPositionStays: true);
+            washMaterial = Surf.CreateMaterial();
         }
 
         if (snow)
@@ -341,6 +348,7 @@ public class ChunkManager : MonoBehaviour
             RefreshOverlay(icePatches, iceScratch, iceRoot, iceMaterial, WaterSurface.BuildIceMesh, "Ice");
             RefreshOverlay(crackPatches, crackScratch, crackRoot, crackMaterial, WaterSurface.BuildIceCrackMesh, "Cracks");
             RefreshOverlay(driftPatches, driftScratch, driftRoot, driftMaterial, WaterSurface.BuildIceDriftMesh, "Drifts");
+            if (washMaterial != null) RefreshOverlay(washPatches, washScratch, washRoot, washMaterial, Surf.BuildWashMesh, "Wash");
         }
 
         if (snow)

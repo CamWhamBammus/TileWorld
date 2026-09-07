@@ -5,6 +5,13 @@ public static class Glows
 {
     private static Mesh disc;
 
+    /// <summary>The disc's mesh on its own, for instanced draws.</summary>
+    public static Mesh DiscMesh()
+    {
+        Disc("glow disc (mesh)", null);
+        return disc;
+    }
+
     public static Transform Disc(string name, Material paint)
     {
         if (disc == null)
@@ -23,6 +30,8 @@ public static class Glows
             disc = new Mesh { name = "glow disc", vertices = verts, colors = cols, uv = uvs, triangles = tris };
             disc.RecalculateBounds();
         }
+
+        if (paint == null) return null;
 
         var go = new GameObject(name);
         go.AddComponent<MeshFilter>().sharedMesh = disc;
