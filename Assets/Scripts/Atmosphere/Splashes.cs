@@ -59,7 +59,7 @@ public class Splashes : MonoBehaviour
         if (!WaterSurface.IsUnderwater(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), worldSeed)) return;
 
         if (it.ripples.Count >= MostRipples) it.ripples.RemoveAt(0);
-        it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.45f, 0.7f), Size = Random.Range(0.28f, 0.5f) });
+        it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) });
     }
 
     /// <summary>How many drops are in the air, for the probes.</summary>
@@ -88,8 +88,8 @@ public class Splashes : MonoBehaviour
         instance = this;
         lump = Lump();
         paint = Paint.Flat(new Color(0.93f, 0.97f, 1.0f));
-        thinRing = ThinRing(24, 0.5f, 0.47f);
-        ringPaint = Paint.Flat(new Color(0.80f, 0.89f, 0.95f));
+        thinRing = Tracks.Annulus(24, 0.5f, 0.455f);   // the tracks' ring, wound to face up
+        ringPaint = Paint.Flat(new Color(0.70f, 0.81f, 0.90f));
 
         plish = new[] { Splash(Kind.Step, 11), Splash(Kind.Step, 12), Splash(Kind.Step, 13), Splash(Kind.Step, 14) };
         plunge = new[] { Splash(Kind.Plunge, 21), Splash(Kind.Plunge, 22) };
@@ -244,36 +244,6 @@ public class Splashes : MonoBehaviour
             for (int from = 0; from < rippleBatch.Count; from += 1000)
                 Graphics.RenderMeshInstanced(rp, thinRing, 0, rippleBatch, Mathf.Min(1000, rippleBatch.Count - from), from);
         }
-    }
-
-    /// <summary>A flat thin ring in the ground plane, a unit across.</summary>
-    private static Mesh ThinRing(int sides, float outer, float inner)
-    {
-        var verts = new List<Vector3>();
-        var tris = new List<int>();
-
-        for (int i = 0; i < sides; i++)
-        {
-            float a = i / (float)sides * Mathf.PI * 2f;
-            verts.Add(new Vector3(Mathf.Cos(a) * outer, 0f, Mathf.Sin(a) * outer));
-            verts.Add(new Vector3(Mathf.Cos(a) * inner, 0f, Mathf.Sin(a) * inner));
-        }
-
-        for (int i = 0; i < sides; i++)
-        {
-            int o0 = i * 2, i0 = i * 2 + 1, o1 = ((i + 1) % sides) * 2, i1 = ((i + 1) % sides) * 2 + 1;
-            tris.Add(o0); tris.Add(o1); tris.Add(i0);
-            tris.Add(i0); tris.Add(o1); tris.Add(i1);
-        }
-
-        var m = new Mesh { name = "thin ring" };
-        m.SetVertices(verts);
-        m.SetTriangles(tris, 0);
-        var normals = new Vector3[verts.Count];
-        for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.up;
-        m.SetNormals(normals);
-        m.RecalculateBounds();
-        return m;
     }
 
     /// <summary>A small flat-shaded lump, a unit across, that reads as a drop from any side.</summary>

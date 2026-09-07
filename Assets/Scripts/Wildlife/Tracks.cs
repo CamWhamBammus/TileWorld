@@ -221,7 +221,7 @@ public class Tracks : MonoBehaviour
     }
 
     /// <summary>A flat ring, lying in the ground plane, a unit across.</summary>
-    private static Mesh Annulus(int sides, float outer, float inner)
+    internal static Mesh Annulus(int sides, float outer, float inner)
     {
         var verts = new Vector3[sides * 2];
         var norms = new Vector3[sides * 2];

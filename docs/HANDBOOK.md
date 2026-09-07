@@ -184,8 +184,10 @@ water closes. `Tools/probe/Sounds.cs.txt` writes the clips out as WAV to
 each: peak time, spectral centroid and flatness (hiss is flat, near 0.5;
 water is tonal, under 0.2). Rain rings the water too: `Rain` calls
 `Splashes.Raindrop` where a streak crosses the water level over a wet tile,
-and `Splashes` keeps those rings in its own list with a thin annulus of its
-own, up to nine hundred, drawn in batches of a thousand. The calls are `Step` (a foot in the
+and `Splashes` keeps those rings in its own list, up to nine hundred, drawn
+in batches of a thousand. The ring mesh is `Tracks.Annulus`: a ring wound
+the other way is back-face culled from above and simply never appears,
+which is what a home-made one did, with the count saying 146 on the water. The calls are `Step` (a foot in the
 shallows), `Plunge` (going in), `Stroke` (a swimmer's arm) and `Wake` (a
 ring only). `Surveyor` calls them when a swung foot lands in water, when
 `Swimming.Afloat` first goes true (harder for a fall or a run), once a
