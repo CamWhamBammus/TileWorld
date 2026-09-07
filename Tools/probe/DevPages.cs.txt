@@ -1,0 +1,116 @@
+// A probe: opens the dev tools, shows each page, photographs it, and checks
+// that no two buttons on a page overlap. Then presses "rain" and looks up.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static Rect ScreenRect(RectTransform rt)
+    {
+        var c = new Vector3[4]; rt.GetWorldCorners(c);
+        return Rect.MinMaxRect(c[0].x, c[0].y, c[2].x, c[2].y);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Dev", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        yield return new WaitForSecondsRealtime(4f);
+
+        var tools = FindFirstObjectByType<DevTools>();
+        if (tools == null) { Mark("no DevTools in this build"); Mark("done"); yield break; }
+        var flags = BindingFlags.NonPublic | BindingFlags.Instance;
+        var toggle = typeof(DevTools).GetMethod("Toggle", flags);
+        var show = typeof(DevTools).GetMethod("ShowPage", flags);
+        toggle.Invoke(tools, new object[] { true });
+        yield return null;
+
+        var canvas = GameObject.Find("Dev Canvas");
+        string[] names = { "Places", "Animals", "Weather", "Title" };
+        Button rainButton = null, letGo = null;
+
+        for (int p = 0; p < 4; p++)
+        {
+            show.Invoke(tools, new object[] { p });
+            yield return null;
+
+            var buttons = new List<Button>();
+            foreach (var b in canvas.GetComponentsInChildren<Button>(false)) if (b.gameObject.activeInHierarchy) buttons.Add(b);
+
+            int overlaps = 0; string worst = "";
+            for (int i = 0; i < buttons.Count; i++)
+            for (int j = i + 1; j < buttons.Count; j++)
+            {
+                var a = ScreenRect(buttons[i].GetComponent<RectTransform>());
+                var b = ScreenRect(buttons[j].GetComponent<RectTransform>());
+                float ox = Mathf.Min(a.xMax, b.xMax) - Mathf.Max(a.xMin, b.xMin);
+                float oy = Mathf.Min(a.yMax, b.yMax) - Mathf.Max(a.yMin, b.yMin);
+                if (ox > 1f && oy > 1f) { overlaps++; worst += " [" + buttons[i].name + " / " + buttons[j].name + " by " + ox.ToString("F0") + "x" + oy.ToString("F0") + "]"; }
+            }
+
+            // and that every button sits inside the card
+            var card = GameObject.Find("Card").GetComponent<RectTransform>();
+            var cr = ScreenRect(card); int outside = 0;
+            foreach (var b in buttons) { var r = ScreenRect(b.GetComponent<RectTransform>()); if (r.xMin < cr.xMin - 1f || r.xMax > cr.xMax + 1f || r.yMin < cr.yMin - 1f || r.yMax > cr.yMax + 1f) outside++; }
+
+            Mark("PAGE " + names[p] + ": " + buttons.Count + " buttons, overlapping pairs " + overlaps + worst + ", outside the card " + outside);
+
+            foreach (var b in buttons) { if (b.name == "rain") rainButton = b; if (b.name == "Let the weather be its own again") letGo = b; }
+
+            yield return new WaitForEndOfFrame();
+            ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-dv-" + names[p] + ".png"));
+            yield return new WaitForSecondsRealtime(0.4f);
+        }
+
+        // press rain, look at the sky
+        if (rainButton != null)
+        {
+            show.Invoke(tools, new object[] { 2 });
+            rainButton.onClick.Invoke();
+            yield return new WaitForSecondsRealtime(1.5f);
+            Mark("RAIN BUTTON: overcast " + TimeOfDay.Instance.Overcast.ToString("F2") + ", held " + TimeOfDay.Instance.OvercastHeld + ", rain intensity " + Rain.Intensity.ToString("F2") + ", rain rings " + Splashes.RainAlive);
+            yield return new WaitForEndOfFrame();
+            ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-dv-WeatherRaining.png"));
+            yield return new WaitForSecondsRealtime(0.4f);
+            if (letGo != null) { letGo.onClick.Invoke(); yield return new WaitForSecondsRealtime(0.5f); Mark("LET GO: held " + TimeOfDay.Instance.OvercastHeld); }
+        }
+        else Mark("no rain button found");
+
+        toggle.Invoke(tools, new object[] { false });
+        Mark("done");
+    }
+}

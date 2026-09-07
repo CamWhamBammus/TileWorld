@@ -64,6 +64,7 @@ public class DevTools : MonoBehaviour
         if (Input.GetKeyDown(openKey)) Toggle(!open);
 
         if (open && Input.GetKeyDown(KeyCode.Escape)) Toggle(false);
+        if (open) RefreshWeather();
     }
 
     private void Toggle(bool on)
@@ -356,17 +357,20 @@ public class DevTools : MonoBehaviour
 
         // Two pages: the places, and the animals. The tabs sit either side
         // of the heading; whichever is not showing is simply switched off.
-        pages = new GameObject[3];
-        for (int p = 0; p < 3; p++)
+        pages = new GameObject[4];
+
+        for (int p = 0; p < 4; p++)
         {
-            pages[p] = new GameObject(p == 0 ? "Places" : p == 1 ? "Animals" : "Title");
+            pages[p] = new GameObject(p == 0 ? "Places" : p == 1 ? "Animals" : p == 2 ? "Weather" : "Title");
             pages[p].transform.SetParent(cardGo.transform, false);
             var pr = pages[p].AddComponent<RectTransform>();
             pr.anchorMin = Vector2.zero; pr.anchorMax = Vector2.one; pr.offsetMin = Vector2.zero; pr.offsetMax = Vector2.zero;
         }
-        Button("Places", cardGo.transform, new Vector2(-380f, 438f), new Vector2(150f, 44f), () => ShowPage(0));
-        Button("Animals", cardGo.transform, new Vector2(380f, 438f), new Vector2(150f, 44f), () => ShowPage(1));
-        Button("Title", cardGo.transform, new Vector2(380f, 388f), new Vector2(150f, 44f), () => ShowPage(2));
+        // the tabs, two a side of the heading, clear of its text
+        Button("Places", cardGo.transform, new Vector2(-380f, 448f), new Vector2(150f, 44f), () => ShowPage(0));
+        Button("Animals", cardGo.transform, new Vector2(-380f, 398f), new Vector2(150f, 44f), () => ShowPage(1));
+        Button("Weather", cardGo.transform, new Vector2(380f, 448f), new Vector2(150f, 44f), () => ShowPage(2));
+        Button("Title", cardGo.transform, new Vector2(380f, 398f), new Vector2(150f, 44f), () => ShowPage(3));
         var placesGo = pages[0];
         heading.color = new Color(0.85f, 0.87f, 0.90f);
 
@@ -408,15 +412,16 @@ public class DevTools : MonoBehaviour
         {
             var kind = built[i];
 
+            // twenty-one kinds now, with the small finds: six rows, closer set
             Button(Landmarks.NameOf(kind), placesGo.transform,
-                new Vector2((i % 4 - 1.5f) * 222f, -26f - (i / 4) * 56f), new Vector2(212f, 52f), () => GoToStructure(kind));
+                new Vector2((i % 4 - 1.5f) * 222f, -26f - (i / 4) * 50f), new Vector2(212f, 46f), () => GoToStructure(kind));
         }
 
-        Label("Keeping", placesGo.transform, 17f, new Vector2(0f, -262f), new Vector2(880f, 30f))
+        Label("Keeping", placesGo.transform, 17f, new Vector2(0f, -334f), new Vector2(880f, 30f))
             .text = "THE FIRST FEW MINUTES";
 
         Button("Show the opening again", placesGo.transform,
-            new Vector2(-230f, -312f), new Vector2(430f, 52f), () =>
+            new Vector2(-230f, -378f), new Vector2(430f, 52f), () =>
             {
                 Arrival.Replay();
                 Toggle(false);
@@ -424,13 +429,14 @@ public class DevTools : MonoBehaviour
             });
 
         wipeLabel = Button("Put this world back to nothing", placesGo.transform,
-            new Vector2(230f, -312f), new Vector2(430f, 52f), Wipe);
+            new Vector2(230f, -378f), new Vector2(430f, 52f), Wipe);
 
-        Label("Foot", placesGo.transform, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
+        Label("Foot", placesGo.transform, 15f, new Vector2(0f, -450f), new Vector2(880f, 40f))
             .text = "F8 or Escape closes this. Editor and development builds only.";
 
         BuildAnimals(pages[1].transform);
-        BuildTitle(pages[2].transform);
+        BuildWeather(pages[2].transform);
+        BuildTitle(pages[3].transform);
         ShowPage(0);
 
         panel.SetActive(false);
@@ -482,37 +488,101 @@ public class DevTools : MonoBehaviour
             Button(order, page, new Vector2((i - 3f) * 125f, -16f), new Vector2(118f, 46f), () => Tell(order));
         }
 
-        Label("Hour", page, 17f, new Vector2(0f, -70f), new Vector2(880f, 30f))
+        Button("Take every animal away", page, new Vector2(-230f, -90f), new Vector2(430f, 52f), () =>
+        {
+            Wildlife.ClearAll();
+            Notices.Show("Dev: the country is empty.");
+        });
+
+        Button("Go to the nearest animal", page, new Vector2(230f, -90f), new Vector2(430f, 52f), GoToAnimal);
+
+        Label("Foot2", page, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
+            .text = "Animals put down here are real ones: they behave, and the book counts them. The hour and the weather are on the Weather page.";
+    }
+
+    private TMP_Text weatherLabel;
+
+    /// <summary>
+    /// The weather page: the sky held at a level, from clear to a downpour,
+    /// or let go to be its own; the hour; the clock slowed. Rain falls once
+    /// the overcast is past the rain's threshold, and the water shows it.
+    /// </summary>
+    private void BuildWeather(Transform page)
+    {
+        Label("Sky", page, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
+            .text = "HOLD THE SKY AT";
+
+        (string, float)[] skies = { ("clear", 0f), ("cloudy", 0.4f), ("light rain", 0.65f), ("rain", 0.8f), ("downpour", 1f) };
+
+        for (int i = 0; i < skies.Length; i++)
+        {
+            var sky = skies[i];
+            Button(sky.Item1, page, new Vector2((i - 2f) * 176f, 336f), new Vector2(168f, 46f), () =>
+            {
+                TimeOfDay.Instance?.ForceOvercast(sky.Item2);
+                Notices.Show("Dev: the sky held at " + sky.Item1 + ".");
+            });
+        }
+
+        Button("Let the weather be its own again", page, new Vector2(-230f, 280f), new Vector2(430f, 46f), () =>
+        {
+            TimeOfDay.Instance?.ForceOvercast(-1f);
+            Notices.Show("Dev: the weather is its own again.");
+        });
+
+        Button("A minute of rain, then let go", page, new Vector2(230f, 280f), new Vector2(430f, 46f), () =>
+        {
+            StartCoroutine(Shower(60f));
+            Toggle(false);
+            Notices.Show("Dev: a minute of rain.");
+        });
+
+        weatherLabel = Label("Now", page, 17f, new Vector2(0f, 226f), new Vector2(880f, 30f));
+
+        Label("Hour", page, 17f, new Vector2(0f, 150f), new Vector2(880f, 30f))
             .text = "THE HOUR, AND THE CLOCK";
 
         (string, float)[] hours = { ("dawn", 0.24f), ("noon", 0.50f), ("dusk", 0.74f), ("night", 0.95f) };
+
         for (int i = 0; i < hours.Length; i++)
         {
             var hour = hours[i];
-            Button(hour.Item1, page, new Vector2((i - 2.5f) * 146f, -112f), new Vector2(138f, 46f), () =>
+            Button(hour.Item1, page, new Vector2((i - 2f) * 176f, 108f), new Vector2(168f, 46f), () =>
             {
                 if (TimeOfDay.Instance != null) TimeOfDay.Instance.SetTime(hour.Item2);
                 Notices.Show("Dev: " + hour.Item1 + ".");
             });
         }
-        Button("rain", page, new Vector2(1.5f * 146f, -112f), new Vector2(138f, 46f), () => { TimeOfDay.Instance?.ForceOvercast(0.95f); Notices.Show("Dev: rain."); });
-        Button("clear", page, new Vector2(2.5f * 146f - 73f, -166f), new Vector2(210f, 46f), () => { TimeOfDay.Instance?.ForceOvercast(-1f); Notices.Show("Dev: the weather is its own again."); });
-        slowLabel = Button("slow time", page, new Vector2(2.5f * 146f - 73f, -112f), new Vector2(210f, 46f), () =>
+
+        slowLabel = Button("slow time", page, new Vector2(2f * 176f, 108f), new Vector2(168f, 46f), () =>
         {
             slow = !slow;
             Time.timeScale = slow ? 0.25f : 1f;
-            slowLabel.text = slow ? "time back to normal" : "slow time";
+            slowLabel.text = slow ? "normal time" : "slow time";
         });
 
-        Button("Take every animal away", page, new Vector2(-230f, -180f), new Vector2(430f, 52f), () =>
-        {
-            Wildlife.ClearAll();
-            Notices.Show("Dev: the country is empty.");
-        });
-        Button("Go to the nearest animal", page, new Vector2(230f, -180f), new Vector2(430f, 52f), GoToAnimal);
+        Label("Foot3", page, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
+            .text = "Rain falls once the overcast is past " + Rain.Threshold.ToString("F2") + ". A held sky holds until you let it go. Stand by a lake to see the rain ring it.";
+    }
 
-        Label("Foot2", page, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
-            .text = "Animals put down here are real ones: they behave, and the book counts them.";
+    private System.Collections.IEnumerator Shower(float seconds)
+    {
+        TimeOfDay.Instance?.ForceOvercast(0.85f);
+        yield return new WaitForSeconds(seconds);
+        TimeOfDay.Instance?.ForceOvercast(-1f);
+        Notices.Show("Dev: the rain let go.");
+    }
+
+    private void RefreshWeather()
+    {
+        if (weatherLabel == null) return;
+
+        float overcast = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
+        bool held = TimeOfDay.Instance != null && TimeOfDay.Instance.OvercastHeld;
+
+        weatherLabel.text = "overcast " + overcast.ToString("F2")
+                          + (Rain.Intensity > 0f ? ", raining (" + Mathf.RoundToInt(Rain.Intensity * 100f) + "%)" : ", dry")
+                          + (held ? " -- held" : " -- its own");
     }
 
     private TMP_Text slowLabel;
@@ -528,7 +598,7 @@ public class DevTools : MonoBehaviour
         Label("How", page, 17f, new Vector2(0f, 378f), new Vector2(880f, 30f))
             .text = "THE TITLE'S BACKDROP";
         Label("Why", page, 16f, new Vector2(0f, 300f), new Vector2(820f, 120f))
-            .text = "Stand somewhere worth looking at, set the hour and weather on the Animals page, and capture. "
+            .text = "Stand somewhere worth looking at, set the hour and weather on the Weather page, and capture. "
                   + "Six faces are rendered from where the camera is, with the world drawn out to the horizon. "
                   + "Captured views wait beside the saves until you bake them in the editor "
                   + "(Tools > Tile World > Bake the title panorama), which puts them behind the menu in the order captured.";

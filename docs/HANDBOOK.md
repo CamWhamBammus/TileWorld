@@ -399,13 +399,24 @@ the opening again; wipe the world. `DevTools.cs` is under
 `#if UNITY_EDITOR || DEVELOPMENT_BUILD`; `check.sh` defines
 `DEVELOPMENT_BUILD` so it is compiled.
 
-The panel has two pages. **Animals** puts any kind down ten metres ahead
-(`Wildlife.Summon`, which marks it `Kept` so the hours cull leaves it alone),
-stages a company, a wolf pair or a fox after a rabbit, and tells everything
-within forty metres to walk, run, rest, graze, alert, spook or hunt
-(`Animal.Direct`, which nothing in the game itself uses). Hours and slow time
-are there too. The probe `Tools/probe/DevAnimals.cs.txt` presses the buttons
-by reflection and checks what they did.
+The panel has four pages, the tabs two a side of the heading. **Animals**
+puts any kind down ten metres ahead (`Wildlife.Summon`, which marks it `Kept`
+so the hours cull leaves it alone), stages a company, a wolf pair or a fox
+after a rabbit, and tells everything within forty metres to walk, run, rest,
+graze, alert, spook or hunt (`Animal.Direct`, which nothing in the game
+itself uses). **Weather** holds the sky at clear, cloudy, light rain, rain
+or a downpour (`TimeOfDay.ForceOvercast`; rain falls past `Rain.Threshold`,
+0.55), lets it be its own again, gives a minute of rain, shows the overcast,
+whether it is raining and how hard (`Rain.Intensity`) and whether the sky is
+held (`TimeOfDay.OvercastHeld`), and has the hours and slow time. **Title**
+captures the backdrop views. The probe `Tools/probe/DevAnimals.cs.txt`
+presses the animal buttons by reflection and checks what they did;
+`Tools/probe/DevPages.cs.txt` opens every page, photographs it, checks that
+no two buttons on it overlap and none is outside the card, and presses
+"rain". Every button is placed by hand at a fixed offset, so the overlap
+check is the thing to run after adding one: the six small finds pushed the
+structure list into the buttons under it, and the old "slow time" sat on
+"rain".
 
 ## Performance
 

@@ -196,7 +196,7 @@ The game saves every thirty seconds, on quit, and on the way back to the title.
 - Click the map to place a marker, right click to remove it
 - F9 saves the map as an image, F3 shows world stats
 - Escape closes whatever is open, or pauses; the pause menu has Main menu
-- F8 (editor and dev builds only) opens the dev tools. Places: teleport to the nearest region, water type or structure, replay the intro, wipe the save. Animals: put any kind down in front of you, stage a herd, a wolf pair or a fox hunting a rabbit, tell everything nearby to walk, run, rest, spook or hunt, set the hour, slow time, or jump to the nearest animal. Title: capture the view from where you stand as a backdrop for the title screen (baked in the editor)
+- F8 (editor and dev builds only) opens the dev tools. Places: teleport to the nearest region, water type, structure or small find, replay the intro, wipe the save. Animals: put any kind down in front of you, stage a herd, a wolf pair or a fox hunting a rabbit, tell everything nearby to walk, run, rest, spook or hunt, or jump to the nearest animal. Weather: hold the sky at clear, cloudy, light rain, rain or a downpour, let it go again, give it a minute of rain, set the hour, slow time. Title: capture the view from where you stand as a backdrop for the title screen (baked in the editor)
 
 ## Running it
 

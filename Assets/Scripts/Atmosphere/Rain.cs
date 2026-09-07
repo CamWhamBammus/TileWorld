@@ -14,6 +14,11 @@ public class Rain : MonoBehaviour
     [Tooltip("Overcast has to be at least this heavy before it rains.")]
     [SerializeField, Range(0f, 1f)] private float threshold = 0.55f;
 
+    /// <summary>How hard it is raining, 0 to 1, for anything that wants to know.</summary>
+    public static float Intensity { get; private set; }
+    /// <summary>The overcast it takes before anything falls.</summary>
+    public static float Threshold { get; private set; } = 0.55f;
+
     private Transform view;
     private Transform[] streaks;
     private float[] floors;     // the ground or the water under each streak, in world y
@@ -108,6 +113,8 @@ public class Rain : MonoBehaviour
 
         float intensity = raining ? Mathf.InverseLerp(threshold, 1f, overcast) : 0f;
         int active = Mathf.RoundToInt(streaks.Length * intensity);
+        Intensity = intensity;
+        Threshold = threshold;
 
         // more drops land than are drawn: the water gets rings for the rest
         ringsOwed += Time.deltaTime * 420f * intensity;

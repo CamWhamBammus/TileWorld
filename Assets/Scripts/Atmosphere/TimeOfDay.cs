@@ -261,6 +261,9 @@ public class TimeOfDay : MonoBehaviour
     private float forcedOvercast = -1f;
     public void ForceOvercast(float overcast) { forcedOvercast = overcast; }
 
+    /// <summary>Whether the sky is being held at a level rather than being its own.</summary>
+    public bool OvercastHeld => forcedOvercast >= 0f;
+
     /// <summary>Changes how long a day takes while running.</summary>
     public void SetDayLength(float minutes)
     {
