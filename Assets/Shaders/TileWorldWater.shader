@@ -18,6 +18,10 @@ Shader "TileWorld/Water"
         _Sparkle ("Sparkle", Float) = 0.7
         _Refract ("Refraction", Float) = 0.04
         _Fresnel ("Sky at the edge", Float) = 0.55
+        _Wash ("Wash (0 water, 1 water up the sand, 2 foam only)", Float) = 0
+        _Period ("Wash period", Float) = 14
+        _Reach ("Wash reach", Float) = 6.5
+        _Back ("Wash retreat", Float) = -4
     }
 
     SubShader
@@ -31,7 +35,7 @@ Shader "TileWorld/Water"
             ZWrite Off
             ZTest LEqual
             Cull Off
-            Blend Off
+            Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -46,20 +50,41 @@ Shader "TileWorld/Water"
             CBUFFER_START(UnityPerMaterial)
             float4 _Shallow, _Deep, _Foam;
             float _DepthFade, _FoamDepth, _WaveHeight, _WaveScale, _Speed, _Sparkle, _Refract, _Fresnel;
+            float _Wash, _Period, _Reach, _Back;
             CBUFFER_END
 
             // the moon, set by the clock: where it is, and how bright
             float4 _MoonDir;
             float4 _MoonColor;
 
-            struct Attributes { float4 positionOS : POSITION; };
+            struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 float fogFactor : TEXCOORD1;
+                float2 wash : TEXCOORD2;      // distance from the waterline, and a phase, for the wash
             };
+
+            float Hash(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
+            float Noise(float2 p)
+            {
+                float2 i = floor(p), f = frac(p);
+                f = f * f * (3 - 2 * f);
+                return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x), lerp(Hash(i + float2(0, 1)), Hash(i + float2(1, 1)), f.x), f.y);
+            }
+
+            // where the wave's front is, in metres from the waterline: in over a third
+            // of the cycle, held a moment at the top, and drawn back slowly
+            float Front(float phase)
+            {
+                float cycle = frac(_Time.y / _Period + phase);
+                float f = cycle < 0.3 ? smoothstep(0, 1, cycle / 0.3)
+                        : cycle < 0.42 ? 1
+                        : 1 - smoothstep(0, 1, (cycle - 0.42) / 0.58);
+                return lerp(_Back, _Reach, f);
+            }
 
             // two crossing waves and a slower swell, all from world position
             float Height(float2 p, float t)
@@ -89,6 +114,7 @@ Shader "TileWorld/Water"
                 o.positionWS = ws;
                 o.positionCS = TransformWorldToHClip(ws);
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
+                o.wash = v.uv;
                 return o;
             }
 
@@ -114,12 +140,31 @@ Shader "TileWorld/Water"
 
                 float fade = saturate(depth / _DepthFade);
                 float4 tint = lerp(_Shallow, _Deep, fade);
+                // a wash on the sand is thin, but it is still water: a floor to its colour
+                if (_Wash > 0.5) tint.a = max(tint.a, 0.2);
                 float3 water = lerp(bed, tint.rgb, tint.a);
 
                 // foam at the shore and round anything in it, breaking up as it goes
                 float foamNoise = sin(i.positionWS.x * 7.3 + t * 2.0) * cos(i.positionWS.z * 6.1 - t * 1.6) * 0.5 + 0.5;
-                float foam = saturate(1 - depth / _FoamDepth) * smoothstep(0.5, 0.75, foamNoise) * 0.7;
+                float foam = saturate(1 - depth / _FoamDepth) * smoothstep(0.5, 0.75, foamNoise) * 0.7 * (_Wash > 0.5 ? 0 : 1);
                 water = lerp(water, _Foam.rgb, foam);
+
+                // the wash: the sheet ends at the front, foam rides the front, and lines are left as it goes back
+                float alpha = 1;
+                if (_Wash > 0.5)
+                {
+                    float dist = i.wash.x;
+                    float front = Front(i.wash.y);
+                    float cycle = frac(_Time.y / _Period + i.wash.y);
+                    float coming = cycle < 0.3 ? 1 : 0;
+                    float breakup = Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.8 + 0.4;
+                    float off = (dist - front) / 1.2;
+                    float band = exp(-off * off) * lerp(0.65, 1, coming) * breakup;
+                    float lines = smoothstep(0.85, 1, frac(dist * 0.9 + Noise(i.positionWS.xz * 0.6) * 0.5)) * (dist > 0 && dist < front) * (1 - coming) * 0.25 * breakup;
+                    float edge = 1 - smoothstep(front - 0.3, front + 0.25, dist);      // the sheet stops at the front
+                    if (_Wash > 1.5) { water = _Foam.rgb; alpha = saturate(band * 0.9 + lines * 0.5) * (dist < front + 0.5); }
+                    else { water = lerp(water, _Foam.rgb, saturate(band + lines)); alpha = max(edge, band * 0.9); }
+                }
 
                 // the sun on it
                 Light sun = GetMainLight();
@@ -138,7 +183,7 @@ Shader "TileWorld/Water"
                 water = lerp(water, unity_FogColor.rgb, fresnel * (0.4 + 0.6 * fade));
 
                 water = MixFog(water, i.fogFactor);
-                return half4(water, 1);
+                return half4(water, alpha);
             }
             ENDHLSL
         }

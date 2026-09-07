@@ -516,26 +516,30 @@ up to a minute for a shooting star.
 
 ### The wash, and the fireflies
 
-`Surf.BuildWashMesh` (in `World/`) lays quads over the strand -- dry sand on
-an open shore within 0.7 m of the water level, the same rule as the sand
-tiles -- and the shallows just out from it, each vertex carrying its
-distance from the waterline in metres in uv.x (negative in the water) and
-a Perlin phase in uv.y. `TileWorld/Wash` (kept in the build by
-`Resources/Wash.mat`) moves a front from four metres out to six and a half
-up the sand on a 7.5 s cycle, in fast and out slow, offset by the phase so
-the coast does not move as one; a band of foam at the front broken up by
-noise, a thin sheet behind it thinning as it draws back, and lines of foam
-left on the sand. It is an overlay in `ChunkManager` like the ice. Lakes
+`Surf` (in `World/`) lays two sheets on an open shore: the strand -- dry sand
+within 0.7 m of the water level, the same rule as the sand tiles -- gets
+quads 6 cm above the sand, and the shallows just out from it get quads 4 cm
+above the water. Each vertex carries its distance from the waterline in
+metres in uv.x (negative in the water; the corners take the mean of the
+tiles round them so the value runs smoothly across a tile) and a Perlin
+phase in uv.y. Both sheets use the water shader (`TileWorld/Water`) in its
+wash modes: `_Wash` 1 on the strand draws real water -- the same shader,
+with its refraction, sheen and glint, a floor on its tint so a thin sheet
+still reads as water -- that stops at the wave's front with foam riding the
+front and lines of foam left as it goes back; `_Wash` 2 over the shallows
+draws foam only, where the wave breaks before it runs up. The front runs
+from four metres out to six and a half up the sand on a fourteen-second
+cycle: in over the first third, held a moment at the top, drawn back over
+the rest, offset by the phase so the coast does not move as one. Lakes
 get none. `SurfSound` looks for the nearest strand tile twice a second and
-plays a made loop of two swells at the wash's period, louder the nearer.
-Two things that cost a few runs: each quad's corners take the mean of the
-distances of the tiles round them, because one distance per tile left the
-foam band -- a metre wide -- falling between two-metre steps and never
-landing on a tile; and never `pow(x, 2)` on a value that can go negative
-in a shader, since that is NaN on the GPU and the whole quad vanishes.
-Square by hand. The way to tell a shader that draws nothing from a mesh
-that is not there is to swap in the glow material: if the quads light up,
-the mesh is fine.
+plays a made loop of two swells on the same period, louder the nearer.
+Two things that cost a few runs: one distance per tile left the foam band
+-- a metre wide -- falling between two-metre steps and never landing on a
+tile, hence the corner means; and never `pow(x, 2)` on a value that can go
+negative in a shader, since that is NaN on the GPU and the whole quad
+vanishes. Square by hand. The way to tell a shader that draws nothing from
+a mesh that is not there is to swap in the glow material: if the quads
+light up, the mesh is fine.
 
 `Fireflies` was rewritten: each fly has a place in the world and a heading
 that wanders by noise, and hangs where it is as the player walks by (the

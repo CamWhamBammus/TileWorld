@@ -89,23 +89,19 @@ public class _Probe : MonoBehaviour
         Vector3 eye = player.position + Vector3.up * 1.6f - player.forward * 2f + along * 3f;
         Vector3 at = player.position + player.forward * 6f; at.y = WaterSurface.Level;
         yield return Shot("wave-a", eye, at);
-        yield return new WaitForSecondsRealtime(2.2f);
+        yield return new WaitForSecondsRealtime(4.5f);
         yield return Shot("wave-b", eye, at);
-        yield return new WaitForSecondsRealtime(2.2f);
+        yield return new WaitForSecondsRealtime(4.5f);
         yield return Shot("wave-c", eye, at);
         yield return Shot("wave-high", player.position + Vector3.up * 9f - player.forward * 4f, player.position + player.forward * 10f);
-        var washRoot = GameObject.Find("Wash (runtime)");
-        var washRend = washGo != null ? washGo.GetComponent<MeshRenderer>() : null;
-        if (washRend != null)
+        if (washGo != null)
         {
-            var mat = washRend.sharedMaterial;
-            Mark("WASH RENDERER: enabled " + washRend.enabled + ", visible " + washRend.isVisible + ", bounds " + washRend.bounds.center.ToString("F0") + " size " + washRend.bounds.size.ToString("F0")
-                 + ", shader " + (mat != null ? mat.shader.name + " supported " + mat.shader.isSupported + " queue " + mat.renderQueue : "no material") + ", camera at " + cam.transform.position.ToString("F0"));
-            washRend.sharedMaterial = mat;
-            yield return Shot("wave-above", washRend.bounds.center + Vector3.up * 12f, washRend.bounds.center);
-            yield return new WaitForSecondsRealtime(2.5f);
-            yield return Shot("wave-above2", washRend.bounds.center + Vector3.up * 12f, washRend.bounds.center);
+            var b = washGo.GetComponent<MeshRenderer>().bounds;
+            yield return Shot("wave-above", b.center + Vector3.up * 12f, b.center);
+            yield return new WaitForSecondsRealtime(5f);
+            yield return Shot("wave-above2", b.center + Vector3.up * 12f, b.center);
         }
+        var washRoot = GameObject.Find("Wash (runtime)");
         if (washRoot != null) washRoot.SetActive(false);
         yield return Shot("wave-nowash", eye, at);
         if (washRoot != null) washRoot.SetActive(true);

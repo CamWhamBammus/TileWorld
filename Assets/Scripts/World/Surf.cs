@@ -30,7 +30,13 @@ public static class Surf
         return Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Water;
     }
 
-    public static Mesh BuildWashMesh(Vector2Int chunkIndex, int worldSeed)
+    /// <summary>The water that runs up the sand: quads over the strand only.</summary>
+    public static Mesh BuildWashMesh(Vector2Int chunkIndex, int worldSeed) => BuildSheet(chunkIndex, worldSeed, true);
+
+    /// <summary>The foam over the shallows, where the wave breaks before it runs up.</summary>
+    public static Mesh BuildFoamMesh(Vector2Int chunkIndex, int worldSeed) => BuildSheet(chunkIndex, worldSeed, false);
+
+    private static Mesh BuildSheet(Vector2Int chunkIndex, int worldSeed, bool sand)
     {
         int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
         int originZ = chunkIndex.y * WorldGrid.TilesPerChunk;
@@ -53,12 +59,12 @@ public static class Surf
             if (IsStrand(tileX, tileZ, worldSeed))
             {
                 int toWater = Nearest(tileX, tileZ, worldSeed, true, Reach);
-                if (toWater > 0) { d = (toWater - 0.5f) * WorldGrid.TileSize; y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.03f; }
+                if (toWater > 0) { d = (toWater - 0.5f) * WorldGrid.TileSize; y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.06f; }
             }
             else if (IsShallows(tileX, tileZ, worldSeed))
             {
                 int toSand = Nearest(tileX, tileZ, worldSeed, false, Out);
-                if (toSand > 0) { d = -(toSand - 0.5f) * WorldGrid.TileSize; y = WaterSurface.Level + 0.02f; }
+                if (toSand > 0) { d = -(toSand - 0.5f) * WorldGrid.TileSize; y = WaterSurface.Level + 0.04f; }
             }
 
             dist[i + 1, j + 1] = d;
@@ -88,6 +94,7 @@ public static class Surf
         {
             float own = dist[i + 1, j + 1];
             if (float.IsNaN(own)) continue;
+            if ((own >= 0f) != sand) continue;        // the sand for the water, the shallows for the foam
 
             float y = height[i + 1, j + 1];
             float phase = Mathf.PerlinNoise((originX + i) * 0.018f + worldSeed * 0.01f, (originZ + j) * 0.018f);
@@ -101,7 +108,7 @@ public static class Surf
         }
 
         if (verts.Count == 0) return null;
-        var mesh = new Mesh { name = "Wash " + chunkIndex };
+        var mesh = new Mesh { name = (sand ? "Wash " : "Foam ") + chunkIndex };
         mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetTriangles(tris, 0);
         mesh.RecalculateBounds();
         return mesh;
@@ -120,9 +127,27 @@ public static class Surf
         return -1;
     }
 
+    /// <summary>The water shader in wash mode: a thin sheet that stops at the wave's front, up the sand.</summary>
     public static Material CreateMaterial()
     {
-        var own = Resources.Load<Material>("Wash");
-        return own != null && own.shader != null && own.shader.isSupported ? new Material(own) : null;
+        var water = Resources.Load<Material>("Water");
+        if (water == null || water.shader == null || !water.shader.isSupported) return null;
+        var m = new Material(water);
+        m.SetFloat("_Wash", 1f);
+        m.SetFloat("_WaveHeight", 0.012f);
+        m.renderQueue = 3004;
+        return m;
+    }
+
+    /// <summary>The same in foam-only mode, over the shallows.</summary>
+    public static Material CreateFoamMaterial()
+    {
+        var water = Resources.Load<Material>("Water");
+        if (water == null || water.shader == null || !water.shader.isSupported) return null;
+        var m = new Material(water);
+        m.SetFloat("_Wash", 2f);
+        m.SetFloat("_WaveHeight", 0.0f);
+        m.renderQueue = 3006;
+        return m;
     }
 }

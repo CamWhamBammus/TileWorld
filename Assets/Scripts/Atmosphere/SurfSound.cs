@@ -23,7 +23,7 @@ public class SurfSound : MonoBehaviour
     private void Awake()
     {
         source = gameObject.AddComponent<AudioSource>();
-        source.clip = Build(15f, 91);
+        source.clip = Build(28f, 91);
         source.loop = true;
         source.spatialBlend = 0f;
         source.volume = 0f;
@@ -74,8 +74,8 @@ public class SurfSound : MonoBehaviour
             float white = (float)(rng.NextDouble() * 2.0 - 1.0);
             lowA += fA * bandA; float highA = white - lowA - 1.3f * bandA; bandA += fA * highA;
             lowB += fB * bandB; float highB = white - lowB - 1.0f * bandB; bandB += fB * highB;
-            // two waves, seven and a half seconds apart, each rising quickly and falling away
-            float c1 = Mathf.Repeat(t / 7.5f, 1f), c2 = Mathf.Repeat(t / 7.5f + 0.45f, 1f);
+            // two waves, fourteen seconds apart, each rising quickly and falling away
+            float c1 = Mathf.Repeat(t / 14f, 1f), c2 = Mathf.Repeat(t / 14f + 0.45f, 1f);
             float s1 = c1 < 0.3f ? Mathf.SmoothStep(0f, 1f, c1 / 0.3f) : 1f - Mathf.SmoothStep(0f, 1f, (c1 - 0.3f) / 0.7f);
             float s2 = c2 < 0.3f ? Mathf.SmoothStep(0f, 1f, c2 / 0.3f) : 1f - Mathf.SmoothStep(0f, 1f, (c2 - 0.3f) / 0.7f);
             float swell = 0.25f + 0.75f * Mathf.Max(s1, s2 * 0.6f);
