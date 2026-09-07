@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _DepthFade: 2.4
-    - _FoamDepth: 0.38
+    - _FoamDepth: 0.22
     - _Fresnel: 0.55
     - _Refract: 0.04
     - _Sparkle: 0.7
@@ -36,5 +36,5 @@ Material:
     m_Colors:
     - _Deep: {r: 0.05, g: 0.2, b: 0.34, a: 0.94}
     - _Foam: {r: 0.93, g: 0.97, b: 0.98, a: 1}
-    - _Shallow: {r: 0.34, g: 0.62, b: 0.6, a: 0.45}
+    - _Shallow: {r: 0.3, g: 0.58, b: 0.56, a: 0.32}
   m_BuildTextureStacks: []

@@ -7,11 +7,11 @@ Shader "TileWorld/Water"
 {
     Properties
     {
-        _Shallow ("Shallow", Color) = (0.34, 0.62, 0.60, 0.45)
+        _Shallow ("Shallow", Color) = (0.30, 0.58, 0.56, 0.32)
         _Deep ("Deep", Color) = (0.05, 0.20, 0.34, 0.94)
         _Foam ("Foam", Color) = (0.93, 0.97, 0.98, 1)
         _DepthFade ("Depth to full colour", Float) = 2.4
-        _FoamDepth ("Foam depth", Float) = 0.38
+        _FoamDepth ("Foam depth", Float) = 0.22
         _WaveHeight ("Wave height", Float) = 0.035
         _WaveScale ("Wave scale", Float) = 0.45
         _Speed ("Speed", Float) = 0.6
@@ -98,7 +98,9 @@ Shader "TileWorld/Water"
                 // how much water is under this point of the surface, along the view
                 float surfaceDepth = i.positionCS.w;
                 float sceneDepth = LinearEyeDepth(SampleSceneDepth(uv), _ZBufferParams);
-                float depth = max(0, sceneDepth - surfaceDepth);
+                // along the view ray, then made vertical: at a low angle a
+                // ray runs a long way through shallow water
+                float depth = max(0, sceneDepth - surfaceDepth) * max(0.08, abs(view.y));
 
                 // the bed, bent by the surface; not bent where that would drag in something above the water
                 float2 bent = uv + n.xz * _Refract * saturate(depth);
@@ -112,7 +114,7 @@ Shader "TileWorld/Water"
 
                 // foam at the shore and round anything in it, breaking up as it goes
                 float foamNoise = sin(i.positionWS.x * 7.3 + t * 2.0) * cos(i.positionWS.z * 6.1 - t * 1.6) * 0.5 + 0.5;
-                float foam = saturate(1 - depth / _FoamDepth) * step(0.35, foamNoise) * 0.85;
+                float foam = saturate(1 - depth / _FoamDepth) * smoothstep(0.5, 0.75, foamNoise) * 0.7;
                 water = lerp(water, _Foam.rgb, foam);
 
                 // the sun on it
