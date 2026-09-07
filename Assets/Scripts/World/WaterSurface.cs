@@ -64,8 +64,39 @@ public static class WaterSurface
         return WorldHeight.SurfaceY(tileX, tileZ, seed) < Level;
     }
 
-    /// <summary>A quad for every submerged tile, or null if the chunk is dry.</summary>
-    public static Mesh BuildMesh(Vector2Int chunkIndex, int worldSeed)
+    /// <summary>
+    /// Water in the snow country is ice: a surface you stand on rather than
+    /// go into. Decided by the unfrayed border, so a lake lying across it is
+    /// frozen up to a line and not in a speckle.
+    /// </summary>
+    public static bool IsFrozen(int tileX, int tileZ, int seed)
+    {
+        return IsUnderwater(tileX, tileZ, seed)
+            && Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Snow;
+    }
+
+    /// <summary>Open water: under the level, and not frozen over.</summary>
+    public static bool IsOpenWater(int tileX, int tileZ, int seed)
+    {
+        return IsUnderwater(tileX, tileZ, seed)
+            && Regions.CharacterAtTile(tileX, tileZ, seed, false) != Regions.Character.Snow;
+    }
+
+    /// <summary>The height you walk on: the ground, or the ice where the ground is under frozen water.</summary>
+    public static float WalkingY(int tileX, int tileZ, int seed)
+    {
+        float ground = WorldHeight.SurfaceY(tileX, tileZ, seed);
+        if (ground < Level && Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Snow) return Level;
+        return ground;
+    }
+
+    /// <summary>A quad for every submerged tile that is open water, or null if the chunk has none.</summary>
+    public static Mesh BuildMesh(Vector2Int chunkIndex, int worldSeed) => BuildSheet(chunkIndex, worldSeed, false);
+
+    /// <summary>A quad for every frozen tile, or null if the chunk has none.</summary>
+    public static Mesh BuildIceMesh(Vector2Int chunkIndex, int worldSeed) => BuildSheet(chunkIndex, worldSeed, true);
+
+    private static Mesh BuildSheet(Vector2Int chunkIndex, int worldSeed, bool frozen)
     {
         int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
         int originZ = chunkIndex.y * WorldGrid.TilesPerChunk;
@@ -83,7 +114,7 @@ public static class WaterSurface
             int tileZ = originZ + j;
 
             if (!IsUnderwater(tileX, tileZ, worldSeed)) continue;
-
+            if (IsFrozen(tileX, tileZ, worldSeed) != frozen) continue;
             float x = i * WorldGrid.TileSize;
             float z = j * WorldGrid.TileSize;
 
@@ -100,13 +131,21 @@ public static class WaterSurface
 
         if (vertices.Count == 0) return null;
 
-        var mesh = new Mesh { name = "Water " + chunkIndex };
+        var mesh = new Mesh { name = (frozen ? "Ice " : "Water ") + chunkIndex };
         mesh.SetVertices(vertices);
         mesh.SetTriangles(triangles, 0);
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
         return mesh;
+    }
+
+    /// <summary>Ice: opaque, pale, with a sheen; the bed under it is not seen.</summary>
+    public static Material CreateIceMaterial()
+    {
+        var m = Paint.Flat(new Color(0.80f, 0.88f, 0.94f));
+        if (m != null) m.SetFloat("_Smoothness", 0.62f);
+        return m;
     }
 
     /// <summary>Translucent, unlit enough to read as water without a shader of its own.</summary>

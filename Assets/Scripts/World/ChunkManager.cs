@@ -137,6 +137,10 @@ public class ChunkManager : MonoBehaviour
     private readonly List<Vector2Int> waterScratch = new List<Vector2Int>();
     private Transform waterRoot;
     private Material waterMaterial;
+    private readonly Dictionary<Vector2Int, GameObject> icePatches = new Dictionary<Vector2Int, GameObject>();
+    private readonly List<Vector2Int> iceScratch = new List<Vector2Int>();
+    private Transform iceRoot;
+    private Material iceMaterial;
 
     private readonly Dictionary<Vector2Int, GameObject> snowPatches = new Dictionary<Vector2Int, GameObject>();
     private readonly List<Vector2Int> snowScratch = new List<Vector2Int>();
@@ -181,6 +185,9 @@ public class ChunkManager : MonoBehaviour
             waterRoot = new GameObject("Water (runtime)").transform;
             waterRoot.SetParent(transform, worldPositionStays: true);
             waterMaterial = WaterSurface.CreateMaterial();
+            iceRoot = new GameObject("Ice (runtime)").transform;
+            iceRoot.SetParent(transform, worldPositionStays: true);
+            iceMaterial = WaterSurface.CreateIceMaterial();
         }
 
         if (snow)
@@ -296,6 +303,7 @@ public class ChunkManager : MonoBehaviour
         if (water)
         {
             RefreshOverlay(waterPatches, waterScratch, waterRoot, waterMaterial, WaterSurface.BuildMesh, "Water");
+            RefreshOverlay(icePatches, iceScratch, iceRoot, iceMaterial, WaterSurface.BuildIceMesh, "Ice");
         }
 
         if (snow)

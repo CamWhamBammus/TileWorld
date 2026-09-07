@@ -217,7 +217,11 @@ public class Undergrowth : MonoBehaviour
             if (instance.gathered[i] == null) continue;
             foreach (var m in instance.gathered[i])
             {
-                if (m.lossyScale.y * instance.every[i].Size < 2.2f) continue;   // trees, not bushes
+                // the y column's length is the scale; lossyScale asserts the
+                // matrix is a proper TRS, which a planted one need not be,
+                // and did so eighty thousand times in a minute of rain
+                float tall = ((Vector3)m.GetColumn(1)).magnitude;
+                if (tall * instance.every[i].Size < 2.2f) continue;   // trees, not bushes
                 var p = m.GetPosition();
                 float d = Vector2.Distance(new Vector2(p.x, p.z), new Vector2(at.x, at.z));
                 if (d < best) { best = d; trunk = p; }

@@ -1302,7 +1302,7 @@ public class Animal : MonoBehaviour
             // in the shallows a foot leaves a ring and a few drops rather than
             // a print -- the bigger animals; a frog's foot is not a splash
             bool inWater = Feet[i].y < WaterSurface.Level - 0.02f
-                && WaterSurface.IsUnderwater(Mathf.RoundToInt(Feet[i].x / WorldGrid.TileSize), Mathf.RoundToInt(Feet[i].z / WorldGrid.TileSize), seed);
+                && WaterSurface.IsOpenWater(Mathf.RoundToInt(Feet[i].x / WorldGrid.TileSize), Mathf.RoundToInt(Feet[i].z / WorldGrid.TileSize), seed);
 
             if (inWater)
             {

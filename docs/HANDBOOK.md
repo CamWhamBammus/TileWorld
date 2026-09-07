@@ -70,6 +70,21 @@ the build opens on the title: once in the title scene and again when the
 world scene loads. Guard it with `if (FindFirstObjectByType<_Probe>() != null) return;`
 or every stage runs twice, fighting over the player. The newer probes do.
 
+The editor's console can show what a build's log does not. `Assets/Editor/PlayCheck.cs`
+plays the game in the editor from the command line: copy a probe to
+`Assets/Scripts/_Probe.cs` (as `run-probe.sh` does), run
+
+    Unity -batchmode -projectPath . -executeMethod PlayCheck.Go -logFile Tools/.check/playcheck.log
+
+without `-quit` or `-nographics`, and it enters play mode for 75 s and quits
+itself; the log is the console. `WaitForEndOfFrame` never returns in batch
+mode, so a probe that screenshots stalls there -- everything before the
+first screenshot still runs. This is how the rain's console error was found:
+`Matrix4x4.lossyScale` asserts `ValidTRS()` and a planted instance's matrix
+is not always a proper TRS, so the animals' rain-shelter lookup logged an
+assertion every frame of every animal; the y column's length is the scale
+and asserts nothing.
+
 ### Measuring
 
 Most bugs here were settled by a number, not by looking harder: the palette
@@ -170,6 +185,18 @@ sand in the shallows and stone below 1.6 on a beach; mud under a lake or
 pond; stone under snow. Reeds only in lakes and ponds, in water under 1.1.
 Snow never lies on a water floor.
 
+Water in the snow country is ice. `WaterSurface.IsFrozen(tile)` is
+underwater-and-Snow by the unfrayed border (so a lake across the border
+freezes up to a line); `IsOpenWater` is the other case, and `WalkingY` is the
+height you stand on -- the level, over ice. `BuildMesh` draws the open
+water and `BuildIceMesh` the ice (opaque, pale, a sheen, from `Paint.Flat`),
+each an overlay in `ChunkManager`; `TerrainCollision` raises the collider to
+the ice, so the capsule walks across and `Swimming` never sees any depth.
+Everything that asks "is this water" for a foot, a ring or a splash asks
+`IsOpenWater`. `Rain` snows in the snow country (`Rain.Snowing`, by the
+camera's tile): the same arrays, at a fourteenth of the speed, swaying, drawn
+as white lumps, and nothing rings.
+
 `Splashes` (in `Atmosphere/`) is what water does about things going into it.
 It draws drops as small flat-shaded lumps in one `RenderMeshInstanced` call,
 leaves rings through `Tracks.Ring(at, size, lasts)`, and makes its own
@@ -199,7 +226,11 @@ own list, up to 2400, drawn in batches of a thousand. The ring mesh is `Tracks.A
 the other way is back-face culled from above and simply never appears,
 which is what a home-made one did, with the count saying 146 on the water. The calls are `Step` (a foot in the
 shallows), `Plunge` (going in), `Stroke` (a swimmer's arm) and `Wake` (a
-ring only). `Surveyor` calls them when a swung foot lands in water, when
+ring only). It also keeps the patter of rain on water: a looping clip
+(`RainOnWater`, a scatter of the smallest bubbles over a faint hiss) whose
+volume follows the rain's intensity and how many rain rings are on the
+water near the camera, so it is heard by a lake in the rain and not in a
+field, and not at all in the snow. `Surveyor` calls them when a swung foot lands in water, when
 `Swimming.Afloat` first goes true (harder for a fall or a run), once a
 stroke, and on a timer while wading or swimming; `Animal.Place` calls `Step`
 in place of a print when a foot comes down under the water level.

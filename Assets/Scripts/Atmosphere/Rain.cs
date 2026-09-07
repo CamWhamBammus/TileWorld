@@ -30,6 +30,8 @@ public class Rain : MonoBehaviour
     public static float Threshold { get; private set; } = 0.55f;
     /// <summary>The wind the rain leans with, in metres a second across the ground.</summary>
     public static Vector3 Wind { get; private set; }
+    /// <summary>Whether what is falling is snow: it is, in the snow country.</summary>
+    public static bool Snowing { get; private set; }
 
     private Transform view;
     private ChunkManager world;
@@ -38,8 +40,9 @@ public class Rain : MonoBehaviour
     private float[] length;         // how long a streak it draws
     private float[] floors;         // the ground or the water under it, in world y (0 = not yet known)
     private readonly List<Matrix4x4> batch = new List<Matrix4x4>(1024);
-    private Mesh streak;
-    private Material paint;
+    private Mesh streak, flake;
+    private Material paint, white;
+    private float[] sway;           // each flake's own drift, a phase
     private float ringsOwed;
     private float windSeed;
 
@@ -64,6 +67,10 @@ public class Rain : MonoBehaviour
         }
 
         streak = Streak();
+        flake = Flake();
+        // brighter than white: lit flakes under an overcast sky came out grey
+        white = Paint.Flat(new Color(1.7f, 1.7f, 1.75f));
+        sway = new float[drops];
         local = new Vector3[drops];
         speed = new float[drops];
         length = new float[drops];
@@ -75,6 +82,7 @@ public class Rain : MonoBehaviour
             local[i] = RandomStart();
             speed[i] = fallSpeed * Random.Range(0.85f, 1.15f);
             length[i] = Random.Range(0.4f, 0.8f);
+            sway[i] = Random.value * Mathf.PI * 2f;
         }
     }
 
@@ -123,16 +131,30 @@ public class Rain : MonoBehaviour
         transform.position = view.position;
         int active = Mathf.RoundToInt(drops * intensity);
         float dt = Time.deltaTime;
+        if (world == null) world = FindFirstObjectByType<ChunkManager>();
         int seed = world != null ? world.WorldSeed : 0;
+
+        // in the snow country it snows: slow, swaying, white, and nothing rings
+        Snowing = Regions.CharacterAtTile(Mathf.RoundToInt(view.position.x / WorldGrid.TileSize), Mathf.RoundToInt(view.position.z / WorldGrid.TileSize), seed) == Regions.Character.Snow;
+        float slow = Snowing ? 0.07f : 1f;
 
         batch.Clear();
 
         for (int i = 0; i < active; i++)
         {
             var p = local[i];
-            p.y -= speed[i] * dt;
-            p.x += Wind.x * dt;
-            p.z += Wind.z * dt;
+            p.y -= speed[i] * slow * dt;
+
+            if (Snowing)
+            {
+                p.x += (Wind.x * 0.3f + Mathf.Sin(Time.time * 1.1f + sway[i]) * 0.35f) * dt;
+                p.z += (Wind.z * 0.3f + Mathf.Cos(Time.time * 0.9f + sway[i] * 1.7f) * 0.35f) * dt;
+            }
+            else
+            {
+                p.x += Wind.x * dt;
+                p.z += Wind.z * dt;
+            }
 
             // A drop falls to the ground or the water under it, not to a fixed
             // depth below the camera: the camera rides well above the ground,
@@ -142,7 +164,7 @@ public class Rain : MonoBehaviour
 
             if (transform.position.y + p.y <= floors[i])
             {
-                if (floors[i] <= WaterSurface.Level + 0.001f) Splashes.Raindrop(transform.position + p, seed, 1f);
+                if (!Snowing && floors[i] <= WaterSurface.Level + 0.001f) Splashes.Raindrop(transform.position + p, seed, 1f);
                 p = RandomStart();
                 floors[i] = FloorUnder(transform.position + p);
             }
@@ -155,20 +177,31 @@ public class Rain : MonoBehaviour
 
             local[i] = p;
 
-            // leant along the way it is falling
-            var going = new Vector3(Wind.x, -speed[i], Wind.z);
-            var lean = Quaternion.FromToRotation(Vector3.down, going.normalized);
-            batch.Add(Matrix4x4.TRS(transform.position + p, lean, new Vector3(1f, length[i], 1f)));
+            if (Snowing)
+            {
+                float size = 0.07f + length[i] * 0.09f;
+                batch.Add(Matrix4x4.TRS(transform.position + p, Quaternion.Euler(sway[i] * 40f, Time.time * 30f + sway[i] * 90f, 0f), new Vector3(size, size, size)));
+            }
+            else
+            {
+                // leant along the way it is falling
+                var going = new Vector3(Wind.x, -speed[i], Wind.z);
+                var lean = Quaternion.FromToRotation(Vector3.down, going.normalized);
+                batch.Add(Matrix4x4.TRS(transform.position + p, lean, new Vector3(1f, length[i], 1f)));
+            }
         }
 
         for (int i = active; i < drops; i++) floors[i] = 0f;
 
         if (batch.Count > 0)
         {
-            var rp = new RenderParams(paint) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
+            var rp = new RenderParams(Snowing ? white : paint) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
+            var mesh = Snowing ? flake : streak;
             for (int from = 0; from < batch.Count; from += 1000)
-                Graphics.RenderMeshInstanced(rp, streak, 0, batch, Mathf.Min(1000, batch.Count - from), from);
+                Graphics.RenderMeshInstanced(rp, mesh, 0, batch, Mathf.Min(1000, batch.Count - from), from);
         }
+
+        if (Snowing) return;
 
         // The water within sight is ringed on its own account: far more drops
         // land than are drawn. Densest near the camera and thinning with
@@ -187,6 +220,34 @@ public class Rain : MonoBehaviour
             var at = transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
             Splashes.Raindrop(at, seed, 1f + r / 40f);
         }
+    }
+
+    /// <summary>A small flat-shaded lump, a unit across, for a flake of snow.</summary>
+    private static Mesh Flake()
+    {
+        Vector3[] tips = { Vector3.right * 0.5f, Vector3.left * 0.5f, Vector3.up * 0.35f, Vector3.down * 0.35f, Vector3.forward * 0.5f, Vector3.back * 0.5f };
+        int[][] faces =
+        {
+            new[] { 2, 0, 4 }, new[] { 2, 4, 1 }, new[] { 2, 1, 5 }, new[] { 2, 5, 0 },
+            new[] { 3, 4, 0 }, new[] { 3, 1, 4 }, new[] { 3, 5, 1 }, new[] { 3, 0, 5 }
+        };
+
+        var verts = new List<Vector3>();
+        var tris = new List<int>();
+
+        foreach (var f in faces)
+        {
+            int n = verts.Count;
+            verts.Add(tips[f[0]]); verts.Add(tips[f[1]]); verts.Add(tips[f[2]]);
+            tris.Add(n); tris.Add(n + 1); tris.Add(n + 2);
+        }
+
+        var m = new Mesh { name = "flake" };
+        m.SetVertices(verts);
+        m.SetTriangles(tris, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+        return m;
     }
 
     /// <summary>A thin bar a unit long down its own y, for a streak of rain.</summary>

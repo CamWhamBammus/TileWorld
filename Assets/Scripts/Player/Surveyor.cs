@@ -225,7 +225,7 @@ public class Surveyor : MonoBehaviour
 
         int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
         int tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
-        return WaterSurface.IsUnderwater(tileX, tileZ, world != null ? world.WorldSeed : 0);
+        return WaterSurface.IsOpenWater(tileX, tileZ, world != null ? world.WorldSeed : 0);
     }
 
     /// <summary>

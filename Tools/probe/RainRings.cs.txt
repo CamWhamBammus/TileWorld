@@ -109,7 +109,7 @@ public class _Probe : MonoBehaviour
         yield return new WaitForEndOfFrame();
         ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-rain.png"));
         Splashes.RainSpread(Camera.main.transform.position, out int near, out int mid, out int far);
-        Mark("RAIN: rings on the water " + Splashes.RainAlive + " (within 15 m " + near + ", 15-40 m " + mid + ", beyond " + far + "), overcast " + TimeOfDay.Instance.Overcast.ToString("F2") + ", wind " + Rain.Wind.magnitude.ToString("F1") + " m/s");
+        Mark("RAIN: rings on the water " + Splashes.RainAlive + " (within 15 m " + near + ", 15-40 m " + mid + ", beyond " + far + "), overcast " + TimeOfDay.Instance.Overcast.ToString("F2") + ", wind " + Rain.Wind.magnitude.ToString("F1") + " m/s, snowing " + Rain.Snowing + ", patter " + Splashes.Patter.ToString("F2"));
 
         // what it costs: frames over two seconds raining, then two seconds after
         int frames = 0; float t0 = Time.realtimeSinceStartup;
@@ -127,7 +127,61 @@ public class _Probe : MonoBehaviour
         while (Time.realtimeSinceStartup - t0 < 2f) { frames++; yield return null; }
         Mark("COST: " + raining.ToString("F2") + " ms a frame in a downpour, " + (2000f / frames).ToString("F2") + " ms clear");
         TimeOfDay.Instance.ForceOvercast(-1f);
-        Mark("after: rain rings " + Splashes.RainAlive);
+        Mark("after: rain rings " + Splashes.RainAlive + ", patter " + Splashes.Patter.ToString("F2"));
+
+        // the snow country: it snows, and the lakes are ice you stand on
+        int fx = 0, fz = 0, dx2 = 0, dz2 = 0; bool frozenFound = false;
+        for (int r = 6; r < 420 && !frozenFound; r += 3)
+        for (int dx = -r; dx <= r && !frozenFound; dx += 3)
+        for (int dz = -r; dz <= r && !frozenFound; dz += 3)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = bestX + dx, tz = bestZ + dz;
+            if (!WaterSurface.IsFrozen(tx, tz, seed)) continue;
+            for (int d = 0; d < 4 && !frozenFound; d++)
+            {
+                int nx = tx + dirs[d * 2] * 3, nz = tz + dirs[d * 2 + 1] * 3;
+                if (WaterSurface.IsUnderwater(nx, nz, seed)) continue;
+                if (Regions.CharacterAtTile(nx, nz, seed, false) != Regions.Character.Snow) continue;
+                fx = nx; fz = nz; dx2 = -dirs[d * 2]; dz2 = -dirs[d * 2 + 1]; frozenFound = true;
+            }
+        }
+        if (!frozenFound) { Mark("SNOW: no frozen lake within 420 tiles of here"); Mark("done"); yield break; }
+
+        Vector3 bank = new Vector3(fx * WorldGrid.TileSize, WorldHeight.SurfaceY(fx, fz, seed) + 1f, fz * WorldGrid.TileSize);
+        Vector3 onto = new Vector3(dx2, 0f, dz2);
+        body.enabled = false; player.position = bank; player.rotation = Quaternion.LookRotation(onto); body.enabled = true;
+        yield return new WaitForSecondsRealtime(6f);
+        TimeOfDay.Instance.ForceOvercast(1f);
+        yield return new WaitForSecondsRealtime(4f);
+
+        int iceTiles = 0;
+        for (int dx = -10; dx <= 10; dx++) for (int dz = -10; dz <= 10; dz++) if (WaterSurface.IsFrozen(fx + dx, fz + dz, seed)) iceTiles++;
+        Mark("SNOW: at " + bank.ToString("F0") + ", snowing " + Rain.Snowing + ", rain rings " + Splashes.RainAlive + ", patter " + Splashes.Patter.ToString("F2") + ", ice tiles within 10: " + iceTiles + ", ice objects " + GameObject.Find("Ice (runtime)").transform.childCount);
+
+        cam.transform.position = bank + Vector3.up * 2.4f - onto * 3f;
+        cam.transform.LookAt(new Vector3(bank.x, WaterSurface.Level, bank.z) + onto * 12f);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-snow.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        // and out onto the ice
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        var controller = player.GetComponent<StarterAssets.ThirdPersonController>();
+        var yawField = typeof(StarterAssets.ThirdPersonController).GetField("_cinemachineTargetYaw", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (yawField != null) yawField.SetValue(controller, Quaternion.LookRotation(onto).eulerAngles.y);
+        inputs.move = new Vector2(0f, 1f);
+        yield return new WaitForSecondsRealtime(4f);
+        inputs.move = Vector2.zero;
+        yield return new WaitForSecondsRealtime(0.5f);
+        int ptx = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), ptz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        Mark("ICE: standing on a frozen tile " + WaterSurface.IsFrozen(ptx, ptz, seed) + ", feet " + (player.position.y - WaterSurface.Level).ToString("F2") + " m above the water level, in water " + Swimming.InWater + ", afloat " + Swimming.Afloat);
+        cam.transform.position = player.position + player.right * 4f + Vector3.up * 1.6f;
+        cam.transform.LookAt(player.position + Vector3.up * 0.6f);
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rr-ice.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+        TimeOfDay.Instance.ForceOvercast(-1f);
         Mark("done");
     }
 }

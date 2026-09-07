@@ -562,7 +562,7 @@ public class DevTools : MonoBehaviour
         });
 
         Label("Foot3", page, 15f, new Vector2(0f, -380f), new Vector2(880f, 40f))
-            .text = "Rain falls once the overcast is past " + Rain.Threshold.ToString("F2") + ". A held sky holds until you let it go. Stand by a lake to see the rain ring it.";
+            .text = "Rain falls once the overcast is past " + Rain.Threshold.ToString("F2") + ". A held sky holds until you let it go. Stand by a lake to see the rain ring it. In the snow country it snows instead, and the lakes are ice.";
     }
 
     private System.Collections.IEnumerator Shower(float seconds)

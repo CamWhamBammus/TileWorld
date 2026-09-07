@@ -37,6 +37,11 @@ public class Splashes : MonoBehaviour
     private readonly AudioSource[] voices = new AudioSource[4];
     private int nextVoice;
     private float lastSound;
+    private AudioSource patter;     // rain on the water, near
+    private float patterLevel;
+
+    /// <summary>How loud the rain on the water is, 0 to 1, for the probes.</summary>
+    public static float Patter => instance != null ? instance.patterLevel : 0f;
 
     private const int Most = 480;
 
@@ -56,7 +61,7 @@ public class Splashes : MonoBehaviour
         var it = Ensure();
         if (it == null) return;
 
-        if (!WaterSurface.IsUnderwater(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), worldSeed)) return;
+        if (!WaterSurface.IsOpenWater(Mathf.RoundToInt(at.x / WorldGrid.TileSize), Mathf.RoundToInt(at.z / WorldGrid.TileSize), worldSeed)) return;
 
         if (it.ripples.Count >= MostRipples) it.ripples.RemoveAt(0);
         it.ripples.Add(new Ripple { At = new Vector3(at.x, WaterSurface.Level + 0.025f, at.z), Made = Time.time, Lasts = Random.Range(0.6f, 0.95f), Size = Random.Range(0.5f, 0.95f) * scale });
@@ -107,6 +112,13 @@ public class Splashes : MonoBehaviour
         plish = new[] { Splash(Kind.Step, 11), Splash(Kind.Step, 12), Splash(Kind.Step, 13), Splash(Kind.Step, 14) };
         plunge = new[] { Splash(Kind.Plunge, 21), Splash(Kind.Plunge, 22) };
         strokes = new[] { Splash(Kind.Stroke, 31), Splash(Kind.Stroke, 32) };
+
+        patter = gameObject.AddComponent<AudioSource>();
+        patter.clip = RainOnWater(4f, 41);
+        patter.loop = true;
+        patter.spatialBlend = 0f;
+        patter.volume = 0f;
+        patter.playOnAwake = false;
 
         for (int i = 0; i < voices.Length; i++)
         {
@@ -209,6 +221,17 @@ public class Splashes : MonoBehaviour
         float now = Time.time;
         float level = WaterSurface.Level;
 
+        // the patter: rain on the water, as loud as there is rain and water near
+        float wanted = 0.5f * Rain.Intensity * Mathf.Clamp01(ripples.Count / 250f);
+        patterLevel = Mathf.Lerp(patterLevel, wanted, 1f - Mathf.Exp(-2f * dt));
+
+        if (patter != null)
+        {
+            patter.volume = patterLevel;
+            if (patterLevel > 0.01f && !patter.isPlaying) patter.Play();
+            else if (patterLevel <= 0.01f && patter.isPlaying) patter.Pause();
+        }
+
         batch.Clear();
 
         for (int i = drops.Count - 1; i >= 0; i--)
@@ -288,6 +311,75 @@ public class Splashes : MonoBehaviour
     }
 
     // ------------------------------------------------------------ the sound
+
+    /// <summary>
+    /// Rain on water, to loop: a thick scatter of the smallest bubbles, high
+    /// and quick, over a faint high hiss that gurgles. Nothing in it repeats
+    /// on any beat, so the loop is not heard as one.
+    /// </summary>
+    private static AudioClip RainOnWater(float seconds, int seed)
+    {
+        const int rate = 22050;
+        int samples = Mathf.RoundToInt(seconds * rate);
+        var data = new float[samples];
+        var rng = new System.Random(seed);
+        float U(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+
+        int count = Mathf.RoundToInt(seconds * 260f);
+        var start = new float[count]; var f0 = new float[count]; var tau = new float[count]; var amp = new float[count]; var phase = new float[count];
+
+        for (int b = 0; b < count; b++)
+        {
+            start[b] = U(0f, seconds);
+            f0[b] = Mathf.Exp(U(Mathf.Log(1100f), Mathf.Log(4200f)));
+            tau[b] = U(0.003f, 0.010f);
+            amp[b] = Mathf.Pow(1500f / f0[b], 0.3f) * U(0.25f, 1f);
+        }
+
+        // the bubbles are sorted by start so only a window of them is summed
+        System.Array.Sort(start, f0, 0, count);
+        int first = 0;
+        float low = 0f, band = 0f, gurgle = 0f;
+
+        for (int i = 0; i < samples; i++)
+        {
+            float t = i / (float)rate;
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+
+            while (first < count && t - start[first] > 0.08f) first++;
+
+            float bubbles = 0f;
+            for (int b = first; b < count && start[b] <= t; b++)
+            {
+                float dt = t - start[b];
+                float freq = f0[b] * (1f + 0.3f * dt / tau[b]);
+                phase[b] += freq / rate * 6.2831853f;
+                bubbles += Mathf.Sin(phase[b]) * amp[b] * Mathf.Min(1f, dt / 0.0008f) * Mathf.Exp(-dt / tau[b]);
+            }
+
+            gurgle += 0.004f * (white * 35f - gurgle);
+            float f = 2f * Mathf.Sin(3.1415926f * 3600f / rate);
+            low += f * band;
+            float high = white - low - 1.2f * band;
+            band += f * high;
+            float hiss = band * (0.6f + 0.4f * Mathf.Clamp(gurgle, -1f, 1f)) * 0.22f;
+
+            data[i] = bubbles * 0.3f + hiss;
+        }
+
+        float peak = 0.0001f;
+        for (int i = 0; i < samples; i++) peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+        int fade = Mathf.RoundToInt(rate * 0.04f);
+        for (int i = 0; i < samples; i++)
+        {
+            float edge = Mathf.Min(1f, Mathf.Min(i, samples - 1 - i) / (float)fade);
+            data[i] = data[i] / peak * 0.8f * edge;
+        }
+
+        var clip = AudioClip.Create("RainOnWater", samples, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
 
     private void Sound(Vector3 at, AudioClip[] clips, float volume, float pitch, float minGap)
     {

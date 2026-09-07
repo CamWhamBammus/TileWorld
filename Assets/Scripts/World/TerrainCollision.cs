@@ -37,9 +37,10 @@ public static class TerrainCollision
             int tileX = originTileX + i - pad;
             int tileZ = originTileZ + j - pad;
 
+            // the ice is stood on, so the collider rises to it over frozen water
             vertices[i * span + j] = new Vector3(
                 (i - pad) * WorldGrid.TileSize,
-                WorldHeight.SurfaceY(tileX, tileZ, worldSeed),
+                WaterSurface.WalkingY(tileX, tileZ, worldSeed),
                 (j - pad) * WorldGrid.TileSize
             );
         }

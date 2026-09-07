@@ -44,7 +44,7 @@ The world is split into regions about 240m across. Each one gets a character bas
 
 Water sits at one level across the whole world, and what kind of water it is depends on where you are. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under.
 
-Walking into it throws up a few drops and leaves a ring on the surface with every step, more the faster you go and the deeper it is. Going in off a bank makes a proper splash. Swimming leaves a ring with each stroke and a wake behind you. Animals wading do the same, so a heron working the shallows leaves rings behind it. When it rains, every drop that lands on the water rings it.
+Walking into it throws up a few drops and leaves a ring on the surface with every step, more the faster you go and the deeper it is. Going in off a bank makes a proper splash. Swimming leaves a ring with each stroke and a wake behind you. Animals wading do the same, so a heron working the shallows leaves rings behind it. When it rains, every drop that lands on the water rings it, and you can hear the rain on the water when you're near it. In the snow country it snows instead, and the lakes there are frozen: you can walk across them.
 
 ### Snow
 
