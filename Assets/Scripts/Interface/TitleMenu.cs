@@ -1,25 +1,83 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The title: the game opens here, outside any world, and asks which. A
-/// list of the worlds kept, with what each has come to; a page for making
-/// a new one, with how it should be set up -- name, seed, weather or none,
-/// a day that turns or a still sky, the hour it starts at, how long a day
-/// is, whether there are animals and ruins in it at all. Choosing enters
-/// the world; the pause menu comes back here.
+/// The title: the game opens here and asks which world. A list of the
+/// worlds kept, with what each has come to; a page for making a new one,
+/// with how it should be set up -- name, seed, weather or none, a day that
+/// turns or a still sky, the hour it starts at, how long a day is, whether
+/// there are animals and ruins in it at all. Choosing enters the world; the
+/// pause menu comes back here.
 ///
-/// Drawn the way the book is, on paper, over a photograph of the country.
+/// Behind it is the country itself, live: a beach in a world of its own,
+/// drawn as far as the game can draw, with the sea running up the sand and
+/// back and clouds going over, and the game's name in blocks at the top.
+/// The title is the game scene with nothing chosen: the world under it is
+/// built from a fixed seed, the player is put away, the camera is stood on
+/// the sand, and none of the game's own interface wakes.
 /// </summary>
 public class TitleMenu : MonoBehaviour
 {
-    /// <summary>Whether the title is up, so nothing of the game's own wakes under it.</summary>
-    public static bool IsUp { get; private set; }
+    /// <summary>Whether the title is up: the game is running with no world chosen.</summary>
+    public static bool IsUp => !WorldLibrary.HasCurrent;
+
+    /// <summary>The world behind the title, picked for a beach near its origin.</summary>
+    public const int Seed = 24;
+
+    /// <summary>The hour held behind the title, as a fraction of the day.</summary>
+    private const float Hour = 0.69f;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Spawn()
+    {
+        if (!IsUp) return;
+        if (FindFirstObjectByType<TitleMenu>() == null) new GameObject("Title (runtime)").AddComponent<TitleMenu>();
+    }
+
+    /// <summary>
+    /// Where the title looks from, in the title's world: on the sand a few
+    /// metres back from the nearest strand to the origin, looking out to sea
+    /// a little along the shore so the waterline runs across the picture.
+    /// <paramref name="stand"/> is where the hidden player goes, which is
+    /// what the world is drawn around.
+    /// </summary>
+    public static void Viewpoint(int seed, out Vector3 eye, out Vector3 look, out Vector3 stand)
+    {
+        int sx = 0, sz = 0; bool found = false;
+        for (int r = 0; r < 70 && !found; r++)
+        for (int dx = -r; dx <= r && !found; dx++)
+        for (int dz = -r; dz <= r && !found; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            if (Surf.IsStrand(dx, dz, seed)) { found = true; sx = dx; sz = dz; }
+        }
+
+        Vector2 toSea = Vector2.zero; int sea = 0;
+        if (found)
+        {
+            for (int dx = -20; dx <= 20; dx++)
+            for (int dz = -20; dz <= 20; dz++)
+            {
+                int tx = sx + dx, tz = sz + dz;
+                if (!WaterSurface.IsUnderwater(tx, tz, seed) || WaterSurface.BodyAt(tx, tz, seed) != WaterSurface.Body.Beach) continue;
+                toSea += new Vector2(dx, dz); sea++;
+            }
+        }
+        Vector3 dir = sea > 0 ? new Vector3(toSea.x, 0f, toSea.y).normalized : Vector3.forward;
+        Vector3 tile = new Vector3(sx * WorldGrid.TileSize, WorldHeight.SurfaceY(sx, sz, seed), sz * WorldGrid.TileSize);
+
+        stand = tile - dir * 8f + Vector3.up * 1.5f;
+        eye = tile - dir * 5f + Vector3.up * 2.6f;
+        Vector3 along = Quaternion.Euler(0f, 24f, 0f) * dir;
+        look = eye + along * 30f;
+        look.y = WaterSurface.Level;
+    }
 
     private TMP_FontAsset font;
-    private Transform card;
+    private Transform card, canvasRoot;
     private GameObject worldsPage, newPage, optionsPage;
     private TMP_Text volumeLabel, radiusLabel, lookLabel, fullLabel;
     private readonly List<GameObject> rows = new List<GameObject>();
@@ -40,59 +98,53 @@ public class TitleMenu : MonoBehaviour
     private static readonly float[] LengthMinutes = { 10f, 20f, 40f };
 
     private Camera eye;
-    private float turn;
+    private TitleLogo logo;
 
-    // several views of the country, one after another, cross-faded: the
-    // next is drawn by a second camera into a texture laid over the first
-    private Material[] views;
-    private int view;
-    private float nextView;
-    private Camera fader;
-    private RenderTexture faded;
-    private RawImage overlay;
-    private float fade = -1f;
-    private const float Dwell = 26f, Cross = 2.6f;
+    /// <summary>The name in blocks at the top, for the probes.</summary>
+    public TitleLogo Logo => logo;
 
     private void Awake()
     {
-        IsUp = true;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         Time.timeScale = 1f;
 
         font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
 
-        // the country behind the menu: a panorama rendered from a lakeside,
-        // as a skybox the camera turns slowly through
-        eye = Camera.main;
-        views = Resources.LoadAll<Material>("Title");
-        System.Array.Sort(views, (a, b) => string.CompareOrdinal(a.name, b.name));
-        if (eye != null && views.Length > 0)
-        {
-            view = Random.Range(0, views.Length);
-            RenderSettings.skybox = views[view];
-            eye.clearFlags = CameraClearFlags.Skybox;
-            eye.fieldOfView = 58f;
-            turn = Random.Range(0f, 360f);
-            nextView = Time.unscaledTime + Dwell;
-
-            if (views.Length > 1)
-            {
-                var faderGo = new GameObject("Fader");
-                faderGo.transform.SetParent(transform, false);
-                fader = faderGo.AddComponent<Camera>();
-                fader.clearFlags = CameraClearFlags.Skybox;
-                fader.cullingMask = 0;
-                fader.fieldOfView = eye.fieldOfView;
-                fader.enabled = false;
-                faderGo.AddComponent<Skybox>();
-            }
-        }
-
         Build();
         ShowWorlds();
         Settings.Apply();
-        gameObject.AddComponent<TitleAmbience>();
+    }
+
+    private IEnumerator Start()
+    {
+        // the world's own Start has run by the next frame: the camera is
+        // stood on the sand, the hour and the weather held, the name put up
+        yield return null;
+
+        eye = Camera.main;
+        if (eye != null)
+        {
+            var follow = eye.GetComponent<SimpleFollowCamera>();
+            if (follow != null) follow.enabled = false;
+
+            Viewpoint(Seed, out var at, out var look, out _);
+            eye.transform.position = at;
+            eye.transform.rotation = Quaternion.LookRotation(look - at);
+            eye.fieldOfView = 58f;
+            eye.farClipPlane = 3000f;
+            eye.cullingMask &= ~(1 << TitleLogo.Layer);
+        }
+
+        var tod = TimeOfDay.Instance;
+        if (tod != null)
+        {
+            tod.SetTime(Hour);
+            tod.Paused = true;
+            tod.ForceOvercast(0.45f);
+        }
+
+        logo = TitleLogo.Make(canvasRoot);
     }
 
     private void ShowOptions()
@@ -112,51 +164,12 @@ public class TitleMenu : MonoBehaviour
         fullLabel.text = Settings.Fullscreen ? "on" : "off";
     }
 
-    private void LateUpdate()
-    {
-        if (eye == null || eye.clearFlags != CameraClearFlags.Skybox) return;
-        turn += Time.unscaledDeltaTime * 1.6f;
-        eye.transform.rotation = Quaternion.Euler(4f + Mathf.Sin(turn * 0.02f) * 2f, turn, 0f);
-
-        if (fader == null || overlay == null) return;
-
-        if (fade < 0f && Time.unscaledTime > nextView)
-        {
-            // begin the next view: drawn by the second camera behind the overlay
-            int next = (view + 1) % views.Length;
-            fader.GetComponent<Skybox>().material = views[next];
-            if (faded == null || faded.width != Screen.width || faded.height != Screen.height)
-            {
-                if (faded != null) faded.Release();
-                faded = new RenderTexture(Mathf.Max(8, Screen.width), Mathf.Max(8, Screen.height), 0);
-            }
-            fader.targetTexture = faded;
-            overlay.texture = faded;
-            fader.enabled = true;
-            fade = 0f;
-        }
-
-        if (fade >= 0f)
-        {
-            fader.transform.rotation = eye.transform.rotation;
-            fade += Time.unscaledDeltaTime / Cross;
-            overlay.color = new Color(1f, 1f, 1f, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(fade)));
-            if (fade >= 1f)
-            {
-                view = (view + 1) % views.Length;
-                RenderSettings.skybox = views[view];
-                overlay.color = new Color(1f, 1f, 1f, 0f);
-                fader.enabled = false;
-                fade = -1f;
-                nextView = Time.unscaledTime + Dwell;
-            }
-        }
-    }
-
-    private void OnDestroy() { IsUp = false; }
-
     private void Update()
     {
+        // the cursor is the menu's, whatever the player's controls think
+        if (Cursor.lockState != CursorLockMode.None) Cursor.lockState = CursorLockMode.None;
+        if (!Cursor.visible) Cursor.visible = true;
+
         // Escape from the new world page goes back; from the list, nothing
         if (Input.GetKeyDown(KeyCode.Escape) && ((newPage != null && newPage.activeSelf) || (optionsPage != null && optionsPage.activeSelf))) ShowWorlds();
     }
@@ -168,7 +181,7 @@ public class TitleMenu : MonoBehaviour
         worldsPage.SetActive(true);
         newPage.SetActive(false);
         if (optionsPage != null) optionsPage.SetActive(false);
-        heading.text = "<size=30><b>TILE WORLD</b></size>\n<size=17><color=#8B7860>select a world</color></size>";
+        heading.text = "<size=30><b>YOUR WORLDS</b></size>\n<size=17><color=#8B7860>select a world</color></size>";
         Refresh();
     }
 
@@ -196,12 +209,12 @@ public class TitleMenu : MonoBehaviour
             chosen = worlds.Find(w => w.id == WorldLibrary.LastId) ?? (worlds.Count > 0 ? worlds[0] : null);
         }
 
-        float y = 186f;
+        float y = 166f;
         const int Shown = 6;
 
         if (worlds.Count == 0)
         {
-            var none = Label("None", worldsPage.transform, 19f, new Vector2(-190f, 120f), new Vector2(680f, 80f));
+            var none = Label("None", worldsPage.transform, 19f, new Vector2(-190f, 100f), new Vector2(680f, 80f));
             none.text = "No worlds yet.\n<size=80%>Create one and it will show up here.</size>";
             none.color = ParchmentPanel.InkFaint;
             rows.Add(none.gameObject);
@@ -210,7 +223,7 @@ public class TitleMenu : MonoBehaviour
         for (int i = 0; i < worlds.Count && i < Shown; i++)
         {
             Row(worlds[i], y);
-            y -= 76f;
+            y -= 72f;
         }
 
         if (worlds.Count > Shown)
@@ -221,7 +234,7 @@ public class TitleMenu : MonoBehaviour
             rows.Add(more.gameObject);
         }
 
-        playLabel.text = chosen != null ? "Play" : "Play";
+        playLabel.text = "Play";
         forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Press again to delete" : "Delete world";
     }
 
@@ -236,14 +249,14 @@ public class TitleMenu : MonoBehaviour
         var image = go.AddComponent<RawImage>();
         image.texture = Texture2D.whiteTexture;
         image.color = picked ? new Color(0.29f, 0.24f, 0.17f, 0.26f) : new Color(0.29f, 0.24f, 0.17f, 0.08f);
-        Centre(go.GetComponent<RectTransform>(), new Vector2(-190f, y), new Vector2(680f, 68f));
+        Centre(go.GetComponent<RectTransform>(), new Vector2(-190f, y), new Vector2(680f, 64f));
 
         var button = go.AddComponent<Button>();
         button.targetGraphic = image;
         var colours = button.colors; colours.highlightedColor = new Color(1f, 1f, 1f, 1.4f); button.colors = colours;
         button.onClick.AddListener(() => { if (chosen != null && chosen.id == world.id) Enter(world); else { chosen = world; pendingForget = null; Refresh(); } });
 
-        var text = Label("Text", go.transform, 19f, new Vector2(14f, 0f), new Vector2(640f, 64f));
+        var text = Label("Text", go.transform, 19f, new Vector2(14f, 0f), new Vector2(640f, 60f));
         text.alignment = TextAlignmentOptions.Left;
         string setup = (world.weather ? "" : "no weather · ") + (world.dayCycle ? "" : "no day cycle · ") + (world.animals ? "" : "no animals · ") + (world.ruins ? "" : "no ruins · ");
         text.text = "<b>" + world.name + "</b>"
@@ -307,6 +320,9 @@ public class TitleMenu : MonoBehaviour
         var canvasGo = new GameObject("Title Canvas");
         canvasGo.transform.SetParent(transform, false);
         var canvas = canvasGo.AddComponent<Canvas>();
+        // taken after the Canvas is added: adding it swaps the Transform for
+        // a RectTransform, and a reference taken before that points at nothing
+        canvasRoot = canvasGo.transform;
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 900;
         var scaler = canvasGo.AddComponent<CanvasScaler>();
@@ -314,32 +330,25 @@ public class TitleMenu : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // the next view, laid over the current one while it fades in
-        var overGo = new GameObject("Next view");
-        overGo.transform.SetParent(canvasGo.transform, false);
-        overlay = overGo.AddComponent<RawImage>();
-        overlay.color = new Color(1f, 1f, 1f, 0f);
-        overlay.raycastTarget = false;
-        Stretch(overGo.GetComponent<RectTransform>());
-
-        // and a shade toward the edges, so the paper reads
+        // a light shade toward the edges, so the paper reads and the country still shows
         var shadeGo = new GameObject("Shade");
         shadeGo.transform.SetParent(canvasGo.transform, false);
         var shade = shadeGo.AddComponent<RawImage>();
         shade.texture = ParchmentPanel.Shadow(64, 64);
-        shade.color = new Color(0f, 0f, 0f, 0.42f);
+        shade.color = new Color(0f, 0f, 0f, 0.26f);
+        shade.raycastTarget = false;
         Stretch(shadeGo.GetComponent<RectTransform>());
 
-        // the paper
+        // the paper, under the name
         var cardGo = new GameObject("Card");
         cardGo.transform.SetParent(canvasGo.transform, false);
         var paper = cardGo.AddComponent<RawImage>();
-        paper.texture = ParchmentPanel.Create(1120, 720);
+        paper.texture = ParchmentPanel.Create(1120, 640);
         card = cardGo.transform;
-        Centre(cardGo.GetComponent<RectTransform>(), new Vector2(0f, -20f), new Vector2(1120f, 720f));
+        Centre(cardGo.GetComponent<RectTransform>(), new Vector2(0f, -100f), new Vector2(1120f, 640f));
         ParchmentPanel.Shade(cardGo.GetComponent<RectTransform>(), 46f);
 
-        heading = Label("Heading", card, 24f, new Vector2(-190f, 296f), new Vector2(680f, 90f));
+        heading = Label("Heading", card, 24f, new Vector2(-190f, 256f), new Vector2(680f, 90f));
         heading.alignment = TextAlignmentOptions.Left;
 
         // ---- the worlds page
@@ -347,18 +356,13 @@ public class TitleMenu : MonoBehaviour
         worldsPage.transform.SetParent(card, false);
         Stretch(worldsPage.AddComponent<RectTransform>());
 
-        var kept = Label("Kept", worldsPage.transform, 16f, new Vector2(-190f, 236f), new Vector2(680f, 26f));
-        kept.alignment = TextAlignmentOptions.Left;
-        kept.text = "YOUR WORLDS";
-        kept.color = ParchmentPanel.InkFaint;
+        playLabel = Button("Play", worldsPage.transform, new Vector2(370f, 160f), new Vector2(300f, 58f), () => Enter(chosen));
+        Button("New world", worldsPage.transform, new Vector2(370f, 90f), new Vector2(300f, 58f), ShowNew);
+        forgetLabel = Button("Delete world", worldsPage.transform, new Vector2(370f, 20f), new Vector2(300f, 50f), Forget);
+        Button("Options", worldsPage.transform, new Vector2(370f, -170f), new Vector2(300f, 50f), ShowOptions);
+        Button("Quit", worldsPage.transform, new Vector2(370f, -240f), new Vector2(300f, 50f), Quit);
 
-        playLabel = Button("Play", worldsPage.transform, new Vector2(370f, 200f), new Vector2(300f, 58f), () => Enter(chosen));
-        Button("New world", worldsPage.transform, new Vector2(370f, 130f), new Vector2(300f, 58f), ShowNew);
-        forgetLabel = Button("Delete world", worldsPage.transform, new Vector2(370f, 60f), new Vector2(300f, 50f), Forget);
-        Button("Options", worldsPage.transform, new Vector2(370f, -160f), new Vector2(300f, 50f), ShowOptions);
-        Button("Quit", worldsPage.transform, new Vector2(370f, -230f), new Vector2(300f, 50f), Quit);
-
-        var hint = Label("Hint", worldsPage.transform, 15f, new Vector2(-190f, -300f), new Vector2(680f, 30f));
+        var hint = Label("Hint", worldsPage.transform, 15f, new Vector2(-190f, -280f), new Vector2(680f, 30f));
         hint.text = "Select a world and press Play, or double click it.";
         hint.color = ParchmentPanel.InkFaint;
 
@@ -367,11 +371,11 @@ public class TitleMenu : MonoBehaviour
         newPage.transform.SetParent(card, false);
         Stretch(newPage.AddComponent<RectTransform>());
 
-        nameField = Field("Name", "World name (optional)", newPage.transform, new Vector2(-150f, 220f), 28);
-        seedField = Field("Seed", "Seed (leave blank for random)", newPage.transform, new Vector2(-150f, 160f), 16);
-        Button("Random seed", newPage.transform, new Vector2(230f, 160f), new Vector2(200f, 46f), () => seedField.text = Random.Range(1, 99999999).ToString());
+        nameField = Field("Name", "World name (optional)", newPage.transform, new Vector2(-150f, 180f), 28);
+        seedField = Field("Seed", "Seed (leave blank for random)", newPage.transform, new Vector2(-150f, 120f), 16);
+        Button("Random seed", newPage.transform, new Vector2(230f, 120f), new Vector2(200f, 46f), () => seedField.text = Random.Range(1, 99999999).ToString());
 
-        float y = 80f;
+        float y = 46f;
         weatherLabel = Setting(newPage.transform, "Weather", ref y, () => { weather = !weather; NewWorldSettings(); });
         cycleLabel = Setting(newPage.transform, "Day cycle", ref y, () => { dayCycle = !dayCycle; NewWorldSettings(); });
         startLabel = Setting(newPage.transform, "Start time", ref y, () => { startAt = (startAt + 1) % StartNames.Length; NewWorldSettings(); });
@@ -379,25 +383,25 @@ public class TitleMenu : MonoBehaviour
         animalsLabel = Setting(newPage.transform, "Animals", ref y, () => { animals = !animals; NewWorldSettings(); });
         ruinsLabel = Setting(newPage.transform, "Ruins", ref y, () => { ruins = !ruins; NewWorldSettings(); });
 
-        Button("Create world", newPage.transform, new Vector2(-150f, -280f), new Vector2(360f, 58f), CreateAndPlay);
-        Button("Back", newPage.transform, new Vector2(230f, -280f), new Vector2(200f, 58f), ShowWorlds);
+        Button("Create world", newPage.transform, new Vector2(-150f, -284f), new Vector2(360f, 56f), CreateAndPlay);
+        Button("Back", newPage.transform, new Vector2(230f, -284f), new Vector2(200f, 56f), ShowWorlds);
 
         // ---- the options page
         optionsPage = new GameObject("Options");
         optionsPage.transform.SetParent(card, false);
         Stretch(optionsPage.AddComponent<RectTransform>());
 
-        float oy = 190f;
+        float oy = 150f;
         volumeLabel = Adjuster(optionsPage.transform, "Volume", ref oy, () => Settings.Volume -= 0.1f, () => Settings.Volume += 0.1f);
         radiusLabel = Adjuster(optionsPage.transform, "View distance", ref oy, () => Settings.ViewRadius -= 1, () => Settings.ViewRadius += 1);
         lookLabel = Adjuster(optionsPage.transform, "Mouse look speed", ref oy, () => Settings.LookSpeed -= 0.1f, () => Settings.LookSpeed += 0.1f);
         fullLabel = Adjuster(optionsPage.transform, "Fullscreen", ref oy, () => Settings.Fullscreen = !Settings.Fullscreen, () => Settings.Fullscreen = !Settings.Fullscreen);
 
-        var note = Label("Note", optionsPage.transform, 15f, new Vector2(0f, -120f), new Vector2(820f, 60f));
+        var note = Label("Note", optionsPage.transform, 15f, new Vector2(0f, -140f), new Vector2(820f, 60f));
         note.text = "View distance takes effect when a world is entered. Further is slower.";
         note.color = ParchmentPanel.InkFaint;
 
-        Button("Back", optionsPage.transform, new Vector2(0f, -280f), new Vector2(240f, 58f), ShowWorlds);
+        Button("Back", optionsPage.transform, new Vector2(0f, -284f), new Vector2(240f, 56f), ShowWorlds);
         optionsPage.SetActive(false);
     }
 

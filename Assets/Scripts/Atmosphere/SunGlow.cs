@@ -26,7 +26,6 @@ public class SunGlow : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<SunGlow>() == null) new GameObject("Sun glow (runtime)").AddComponent<SunGlow>();
     }
 

@@ -15,6 +15,7 @@ public class Underwater : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Underwater>() == null)
         {
             new GameObject("Underwater (runtime)").AddComponent<Underwater>();

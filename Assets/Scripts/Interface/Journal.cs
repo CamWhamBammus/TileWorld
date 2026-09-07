@@ -21,6 +21,7 @@ public class Journal : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Journal>() == null)
         {
             new GameObject("Journal (runtime)").AddComponent<Journal>();

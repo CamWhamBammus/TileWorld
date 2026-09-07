@@ -28,7 +28,7 @@ public class _Probe : MonoBehaviour
         yield return new WaitForSecondsRealtime(4f);
         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
         var title = FindFirstObjectByType<TitleMenu>();
-        var amb = FindFirstObjectByType<TitleAmbience>();
+        var amb = FindFirstObjectByType<WindAmbience>();
         var sources = amb != null ? amb.GetComponents<AudioSource>() : new AudioSource[0];
         bool windOn = false; foreach (var s in sources) if (s.loop && s.isPlaying) windOn = true;
         Mark("ambience: sources " + sources.Length + " wind playing " + windOn + " | listener volume " + AudioListener.volume.ToString("F2"));

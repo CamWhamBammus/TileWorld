@@ -32,6 +32,7 @@ public class CompassBar : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<CompassBar>() == null)
         {
             new GameObject("Compass (runtime)").AddComponent<CompassBar>();

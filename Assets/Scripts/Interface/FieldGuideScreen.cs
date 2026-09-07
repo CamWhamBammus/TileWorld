@@ -43,6 +43,7 @@ public class FieldGuideScreen : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<FieldGuideScreen>() == null)
         {
             new GameObject("Field Guide (runtime)").AddComponent<FieldGuideScreen>();

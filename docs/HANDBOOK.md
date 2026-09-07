@@ -65,10 +65,14 @@ that went wrong before:
 - Ring searches over chunks must walk the perimeter of each ring, not the whole
   square per ring, or a 300-ring search never finishes.
 
-A probe's `Boot` (the `RuntimeInitializeOnLoadMethod`) fires twice now that
-the build opens on the title: once in the title scene and again when the
-world scene loads. Guard it with `if (FindFirstObjectByType<_Probe>() != null) return;`
+A probe's `Boot` (the `RuntimeInitializeOnLoadMethod`) fires again on every
+scene load, since `SceneSystems` re-runs all the AfterSceneLoad hooks then:
+once at the start, under the title, and again when a world is entered.
+Guard it with `if (FindFirstObjectByType<_Probe>() != null) return;`
 or every stage runs twice, fighting over the player. The newer probes do.
+A probe that starts at the title is looking at the title's own world (seed
+24, radius 8, the player switched off); enter a world first for anything
+that needs the player.
 
 The editor's console can show what a build's log does not. `Assets/Editor/PlayCheck.cs`
 plays the game in the editor from the command line: copy a probe to
@@ -394,8 +398,8 @@ gold hour near the horizon, night) and the weather (`Overcast`,
 saturation, a colour filter, white balance, a blue lift in the shadows at
 night, more bloom at the gold hour. `Grading.Enabled = false` is the raw
 picture, for comparing. The PC renderer's `postProcessData` is set, which is
-what keeps the post-processing shaders in a build. The title scene is left
-alone.
+what keeps the post-processing shaders in a build. The title, being the
+same scene, is graded too.
 
 The water is `Assets/Shaders/TileWorldWater.shader`, kept in the build by
 `Resources/Water.mat` (a material referencing it -- a shader found only by
@@ -622,48 +626,65 @@ which a stair tread of 0.12-0.17 clears and a 0.45 step does not.
 
 ## The title and the worlds
 
-The build opens on `Assets/Scenes/Title.unity` (made by `MakeTitleScene`,
-first in the build settings), which holds only a camera, an event system and
-`TitleMenu`. `WorldLibrary.Boot` no longer enters a world on its own: the
-title asks. `WorldLibrary.Enter(save)` loads the game scene by name;
-`WorldLibrary.LeaveToMenu()` saves and loads the title. `TitleMenu.IsUp` is
-the flag the game's own interface checks so that nothing of it -- the pause
-menu, the opening, the dev tools -- wakes under the title. Playing the game
-scene straight from the editor still works: with nothing chosen it adopts a
-world of its own.
+The game has one scene, `Assets/Scenes/SampleScene.unity`, and the title is
+that scene with no world chosen: `TitleMenu.IsUp` is `!WorldLibrary.HasCurrent`,
+decided before anything loads, so every system can ask it from its own boot
+hook whatever order the hooks run in. `TitleMenu.Spawn` (AfterSceneLoad)
+puts the menu up when it is true. `WorldLibrary.Enter(save)` sets the world
+and reloads the scene; `WorldLibrary.LeaveToMenu()` saves, clears it and
+reloads the scene, which is the title again. Playing the scene from the
+editor with nothing chosen opens on the title as well.
 
-Behind the title, four panoramas of the country -- the jetty at dawn, the
-snow cabin at noon, the desert gate at dusk, the standing stones at night --
-turn slowly and cross-fade every half minute; the game's wind and birds play
-under them. They are rendered by `Tools/probe/Panorama.cs.txt` (a cubemap
-from each spot, view radius 8, weather off, fog pulled in) into six faces
-each, kept as 1024 JPEGs in `Assets/Resources/Title/`, and baked by
-`MakePanorama` into DXT1-compressed cubemaps and skybox materials named
-`View-*` -- about 6 MB each. Uncompressed they were 144 MB each and GitHub
-refused them. To change a view, edit the spot in the probe, run it, copy the
-faces in, and bake.
+Behind the title is the country itself, live. Under the title
+`ChunkManager.Start` takes `TitleMenu.Seed` (24, picked with
+`Tools/probe/TitleSpot.cs.txt`, which looks through seeds for a beach near
+the origin and says how much sea and sand is round it), draws to radius 8
+whatever the view distance is set to, files nothing, and stands the player
+-- switched off, unseen -- where `TitleMenu.Viewpoint` says: eight metres
+back from the nearest strand to the origin, so the world is drawn round the
+shore. The title's own Start, a frame later, turns the follow camera off
+(`SimpleFollowCamera.Start` stands down under the title too), stands the
+camera on the sand looking out to sea, turned a quarter along the shore so
+the waterline crosses the picture, holds the hour at 0.69 and the sky at
+0.45 overcast (clouds, no rain: rain starts at 0.55), and puts the name up.
+The interface and the player's own systems stay out from under it:
+`CompassBar`, `WorldLabels`, `Notices`, `Journal`, `WorldMap`,
+`FieldGuideScreen`, `WorldsScreen`, `DebugOverlay`, `Sketching`, `Surveyor`,
+`Swimming`, `Underwater`, `SaveCoordinator`, `RegionWatcher`, `PauseMenu`,
+`Arrival` and `DevTools` all return from their boot hooks when the title is
+up. The atmosphere does not: clouds, grading, the sun, mist, flocks, motes,
+shafts, the rainbow, the night sky, splashes and the surf all run, so the
+title is the game's own picture, wave and all. The cursor is the menu's:
+`TitleMenu.Update` frees it every frame, since the player's controls lock
+it whenever the window gets focus.
+
+The name is `TitleLogo`: "TILE WORLD" in a five-by-seven block font, one
+cube a cell, sand with a green top, on layer 30 three thousand metres up,
+drawn by a camera of its own into a 1600 by 400 texture with nothing behind
+it (fog is switched off round that camera's render and put back after),
+laid at the top of the canvas over a soft shadow. The main camera's mask
+leaves layer 30 out. The camera is stood back from the letters' measured
+bounds so the word fills the width; the letters tilt and bob a little, and
+the sun lights them, so they warm with the hour. One thing that cost an
+hour: a reference to a GameObject's Transform taken before a Canvas (or any
+component that wants a RectTransform) is added to it is dead afterwards,
+because adding the component swaps the Transform out, and the logo went
+under nothing. `canvasRoot` is taken after `AddComponent<Canvas>`.
+
+`Tools/probe/TitleLive.cs.txt` photographs the title across a wave and once
+with the card hidden, reads the logo's picture back and says how much of it
+the word fills, checks what is and is not running under the title, enters a
+world, comes back and checks again (17 ms a frame at radius 8);
+`Tools/probe/Title.cs.txt` walks the worlds pages. The old panoramas --
+cubemaps baked from six faces, 34 MB of them -- are gone with their capture
+tool, the dev tools' Title page, `MakePanorama`, `MakeTitleScene`,
+`PlayFromTitle` and the Title scene.
 
 A world's settings live on `WorldSave` (weather, dayCycle, startHour,
 dayLengthMinutes, animals, ruins) and are read once, where they apply:
 `TimeOfDay.Start`, `Wildlife.Start`, and `Landmarks.In`, which answers
 "nothing here" for a world made without ruins. An old save without them
 plays as it always did. `Tools/probe/Title.cs.txt` walks the whole loop.
-
-## The title's backdrop
-
-Behind the title turns a panorama of the world: cubemaps baked from six
-faces each, in `Assets/Resources/Title` (`pano_<view>_<face>.jpg` and a
-`View-<view>` cubemap and material apiece). `TitleMenu` loads every material
-there and cross-fades between them. To make a view, stand somewhere in play,
-set the hour and weather on the dev tools' Animals page, and press "Capture
-as ..." on the Title page: `PanoramaCapture` draws the world out to eleven
-chunks, holds the fog to the sky's own colour at the horizon, renders each
-face with the camera turned that way (the world only submits what the
-camera can see, so a cubemap taken in one go had five faces of void), and
-writes the faces to `title-views/` beside the saves. In the editor, Tools >
-Tile World > Bake the title panorama brings captured views in, replacing
-what was baked, and bakes them. `Tools/probe/Panorama.cs.txt` did the same
-from fixed spots and made the five that ship.
 
 ## Dev tools
 
@@ -673,7 +694,7 @@ the opening again; wipe the world. `DevTools.cs` is under
 `#if UNITY_EDITOR || DEVELOPMENT_BUILD`; `check.sh` defines
 `DEVELOPMENT_BUILD` so it is compiled.
 
-The panel has four pages, the tabs two a side of the heading. **Animals**
+The panel has three pages, the tabs either side of the heading. **Animals**
 puts any kind down ten metres ahead (`Wildlife.Summon`, which marks it `Kept`
 so the hours cull leaves it alone), stages a company, a wolf pair or a fox
 after a rabbit, and tells everything within forty metres to walk, run, rest,
@@ -682,8 +703,7 @@ itself uses). **Weather** holds the sky at clear, cloudy, light rain, rain
 or a downpour (`TimeOfDay.ForceOvercast`; rain falls past `Rain.Threshold`,
 0.55), lets it be its own again, gives a minute of rain, shows the overcast,
 whether it is raining and how hard (`Rain.Intensity`) and whether the sky is
-held (`TimeOfDay.OvercastHeld`), and has the hours and slow time. **Title**
-captures the backdrop views. The Places page's water row has a fourth button,
+held (`TimeOfDay.OvercastHeld`), and has the hours and slow time. The Places page's water row has a fourth button,
 the nearest frozen lake (`NearestFrozen`, `GoToFrozen`: stand on the bank
 facing the ice). The probe `Tools/probe/DevAnimals.cs.txt`
 presses the animal buttons by reflection and checks what they did;

@@ -23,6 +23,7 @@ public class DebugOverlay : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<DebugOverlay>() == null)
         {
             new GameObject("Debug Overlay (runtime)").AddComponent<DebugOverlay>();

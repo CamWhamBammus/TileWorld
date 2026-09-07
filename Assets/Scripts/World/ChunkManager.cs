@@ -196,7 +196,14 @@ public class ChunkManager : MonoBehaviour
 
         viewRadius = Settings.ViewRadius;
 
-        if (WorldLibrary.HasCurrent)
+        if (TitleMenu.IsUp)
+        {
+            // the title: a world of its own, drawn as far as the game can
+            // draw, and nothing filed for it
+            worldSeed = TitleMenu.Seed;
+            viewRadius = 8;
+        }
+        else if (WorldLibrary.HasCurrent)
         {
             worldSeed = WorldLibrary.Current.seed;   // the world that was chosen
         }
@@ -248,9 +255,20 @@ public class ChunkManager : MonoBehaviour
             CreateGroundCollider();
         }
 
+        if (TitleMenu.IsUp)
+        {
+            // the player stands, unseen, where the title looks from: the
+            // world is drawn round them, and nothing of theirs runs
+            TitleMenu.Viewpoint(worldSeed, out _, out _, out var stand);
+            var body = playerTransform.GetComponent<CharacterController>();
+            if (body != null) body.enabled = false;
+            playerTransform.position = stand;
+            playerTransform.gameObject.SetActive(false);
+        }
+
         RefreshVisibleChunks(force: true);
 
-        if (terrainCollision)
+        if (terrainCollision && !TitleMenu.IsUp)
         {
             // A world nobody has played yet has nowhere to put you back.
             if (WorldLibrary.Current == null || WorldLibrary.Current.playerPosition == Vector3.zero)

@@ -46,7 +46,7 @@ public class _Probe : MonoBehaviour
         typeof(TitleMenu).GetField("dayLength", flags).SetValue(title, 2);
         typeof(TitleMenu).GetField("animals", flags).SetValue(title, false);
         typeof(TitleMenu).GetField("ruins", flags).SetValue(title, false);
-        typeof(TitleMenu).GetMethod("Settings", flags).Invoke(title, null);
+        typeof(TitleMenu).GetMethod("NewWorldSettings", flags).Invoke(title, null);
         ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("nameField", flags).GetValue(title)).text = "Probe world";
         ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("seedField", flags).GetValue(title)).text = "4242";
         yield return new WaitForSecondsRealtime(0.5f);

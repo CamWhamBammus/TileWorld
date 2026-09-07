@@ -16,6 +16,7 @@ public class SaveCoordinator : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<SaveCoordinator>() == null)
         {
             new GameObject("Save (runtime)").AddComponent<SaveCoordinator>();

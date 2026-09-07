@@ -74,6 +74,7 @@ public class Surveyor : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Surveyor>() == null)
         {
             new GameObject("Surveyor (runtime)").AddComponent<Surveyor>();

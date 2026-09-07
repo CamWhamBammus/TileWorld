@@ -31,6 +31,7 @@ public class RegionWatcher : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<RegionWatcher>() == null)
         {
             new GameObject("Regions (runtime)").AddComponent<RegionWatcher>();

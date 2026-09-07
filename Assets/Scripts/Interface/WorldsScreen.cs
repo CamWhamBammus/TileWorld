@@ -37,6 +37,7 @@ public class WorldsScreen : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         open = false;
         closedFrame = -1;
 

@@ -22,6 +22,7 @@ public class WorldLabels : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<WorldLabels>() == null)
         {
             new GameObject("World Labels (runtime)").AddComponent<WorldLabels>();

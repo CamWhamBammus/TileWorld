@@ -1,0 +1,118 @@
+// A probe: the title with the country live behind it. Photographs it three times across a wave,
+// checks what is and is not running under it, enters a world and comes back, and photographs it again.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Shot(string name)
+    {
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-tl-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private string State()
+    {
+        var world = FindFirstObjectByType<ChunkManager>();
+        var title = FindFirstObjectByType<TitleMenu>();
+        var cam = Camera.main;
+        return "title " + TitleMenu.IsUp + " | menu " + (title != null) + " | logo " + (title != null && title.Logo != null && title.Logo.Ready)
+             + " | world " + (world != null ? world.WorldSeed + " radius " + world.ViewRadius : "none")
+             + " | player active " + (world != null && world.PlayerTransform != null && world.PlayerTransform.gameObject.activeSelf)
+             + " | clouds " + (FindFirstObjectByType<Clouds>() != null) + " | grading " + (Grading.Instance != null && Grading.Instance.PostProcessing)
+             + " | surf " + (FindFirstObjectByType<SurfSound>() != null) + " | compass " + (FindFirstObjectByType<CompassBar>() != null)
+             + " | surveyor " + (FindFirstObjectByType<Surveyor>() != null) + " | notices " + (FindFirstObjectByType<Notices>() != null)
+             + " | cursor " + Cursor.lockState + "/" + Cursor.visible
+             + " | cam " + (cam != null ? cam.transform.position.ToString("F1") + " far " + cam.farClipPlane : "-")
+             + " | hour " + (TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized.ToString("F2") + (TimeOfDay.Instance.Paused ? " held" : " turning") : "-")
+             + " | scene " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(16f);
+        Mark("TITLE: " + State());
+        var image = GameObject.Find("Logo picture");
+        if (image != null)
+        {
+            var rectT = image.GetComponent<RectTransform>(); var raw = image.GetComponent<UnityEngine.UI.RawImage>();
+            Mark("LOGO image rect " + (rectT != null) + " | raw " + (raw != null) + " | parent " + (image.transform.parent != null ? image.transform.parent.name : "none") + " | active " + image.activeInHierarchy);
+            if (rectT != null) { var corners = new Vector3[4]; rectT.GetWorldCorners(corners); Mark("LOGO image corners " + corners[0].ToString("F0") + " to " + corners[2].ToString("F0") + " | size " + rectT.sizeDelta + " anchored " + rectT.anchoredPosition); }
+            if (raw != null) Mark("LOGO raw enabled " + raw.enabled + " | texture " + (raw.texture != null ? raw.texture.width + "x" + raw.texture.height : "none") + " | canvas " + (raw.canvas != null) + " | colour " + raw.color);
+        }
+        else Mark("LOGO image missing");
+        var camGo = GameObject.Find("Title logo camera");
+        if (camGo != null)
+        {
+            var c = camGo.GetComponent<Camera>();
+            var blocks = GameObject.Find("Title blocks");
+            Mark("LOGO camera enabled " + c.enabled + " | target " + (c.targetTexture != null) + " | at " + c.transform.position.ToString("F0") + " | blocks " + (blocks != null ? blocks.transform.childCount : -1) + " | block layer " + (blocks != null && blocks.transform.childCount > 0 ? blocks.transform.GetChild(0).gameObject.layer : -1) + " | main mask has layer " + ((Camera.main.cullingMask & (1 << 30)) != 0));
+            var tex = c.targetTexture;
+            if (tex != null)
+            {
+                RenderTexture.active = tex;
+                var t2 = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
+                t2.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0); t2.Apply();
+                RenderTexture.active = null;
+                var px = t2.GetPixels32(); int opaque = 0, lit = 0, left = tex.width, right = 0, top = 0, bottom = tex.height;
+                for (int i = 0; i < px.Length; i++)
+                {
+                    if (px[i].a <= 128) continue;
+                    opaque++; int x = i % tex.width, y = i / tex.width;
+                    left = Mathf.Min(left, x); right = Mathf.Max(right, x); bottom = Mathf.Min(bottom, y); top = Mathf.Max(top, y);
+                    if (px[i].r + px[i].g + px[i].b > 60) lit++;
+                }
+                Mark("LOGO picture opaque " + opaque + " lit " + lit + " of " + px.Length + " | spans x " + left + ".." + right + " of " + tex.width + ", y " + bottom + ".." + top + " of " + tex.height);
+                File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "probe-tl-logo.png"), t2.EncodeToPNG());
+            }
+        }
+        else Mark("LOGO camera missing");
+        var cardGo = GameObject.Find("Card");
+        if (cardGo != null)
+        {
+            cardGo.SetActive(false);
+            yield return Shot("scene");
+            cardGo.SetActive(true);
+        }
+        float frames = 0f, seconds = 0f;
+        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+        Mark("TITLE frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
+        yield return Shot("a");
+        yield return new WaitForSecondsRealtime(4.7f);
+        yield return Shot("b");
+        yield return new WaitForSecondsRealtime(4.7f);
+        yield return Shot("c");
+
+        // in, and back out
+        var save = WorldLibrary.Create("Probe title", 5, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        Mark("IN: " + State());
+        yield return Shot("in");
+        WorldLibrary.LeaveToMenu();
+        yield return new WaitForSecondsRealtime(14f);
+        Mark("BACK: " + State());
+        yield return Shot("back");
+        WorldLibrary.Delete(save.id);
+        Mark("done");
+    }
+}

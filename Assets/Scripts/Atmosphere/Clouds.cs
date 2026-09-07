@@ -40,7 +40,6 @@ public class Clouds : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Clouds>() == null) new GameObject("Clouds (runtime)").AddComponent<Clouds>();
     }
 

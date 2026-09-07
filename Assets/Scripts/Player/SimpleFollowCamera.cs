@@ -31,6 +31,9 @@ public class SimpleFollowCamera : MonoBehaviour
 
     private void Start()
     {
+        // under the title the camera is stood on the sand by the title, and the cursor is the menu's
+        if (TitleMenu.IsUp) { enabled = false; return; }
+
         world = FindFirstObjectByType<ChunkManager>();
 
         if (target != null)

@@ -31,7 +31,6 @@ public class Flocks : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Flocks>() == null) new GameObject("Flocks (runtime)").AddComponent<Flocks>();
     }
 

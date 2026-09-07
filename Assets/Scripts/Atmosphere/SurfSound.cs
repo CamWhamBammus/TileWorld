@@ -17,7 +17,6 @@ public class SurfSound : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<SurfSound>() == null) new GameObject("Surf (runtime)").AddComponent<SurfSound>();
     }
 

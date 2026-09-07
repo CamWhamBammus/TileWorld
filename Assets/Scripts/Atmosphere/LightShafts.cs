@@ -25,7 +25,6 @@ public class LightShafts : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<LightShafts>() == null) new GameObject("Light shafts (runtime)").AddComponent<LightShafts>();
     }
 

@@ -23,7 +23,6 @@ public class Rainbow : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Rainbow>() == null) new GameObject("Rainbow (runtime)").AddComponent<Rainbow>();
     }
 

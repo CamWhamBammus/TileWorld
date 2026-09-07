@@ -154,7 +154,7 @@ public class Splashes : MonoBehaviour
 
     private static Splashes Ensure()
     {
-        if (instance == null && !TitleMenu.IsUp)
+        if (instance == null)
         {
             instance = new GameObject("Splashes (runtime)").AddComponent<Splashes>();
         }

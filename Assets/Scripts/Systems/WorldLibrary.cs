@@ -276,11 +276,11 @@ public static class WorldLibrary
     }
 
     public const string GameScene = "SampleScene";
-    public const string TitleScene = "Title";
 
     /// <summary>
     /// Out of the world and back to the title: what has been found is
-    /// written first, and the world is put back on the shelf.
+    /// written first, and the world is put back on the shelf. The title is
+    /// the same scene with no world chosen.
     /// </summary>
     public static void LeaveToMenu()
     {
@@ -293,7 +293,7 @@ public static class WorldLibrary
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        UnityEngine.SceneManagement.SceneManager.LoadScene(TitleScene);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(GameScene);
     }
 
     /// <summary>

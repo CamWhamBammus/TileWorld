@@ -1,0 +1,57 @@
+// A probe: looks through seeds for a beach near the origin to stand the title's camera on,
+// and says where. Pure arithmetic on the seed, so it runs before any world is up.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+        for (int seed = 1; seed <= 24; seed++)
+        {
+            // the nearest strand tile to the origin
+            bool found = false; int sx = 0, sz = 0;
+            for (int r = 0; r < 70 && !found; r++)
+            for (int dx = -r; dx <= r && !found; dx++)
+            for (int dz = -r; dz <= r && !found; dz++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                if (Surf.IsStrand(dx, dz, seed)) { found = true; sx = dx; sz = dz; }
+            }
+            if (!found) { Mark("seed " + seed + ": no beach within 70 tiles"); continue; }
+            // how much sea and how much strand there is round it, and which way the sea lies
+            int sea = 0, strand = 0, land = 0; Vector2 toSea = Vector2.zero;
+            for (int dx = -20; dx <= 20; dx++)
+            for (int dz = -20; dz <= 20; dz++)
+            {
+                int tx = sx + dx, tz = sz + dz;
+                if (WaterSurface.IsUnderwater(tx, tz, seed) && WaterSurface.BodyAt(tx, tz, seed) == WaterSurface.Body.Beach) { sea++; toSea += new Vector2(dx, dz); }
+                else if (Surf.IsStrand(tx, tz, seed)) strand++;
+                else if (!WaterSurface.IsUnderwater(tx, tz, seed)) land++;
+            }
+            if (sea > 0) toSea /= sea;
+            Mark("seed " + seed + ": strand at tile " + sx + "," + sz + " (" + Mathf.RoundToInt(Vector2.Distance(Vector2.zero, new Vector2(sx, sz)) * WorldGrid.TileSize) + " m) | within 20 tiles: sea " + sea + ", strand " + strand + ", land " + land + " | sea lies toward " + toSea.normalized.x.ToString("F2") + "," + toSea.normalized.y.ToString("F2") + " | height " + WorldHeight.SurfaceY(sx, sz, seed).ToString("F2") + " level " + WaterSurface.Level.ToString("F2"));
+            yield return null;
+        }
+        Mark("done");
+    }
+}

@@ -60,10 +60,10 @@ public class _Probe : MonoBehaviour
         yield return null;
 
         var canvas = GameObject.Find("Dev Canvas");
-        string[] names = { "Places", "Animals", "Weather", "Title" };
+        string[] names = { "Places", "Animals", "Weather" };
         Button rainButton = null, letGo = null;
 
-        for (int p = 0; p < 4; p++)
+        for (int p = 0; p < names.Length; p++)
         {
             show.Invoke(tools, new object[] { p });
             yield return null;

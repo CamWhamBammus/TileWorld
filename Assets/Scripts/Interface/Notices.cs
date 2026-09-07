@@ -30,6 +30,7 @@ public class Notices : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Notices>() == null)
         {
             new GameObject("Notices (runtime)").AddComponent<Notices>();

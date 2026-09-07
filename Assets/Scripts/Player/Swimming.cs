@@ -61,6 +61,7 @@ public class Swimming : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Swimming>() == null)
         {
             new GameObject("Swimming (runtime)").AddComponent<Swimming>();

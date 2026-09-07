@@ -29,7 +29,6 @@ public class NightSky : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<NightSky>() == null) new GameObject("Night sky (runtime)").AddComponent<NightSky>();
     }
 

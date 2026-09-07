@@ -36,7 +36,6 @@ public class Motes : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Motes>() == null) new GameObject("Motes (runtime)").AddComponent<Motes>();
     }
 

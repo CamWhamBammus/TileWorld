@@ -49,7 +49,6 @@ public class Grading : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Grading>() == null) new GameObject("Grading (runtime)").AddComponent<Grading>();
     }
 

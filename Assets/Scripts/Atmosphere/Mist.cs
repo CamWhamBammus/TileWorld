@@ -20,7 +20,6 @@ public class Mist : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
-        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Mist>() == null) new GameObject("Mist (runtime)").AddComponent<Mist>();
     }
 

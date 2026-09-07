@@ -100,6 +100,7 @@ public class Sketching : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        if (TitleMenu.IsUp) return;
         if (FindFirstObjectByType<Sketching>() == null)
         {
             new GameObject("Sketching (runtime)").AddComponent<Sketching>();
