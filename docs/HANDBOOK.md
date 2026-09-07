@@ -535,9 +535,11 @@ quarter as high while it holds, and each tile is cut three by three so the
 bump rolls rather than steps. The foam thins out to sea over the last
 metres of the sheet and softens past the front instead of stopping. The
 lines of foam once left on the sand are gone: they read as stripes. On the
-way back the water lying behind the front drains from the top down
-(`drain`, a smoothstep over the three metres behind the front), so the sand
-comes back through in a band that follows the front out; the crest is a
+way back the sheet stays joined to the sea and thins toward the front
+(`thin`, from 0.4 at the front to full four and a half metres behind it),
+so the sand shows through the last of it as it slides away; a first
+version removed the water between the front and the sea instead, which
+left the foam riding a front with bare sand behind it. The crest is a
 third its height going out, the water behind it no longer stands higher,
 and a shallow trough follows the front. The front runs
 from four metres out to six and a half up the sand on a fourteen-second

@@ -179,10 +179,10 @@ Shader "TileWorld/Water"
                     // the foam thins out to sea rather than stopping where the sheet does
                     band *= smoothstep(_Back - 1.5, _Back + 2.5, dist);
                     float edge = 1 - smoothstep(front - 0.35, front + 0.3, dist);      // the sheet stops at the front, softly
-                    // going back, the water lying behind the front drains from the top down and the sand shows through;
-                    // the sea's own side keeps its water
-                    float drain = coming > 0.5 ? 1 : smoothstep(front - 3.2, front - 0.6, dist);
-                    float sheetAlpha = edge * (dist > -0.01 ? drain : 1);
+                    // going back, the sheet stays joined to the sea but thins toward the front, so the sand
+                    // shows through the last few metres of it as it slides away; coming in it is full
+                    float thin = coming > 0.5 ? 1 : lerp(0.4, 1, saturate((front - dist) / 4.5));
+                    float sheetAlpha = edge * (dist > -0.01 ? thin : 1);
                     if (_Wash > 1.5) { water = _Foam.rgb; alpha = band * 0.9; }
                     else { water = lerp(water, _Foam.rgb, saturate(band)); alpha = max(sheetAlpha, band * 0.9); }
                 }
