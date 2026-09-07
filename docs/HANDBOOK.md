@@ -528,6 +528,14 @@ noise, a thin sheet behind it thinning as it draws back, and lines of foam
 left on the sand. It is an overlay in `ChunkManager` like the ice. Lakes
 get none. `SurfSound` looks for the nearest strand tile twice a second and
 plays a made loop of two swells at the wash's period, louder the nearer.
+Two things that cost a few runs: each quad's corners take the mean of the
+distances of the tiles round them, because one distance per tile left the
+foam band -- a metre wide -- falling between two-metre steps and never
+landing on a tile; and never `pow(x, 2)` on a value that can go negative
+in a shader, since that is NaN on the GPU and the whole quad vanishes.
+Square by hand. The way to tell a shader that draws nothing from a mesh
+that is not there is to swap in the glow material: if the quads light up,
+the mesh is fine.
 
 `Fireflies` was rewritten: each fly has a place in the world and a heading
 that wanders by noise, and hangs where it is as the player walks by (the
