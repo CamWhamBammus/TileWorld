@@ -182,10 +182,20 @@ slosh behind; a body going in adds a low knock and bigger bubbles as the
 water closes. `Tools/probe/Sounds.cs.txt` writes the clips out as WAV to
 `Tools/.check/sounds/`, and the Python after it in the session measures
 each: peak time, spectral centroid and flatness (hiss is flat, near 0.5;
-water is tonal, under 0.2). Rain rings the water too: `Rain` calls
-`Splashes.Raindrop` where a streak crosses the water level over a wet tile,
-and `Splashes` keeps those rings in its own list, up to nine hundred, drawn
-in batches of a thousand. The ring mesh is `Tracks.Annulus`: a ring wound
+water is tonal, under 0.2). Rain rings the water too. `Rain` keeps its streaks in arrays and draws them
+in one `RenderMeshInstanced` call (800 of them, in a 24 m disc 18 m high
+that rides with the camera, leaning with a wind of its own that wanders by
+Perlin noise); it used to be 260 cube GameObjects moved by hand. A streak
+falls to the ground or the water under it (`FloorUnder`, kept per streak;
+it used to stop three metres under the camera, in mid-air) and rings the
+water where it lands. Since far more drops land than are drawn, the water
+within sight is ringed on its own account: 5500 candidates a second at full
+rain over a 64 m disc, kept with probability 1/(1+(r/16)^2) so the rings
+are densest near and thin with distance, and scaled up by 1+r/40 so a far
+one still reads. Measured from a shore in a downpour: about 650 rings on
+the water at once, a fifth within 15 m and most between 15 and 40, and the
+whole of the rain costs 0.2 ms a frame. `Splashes` keeps those rings in its
+own list, up to 2400, drawn in batches of a thousand. The ring mesh is `Tracks.Annulus`: a ring wound
 the other way is back-face culled from above and simply never appears,
 which is what a home-made one did, with the count saying 146 on the water. The calls are `Step` (a foot in the
 shallows), `Plunge` (going in), `Stroke` (a swimmer's arm) and `Wake` (a
