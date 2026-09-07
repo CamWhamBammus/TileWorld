@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _DepthFade: 2.4
-    - _FoamDepth: 0.22
+    - _FoamDepth: 0.09
     - _Fresnel: 0.55
     - _Refract: 0.04
     - _Sparkle: 0.7

@@ -73,7 +73,9 @@ Shader "TileWorld/Wash"
 
                 // the foam at the front, broken up along the shore: this is the wave
                 float breakup = Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.8 + 0.4;
-                float band = exp(-pow((dist - front) / 0.9, 2));
+                // squared by hand: pow of a negative base is NaN on the GPU, and behind the front it is negative
+                float off = (dist - front) / 0.9;
+                float band = exp(-off * off);
                 float foam = band * lerp(0.6, 1, coming) * breakup * 0.95;
 
                 // a thin sheet of water just behind the front, gone a few metres back

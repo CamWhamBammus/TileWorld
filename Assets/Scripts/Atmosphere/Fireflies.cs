@@ -122,7 +122,12 @@ public class Fireflies : MonoBehaviour
         Out = batch.Count;
         First = flies.Count > 0 ? flies[0].At : Vector3.zero;
         if (batch.Count == 0) return;
+        // one draw each: a few dozen, and it needs no instancing from the shader
         var rp = new RenderParams(glow) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
-        Graphics.RenderMeshInstanced(rp, disc, 0, batch, batch.Count, 0);
+        for (int i = 0; i < batch.Count; i++)
+        {
+            rp.worldBounds = new Bounds(batch[i].GetPosition(), Vector3.one * 2f);
+            Graphics.RenderMesh(rp, disc, 0, batch[i]);
+        }
     }
 }

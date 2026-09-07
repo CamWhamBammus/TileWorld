@@ -80,7 +80,10 @@ public class _Probe : MonoBehaviour
         if (washGo != null && washGo.GetComponent<MeshFilter>() != null && washGo.GetComponent<MeshFilter>().sharedMesh != null) washVerts = washGo.GetComponent<MeshFilter>().sharedMesh.vertexCount;
         int strand = 0; int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
         for (int dx = -8; dx <= 8; dx++) for (int dz = -8; dz <= 8; dz++) if (Surf.IsStrand(px + dx, pz + dz, seed)) strand++;
-        Mark("BEACH: strand tiles within 8: " + strand + ", wash mesh verts in this chunk " + washVerts + " (" + washVerts / 4 + " quads), surf heard " + SurfSound.Level.ToString("F2"));
+        float uvMin = 999f, uvMax = -999f;
+        if (washGo != null && washGo.GetComponent<MeshFilter>() != null && washGo.GetComponent<MeshFilter>().sharedMesh != null)
+            foreach (var uv in washGo.GetComponent<MeshFilter>().sharedMesh.uv) { uvMin = Mathf.Min(uvMin, uv.x); uvMax = Mathf.Max(uvMax, uv.x); }
+        Mark("BEACH: strand tiles within 8: " + strand + ", wash mesh verts in this chunk " + washVerts + " (" + washVerts / 4 + " quads), distances " + uvMin.ToString("F1") + " to " + uvMax.ToString("F1") + " m, surf heard " + SurfSound.Level.ToString("F2"));
         // low along the shore, looking at the waterline, three moments of the wave
         Vector3 along = Vector3.Cross(Vector3.up, player.forward).normalized;
         Vector3 eye = player.position + Vector3.up * 1.6f - player.forward * 2f + along * 3f;
@@ -91,6 +94,22 @@ public class _Probe : MonoBehaviour
         yield return new WaitForSecondsRealtime(2.2f);
         yield return Shot("wave-c", eye, at);
         yield return Shot("wave-high", player.position + Vector3.up * 9f - player.forward * 4f, player.position + player.forward * 10f);
+        var washRoot = GameObject.Find("Wash (runtime)");
+        var washRend = washGo != null ? washGo.GetComponent<MeshRenderer>() : null;
+        if (washRend != null)
+        {
+            var mat = washRend.sharedMaterial;
+            Mark("WASH RENDERER: enabled " + washRend.enabled + ", visible " + washRend.isVisible + ", bounds " + washRend.bounds.center.ToString("F0") + " size " + washRend.bounds.size.ToString("F0")
+                 + ", shader " + (mat != null ? mat.shader.name + " supported " + mat.shader.isSupported + " queue " + mat.renderQueue : "no material") + ", camera at " + cam.transform.position.ToString("F0"));
+            // the same quads in the glow material: if these show, the mesh is fine and the wash shader is not
+            var glow = new Material(Resources.Load<Material>("Glow")); glow.SetColor("_Color", new Color(1f, 0.2f, 0.2f, 0.8f));
+            washRend.sharedMaterial = glow;
+            yield return Shot("wave-glowtest", eye, at);
+            washRend.sharedMaterial = mat;
+        }
+        if (washRoot != null) washRoot.SetActive(false);
+        yield return Shot("wave-nowash", eye, at);
+        if (washRoot != null) washRoot.SetActive(true);
 
         // ---- the fireflies
         goTo.Invoke(tools, new object[] { Regions.Character.Lowland });
@@ -104,8 +123,8 @@ public class _Probe : MonoBehaviour
         float moved = Vector3.Distance(new Vector3(firstBefore.x, 0f, firstBefore.z), new Vector3(firstAfter.x, 0f, firstAfter.z));
         Mark("FIREFLIES: " + outBefore + " out; the player moved " + Vector3.Distance(playerBefore, player.position).ToString("F1") + " m and the first firefly moved " + moved.ToString("F2") + " m (its own wandering, not the player's)");
         Vector3 nearFly = Fireflies.First;
-        Vector3 flyEye = nearFly + Vector3.up * 2.5f - (nearFly - player.position).normalized * 6f;
-        yield return Shot("fireflies", flyEye, nearFly + Vector3.up * 0.5f);
+        Vector3 flyEye = nearFly + Vector3.up * 1.2f - (nearFly - player.position).normalized * 4f;
+        yield return Shot("fireflies", flyEye, nearFly);
 
         clock.ForceOvercast(-1f); clock.Paused = false;
         Mark("done");

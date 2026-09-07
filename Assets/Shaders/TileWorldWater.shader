@@ -11,7 +11,7 @@ Shader "TileWorld/Water"
         _Deep ("Deep", Color) = (0.05, 0.20, 0.34, 0.94)
         _Foam ("Foam", Color) = (0.93, 0.97, 0.98, 1)
         _DepthFade ("Depth to full colour", Float) = 2.4
-        _FoamDepth ("Foam depth", Float) = 0.22
+        _FoamDepth ("Foam depth", Float) = 0.09
         _WaveHeight ("Wave height", Float) = 0.035
         _WaveScale ("Wave scale", Float) = 0.45
         _Speed ("Speed", Float) = 0.6
