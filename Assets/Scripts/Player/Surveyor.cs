@@ -49,6 +49,9 @@ public class Surveyor : MonoBehaviour
     private float sag;          // how far the hips drop to keep hold of the feet
     private bool wasGrounded = true;
     private float landedAt = -10f;
+    private bool wasWet;
+    private float nextWake;
+    private float lastStroke;
     private float airborneSince = -1f; // when the capsule last lost the ground, or -1
     private readonly Vector3[] footWas = new Vector3[2]; // where each foot ended the last frame, for the skid count
 
@@ -212,6 +215,62 @@ public class Surveyor : MonoBehaviour
         Limbs(dt, afoot, grounded && !wet, wet);
         Feet(dt, afoot, grounded && !wet);
         Working();
+        Water(dt, afoot, wet);
+    }
+
+    /// <summary>Whether a point is in a lake or the sea: under the water level, on a tile the water covers.</summary>
+    private bool InWater(Vector3 at)
+    {
+        if (at.y > WaterSurface.Level - 0.02f) return false;
+
+        int tileX = Mathf.RoundToInt(at.x / WorldGrid.TileSize);
+        int tileZ = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+        return WaterSurface.IsUnderwater(tileX, tileZ, world != null ? world.WorldSeed : 0);
+    }
+
+    /// <summary>
+    /// What the water does about us: a wake while wading or swimming, a ring
+    /// and a few drops off each stroke, and a proper splash going in off a
+    /// bank or at a run. A foot coming down in the shallows is handled where
+    /// the foot lands.
+    /// </summary>
+    private void Water(float dt, bool afoot, bool wet)
+    {
+        Vector3 body = player.position;
+        bool wading = !wet && afoot && InWater(new Vector3(body.x, body.y - 0.05f, body.z));
+
+        // going in: the harder, the bigger
+        if (wet && !wasWet)
+        {
+            float hard = Mathf.Max(Mathf.InverseLerp(-1.5f, -7f, fallSpeed), Mathf.InverseLerp(1.5f, 5.5f, pace));
+            Splashes.By("surveyor"); Splashes.Plunge(body, 0.35f + hard * 0.65f);
+        }
+
+        wasWet = wet;
+
+        // wading, the feet leave the rings; at a run the body pushes a bow wave too
+        if (wading && pace > 3.5f && Time.time > nextWake)
+        {
+            nextWake = Time.time + 0.5f;
+            Splashes.Wake(body + player.forward * 0.4f, 1.5f);
+        }
+
+        if (wet)
+        {
+            // each stroke as the arms pull: the phase wraps once a stroke
+            if (stroke < lastStroke)
+            {
+                Splashes.By("surveyor"); Splashes.Stroke(body + player.forward * 0.5f, 0.3f + Mathf.InverseLerp(0f, 3f, pace) * 0.7f);
+            }
+
+            lastStroke = stroke;
+
+            if (pace > 0.3f && Time.time > nextWake)
+            {
+                nextWake = Time.time + 0.6f;
+                Splashes.Wake(body - player.forward * 0.6f, 1.2f);
+            }
+        }
     }
 
     /// <summary>How far the ankle reaches from the hip. Measured, not assumed.</summary>
@@ -540,6 +599,14 @@ public class Surveyor : MonoBehaviour
                     Vector3 got = figure.Ankles[side].position;
                     planted[side] = new Vector3(got.x, landing.y, got.z);
                     plantedYaw[side] = yaw;
+
+                    // a foot into the shallows: harder with pace, and with depth up to the knee
+                    Vector3 sole = planted[side] - Vector3.up * ankleHeight;
+                    if (afoot && InWater(sole))
+                    {
+                        float deep = Mathf.InverseLerp(0.02f, 0.5f, WaterSurface.Level - sole.y);
+                        Splashes.By("surveyor"); Splashes.Step(sole, Mathf.InverseLerp(0.8f, 5.5f, pace) * 0.75f + deep * 0.25f);
+                    }
                     plantedAt[side] = Time.time;
                     held[side] = true;
                     stepping[side] = false;

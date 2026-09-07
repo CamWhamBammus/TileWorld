@@ -1296,7 +1296,30 @@ public class Animal : MonoBehaviour
 
         Feet[i] = frame.TransformPoint(new Vector3(hip.localPosition.x, H.x + toFoot.x, H.y + toFoot.y));
         bool down = lift <= 0.0005f;
-        if (down && !Planted[i] && stride > 0.5f) Tracks.Print(Feet[i], yaw, traits.Size * 0.14f, Kind, seed);
+
+        if (down && !Planted[i] && stride > 0.5f)
+        {
+            // in the shallows a foot leaves a ring and a few drops rather than
+            // a print -- the bigger animals; a frog's foot is not a splash
+            bool inWater = Feet[i].y < WaterSurface.Level - 0.02f
+                && WaterSurface.IsUnderwater(Mathf.RoundToInt(Feet[i].x / WorldGrid.TileSize), Mathf.RoundToInt(Feet[i].z / WorldGrid.TileSize), seed);
+
+            if (inWater)
+            {
+                if (traits.Size >= 0.45f && !Fauna.All(Kind).Surfaces)
+                {
+                    // a heron stalking only rings the water; a deer at a run, or anything big, splashes
+                    if (stride > 1.5f || traits.Size >= 0.9f)
+                    {
+                        Splashes.By(Kind.ToString());
+                        Splashes.Step(Feet[i], Mathf.Clamp01(traits.Size * 0.3f) * (stride > 1.5f ? 1f : 0.5f));
+                    }
+                    else Splashes.Wake(Feet[i], 0.45f + traits.Size * 0.3f);
+                }
+            }
+            else Tracks.Print(Feet[i], yaw, traits.Size * 0.14f, Kind, seed);
+        }
+
         Planted[i] = down;
     }
 

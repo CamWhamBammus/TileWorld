@@ -170,6 +170,23 @@ sand in the shallows and stone below 1.6 on a beach; mud under a lake or
 pond; stone under snow. Reeds only in lakes and ponds, in water under 1.1.
 Snow never lies on a water floor.
 
+`Splashes` (in `Atmosphere/`) is what water does about things going into it.
+It draws drops as small flat-shaded lumps in one `RenderMeshInstanced` call,
+leaves rings through `Tracks.Ring(at, size, lasts)`, and makes its own
+sound: a burst of noise through a low-pass whose cutoff falls as it dies,
+with a low knock for a body going in. The calls are `Step` (a foot in the
+shallows), `Plunge` (going in), `Stroke` (a swimmer's arm) and `Wake` (a
+ring only). `Surveyor` calls them when a swung foot lands in water, when
+`Swimming.Afloat` first goes true (harder for a fall or a run), once a
+stroke, and on a timer while wading or swimming; `Animal.Place` calls `Step`
+in place of a print when a foot comes down under the water level.
+A ring is drawn from one of three annulus meshes by its age, so it thins as
+it spreads; the paint is opaque, so that is how it fades. A stalking heron
+only rings the water (`Wake`); a big animal or one at a run splashes.
+`Tools/probe/Splash.cs.txt` finds a shore with shallows and deep water
+beyond, walks in and out on camera, and counts drops, marks and sounds,
+naming who made each sound.
+
 ## Structures
 
 Fifteen kinds, one country each: Forester's Watch and Hunter's Hide (Forest);

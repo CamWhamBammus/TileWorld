@@ -33,6 +33,8 @@ public class Tracks : MonoBehaviour
     private readonly Dictionary<Sort, List<Matrix4x4>> batches = new Dictionary<Sort, List<Matrix4x4>>();
     private readonly Dictionary<Sort, Material> paints = new Dictionary<Sort, Material>();
     private Mesh oval, feather, ring;
+    private readonly Mesh[] rings = new Mesh[3];              // a ring thins as it spreads: three bands, by age
+    private readonly List<Matrix4x4>[] ringBatches = { new List<Matrix4x4>(), new List<Matrix4x4>(), new List<Matrix4x4>() };
 
     // trails: how often each tile has been crossed lately
     private readonly Dictionary<long, float> worn = new Dictionary<long, float>();
@@ -52,7 +54,10 @@ public class Tracks : MonoBehaviour
         instance = this;
         oval = Oval(8, 1f, 0.7f);
         feather = Oval(6, 1f, 0.28f);
-        ring = Annulus(16, 0.5f, 0.42f);
+        ring = Annulus(28, 0.5f, 0.44f);
+        rings[0] = ring;
+        rings[1] = Annulus(28, 0.5f, 0.465f);
+        rings[2] = Annulus(28, 0.5f, 0.482f);
 
         paints[Sort.SnowPrint] = Paint.Flat(new Color(0.58f, 0.64f, 0.76f));
         paints[Sort.SandPrint] = Paint.Flat(new Color(0.60f, 0.48f, 0.30f));
@@ -60,7 +65,7 @@ public class Tracks : MonoBehaviour
         paints[Sort.PaleFeather] = Paint.Flat(new Color(0.90f, 0.90f, 0.87f));
         paints[Sort.DarkFeather] = Paint.Flat(new Color(0.09f, 0.09f, 0.11f));
         paints[Sort.Trail] = Paint.Flat(new Color(0.38f, 0.32f, 0.20f));
-        paints[Sort.Ring] = Paint.Flat(new Color(0.86f, 0.92f, 0.97f));
+        paints[Sort.Ring] = Paint.Flat(new Color(0.80f, 0.89f, 0.95f));
 
         foreach (Sort s in System.Enum.GetValues(typeof(Sort))) batches[s] = new List<Matrix4x4>(256);
     }
@@ -109,9 +114,18 @@ public class Tracks : MonoBehaviour
     /// <summary>A ring on the water where a fish rose, spreading and fading.</summary>
     public static void Ring(Vector3 at)
     {
-        if (instance == null) return;
-        instance.Leave(new Mark { Sort = Sort.Ring, At = at + Vector3.up * 0.03f, Yaw = 0f, Size = 2.4f, Made = Time.time, Lasts = 4.5f });
+        Ring(at, 2.4f, 4.5f);
     }
+
+    /// <summary>A ring on the water of a given spread and life: a foot in the shallows, a stroke.</summary>
+    public static void Ring(Vector3 at, float size, float lasts)
+    {
+        if (instance == null) return;
+        instance.Leave(new Mark { Sort = Sort.Ring, At = at + Vector3.up * 0.03f, Yaw = 0f, Size = size, Made = Time.time, Lasts = lasts });
+    }
+
+    /// <summary>How many marks are on the ground and the water, for the probes.</summary>
+    public static int Count => instance != null ? instance.marks.Count : 0;
 
     /// <summary>An animal crossing a tile: enough crossings and the tile wears to a trail.</summary>
     public static void Cross(int tileX, int tileZ)
@@ -153,13 +167,21 @@ public class Tracks : MonoBehaviour
             if (now - marks[i].Made > marks[i].Lasts) marks.RemoveAt(i);
 
         foreach (var pair in batches) pair.Value.Clear();
+        foreach (var b in ringBatches) b.Clear();
 
         foreach (var m in marks)
         {
             float age = (now - m.Made) / m.Lasts;
             float shrink = age > 0.8f ? Mathf.InverseLerp(1f, 0.8f, age) : 1f;
             float s = m.Size * shrink;
-            if (m.Sort == Sort.Ring) s = m.Size * Mathf.Lerp(0.15f, 1f, Mathf.Sqrt(age));   // a ring spreads, and thins as it goes
+            if (m.Sort == Sort.Ring)
+            {
+                // a ring spreads, and thins as it goes
+                s = m.Size * Mathf.Lerp(0.15f, 1f, Mathf.Sqrt(age));
+                ringBatches[age < 0.35f ? 0 : age < 0.7f ? 1 : 2].Add(Matrix4x4.TRS(m.At, Quaternion.identity, new Vector3(s, 1f, s)));
+                continue;
+            }
+
             batches[m.Sort].Add(Matrix4x4.TRS(m.At, Quaternion.Euler(0f, m.Yaw, 0f), new Vector3(s, 1f, s)));
         }
 
@@ -179,6 +201,13 @@ public class Tracks : MonoBehaviour
             float y = WorldHeight.SurfaceY(tx, tz, seed) + Animal.FootingAt(tx, tz, seed) + 0.01f;
             float size = Mathf.Lerp(0.6f, 1.5f, Mathf.InverseLerp(6f, 30f, count));
             batches[Sort.Trail].Add(Matrix4x4.TRS(new Vector3(tx * WorldGrid.TileSize, y, tz * WorldGrid.TileSize), Quaternion.Euler(0f, (tx * 37 + tz * 17) % 180, 0f), new Vector3(size, 1f, size)));
+        }
+
+        if (paints[Sort.Ring] != null)
+        {
+            var ringParams = new RenderParams(paints[Sort.Ring]) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
+            for (int k = 0; k < 3; k++)
+                if (ringBatches[k].Count > 0) Graphics.RenderMeshInstanced(ringParams, rings[k], 0, ringBatches[k], ringBatches[k].Count, 0);
         }
 
         foreach (var pair in batches)

@@ -1,0 +1,167 @@
+// A probe: walks into a lake from the shore and out into deep water with a
+// side camera on the surveyor, and counts the drops, the rings and the
+// splash sounds as it goes.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+    private Transform player; private Camera cam;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        Mark("boot");
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void HideInterface()
+    {
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        foreach (var beh in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            if (beh.GetType().Name == "WorldLabels" || beh.GetType().Name == "Notices" || beh.GetType().Name == "CompassBar") beh.enabled = false;
+    }
+
+    private void LateUpdate()
+    {
+        if (cam == null || player == null) return;
+        Vector3 at = player.position + player.right * 4.6f + player.forward * 0.8f + Vector3.up * 1.5f;
+        at.y = Mathf.Max(at.y, WaterSurface.Level + 1.7f);
+        cam.transform.position = at;
+        cam.transform.LookAt(new Vector3(player.position.x, Mathf.Max(player.position.y + 0.5f, WaterSurface.Level + 0.2f), player.position.z));
+    }
+
+    private IEnumerator Shot(string name)
+    {
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-sp-" + name + ".png"));
+        Mark(name + ": recent " + string.Join(", ", Splashes.Recent) + " | drops " + Splashes.Alive + ", marks " + Tracks.Count + ", sounds " + Splashes.Played + ", in water " + Swimming.InWater + ", afloat " + Swimming.Afloat + ", depth " + (WaterSurface.Level - player.position.y).ToString("F2"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        if (TitleMenu.IsUp)
+        {
+            var worlds = WorldLibrary.All();
+            WorldLibrary.Enter(worlds.Count > 0 ? worlds[0] : WorldLibrary.Create("Splash", 7777));
+            yield return new WaitForSecondsRealtime(6f);
+        }
+        ChunkManager world = FindFirstObjectByType<ChunkManager>();
+        for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
+        {
+            if (tries > 40) { Mark("gave up"); Mark("done"); yield break; }
+            yield return new WaitForSecondsRealtime(1f);
+            world = FindFirstObjectByType<ChunkManager>();
+        }
+        player = world.PlayerTransform;
+        var body = player.GetComponent<CharacterController>();
+        var inputs = player.GetComponent<StarterAssets.StarterAssetsInputs>();
+        var controller = player.GetComponent<StarterAssets.ThirdPersonController>();
+        int seed = world.WorldSeed;
+        yield return new WaitForSecondsRealtime(4f);
+        HideInterface();
+
+        // a shore with shallows in front of it and deep water beyond, nearest the player
+        int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        float level = WaterSurface.Level;
+        int bestX = 0, bestZ = 0, bestDx = 0, bestDz = 0; float bestDist = float.MaxValue;
+        int[] dirs = { 1, 0, -1, 0, 0, 1, 0, -1 };
+        for (int r = 4; r < 110 && bestDist == float.MaxValue; r += 2)
+        for (int dx = -r; dx <= r; dx += 2)
+        for (int dz = -r; dz <= r; dz += 2)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = px + dx, tz = pz + dz;
+            if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            for (int d = 0; d < 4; d++)
+            {
+                int ddx = dirs[d * 2], ddz = dirs[d * 2 + 1];
+                bool shallow = false, deep = false;
+                for (int k = 1; k <= 16; k++)
+                {
+                    int sx = tx + ddx * k, sz = tz + ddz * k;
+                    if (!WaterSurface.IsUnderwater(sx, sz, seed)) { if (k > 2) break; else continue; }
+                    float depth = level - WorldHeight.SurfaceY(sx, sz, seed);
+                    if (k <= 5 && depth > 0.25f && depth < 0.9f) shallow = true;
+                    if (depth > 1.6f) { deep = true; break; }
+                }
+                if (shallow && deep) { bestX = tx; bestZ = tz; bestDx = ddx; bestDz = ddz; bestDist = r; break; }
+            }
+        }
+        if (bestDist == float.MaxValue) { Mark("no shore with shallows and deep water within 110 tiles"); Mark("done"); yield break; }
+
+        Vector3 shore = new Vector3(bestX * WorldGrid.TileSize, WorldHeight.SurfaceY(bestX, bestZ, seed) + 1.0f, bestZ * WorldGrid.TileSize);
+        Vector3 into = new Vector3(bestDx, 0f, bestDz);
+        float yaw = Quaternion.LookRotation(into).eulerAngles.y;
+        Mark("SHORE at " + shore.ToString("F0") + " walking " + into + "; splash sounds so far " + Splashes.Played + ": " + string.Join(", ", Splashes.Recent));
+
+        body.enabled = false; player.position = shore - into * 3f; player.rotation = Quaternion.Euler(0f, yaw, 0f); body.enabled = true;
+        var yawField = typeof(StarterAssets.ThirdPersonController).GetField("_cinemachineTargetYaw", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (yawField != null) yawField.SetValue(controller, yaw);
+        yield return new WaitForSecondsRealtime(3f);
+
+        var main = Camera.main;
+        cam = new GameObject("ProbeCam").AddComponent<Camera>();
+        cam.CopyFrom(main); cam.depth = main.depth + 50f; cam.fieldOfView = 38f;
+
+        inputs.move = new Vector2(0f, 1f);
+        float t0 = Time.time;
+        string[] names = { "shore", "wade", "wade2", "deeper", "swim", "swim2" };
+        float[] at = { 1.2f, 2.6f, 4.0f, 6.0f, 9.0f, 12.0f };
+        for (int i = 0; i < names.Length; i++)
+        {
+            while (Time.time - t0 < at[i]) yield return null;
+            yield return Shot(names[i]);
+        }
+        // and a run back out through the shallows
+        inputs.move = Vector2.zero; yield return new WaitForSecondsRealtime(1f);
+        if (yawField != null) yawField.SetValue(controller, yaw + 180f);
+        inputs.sprint = true; inputs.move = new Vector2(0f, 1f);
+        yield return new WaitForSecondsRealtime(5.5f);
+        yield return Shot("runout");
+        yield return new WaitForSecondsRealtime(1.2f);
+        yield return Shot("runout2");
+        inputs.move = Vector2.zero; inputs.sprint = false;
+
+        // and in off the top: dropped into deep water, then a swim
+        int deepX = 0, deepZ = 0; bool foundDeep = false;
+        for (int k = 1; k <= 30 && !foundDeep; k++)
+        {
+            int sx = bestX + bestDx * k, sz = bestZ + bestDz * k;
+            if (WaterSurface.IsUnderwater(sx, sz, seed) && level - WorldHeight.SurfaceY(sx, sz, seed) > 1.6f) { deepX = sx; deepZ = sz; foundDeep = true; }
+        }
+        if (foundDeep)
+        {
+            Vector3 above = new Vector3(deepX * WorldGrid.TileSize, level + 1.6f, deepZ * WorldGrid.TileSize);
+            body.enabled = false; player.position = above; body.enabled = true;
+            int before = Splashes.Played;
+            float tp = Time.time; bool wetSeen = false;
+            while (Time.time - tp < 2.5f) { if (Swimming.Afloat && !wetSeen) { wetSeen = true; yield return Shot("plunge"); yield return new WaitForSecondsRealtime(0.25f); yield return Shot("plunge2"); } yield return null; }
+            Mark("PLUNGE: afloat " + wetSeen + ", sounds since drop " + (Splashes.Played - before));
+            yield return Shot("floating");
+            if (yawField != null) yawField.SetValue(controller, yaw);
+            inputs.move = new Vector2(0f, 1f);
+            yield return new WaitForSecondsRealtime(2.5f);
+            yield return Shot("swimming");
+            yield return new WaitForSecondsRealtime(2f);
+            yield return Shot("swimming2");
+            inputs.move = Vector2.zero;
+        }
+        else Mark("no deep water along the line");
+
+        Mark("done");
+    }
+}
