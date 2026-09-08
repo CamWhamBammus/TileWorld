@@ -36,7 +36,10 @@ public class SaveCoordinator : MonoBehaviour
         player = world.PlayerTransform;
         nextSave = Time.time + saveEverySeconds;
         nextPicture = Time.time + 6f;
+        counted = Time.time;
     }
+
+    private float counted;
 
     private float nextPicture;
 
@@ -180,6 +183,10 @@ public class SaveCoordinator : MonoBehaviour
         var data = WorldLibrary.Current;
 
         if (data == null) return;
+
+        // the time played, counted up since the last save
+        data.playedSeconds += Mathf.Max(0f, Time.time - counted);
+        counted = Time.time;
 
         // The world keeps its name, id and seed; only what has been found in
         // it is rewritten.

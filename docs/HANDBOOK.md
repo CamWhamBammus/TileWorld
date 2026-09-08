@@ -731,6 +731,23 @@ a second press within two and a half seconds. And the sky is never quite
 the same: the forced overcast drifts by 0.15 either side of the hour's own
 figure on a 75-second sine, so a long sit sees the cloud thicken and thin.
 
+Ten after that. Each world's row says where it is (`Regions.At` for the
+chunk the player was left in, or the origin) and how long it has been
+played (`WorldSave.playedSeconds`, counted up by `SaveCoordinator.Save`).
+A world can be renamed (`WorldLibrary.Rename`, a page of its own). Delete
+sets the files aside as `.deleted` rather than destroying them, the button
+reads "Undo delete" with a ten-second count and brings the world back
+(`WorldLibrary.Undelete`), and whatever is still set aside at the next
+start is destroyed then; the Delete key deletes too. A Controls page says
+how the game is played. Options has Title music, which quiets the pad
+(`Settings.TitleMusic`). Left untouched for `TitleMenu.IdleAfter` (75 s) the
+menu and its shade fade out and stop taking clicks so the country stands
+alone under the name, and any key, a moved mouse or the wheel brings them
+back. Clicking the name drops the letters again (`TitleLogo.Drop`). The
+chosen world's picture sits large over the buttons. And Enter does the
+page's thing wherever it is, unless something is being typed into: plays
+the chosen world, creates the new one, saves the name.
+
 `Tools/probe/TitleLive.cs.txt` reads the curtain, the volume and the fallen
 name at half a second and again later, times the first wave over the
 strand, checks what is and is not running under the title, lists what
@@ -742,7 +759,11 @@ each and reads what they say, makes seven worlds for a moment and walks
 the choice to the bottom of the list, previews a seed and checks the
 backdrop and the page after the reload, enters a world through the
 curtain, closes the arrival page so a picture gets taken, comes back and
-finds it in the row (16.5 ms a frame at radius 8);
+finds it in the row and large over the buttons, with the row saying where
+and how long; and before all that, with `IdleAfter` set to eight seconds,
+it finds the menu stepped aside and brings it back, drops the name, opens
+the Controls page, makes a world and renames, deletes and undeletes it,
+and turns the music off and hears it stop (16.5 ms a frame at radius 8);
 `Tools/probe/Title.cs.txt` walks the worlds pages. The old panoramas --
 cubemaps baked from six faces, 34 MB of them -- are gone with their capture
 tool, the dev tools' Title page, `MakePanorama`, `MakeTitleScene`,

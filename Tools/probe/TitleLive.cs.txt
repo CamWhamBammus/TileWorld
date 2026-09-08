@@ -56,6 +56,7 @@ public class _Probe : MonoBehaviour
 
     private IEnumerator Start()
     {
+        TitleMenu.IdleAfter = 8f;      // the menu steps aside sooner, for the probe
         yield return new WaitForSecondsRealtime(0.5f);
         var title = FindFirstObjectByType<TitleMenu>();
         Mark("EARLY 0.5 s: " + Early(title));
@@ -77,6 +78,14 @@ public class _Probe : MonoBehaviour
         title = FindFirstObjectByType<TitleMenu>();
         title.Look("afternoon");
         yield return new WaitForSecondsRealtime(1f);
+        var flagsEarly = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var cardGroupEarly = (CanvasGroup)typeof(TitleMenu).GetField("cardGroup", flagsEarly).GetValue(title);
+        Mark("ASIDE: untouched for " + TitleMenu.IdleAfter + " s: hidden " + title.Hidden + ", card alpha " + cardGroupEarly.alpha.ToString("F2"));
+        yield return Shot("attract");
+        typeof(TitleMenu).GetMethod("Touched", flagsEarly).Invoke(title, null);
+        yield return new WaitForSecondsRealtime(0.8f);
+        Mark("ASIDE: touched: hidden " + title.Hidden + ", card alpha " + cardGroupEarly.alpha.ToString("F2"));
+        TitleMenu.IdleAfter = 75f;
         Mark("TITLE: " + State());
         Mark("LATE: " + Early(title) + " | when " + title.When + " | pad voices " + (FindFirstObjectByType<TitlePad>() != null ? FindFirstObjectByType<TitlePad>().Sounding : -1)
              + " | version " + (GameObject.Find("Version") != null) + " | camera off rest " + Quaternion.Angle(Camera.main.transform.rotation, title.BaseRotation).ToString("F2") + " deg");
@@ -120,6 +129,46 @@ public class _Probe : MonoBehaviour
         typeof(TitleMenu).GetMethod("Refresh", flags).Invoke(title, null);
         yield return new WaitForSecondsRealtime(4f);
         Mark("MORE: overcast " + overcastThen.ToString("F3") + " then " + TimeOfDay.Instance.Overcast.ToString("F3") + " seven seconds on | gulls " + BirdSong.Gulls);
+
+        // the ten after that
+        title.Logo.Drop();
+        float landedAtOnce = title.Logo.Landed;
+        yield return new WaitForSecondsRealtime(2.5f);
+        Mark("TEN: name dropped: landed " + landedAtOnce.ToString("F2") + " at once, " + title.Logo.Landed.ToString("F2") + " after");
+        typeof(TitleMenu).GetMethod("ShowControls", flags).Invoke(title, null);
+        var controls = (GameObject)typeof(TitleMenu).GetField("controlsPage", flags).GetValue(title);
+        var keysText = GameObject.Find("Keys") != null ? GameObject.Find("Keys").GetComponent<TMPro.TMP_Text>().text : "";
+        Mark("TEN: controls page up " + controls.activeSelf + ", " + keysText.Length + " characters, mentions the map " + keysText.Contains("the map"));
+        yield return Shot("controls");
+        typeof(TitleMenu).GetMethod("ShowWorlds", flags).Invoke(title, null);
+        // a world made, renamed, deleted and brought back
+        var spare = WorldLibrary.Create("Probe spare", 77);
+        typeof(TitleMenu).GetMethod("Refresh", flags).Invoke(title, null);
+        typeof(TitleMenu).GetField("chosen", flags).SetValue(title, spare);
+        typeof(TitleMenu).GetMethod("ShowRename", flags).Invoke(title, null);
+        ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("renameField", flags).GetValue(title)).text = "Probe renamed";
+        typeof(TitleMenu).GetMethod("ApplyRename", flags).Invoke(title, null);
+        var renamed = WorldLibrary.All().Find(w => w.id == spare.id);
+        int countBefore = WorldLibrary.All().Count;
+        typeof(TitleMenu).GetField("chosen", flags).SetValue(title, renamed);
+        typeof(TitleMenu).GetMethod("Forget", flags).Invoke(title, null);
+        typeof(TitleMenu).GetMethod("Forget", flags).Invoke(title, null);
+        int countGone = WorldLibrary.All().Count;
+        string undoSays = ((TMPro.TMP_Text)typeof(TitleMenu).GetField("forgetLabel", flags).GetValue(title)).text;
+        yield return null;
+        undoSays = ((TMPro.TMP_Text)typeof(TitleMenu).GetField("forgetLabel", flags).GetValue(title)).text;
+        typeof(TitleMenu).GetMethod("Forget", flags).Invoke(title, null);
+        int countBack = WorldLibrary.All().Count;
+        Mark("TEN: renamed to '" + (renamed != null ? renamed.name : "none") + "' | worlds " + countBefore + " -> deleted " + countGone + " (button said '" + undoSays + "') -> undone " + countBack);
+        WorldLibrary.Delete(spare.id);
+        typeof(TitleMenu).GetField("deletedId", flags).SetValue(title, null);
+        typeof(TitleMenu).GetMethod("Refresh", flags).Invoke(title, null);
+        // the music off
+        Settings.TitleMusic = false;
+        yield return new WaitForSecondsRealtime(7f);
+        int quiet = FindFirstObjectByType<TitlePad>().Sounding;
+        Settings.TitleMusic = true;
+        Mark("TEN: music off, voices sounding after seven seconds " + quiet);
 
         float frames = 0f, seconds = 0f;
         for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
@@ -183,7 +232,9 @@ public class _Probe : MonoBehaviour
         WorldLibrary.LeaveToMenu();
         yield return new WaitForSecondsRealtime(14f);
         var row = GameObject.Find("World Probe title");
-        Mark("BACK: " + State() + " | row picture " + (row != null && row.transform.Find("Picture") != null));
+        string rowText = row != null ? row.transform.Find("Text").GetComponent<TMPro.TMP_Text>().text : "";
+        Mark("BACK: " + State() + " | row picture " + (row != null && row.transform.Find("Picture") != null) + " | chosen picture " + (GameObject.Find("Chosen picture") != null) + " | row says played " + rowText.Contains(" played") + " and where " + rowText.Contains("in "));
+        Mark("BACK row: " + rowText.Replace("\n", " / "));
         yield return Shot("back");
         WorldLibrary.Delete(save.id);
         Mark("done");

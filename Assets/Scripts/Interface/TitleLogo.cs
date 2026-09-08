@@ -20,8 +20,11 @@ public class TitleLogo : MonoBehaviour
     private RenderTexture picture;
     private Transform root;
     private RawImage image;
-    private float t;
+    private float t, fallClock;
     private bool fogWas;
+
+    /// <summary>The letters go up and fall into place again.</summary>
+    public void Drop() { fallClock = 0f; landed = 0; MenuSounds.Tock(); }
 
     // the fall: each block starts above its place and drops in, the columns one after another
     private class Falling { public Transform Block; public Vector3 Place; public float Delay, Drop; }
@@ -164,7 +167,10 @@ public class TitleLogo : MonoBehaviour
         imageGo.transform.SetParent(canvas, false);
         image = imageGo.AddComponent<RawImage>();
         image.texture = picture;
-        image.raycastTarget = false;
+        image.raycastTarget = true;
+        var button = imageGo.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(Drop);
         Top(imageGo.GetComponent<RectTransform>(), new Vector2(0f, -160f), new Vector2(1240f, 310f));
     }
 
@@ -210,6 +216,7 @@ public class TitleLogo : MonoBehaviour
     {
         if (root == null) return;
         t += Time.unscaledDeltaTime;
+        fallClock += Time.unscaledDeltaTime;
         root.localRotation = Quaternion.Euler(-7f + Mathf.Sin(t * 0.5f) * 1.5f, Mathf.Sin(t * 0.37f) * 2.5f, 0f);
         root.position = new Vector3(0f, 3000f + Mathf.Sin(t * 0.8f) * 0.18f, 0f);
 
@@ -218,7 +225,7 @@ public class TitleLogo : MonoBehaviour
             landed = 0;
             foreach (var f in falling)
             {
-                float u = Mathf.Clamp01((t - f.Delay) / 0.75f);
+                float u = Mathf.Clamp01((fallClock - f.Delay) / 0.75f);
                 float eased = 1f - (1f - u) * (1f - u) * (1f - u);
                 f.Block.localPosition = f.Place + Vector3.up * f.Drop * (1f - eased);
                 if (u >= 1f) landed++;

@@ -48,9 +48,11 @@ public class TitlePad : MonoBehaviour
     private void Update()
     {
         float dt = Time.deltaTime;
+        bool on = Settings.TitleMusic;
         foreach (var v in voices)
         {
-            if (Time.time > v.Next)
+            if (!on) v.Target = 0f;
+            else if (Time.time > v.Next)
             {
                 if (v.Target > 0f)
                 {

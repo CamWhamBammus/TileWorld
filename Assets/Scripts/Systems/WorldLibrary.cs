@@ -15,6 +15,7 @@ public class WorldSave
 
     public string createdUtc;
     public string lastPlayedUtc;
+    public float playedSeconds;
 
     public float timeOfDay = 0.30f;
 
@@ -84,10 +85,42 @@ public static class WorldLibrary
     /// <summary>Where a world's picture is kept: the last thing seen in it, small, for the title's list.</summary>
     public static string PicturePath(string id) => System.IO.Path.Combine(Root, "world-" + id + ".png");
 
+    /// <summary>Gives a world a new name.</summary>
+    public static void Rename(string id, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var world = All().Find(w => w.id == id);
+        if (world == null) return;
+        world.name = name.Trim();
+        Write(world);
+        if (Current != null && Current.id == id) Current.name = world.name;
+    }
+
+    /// <summary>Brings back the world deleted last, if it is still to hand.</summary>
+    public static bool Undelete(string id)
+    {
+        try
+        {
+            string gone = PathFor(id) + ".deleted", picture = PicturePath(id) + ".deleted";
+            if (!System.IO.File.Exists(gone)) return false;
+            System.IO.File.Move(gone, PathFor(id));
+            if (System.IO.File.Exists(picture)) System.IO.File.Move(picture, PicturePath(id));
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[Worlds] Could not bring world " + id + " back: " + e.Message);
+            return false;
+        }
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Boot()
     {
         System.IO.Directory.CreateDirectory(Root);
+
+        // a world deleted last time and not brought back is gone for good now
+        try { foreach (string file in System.IO.Directory.GetFiles(Root, "*.deleted")) System.IO.File.Delete(file); } catch { }
 
         AdoptLegacySave();
 
@@ -242,9 +275,13 @@ public static class WorldLibrary
     {
         try
         {
+            // set aside rather than destroyed, so the title can bring it back for a moment;
+            // what is still set aside at the next start is destroyed then
             string path = PathFor(id);
-            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
-            if (System.IO.File.Exists(PicturePath(id))) System.IO.File.Delete(PicturePath(id));
+            if (System.IO.File.Exists(path + ".deleted")) System.IO.File.Delete(path + ".deleted");
+            if (System.IO.File.Exists(PicturePath(id) + ".deleted")) System.IO.File.Delete(PicturePath(id) + ".deleted");
+            if (System.IO.File.Exists(path)) System.IO.File.Move(path, path + ".deleted");
+            if (System.IO.File.Exists(PicturePath(id))) System.IO.File.Move(PicturePath(id), PicturePath(id) + ".deleted");
 
             if (Current != null && Current.id == id)
             {

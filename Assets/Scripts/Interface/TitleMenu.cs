@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -144,8 +145,19 @@ public class TitleMenu : MonoBehaviour
     private RectTransform cardRect;
     private int offset;                       // the first world shown, when there are more than fit
     private float escapeAt = -10f, baseClouds = 0.45f;
-    private TMP_Text escapeHint, previewLabel;
+    private TMP_Text escapeHint, previewLabel, musicLabel;
     private readonly Dictionary<string, Texture2D> pictures = new Dictionary<string, Texture2D>();
+    private GameObject renamePage, controlsPage;
+    private TMP_InputField renameField;
+    private string deletedId; private float deletedAt = -100f;
+    private CanvasGroup shadeGroup;
+    private Vector3 lastMouse; private float lastTouch;
+
+    /// <summary>How long the title waits untouched before the menu steps aside and the country stands alone.</summary>
+    public static float IdleAfter = 75f;
+
+    /// <summary>Whether the menu has stepped aside, for the probes.</summary>
+    public bool Hidden { get; private set; }
 
     /// <summary>The first world shown, for the probes.</summary>
     public int Offset => offset;
@@ -174,6 +186,8 @@ public class TitleMenu : MonoBehaviour
         }
         Settings.Apply();
         AudioListener.volume = 0f;   // the sound comes up with the picture
+        lastTouch = Time.unscaledTime;
+        lastMouse = Input.mousePosition;
     }
 
     private IEnumerator Start()
@@ -344,6 +358,8 @@ public class TitleMenu : MonoBehaviour
     {
         worldsPage.SetActive(false);
         newPage.SetActive(false);
+        if (renamePage != null) renamePage.SetActive(false);
+        if (controlsPage != null) controlsPage.SetActive(false);
         optionsPage.SetActive(true);
         heading.text = "<size=30><b>OPTIONS</b></size>\n<size=17><color=#8B7860>kept between runs</color></size>";
         Options();
@@ -355,6 +371,7 @@ public class TitleMenu : MonoBehaviour
         radiusLabel.text = Settings.ViewRadius + " chunks (" + (Settings.ViewRadius * WorldGrid.ChunkWorldSize) + " m)";
         lookLabel.text = Settings.LookSpeed.ToString("F1") + "x";
         fullLabel.text = Settings.Fullscreen ? "on" : "off";
+        musicLabel.text = Settings.TitleMusic ? "on" : "off";
     }
 
     private void Update()
@@ -367,12 +384,36 @@ public class TitleMenu : MonoBehaviour
         var tod = TimeOfDay.Instance;
         if (tod != null && viewSet) tod.ForceOvercast(Mathf.Clamp(baseClouds + 0.15f * Mathf.Sin(Time.time / 75f), 0.08f, 0.53f));
 
-        // Escape from the new world page goes back; from the list, twice quits
+        // left alone long enough, the menu steps aside and the country stands alone; anything brings it back
+        bool touched = Input.anyKeyDown || (Input.mousePosition - lastMouse).sqrMagnitude > 1f || Mathf.Abs(Input.mouseScrollDelta.y) > 0.01f;
+        lastMouse = Input.mousePosition;
+        if (touched) { lastTouch = Time.unscaledTime; if (Hidden) StartCoroutine(StepAside(false)); }
+        else if (!Hidden && !leaving && viewSet && Time.unscaledTime - lastTouch > IdleAfter) StartCoroutine(StepAside(true));
+
+        // the deleted world can be brought back for ten seconds
+        if (deletedId != null && forgetLabel != null)
+        {
+            float left = deletedAt + 10f - Time.unscaledTime;
+            if (left <= 0f) { deletedId = null; forgetLabel.text = "Delete world"; }
+            else forgetLabel.text = "Undo delete  (" + Mathf.CeilToInt(left) + ")";
+        }
+
+        // Escape from any other page goes back; from the list, twice quits
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if ((newPage != null && newPage.activeSelf) || (optionsPage != null && optionsPage.activeSelf)) ShowWorlds();
+            if (worldsPage != null && !worldsPage.activeSelf) ShowWorlds();
             else Escape();
         }
+
+        // Enter does the page's thing when nothing is being typed into
+        var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        bool typing = selected != null && selected.GetComponent<TMP_InputField>() != null && selected.GetComponent<TMP_InputField>().isFocused;
+        if (!typing && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)))
+        {
+            if (newPage != null && newPage.activeSelf) CreateAndPlay();
+            else if (renamePage != null && renamePage.activeSelf) ApplyRename();
+        }
+        if (worldsPage != null && worldsPage.activeSelf && Input.GetKeyDown(KeyCode.Delete)) Forget();
         if (escapeHint != null && escapeHint.gameObject.activeSelf && Time.unscaledTime > escapeAt + 2.5f) escapeHint.gameObject.SetActive(false);
 
         if (worldsPage != null && worldsPage.activeSelf && Mathf.Abs(Input.mouseScrollDelta.y) > 0.01f) Scroll(Input.mouseScrollDelta.y < 0f ? 1 : -1);
@@ -380,7 +421,7 @@ public class TitleMenu : MonoBehaviour
         // on the list, the keys do what the mouse does: up and down choose, Enter plays
         if (worldsPage != null && worldsPage.activeSelf && !leaving)
         {
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Enter(chosen);
+            if (!typing && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))) Enter(chosen);
             if (Input.GetKeyDown(KeyCode.DownArrow)) Choose(1);
             if (Input.GetKeyDown(KeyCode.UpArrow)) Choose(-1);
         }
@@ -407,6 +448,51 @@ public class TitleMenu : MonoBehaviour
         int was = offset;
         offset = Mathf.Clamp(offset + step, 0, Mathf.Max(0, count - Shown));
         if (offset != was) Refresh();
+    }
+
+    /// <summary>The menu fades and stops taking clicks, or comes back.</summary>
+    private IEnumerator StepAside(bool aside)
+    {
+        Hidden = aside;
+        cardGroup.interactable = cardGroup.blocksRaycasts = !aside;
+        float from = cardGroup.alpha, to = aside ? 0f : 1f;
+        for (float f = 0f; f < 1f; f += Time.unscaledDeltaTime / (aside ? 1.6f : 0.5f))
+        {
+            float a = Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, f));
+            cardGroup.alpha = a;
+            if (shadeGroup != null) shadeGroup.alpha = a;
+            if (Hidden != aside) yield break;
+            yield return null;
+        }
+        cardGroup.alpha = to;
+        if (shadeGroup != null) shadeGroup.alpha = to;
+    }
+
+    /// <summary>For the probes: as if something had been touched.</summary>
+    private void Touched() { lastTouch = Time.unscaledTime; if (Hidden) StartCoroutine(StepAside(false)); }
+
+    private void ShowRename()
+    {
+        if (chosen == null) return;
+        worldsPage.SetActive(false); newPage.SetActive(false); optionsPage.SetActive(false); controlsPage.SetActive(false);
+        renamePage.SetActive(true);
+        heading.text = "<size=30><b>RENAME</b></size>\n<size=17><color=#8B7860>" + chosen.name + "</color></size>";
+        renameField.text = chosen.name;
+        renameField.Select();
+    }
+
+    private void ApplyRename()
+    {
+        if (chosen == null || string.IsNullOrWhiteSpace(renameField.text)) { ShowWorlds(); return; }
+        WorldLibrary.Rename(chosen.id, renameField.text);
+        ShowWorlds();
+    }
+
+    private void ShowControls()
+    {
+        worldsPage.SetActive(false); newPage.SetActive(false); optionsPage.SetActive(false); renamePage.SetActive(false);
+        controlsPage.SetActive(true);
+        heading.text = "<size=30><b>CONTROLS</b></size>\n<size=17><color=#8B7860>how it is played</color></size>";
     }
 
     /// <summary>Escape on the list: once is a warning, twice within a moment is out.</summary>
@@ -446,6 +532,8 @@ public class TitleMenu : MonoBehaviour
         worldsPage.SetActive(true);
         newPage.SetActive(false);
         if (optionsPage != null) optionsPage.SetActive(false);
+        if (renamePage != null) renamePage.SetActive(false);
+        if (controlsPage != null) controlsPage.SetActive(false);
         heading.text = "<size=30><b>YOUR WORLDS</b></size>\n<size=17><color=#8B7860>select a world</color></size>";
         Refresh();
     }
@@ -455,6 +543,8 @@ public class TitleMenu : MonoBehaviour
         worldsPage.SetActive(false);
         newPage.SetActive(true);
         if (optionsPage != null) optionsPage.SetActive(false);
+        if (renamePage != null) renamePage.SetActive(false);
+        if (controlsPage != null) controlsPage.SetActive(false);
         heading.text = "<size=30><b>NEW WORLD</b></size>\n<size=17><color=#8B7860>world settings</color></size>";
         nameField.text = "";
         seedField.text = Random.Range(1, 99999999).ToString();
@@ -508,7 +598,28 @@ public class TitleMenu : MonoBehaviour
         }
 
         playLabel.text = chosen != null ? "Play  " + Short(chosen.name, 16) : "Play";
-        forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Delete " + Short(chosen.name, 12) + "?" : "Delete world";
+        if (deletedId == null) forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Delete " + Short(chosen.name, 12) + "?" : "Delete world";
+
+        // the chosen world's picture, large, over the buttons
+        var big = chosen != null ? PictureOf(chosen) : null;
+        if (big != null)
+        {
+            var bigGo = new GameObject("Chosen picture", typeof(RectTransform));
+            bigGo.transform.SetParent(worldsPage.transform, false);
+            var bigImage = bigGo.AddComponent<RawImage>();
+            bigImage.texture = big;
+            bigImage.raycastTarget = false;
+            Centre(bigGo.GetComponent<RectTransform>(), new Vector2(370f, 252f), new Vector2(220f, 124f));
+            rows.Add(bigGo);
+        }
+    }
+
+    /// <summary>Time played, said briefly.</summary>
+    private static string Played(float seconds)
+    {
+        if (seconds < 60f) return "under a minute";
+        int minutes = Mathf.RoundToInt(seconds / 60f);
+        return minutes < 60 ? minutes + " m" : (minutes / 60) + " h " + (minutes % 60) + " m";
     }
 
     private const int Shown = 6;
@@ -563,10 +674,12 @@ public class TitleMenu : MonoBehaviour
         var text = Label("Text", go.transform, 19f, new Vector2(14f - (640f - textWidth) * 0.5f, 0f), new Vector2(textWidth, 60f));
         text.alignment = TextAlignmentOptions.Left;
         string setup = (world.weather ? "" : "no weather · ") + (world.dayCycle ? "" : "no day cycle · ") + (world.animals ? "" : "no animals · ") + (world.ruins ? "" : "no ruins · ");
-        text.text = "<b>" + world.name + "</b>"
+        var startChunk = world.playerPosition != Vector3.zero ? WorldGrid.WorldToChunk(world.playerPosition) : Vector2Int.zero;
+        string where = Regions.At(startChunk, world.seed).Name;
+        text.text = "<b>" + world.name + "</b>  <size=72%><color=#8B7860>in " + where + "</color></size>"
                   + "\n<size=78%><color=#8B7860>seed " + world.seed
                   + "  ·  " + world.Charted + " charted  ·  " + world.Landmarks + " found"
-                  + "  ·  " + setup + WorldLibrary.Ago(world.lastPlayedUtc) + "</color></size>";
+                  + "  ·  " + Played(world.playedSeconds) + " played  ·  " + setup + WorldLibrary.Ago(world.lastPlayedUtc) + "</color></size>";
     }
 
     private void Enter(WorldSave world)
@@ -580,9 +693,18 @@ public class TitleMenu : MonoBehaviour
 
     private void Forget()
     {
+        // within ten seconds of a deletion, the same button brings the world back
+        if (deletedId != null && Time.unscaledTime < deletedAt + 10f)
+        {
+            if (WorldLibrary.Undelete(deletedId)) { var back = WorldLibrary.All().Find(w => w.id == deletedId); if (back != null) chosen = back; }
+            deletedId = null;
+            Refresh();
+            return;
+        }
         if (chosen == null) return;
         if (pendingForget != chosen.id) { pendingForget = chosen.id; Refresh(); return; }
         WorldLibrary.Delete(chosen.id);
+        deletedId = chosen.id; deletedAt = Time.unscaledTime;
         pendingForget = null;
         chosen = null;
         Refresh();
@@ -644,6 +766,7 @@ public class TitleMenu : MonoBehaviour
         shade.color = new Color(0f, 0f, 0f, 0.26f);
         shade.raycastTarget = false;
         Stretch(shadeGo.GetComponent<RectTransform>());
+        shadeGroup = shadeGo.AddComponent<CanvasGroup>();
 
         // the paper, under the name
         var cardGo = new GameObject("Card");
@@ -668,6 +791,8 @@ public class TitleMenu : MonoBehaviour
         playLabel = Button("Play", worldsPage.transform, new Vector2(370f, 160f), new Vector2(300f, 58f), () => Enter(chosen));
         Button("New world", worldsPage.transform, new Vector2(370f, 90f), new Vector2(300f, 58f), ShowNew);
         forgetLabel = Button("Delete world", worldsPage.transform, new Vector2(370f, 20f), new Vector2(300f, 50f), Forget);
+        Button("Rename world", worldsPage.transform, new Vector2(370f, -50f), new Vector2(300f, 50f), ShowRename);
+        Button("Controls", worldsPage.transform, new Vector2(370f, -110f), new Vector2(300f, 50f), ShowControls);
         Button("Options", worldsPage.transform, new Vector2(370f, -170f), new Vector2(300f, 50f), ShowOptions);
         Button("Quit", worldsPage.transform, new Vector2(370f, -240f), new Vector2(300f, 50f), Quit);
 
@@ -715,12 +840,40 @@ public class TitleMenu : MonoBehaviour
         lookLabel = Adjuster(optionsPage.transform, "Mouse look speed", ref oy, () => Settings.LookSpeed -= 0.1f, () => Settings.LookSpeed += 0.1f);
         fullLabel = Adjuster(optionsPage.transform, "Fullscreen", ref oy, () => Settings.Fullscreen = !Settings.Fullscreen, () => Settings.Fullscreen = !Settings.Fullscreen);
 
-        var note = Label("Note", optionsPage.transform, 15f, new Vector2(0f, -140f), new Vector2(820f, 60f));
+        musicLabel = Adjuster(optionsPage.transform, "Title music", ref oy, () => Settings.TitleMusic = !Settings.TitleMusic, () => Settings.TitleMusic = !Settings.TitleMusic);
+
+        var note = Label("Note", optionsPage.transform, 15f, new Vector2(0f, -150f), new Vector2(820f, 60f));
         note.text = "View distance takes effect when a world is entered. Further is slower.";
         note.color = ParchmentPanel.InkFaint;
 
         Button("Back", optionsPage.transform, new Vector2(0f, -284f), new Vector2(240f, 56f), ShowWorlds);
         optionsPage.SetActive(false);
+
+        // ---- the rename page
+        renamePage = new GameObject("Rename");
+        renamePage.transform.SetParent(card, false);
+        Stretch(renamePage.AddComponent<RectTransform>());
+        renameField = Field("New name", "A new name for it", renamePage.transform, new Vector2(-100f, 120f), 28);
+        Button("Save the name", renamePage.transform, new Vector2(-150f, -284f), new Vector2(360f, 56f), ApplyRename);
+        Button("Back", renamePage.transform, new Vector2(230f, -284f), new Vector2(200f, 56f), ShowWorlds);
+        renamePage.SetActive(false);
+
+        // ---- the controls page
+        controlsPage = new GameObject("Controls");
+        controlsPage.transform.SetParent(card, false);
+        Stretch(controlsPage.AddComponent<RectTransform>());
+        var keys = Label("Keys", controlsPage.transform, 19f, new Vector2(20f, -30f), new Vector2(900f, 380f));
+        keys.alignment = TextAlignmentOptions.TopLeft;
+        keys.text = "<b>W A S D</b>  move        <b>mouse</b>  look        <b>Shift</b>  sprint        <b>Space</b>  jump\n"
+                  + "walk into deep water to swim\n\n"
+                  + "<b>G</b>  the sketchbook        <b>F</b> (held)  draw what you are looking at, scroll to zoom\n"
+                  + "<b>M</b>  the map: click to place a marker, right click to take it away        <b>J</b>  the journal\n"
+                  + "<b>E</b>  rest at a structure you have found, after dark\n\n"
+                  + "<b>F9</b>  saves the map as a picture        <b>F3</b>  world statistics\n"
+                  + "<b>Escape</b>  closes what is open, or pauses; the pause menu has Main menu\n\n"
+                  + "<size=80%><color=#8B7860>On this page: the arrows and Enter choose and play a world, Delete deletes it, Escape twice quits.</color></size>";
+        Button("Back", controlsPage.transform, new Vector2(0f, -284f), new Vector2(240f, 56f), ShowWorlds);
+        controlsPage.SetActive(false);
 
         // the build's number, small, in the corner
         var version = Label("Version", canvasGo.transform, 13f, Vector2.zero, new Vector2(420f, 22f));

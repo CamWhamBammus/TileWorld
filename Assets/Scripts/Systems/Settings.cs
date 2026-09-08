@@ -12,6 +12,7 @@ public static class Settings
     private const string RadiusKey = "tileworld.viewradius";
     private const string LookKey = "tileworld.look";
     private const string FullKey = "tileworld.fullscreen";
+    private const string MusicKey = "tileworld.titlemusic";
 
     public static float Volume
     {
@@ -36,6 +37,13 @@ public static class Settings
     {
         get => PlayerPrefs.GetInt(FullKey, Screen.fullScreen ? 1 : 0) == 1;
         set { PlayerPrefs.SetInt(FullKey, value ? 1 : 0); PlayerPrefs.Save(); Apply(); }
+    }
+
+    /// <summary>Whether the title plays its soft pad.</summary>
+    public static bool TitleMusic
+    {
+        get => PlayerPrefs.GetInt(MusicKey, 1) == 1;
+        set { PlayerPrefs.SetInt(MusicKey, value ? 1 : 0); PlayerPrefs.Save(); }
     }
 
     /// <summary>The settings that take effect at once, applied.</summary>
