@@ -616,13 +616,23 @@ with a palette colour each and makes a mesh of unshared vertices, so the
 shading is flat; tubes carry one frame along their path so roots do not
 twist; lumps are icospheres pushed about. The tiles are on the pack's
 terms, measured from inside the game by `Tools/probe/TileBounds.cs.txt`:
-2.2 m wide on the 2 m grid, a body from -1.00 up to a top at 1.05, detail
-above. Five floors -- litter and moss, roots, a fallen log with mushrooms,
+2.2 m wide on the 2 m grid to the tips of their grass, a body from -1.00
+up to a top at 1.05, detail above. Ours are 2.0 m wide and meet edge to
+edge: a first cut at 2.2 m laid two flat tops over each other for ten
+centimetres and they fought for the pixels in dark slots along the edges. Five floors -- litter and moss, roots, a fallen log with mushrooms,
 a stump with ferns, a mossy boulder -- of 640 to 1,100 vertices, and six
 trees -- two oaks, a beech, two birches, a sapling -- of 190 to 500, each
 standing on its foot at the origin. The scripts are authored with the
 game's Y up and turned a quarter about X as the mesh is made, since
 Blender's up is Z; the FBX export then puts them back on Unity's axes.
+Every hand-wound face says which way is out (`Build.face(..., out=)`) and
+is turned that way in Blender's right-handed sense, which is the sense the
+icospheres come in and the sense that survives the export. Without that,
+every side of every tile came out wound inward: Blender's viewport draws
+both sides so the previews looked whole, and in the game the sides were
+culled and you looked into the hollow tile. `Tools/probe/Forest.cs.txt`
+counts the floor's side and top faces by which way they face
+(24 sides out, 32 tops up, none the other way) so that cannot come back.
 
 The colours are 33 cells painted into the blank middle of the pack's own
 palette (`Texture.png`, cells 2 to 12 across and 5 to 7 down, which were

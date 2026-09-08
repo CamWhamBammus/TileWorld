@@ -14,13 +14,18 @@ def uv_of(name): return PAL[name]
 class Build:
     """Triangles and quads collected with a palette colour each; flat shaded when made."""
     def __init__(self): self.verts=[]; self.faces=[]; self.uvs=[]
-    def face(self, pts, colour):
+    def face(self, pts, colour, out=None):
+        """A face; given which way is out, wound so its normal points that way (Blender's right-handed sense, which is what the icospheres use and what survives the export)."""
+        pts = [Vector(p) for p in pts]
+        if out is not None:
+            n = (pts[1]-pts[0]).cross(pts[2]-pts[0])
+            if n.dot(Vector(out)) < 0: pts = list(reversed(pts))
         base=len(self.verts)
-        self.verts.extend([Vector(p) for p in pts])
+        self.verts.extend(pts)
         self.faces.append(tuple(range(base, base+len(pts))))
         self.uvs.append(uv_of(colour))
-    def quad(self, a,b,c,d, colour): self.face([a,b,c,d], colour)
-    def tri(self, a,b,c, colour): self.face([a,b,c], colour)
+    def quad(self, a,b,c,d, colour, out=None): self.face([a,b,c,d], colour, out)
+    def tri(self, a,b,c, colour, out=None): self.face([a,b,c], colour, out)
     def make(self, name):
         me = bpy.data.meshes.new(name)
         # built with the game's Y up; Blender's up is Z, so turn it a quarter about X on the way in
@@ -51,9 +56,10 @@ def prism(b, centre, radius, height, sides, colour_side, colour_top, taper=1.0, 
         tx, tz = cx+math.cos(a)*r1 + tilt[0]*height, cz+math.sin(a)*r1 + tilt[1]*height
         bottom.append((bx,cy,bz)); top.append((tx,cy+height,tz))
     for i in range(sides):
-        b.quad(bottom[i], bottom[(i+1)%sides], top[(i+1)%sides], top[i], colour_side)
-    b.face(list(reversed(top)) if False else top, colour_top)
-    if cap_bottom: b.face(list(reversed(bottom)), colour_side)
+        a0 = (i+0.5)/sides*math.tau
+        b.quad(bottom[i], bottom[(i+1)%sides], top[(i+1)%sides], top[i], colour_side, out=(math.cos(a0), 0, math.sin(a0)))
+    b.face(top, colour_top, out=(0,1,0))
+    if cap_bottom: b.face(bottom, colour_side, out=(0,-1,0))
     return top
 
 def cylinder_along(b, p0, p1, radius, sides, colour_side, colour_end, rng=None, jitter=0.0, taper=1.0):
@@ -68,8 +74,10 @@ def cylinder_along(b, p0, p1, radius, sides, colour_side, colour_end, rng=None, 
         ring0.append(tuple(p0 + (u*math.cos(a)+v*math.sin(a))*r))
         ring1.append(tuple(p1 + (u*math.cos(a)+v*math.sin(a))*r*taper))
     for i in range(sides):
-        b.quad(ring0[i], ring1[i], ring1[(i+1)%sides], ring0[(i+1)%sides], colour_side)
-    b.face(ring0, colour_end); b.face(list(reversed(ring1)), colour_end)
+        mid = (Vector(ring0[i]) + Vector(ring1[(i+1)%sides])) * 0.5
+        along = (mid - p0).dot(axis)
+        b.quad(ring0[i], ring1[i], ring1[(i+1)%sides], ring0[(i+1)%sides], colour_side, out=tuple(mid - (p0 + axis*along)))
+    b.face(ring0, colour_end, out=tuple(-axis)); b.face(ring1, colour_end, out=tuple(axis))
 
 def blob(b, centre, size, colour_top, colour_side, rng, sub=1, squash=0.55, moss_from=0.35, patchy=0.0):
     """A lump: an icosphere pushed about by hand, its upper faces the top colour, patchily if asked."""
@@ -86,7 +94,7 @@ def blob(b, centre, size, colour_top, colour_side, rng, sub=1, squash=0.55, moss
     bm.free()
 
 # ---------------------------------------------------------------- the tile itself
-TOP = 1.05; BOTTOM = -1.0; HALF = 1.10; INNER = 0.98
+TOP = 1.05; BOTTOM = -1.0; HALF = 1.00; INNER = 0.90   # the body meets its neighbours edge to edge on the 2 m grid: an overlap of flat tops fights for the pixels
 
 def body(b, rng, layer=0.22):
     """The block: earth sides in two bands, a dark humus top layer, the top itself a jittered grid."""
@@ -106,16 +114,17 @@ def body(b, rng, layer=0.22):
             # two triangles, so the jitter shows as facets
             col = rng.choice(["humus","humus","humus2","earth"])
             col2 = rng.choice(["humus","humus","humus2","earth"])
-            b.tri(a,bq,c,col); b.tri(a,c,d,col2)
+            b.tri(a,bq,c,col,out=(0,1,0)); b.tri(a,c,d,col2,out=(0,1,0))
     # the sides: the humus band under the rim, then earth, then darker earth to the bottom
-    bands = [(TOP, TOP-layer, "humus2"), (TOP-layer, 0.1, "earth"), (0.1, BOTTOM, "earth2")]
+    bands = [(TOP, TOP-layer, "earth"), (TOP-layer, 0.1, "earth"), (0.1, BOTTOM, "earth2")]   # earth all the way: a dark band under the rim read as a hole in shade
     corners = [(-HALF,-HALF),(HALF,-HALF),(HALF,HALF),(-HALF,HALF)]
     for k in range(4):
         (x0,z0),(x1,z1) = corners[k], corners[(k+1)%4]
+        outward = ((x0+x1)*0.5, 0, (z0+z1)*0.5)
         for (y1,y0,col) in bands:
-            b.quad((x0,y0,z0),(x1,y0,z1),(x1,y1,z1),(x0,y1,z0), col)
+            b.quad((x0,y0,z0),(x1,y0,z1),(x1,y1,z1),(x0,y1,z0), col, out=outward)
     # the underside
-    b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), "earth2")
+    b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), "earth2", out=(0,-1,0))
 
 def litter(b, rng, count, keep_out=()):
     """Fallen leaves: small raised facets scattered on the top, ochre, rust and pale."""
@@ -132,11 +141,11 @@ def litter(b, rng, count, keep_out=()):
             tip = (x+math.cos(a)*s*1.4, y+0.04, z+math.sin(a)*s*1.4)
             l = (x+math.cos(a+2.2)*s, y, z+math.sin(a+2.2)*s); r = (x+math.cos(a-2.2)*s, y, z+math.sin(a-2.2)*s)
             tail = (x-math.cos(a)*s*0.5, y, z-math.sin(a)*s*0.5)
-            b.tri(tail, l, tip, col); b.tri(tail, tip, r, col)
+            b.tri(tail, l, tip, col, out=(0,1,0)); b.tri(tail, tip, r, col, out=(0,1,0))
         else:
             # a rounder leaf: a five-sided fan, one edge lifted
             ring = [(x+math.cos(a+k/5*math.tau)*s*0.8, y + (0.035 if k == 0 else 0.0), z+math.sin(a+k/5*math.tau)*s*0.8) for k in range(5)]
-            b.face(ring, col)
+            b.face(ring, col, out=(0,1,0))
         placed += 1
 
 def leaf_pile(b, rng, centre, radius):
@@ -171,8 +180,9 @@ def mushroom(b, rng, at, size=1.0):
         a = i/7*math.tau; cap.append((x+math.cos(a)*r, TOP+0.10+h, z+math.sin(a)*r))
     peak = (x, TOP+0.10+h+0.09*size, z)
     for i in range(7):
-        b.tri(cap[i], cap[(i+1)%7], peak, "capred" if i%3 else "capcream")
-    b.face(list(reversed(cap)), "capcream")
+        a0 = (i+0.5)/7*math.tau
+        b.tri(cap[i], cap[(i+1)%7], peak, "capred" if i%3 else "capcream", out=(math.cos(a0), 0.7, math.sin(a0)))
+    b.face(cap, "capcream", out=(0,-1,0))
 
 def fern(b, rng, at, fronds=5, size=1.0):
     x,z = at
@@ -208,9 +218,10 @@ def tube(b, pts, radii, sides, colours, cap_start=True, cap_end=True):
         rings.append([tuple(P[i] + (u*math.cos(k/sides*math.tau) + v*math.sin(k/sides*math.tau)) * radii[i]) for k in range(sides)])
     for i in range(len(P)-1):
         for k in range(sides):
-            b.quad(rings[i][k], rings[i+1][k], rings[i+1][(k+1)%sides], rings[i][(k+1)%sides], colours[k % len(colours)])
-    if cap_start: b.face(rings[0], colours[-1])
-    if cap_end: b.face(list(reversed(rings[-1])), colours[-1])
+            mid = (Vector(rings[i][k]) + Vector(rings[i+1][(k+1)%sides])) * 0.5
+            b.quad(rings[i][k], rings[i+1][k], rings[i+1][(k+1)%sides], rings[i][(k+1)%sides], colours[k % len(colours)], out=tuple(mid - (P[i]+P[i+1])*0.5))
+    if cap_start: b.face(rings[0], colours[-1], out=tuple(P[0]-P[1]))
+    if cap_end: b.face(rings[-1], colours[-1], out=tuple(P[-1]-P[-2]))
 
 def root(b, rng, start, angle, length, radius):
     """A root ridge: a bent tube that rises out of the ground and dives back in at its end."""
@@ -276,7 +287,7 @@ def tile(index):
         stump_top = prism(b, (-0.3, TOP+0.08, 0.2), 0.3, 0.38, 8, "bark", "wood", taper=0.92, rng=rng, jitter=0.1)
         # the rings: a smaller darker ring and a pale heart laid on the cut
         for r, col in ((0.19, "woodring"), (0.09, "wood")):
-            b.face([(-0.3+math.cos(k/8*math.tau)*r, TOP+0.08+0.38+0.006, 0.2+math.sin(k/8*math.tau)*r) for k in range(8)], col)
+            b.face([(-0.3+math.cos(k/8*math.tau)*r, TOP+0.08+0.38+0.006, 0.2+math.sin(k/8*math.tau)*r) for k in range(8)], col, out=(0,1,0))
         # a flare of three surface roots at the foot
         for k in range(3):
             a = k/3*math.tau + 0.4

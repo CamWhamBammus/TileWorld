@@ -87,8 +87,9 @@ def birch(index):
     for i in range(len(P)-1):
         for k in range(6):
             dark = (i + k) % 4 == 0
-            b.quad(rings[i][k], rings[i+1][k], rings[i+1][(k+1)%6], rings[i][(k+1)%6], "birchmark" if dark else "birch")
-    b.face(rings[0], "birch"); b.face(list(reversed(rings[-1])), "birch")
+            mid = (Vector(rings[i][k]) + Vector(rings[i+1][(k+1)%6])) * 0.5
+            b.quad(rings[i][k], rings[i+1][k], rings[i+1][(k+1)%6], rings[i][(k+1)%6], "birchmark" if dark else "birch", out=tuple(mid - (P[i]+P[i+1])*0.5))
+    b.face(rings[0], "birch", out=(0,-1,0)); b.face(rings[-1], "birch", out=(0,1,0))
     top = pts[-1]
     for k in range(3):
         a = k/3*math.tau + rng.uniform(-0.5,0.5)

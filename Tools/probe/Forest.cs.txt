@@ -90,6 +90,31 @@ public class _Probe : MonoBehaviour
             }
         Mark("TREES drawn: " + all + " plants in reach, the forest's own " + ours + " |" + byKind + " | instances " + Undergrowth.Instances + " near " + Undergrowth.NearInstances);
 
+        // the winding of the floor's faces: a side or a top wound inward is culled, and a culled face is a hole
+        TileLibrary library = null;
+        foreach (var f in typeof(ChunkManager).GetFields(flags)) if (f.FieldType == typeof(TileLibrary)) library = (TileLibrary)f.GetValue(world);
+        var wound = new System.Text.StringBuilder("WINDING:");
+        for (int id = 35; id <= 39 && library != null; id++)
+        {
+            if (!library.TryGet(id, out var def)) continue;
+            var mesh = def.MeshGetter(); var v = mesh.vertices; var t = mesh.triangles;
+            int sidesOut = 0, sidesIn = 0, topsUp = 0, topsDown = 0;
+            for (int i = 0; i < t.Length; i += 3)
+            {
+                Vector3 a = v[t[i]], b = v[t[i + 1]], c = v[t[i + 2]];
+                Vector3 n = Vector3.Cross(b - a, c - a).normalized;   // Unity's front face, clockwise
+                Vector3 mid = (a + b + c) / 3f;
+                bool side = Mathf.Abs(Mathf.Abs(mid.x) - 1f) < 0.01f && Mathf.Abs(a.x - b.x) < 0.01f && Mathf.Abs(a.x - c.x) < 0.01f
+                         || Mathf.Abs(Mathf.Abs(mid.z) - 1f) < 0.01f && Mathf.Abs(a.z - b.z) < 0.01f && Mathf.Abs(a.z - c.z) < 0.01f;
+                float area = Vector3.Cross(b - a, c - a).magnitude * 0.5f;
+                bool top = area > 0.06f && a.y >= 1.04f && b.y >= 1.04f && c.y >= 1.04f && a.y <= 1.2f && b.y <= 1.2f && c.y <= 1.2f && Mathf.Abs(n.y) > 0.8f;
+                if (side) { if (Vector3.Dot(n, new Vector3(mid.x, 0f, mid.z)) > 0f) sidesOut++; else sidesIn++; }
+                else if (top) { if (n.y > 0f) topsUp++; else topsDown++; }
+            }
+            wound.Append(" tile " + id + ": sides out " + sidesOut + " in " + sidesIn + ", tops up " + topsUp + " down " + topsDown + ";");
+        }
+        Mark(wound.ToString());
+
         float frames = 0f, seconds = 0f;
         for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
         Mark("FOREST frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
@@ -102,6 +127,7 @@ public class _Probe : MonoBehaviour
         yield return Shot("eye", cam, player.position + Vector3.up * 1.7f - fwd * 2.5f, player.position + fwd * 8f + Vector3.up * 1.2f);
         yield return Shot("low", cam, player.position + Vector3.up * 0.9f + fwd * 1f, player.position + fwd * 12f + Vector3.up * 0.8f);
         yield return Shot("high", cam, player.position + Vector3.up * 16f - fwd * 10f, player.position + fwd * 6f);
+        yield return Shot("steps", cam, player.position + Vector3.up * 3.5f - fwd * 6f, player.position + fwd * 5f + Vector3.up * 0.5f);
         Mark("done");
         WorldLibrary.Delete(save.id);
     }
