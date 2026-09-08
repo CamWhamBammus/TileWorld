@@ -35,10 +35,10 @@ public class _Probe : MonoBehaviour
             if (WaterSurface.Level - WorldHeight.SurfaceY(x, z, seed) > 0.6f) continue;
             if (!Surf.ByAnotherWater(x, z, seed)) continue;
             byPond++;
-            if (Surf.IsSurfShallows(x, z, seed)) drained++;
+            if (!Surf.IsSurfShallows(x, z, seed)) drained++;   // now: any by a pond that is not in the wash's sheet at all
             if (!found || x * x + z * z < at.x * at.x + at.y * at.y) { at = new Vector2Int(x, z); found = true; }
         }
-        Mark("SHORE seed " + seed + ": shallow sea tiles within two of another body " + byPond + ", of which still bared by the wash " + drained + (found ? " | nearest at tile " + at : ""));
+        Mark("SHORE seed " + seed + ": shallow sea tiles within two of another body " + byPond + ", of which not in the wash's sheet " + drained + (found ? " | nearest at tile " + at : ""));
         if (!found) { Mark("done"); yield break; }
 
         var save = WorldLibrary.Create("Probe shore", seed, true, true, 0.5f, 20f, true, true);
@@ -56,11 +56,21 @@ public class _Probe : MonoBehaviour
         player.position = spot; player.rotation = Quaternion.LookRotation(new Vector3(at.x * WorldGrid.TileSize - spot.x, 0f, at.y * WorldGrid.TileSize - spot.z).normalized);
         if (body != null) body.enabled = true;
         yield return new WaitForSecondsRealtime(9f);
-        // wait for low water on the strand nearest
+        // over a whole wave: the tile by the pond must stay covered; a free tile six or more out must bare at some point
         Vector3 shallow = new Vector3(at.x * WorldGrid.TileSize, WaterSurface.Level, at.y * WorldGrid.TileSize);
-        float waited = 0f;
-        while (Surf.Covered(shallow, seed) && waited < 16f) { waited += 0.25f; yield return new WaitForSecondsRealtime(0.25f); }
-        Mark("SHORE standing at " + player.position.ToString("F0") + " looking at the meeting of the waters; the tile there counts as covered " + Surf.Covered(shallow, seed) + " after " + waited.ToString("F1") + " s");
+        Vector2Int freeTile = at; bool haveFree = false;
+        for (int r = 1; r < 30 && !haveFree; r++) for (int dx = -r; dx <= r && !haveFree; dx++) for (int dz = -r; dz <= r && !haveFree; dz++)
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) == r && Surf.IsSurfShallows(at.x + dx, at.y + dz, seed) && Surf.PondNear(at.x + dx, at.y + dz, seed) > 6) { freeTile = new Vector2Int(at.x + dx, at.y + dz); haveFree = true; }
+        Vector3 freeAt = new Vector3(freeTile.x * WorldGrid.TileSize, WaterSurface.Level, freeTile.y * WorldGrid.TileSize);
+        int heldSamples = 0, heldCovered = 0, freeBared = 0;
+        for (float t = 0f; t < 15f; t += 0.25f)
+        {
+            heldSamples++; if (Surf.Covered(shallow, seed)) heldCovered++;
+            if (haveFree && !Surf.Covered(freeAt, seed)) freeBared++;
+            yield return new WaitForSecondsRealtime(0.25f);
+        }
+        Mark("SHORE by the pond: covered " + heldCovered + " of " + heldSamples + " samples over a wave | a free tile " + (haveFree ? freeTile.ToString() + " bared in " + freeBared : "none found"));
+        if (haveFree) { float w = 0f; while (Surf.Covered(freeAt, seed) && w < 15f) { w += 0.25f; yield return new WaitForSecondsRealtime(0.25f); } }
         foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
         var cam = Camera.main;
         foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;

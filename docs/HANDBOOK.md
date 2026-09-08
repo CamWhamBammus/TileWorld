@@ -539,13 +539,22 @@ to hold on the sea side as well, the shallows have no fixed surface:
 sand within five tiles) is left out of `WaterSurface.BuildMesh`, so those
 tiles' only water is the shallows' sheet, which draws back with the front
 and bares their sand on every wave. Deeper water keeps the sea's own
-surface, so on a steep shore the wave never draws back far. So do any
-shallows within two tiles of a lake or a pond (`Surf.ByAnotherWater`):
-bared by the wash, they left the pond's fixed sheet hanging in the air over
-the sand beside it. `Tools/probe/Shore.cs.txt` counts, in the title's
-world, the shallow sea tiles that lie by another body (140 within 150
-tiles of the origin) and how many the wash still bares (none), then stands
-by the nearest at low water for a picture. On the way
+surface, so on a steep shore the wave never draws back far. Where the
+sea's shallows meet a lake or a pond the wave's front is held: each vertex
+of the shallows' sheet carries, in a second uv, how far out the front may
+retreat there (`Surf.Hold`: a metre past the tile within two tiles of pond
+water, `Surf.PondNear`, easing to a free retreat six tiles out, averaged at
+the corners like the distance), and the shader takes the larger of the
+wave's front and that hold, with no crest and little foam on a held line.
+So by a pond the sea and the pond stay one sheet with the wash's own soft
+edge easing away from it. Two things that did not work first: baring those
+shallows left the pond's fixed sheet hanging over the sand beside it, and
+keeping them as fixed water instead showed that sheet's own edge against
+the drained shallows next along. `Surf.Covered` holds the front the same
+way on the CPU. `Tools/probe/Shore.cs.txt` counts, in the title's world,
+the shallow sea tiles by another body (140 within 150 tiles of the origin),
+stands by the nearest and samples it over a whole wave (covered all 60 of
+60 times), then takes a picture at low water. On the way
 out the sheet on the sand thins toward its edge (`thin`, 0.55 at the front
 to full four and a half metres behind it), so the sand shows through the
 last of it as it slides away. The wave has a crest: the vertex shader lifts

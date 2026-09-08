@@ -59,14 +59,14 @@ Shader "TileWorld/Water"
             float4 _MoonDir;
             float4 _MoonColor;
 
-            struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; };
+            struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; float2 uv2 : TEXCOORD1; };   // uv2.x: how far the wash's front may retreat here
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float3 positionWS : TEXCOORD0;
                 float fogFactor : TEXCOORD1;
-                float2 wash : TEXCOORD2;      // distance from the waterline, and a phase, for the wash
+                float3 wash : TEXCOORD2;      // distance from the waterline, a phase, and the hold on the front, for the wash
             };
 
             float Hash(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
@@ -118,20 +118,22 @@ Shader "TileWorld/Water"
                 // and the water behind it standing a little higher while it holds
                 if (_Wash > 0.5)
                 {
-                    float front = Front(v.uv.y);
+                    float free = Front(v.uv.y);
+                    float front = max(free, v.uv2.x);
+                    float held = v.uv2.x > free ? 1 : 0;
                     float cycle = frac(_WashTime / _Period + v.uv.y);
-                    float coming = cycle < 0.3 ? 1 : 0;
+                    float coming = (cycle < 0.3 ? 1 : 0) * (1 - held);
                     float off = (v.uv.x - front) / 1.7;
                     float crest = exp(-off * off) * lerp(0.35, 1, coming);
                     float behind = (v.uv.x < front) * saturate((front - v.uv.x) / 3) * 0.25 * coming;
                     float t2 = (v.uv.x - front + 2.2) / 2.0;
                     float trough = exp(-t2 * t2) * 0.3 * (1 - coming);
-                    ws.y += _Crest * (crest + behind - trough);
+                    ws.y += _Crest * (crest + behind - trough) * (1 - held);   // a held front has no wave on it
                 }
                 o.positionWS = ws;
                 o.positionCS = TransformWorldToHClip(ws);
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
-                o.wash = v.uv;
+                o.wash = float3(v.uv, v.uv2.x);
                 return o;
             }
 
@@ -171,9 +173,11 @@ Shader "TileWorld/Water"
                 if (_Wash > 0.5)
                 {
                     float dist = i.wash.x;
-                    float front = Front(i.wash.y);
+                    float free = Front(i.wash.y);
+                    float front = max(free, i.wash.z);
+                    float held = i.wash.z > free ? 1 : 0;
                     float cycle = frac(_WashTime / _Period + i.wash.y);
-                    float coming = cycle < 0.3 ? 1 : 0;
+                    float coming = (cycle < 0.3 ? 1 : 0) * (1 - held);
                     float breakup = saturate(Noise(i.positionWS.xz * 1.8 + float2(t * 0.4, -t * 0.3)) * 0.9 + 0.3);
                     // the sheet stops at the front, softly: nothing is drawn beyond it, water or foam
                     float edge = 1 - smoothstep(front - 0.3, front + 0.25, dist);
@@ -183,7 +187,7 @@ Shader "TileWorld/Water"
                     float back = max(front - dist, 0) / 1.8;
                     float trail = exp(-back * back) * (dist < front ? 1 : 0) * lerp(0.35, 0.55, coming) * breakup;
                     // the foam thins out to sea rather than stopping where the sheet does
-                    float band = max(edgeFoam, trail) * smoothstep(_Back - 1.5, _Back + 2.5, dist);
+                    float band = max(edgeFoam * (1 - 0.7 * held), trail * (1 - held)) * smoothstep(_Back - 1.5, _Back + 2.5, dist);
                     // going back the sheet thins toward its edge, so the sand shows through the last metres of it
                     // as it slides away; coming in it is full
                     float thin = coming > 0.5 ? 1 : lerp(0.55, 1, saturate((front - dist) / 4.5));

@@ -34,28 +34,38 @@ public static class Surf
         if (!WaterSurface.IsOpenWater(tileX, tileZ, seed)) return false;
         if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 0.6f) return false;
         if (Regions.CharacterAtTile(tileX, tileZ, seed, false) != Regions.Character.Water) return false;
-        if (Nearest(tileX, tileZ, seed, false, Out) <= 0) return false;
-        return !ByAnotherWater(tileX, tileZ, seed);
+        return Nearest(tileX, tileZ, seed, false, Out) > 0;
+    }
+
+    /// <summary>How far, in tiles, to the nearest lake or pond water, up to six; 99 with none that near.</summary>
+    public static int PondNear(int tileX, int tileZ, int seed)
+    {
+        for (int r = 1; r <= 6; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = tileX + dx, tz = tileZ + dz;
+            if (WaterSurface.IsUnderwater(tx, tz, seed) && WaterSurface.BodyAt(tx, tz, seed) != WaterSurface.Body.Beach) return r;
+        }
+        return 99;
     }
 
     /// <summary>
-    /// Whether a lake or a pond lies within two tiles. Where the sea's
-    /// shallows meet another body of water they keep the sea's fixed
-    /// surface: bared by the wash, they left the pond's sheet hanging in
-    /// the air over the sand beside it.
+    /// How far out the wave's front may retreat over a tile: held a metre
+    /// past the tile within two tiles of a lake or a pond, so the sea and
+    /// the pond stay one sheet there, easing out to a free retreat six
+    /// tiles away. Bared, those shallows left the pond's surface hanging
+    /// over the sand; kept as a fixed surface, they showed their own edge.
     /// </summary>
-    public static bool ByAnotherWater(int tileX, int tileZ, int seed)
+    public static float Hold(float dist, int pondNear)
     {
-        for (int dx = -2; dx <= 2; dx++)
-        for (int dz = -2; dz <= 2; dz++)
-        {
-            if (dx == 0 && dz == 0) continue;
-            int tx = tileX + dx, tz = tileZ + dz;
-            if (!WaterSurface.IsUnderwater(tx, tz, seed)) continue;
-            if (WaterSurface.BodyAt(tx, tz, seed) != WaterSurface.Body.Beach) return true;
-        }
-        return false;
+        float ramp = Mathf.Clamp01((pondNear - 2f) / 4f);
+        return Mathf.Lerp(dist + 1.0f, -12f, ramp);
     }
+
+    /// <summary>Whether a lake or a pond lies within two tiles.</summary>
+    public static bool ByAnotherWater(int tileX, int tileZ, int seed) => PondNear(tileX, tileZ, seed) <= 2;
 
     private static bool IsShallows(int tileX, int tileZ, int seed) => IsSurfShallows(tileX, tileZ, seed);
 
@@ -100,7 +110,12 @@ public static class Surf
             if (toWater < 0) return false;
             d = (toWater - 0.5f) * WorldGrid.TileSize;
         }
-        else if (IsSurfShallows(tileX, tileZ, seed)) d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
+        else if (IsSurfShallows(tileX, tileZ, seed))
+        {
+            d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
+            float phaseHere = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
+            return d < Mathf.Max(Front(phaseHere), Hold(d, PondNear(tileX, tileZ, seed))) - 0.3f;
+        }
         else return WaterSurface.IsOpenWater(tileX, tileZ, seed);
         float phase = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
         return d < Front(phase) - 0.3f;
@@ -149,12 +164,13 @@ public static class Surf
         // jumping two metres at a time.
         var dist = new float[n + 2, n + 2];
         var height = new float[n + 2, n + 2];
+        var hold = new float[n + 2, n + 2];
 
         for (int i = -1; i <= n; i++)
         for (int j = -1; j <= n; j++)
         {
             int tileX = originX + i, tileZ = originZ + j;
-            float d = float.NaN, y = 0f;
+            float d = float.NaN, y = 0f, h = -12f;
 
             if (IsStrand(tileX, tileZ, worldSeed))
             {
@@ -164,14 +180,18 @@ public static class Surf
             else if (IsShallows(tileX, tileZ, worldSeed))
             {
                 int toSand = Nearest(tileX, tileZ, worldSeed, false, Out);
-                if (toSand > 0) { d = -(toSand - 0.5f) * WorldGrid.TileSize; y = WaterSurface.Level + 0.04f; }
+                if (toSand > 0) { d = -(toSand - 0.5f) * WorldGrid.TileSize; y = WaterSurface.Level + 0.012f; h = Hold(d, PondNear(tileX, tileZ, worldSeed)); }
             }
 
             dist[i + 1, j + 1] = d;
             height[i + 1, j + 1] = y;
+            hold[i + 1, j + 1] = h;
         }
 
-        float Corner(int ci, int cj, float own)
+        float Corner(int ci, int cj, float own) => CornerOf(dist, ci, cj, own);
+        float HoldCorner(int ci, int cj, float own) => CornerOf(hold, ci, cj, own);
+
+        float CornerOf(float[,] map, int ci, int cj, float own)
         {
             // the corner between tiles (ci-1..ci, cj-1..cj): the mean of those that have a value
             float sum = 0f; int count = 0;
@@ -179,14 +199,13 @@ public static class Surf
             for (int b = cj - 1; b <= cj; b++)
             {
                 if (a < -1 || b < -1 || a > n || b > n) continue;
-                float v = dist[a + 1, b + 1];
-                if (float.IsNaN(v)) continue;
-                sum += v; count++;
+                if (float.IsNaN(dist[a + 1, b + 1])) continue;
+                sum += map[a + 1, b + 1]; count++;
             }
             return count > 0 ? sum / count : own;
         }
 
-        var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var tris = new List<int>();
+        var verts = new List<Vector3>(); var uvs = new List<Vector2>(); var holds = new List<Vector2>(); var tris = new List<int>();
         float half = WorldGrid.TileSize * 0.5f;
 
         for (int i = 0; i < n; i++)
@@ -202,23 +221,26 @@ public static class Surf
 
             // the four corners' distances, and a grid of Cut x Cut quads between them
             float d00 = Corner(i, j, own), d01 = Corner(i, j + 1, own), d11 = Corner(i + 1, j + 1, own), d10 = Corner(i + 1, j, own);
+            float ownHold = hold[i + 1, j + 1];
+            float h00 = HoldCorner(i, j, ownHold), h01 = HoldCorner(i, j + 1, ownHold), h11 = HoldCorner(i + 1, j + 1, ownHold), h10 = HoldCorner(i + 1, j, ownHold);
             for (int a = 0; a < Cut; a++)
             for (int b = 0; b < Cut; b++)
             {
                 float u0 = a / (float)Cut, u1 = (a + 1) / (float)Cut, w0 = b / (float)Cut, w1 = (b + 1) / (float)Cut;
                 float D(float u, float w) => Mathf.Lerp(Mathf.Lerp(d00, d10, u), Mathf.Lerp(d01, d11, u), w);
+                float H(float u, float w) => Mathf.Lerp(Mathf.Lerp(h00, h10, u), Mathf.Lerp(h01, h11, u), w);
                 int v = verts.Count;
-                verts.Add(new Vector3(x - half + u0 * WorldGrid.TileSize, y, z - half + w0 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u0, w0), phase));
-                verts.Add(new Vector3(x - half + u0 * WorldGrid.TileSize, y, z - half + w1 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u0, w1), phase));
-                verts.Add(new Vector3(x - half + u1 * WorldGrid.TileSize, y, z - half + w1 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u1, w1), phase));
-                verts.Add(new Vector3(x - half + u1 * WorldGrid.TileSize, y, z - half + w0 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u1, w0), phase));
+                verts.Add(new Vector3(x - half + u0 * WorldGrid.TileSize, y, z - half + w0 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u0, w0), phase)); holds.Add(new Vector2(H(u0, w0), 0f));
+                verts.Add(new Vector3(x - half + u0 * WorldGrid.TileSize, y, z - half + w1 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u0, w1), phase)); holds.Add(new Vector2(H(u0, w1), 0f));
+                verts.Add(new Vector3(x - half + u1 * WorldGrid.TileSize, y, z - half + w1 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u1, w1), phase)); holds.Add(new Vector2(H(u1, w1), 0f));
+                verts.Add(new Vector3(x - half + u1 * WorldGrid.TileSize, y, z - half + w0 * WorldGrid.TileSize)); uvs.Add(new Vector2(D(u1, w0), phase)); holds.Add(new Vector2(H(u1, w0), 0f));
                 tris.Add(v); tris.Add(v + 1); tris.Add(v + 2); tris.Add(v); tris.Add(v + 2); tris.Add(v + 3);
             }
         }
 
         if (verts.Count == 0) return null;
         var mesh = new Mesh { name = (sand ? "Wash " : "Foam ") + chunkIndex };
-        mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetTriangles(tris, 0);
+        mesh.SetVertices(verts); mesh.SetUVs(0, uvs); mesh.SetUVs(1, holds); mesh.SetTriangles(tris, 0);
         mesh.RecalculateBounds();
         return mesh;
     }
