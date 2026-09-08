@@ -241,7 +241,7 @@ public class _Probe : MonoBehaviour
         yield return new WaitForSecondsRealtime(14f);
         var row = GameObject.Find("World Probe title");
         string rowText = row != null ? row.transform.Find("Text").GetComponent<TMPro.TMP_Text>().text : "";
-        Mark("BACK: " + State() + " | row picture " + (row != null && row.transform.Find("Picture") != null) + " | chosen picture " + (GameObject.Find("Chosen picture") != null) + " | row says played " + rowText.Contains(" played") + " and where " + rowText.Contains("in "));
+        Mark("BACK: " + State() + " | row picture " + (row != null && row.transform.Find("Picture") != null) + " | row says played " + rowText.Contains(" played") + " and where " + rowText.Contains("in "));
         Mark("BACK row: " + rowText.Replace("\n", " / "));
         yield return Shot("back");
         WorldLibrary.Delete(save.id);

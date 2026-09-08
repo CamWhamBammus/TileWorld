@@ -668,19 +668,6 @@ public class TitleMenu : MonoBehaviour
 
         playLabel.text = chosen != null ? "Play  " + Short(chosen.name, 16) : "Play";
         if (deletedId == null) forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Delete " + Short(chosen.name, 12) + "?" : "Delete world";
-
-        // the chosen world's picture, large, over the buttons
-        var big = chosen != null ? PictureOf(chosen) : null;
-        if (big != null)
-        {
-            var bigGo = new GameObject("Chosen picture", typeof(RectTransform));
-            bigGo.transform.SetParent(worldsPage.transform, false);
-            var bigImage = bigGo.AddComponent<RawImage>();
-            bigImage.texture = big;
-            bigImage.raycastTarget = false;
-            Centre(bigGo.GetComponent<RectTransform>(), new Vector2(370f, 252f), new Vector2(220f, 124f));
-            rows.Add(bigGo);
-        }
     }
 
     /// <summary>Time played, said briefly.</summary>

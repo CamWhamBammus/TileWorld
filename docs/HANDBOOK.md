@@ -743,8 +743,9 @@ how the game is played. Options has Title music, which quiets the pad
 (`Settings.TitleMusic`). Left untouched for `TitleMenu.IdleAfter` (75 s) the
 menu and its shade fade out and stop taking clicks so the country stands
 alone under the name, and any key, a moved mouse or the wheel brings them
-back. Clicking the name drops the letters again (`TitleLogo.Drop`). The
-chosen world's picture sits large over the buttons. And Enter does the
+back. Clicking the name drops the letters again (`TitleLogo.Drop`). (A large
+copy of the chosen world's picture sat over the buttons for a day and was
+taken out again: it looked bad.) And Enter does the
 page's thing wherever it is, unless something is being typed into: plays
 the chosen world, creates the new one, saves the name.
 
@@ -780,7 +781,7 @@ each and reads what they say, makes seven worlds for a moment and walks
 the choice to the bottom of the list, previews a seed and checks the
 backdrop and the page after the reload, enters a world through the
 curtain, closes the arrival page so a picture gets taken, comes back and
-finds it in the row and large over the buttons, with the row saying where
+finds it in the row, with the row saying where
 and how long; and before all that, with `IdleAfter` set to eight seconds,
 it finds the menu stepped aside and brings it back, drops the name, opens
 the Controls page, makes a world and renames, deletes and undeletes it,
