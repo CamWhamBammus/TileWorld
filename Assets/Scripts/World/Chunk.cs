@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 12;          // the pack's five grass bands, sand, stone, the forest floor, three shades of our grass, and our marsh
+    private const int Categories = 14;          // the pack's bands, sand and stone; then the forest floor, three grasses, the marsh, the beach and the desert
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -25,6 +25,8 @@ public class Chunk
     private const int PaleGrassCategory = 8;    // our own meadows, by height: pale on the high ground,
     private const int LightGrassCategory = 9;   // light between,
     private const int DarkGrassCategory = 10;   // dark in the low. The pack's bands 0 to 2 are left in the library, unused.
+    private const int BeachCategory = 12;       // our sand for the shores and the shallows: shells, driftwood, dune grass
+    private const int DesertCategory = 13;      // and our sand for the deserts: ripples, a cracked pan, scrub, stones. The pack's sand, 5, is left unused.
 
     // These four tiles carry a tree. Above the treeline they are swapped out,
     // which is what makes a summit read as a summit.
@@ -142,7 +144,7 @@ public class Chunk
                 category = underSnow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
                          : underBy >= DeepWater ? StoneCategory
-                         : SandCategory;
+                         : BeachCategory;
             }
             else if (-underBy < BeachHeight && !underSnow && !stone
                      && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Beach)
@@ -150,13 +152,13 @@ public class Chunk
                 // A strand of sand above the waterline, so the grass does not
                 // stop dead at the water -- but only on an open shore. A pond
                 // in a wood has grass to its edge, not a beach.
-                category = SandCategory;
+                category = BeachCategory;
             }
             else if (desert)
             {
                 // sand over the whole of it, steep faces and all: scree in the
                 // middle of a desert reads as a patch of somewhere else
-                category = SandCategory;
+                category = DesertCategory;
             }
             else if (stone || underSnow)
             {
@@ -180,6 +182,11 @@ public class Chunk
             }
 
             int variant = Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
+
+            // under the water the beach is bare sand: no dune grass on a lake bed. Of the five
+            // beach tiles the first, third and fourth carry none.
+            if (category == BeachCategory && submerged) variant = new[] { 0, 2, 3 }[variant % 3];
+
             int id = category * VariantsPerCategory + variant;
 
             // Above the treeline, or under water, swap a treed tile for a bare
@@ -209,7 +216,7 @@ public class Chunk
             //
             // The stone is laid wide the same way and for the same reason, so
             // it takes the same settling.
-            float settle = category == SandCategory || category == StoneCategory
+            float settle = category == SandCategory || category == StoneCategory || category == BeachCategory || category == DesertCategory
                 ? ((gx * 2 + gz * 3) % 7 + 7) % 7 * 0.0006f
                 : 0f;
 

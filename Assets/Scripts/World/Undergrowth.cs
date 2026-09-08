@@ -38,7 +38,7 @@ public class Undergrowth : MonoBehaviour
     private bool ready;
 
     private Flora.Sprout[] every;
-    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary;
+    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore;
 
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
@@ -128,6 +128,9 @@ public class Undergrowth : MonoBehaviour
 
         var trees = Take(broad.ToArray(), 3.00f, 4.60f);
         var forestTrees = Take(flora.ForestTrees ?? new Flora.Sprout[0], 4.20f, 6.60f);
+        var saguaros = Take(flora.Saguaros ?? new Flora.Sprout[0], 3.20f, 4.60f);
+        var smallCacti = Take(flora.SmallCacti ?? new Flora.Sprout[0], 0.70f, 1.25f);
+        var beachPalms = Take(flora.BeachPalms ?? new Flora.Sprout[0], 4.20f, 7.00f);
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
@@ -152,7 +155,10 @@ public class Undergrowth : MonoBehaviour
         // A mushroom wood is not only mushrooms: what makes it read is the
         // dead standing timber they are growing out of.
         fungal = new[] { With(deadTrees, 0.075f), With(boulders, 0.05f), With(mushrooms, 0.46f) };
-        desert = new[] { With(palms, 0.014f), With(deadTrees, 0.02f), With(cacti, 0.055f), With(stones, 0.085f) };
+        // the desert stands on its own sand now, which carries its own stones and scrub, under its own cacti;
+        // the pack's dead trees stay, and a palm now and then
+        desert = new[] { With(beachPalms, 0.006f), With(deadTrees, 0.02f), With(saguaros, 0.028f), With(smallCacti, 0.05f), With(stones, 0.04f) };
+        shore = new[] { With(beachPalms, 0.045f), With(boulders, 0.008f) };
         stone = new[] { With(boulders, 0.34f) };
         dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
@@ -282,6 +288,7 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Reed => reed,
                 Regions.Character.Snow => snow,
                 Regions.Character.Forest => forest,
+                Regions.Character.Water => shore,
                 _ => ordinary
             };
 
@@ -377,7 +384,7 @@ public class Undergrowth : MonoBehaviour
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
 
             // only stones lie on a shore
-            if (beach && sort.High > 1.5f) continue;
+            if (beach && sort.High > 1.5f && character != Regions.Character.Water) continue;   // the shore's own table is palms, which belong on it
 
             // above the treeline nothing tall, which is what makes a summit read as a summit
             if (sort.High > 2.2f && WorldHeight.HeightAt(gx, gz, seed) / WorldHeight.MaxRelief > 0.72f) continue;

@@ -2534,6 +2534,57 @@ MonoBehaviour:
     Wide: 1.1947849
     Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
     Foot: 0.00254488
+  Saguaros:
+  - Name: Saguaro 0
+    Mesh: {fileID: -5711041650588650426, guid: 94f0b87d87a1649b3969da965e317244, type: 3}
+    Size: 4.2405815
+    Wide: 1.1460917
+    Colour: {r: 0.38, g: 0.56, b: 0.26, a: 1}
+    Foot: 0.007018566
+  - Name: Saguaro 1
+    Mesh: {fileID: -3380142874693837273, guid: 4e06b7b16b8ab4db1ba0f8c3c58eb2b9, type: 3}
+    Size: 3.7471762
+    Wide: 1.458587
+    Colour: {r: 0.38, g: 0.56, b: 0.26, a: 1}
+    Foot: 0.007994413
+  SmallCacti:
+  - Name: Barrel Cactus 0
+    Mesh: {fileID: 5446139220362555521, guid: ba46b88c6c5c045339db43c3ba7e5ac0, type: 3}
+    Size: 0.94938666
+    Wide: 0.8415403
+    Colour: {r: 0.38, g: 0.56, b: 0.26, a: 1}
+    Foot: -0
+  - Name: Barrel Cactus 1
+    Mesh: {fileID: 9069750154210525800, guid: 6e5c67daa52864cb9a72470a3516737c, type: 3}
+    Size: 1.041763
+    Wide: 0.82945305
+    Colour: {r: 0.38, g: 0.56, b: 0.26, a: 1}
+    Foot: -0
+  - Name: Prickly Pear 0
+    Mesh: {fileID: 5472014831689601420, guid: 908071ffdb12547c38985846a3007334, type: 3}
+    Size: 1.0458477
+    Wide: 0.7677935
+    Colour: {r: 0.38, g: 0.56, b: 0.26, a: 1}
+    Foot: -0.032275677
+  BeachPalms:
+  - Name: Palm 0
+    Mesh: {fileID: -6737912730875818915, guid: efb3a320e749f43abab0e8ac8371c05e, type: 3}
+    Size: 6.5588164
+    Wide: 4.761526
+    Colour: {r: 0.35, g: 0.56, b: 0.24, a: 1}
+    Foot: 0.0060567856
+  - Name: Palm 1
+    Mesh: {fileID: 1231710167072446783, guid: f4e4dd25f998d4eb493f07bb2e3aa077, type: 3}
+    Size: 5.3579774
+    Wide: 4.2145658
+    Colour: {r: 0.35, g: 0.56, b: 0.24, a: 1}
+    Foot: 0.0066986084
+  - Name: Palm 2
+    Mesh: {fileID: 2498778828130509698, guid: ff9fdee835f7f454c89fbdcb8463ba5a, type: 3}
+    Size: 3.8750226
+    Wide: 3.3257825
+    Colour: {r: 0.35, g: 0.56, b: 0.24, a: 1}
+    Foot: 0.012212753
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

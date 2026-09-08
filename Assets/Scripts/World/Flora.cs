@@ -73,5 +73,12 @@ public class Flora : ScriptableObject
     /// </summary>
     public Sprout[] ForestTrees;
 
+    /// <summary>The desert's own: tall saguaros, and the barrel cacti and prickly pears that stand knee high.</summary>
+    public Sprout[] Saguaros;
+    public Sprout[] SmallCacti;
+
+    /// <summary>And the shore's palms.</summary>
+    public Sprout[] BeachPalms;
+
     public Material Paint;
 }

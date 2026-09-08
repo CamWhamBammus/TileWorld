@@ -689,6 +689,26 @@ warmed once after a look in the game, like the forest floor.
 `Tools/probe/Marsh.cs.txt` is the grass probe pointed at a reedbed: all
 of nine chunks the marsh, 3.5 ms a frame, the faces facing out.
 
+The sand came as two sets from one script, `Tools/sand_tiles.py`: five
+beach tiles (shells, dune grass, driftwood, a wet patch with a starfish, a
+sandstone rock) and five desert tiles (wind ripples, a cracked pan,
+sandstone, dry scrub, a scatter of stones), 220 to 650 vertices, and with
+them `Tools/desert_flora.py`: two saguaros with arms, two barrel cacti with
+buds, a prickly pear, and three palms, tall, leaning and short.
+`Assets/Editor/SandSet.cs` (`SandSet.Batch`) makes the tiles definitions 60
+to 64 (beach) and 65 to 69 (desert) and puts the plants into the flora as
+`Saguaros`, `SmallCacti` and `BeachPalms`, three sets because the
+undergrowth scales a set to one range of heights. In `Chunk` the pack's one
+sand category became two: `BeachCategory` for the strand and the shallows,
+`DesertCategory` for the deserts, and under the water the beach uses only
+the three tiles that carry no dune grass. The desert's table plants our
+cacti and a rare palm over the pack's dead trees; a `shore` table, for the
+Water character, plants palms, exempt from the rule that keeps tall things
+off the strand. `Tools/probe/Sand.cs.txt` looks for a seed with a desert
+near its origin (24), stands in it -- all of nine chunks the desert sand,
+3.6 ms -- and then on a beach: 587 tiles the beach sand, 384 palms in
+reach, the faces facing out.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride
