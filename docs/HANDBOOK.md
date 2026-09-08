@@ -770,6 +770,22 @@ the pack lays no ground anywhere; what it still lends is the small plants
 the undergrowth borrows -- mushrooms, boulders, stones, dead trees, a few
 trees and firs -- and the kit the structures are built from.
 
+And the small standing things, last: `Tools/plants.py` builds five
+mushrooms, three of the fungal country's big toadstools, four boulders,
+three desert stones and three dead trees, and `Assets/Editor/PlantSet.cs`
+(`PlantSet.Batch`) puts them into the flora as `OurMushrooms`,
+`OurToadstools`, `OurBoulders`, `OurStones` and `OurDeadTrees`. The
+undergrowth takes ours where they exist (`Ours(own, pack)`) and the pack's
+otherwise, the tables no longer name the pack's trees or firs (the open
+country and the forest plant our trees and the code-grown pines), and the
+fungal country plants the big toadstools at 15% over the small at 26%.
+`Tools/probe/Plants.cs.txt` lists, in a fungal country, a lowland, a
+desert and the dead woods, every kind with instances in reach and counts
+how many are the pack's: none, in all four. So the pack is down to its
+palette sheet and the material on it, which everything of ours shares,
+and the kit the structures are built from is code that only borrows
+colours off that sheet.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride

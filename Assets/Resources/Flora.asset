@@ -2618,6 +2618,119 @@ MonoBehaviour:
     Wide: 1.940294
     Colour: {r: 1, g: 1, b: 1, a: 1}
     Foot: 0.00069999695
+  OurMushrooms:
+  - Name: Mushroom 0
+    Mesh: {fileID: -6990103128116956506, guid: d6e37afaa53a0450c8710778e1f672c1, type: 3}
+    Size: 0.8482019
+    Wide: 0.86282724
+    Colour: {r: 0.7, g: 0.3, b: 0.25, a: 1}
+    Foot: -0
+  - Name: Mushroom 1
+    Mesh: {fileID: -4388734856989894234, guid: 6be4fb045640444b1a5a5d7610cf0fd8, type: 3}
+    Size: 0.9109998
+    Wide: 0.6979705
+    Colour: {r: 0.7, g: 0.3, b: 0.25, a: 1}
+    Foot: -0
+  - Name: Mushroom 2
+    Mesh: {fileID: -5596485599947641857, guid: 139216cdfdcd1411aa4df8be2843dffa, type: 3}
+    Size: 1.0515261
+    Wide: 0.61150026
+    Colour: {r: 0.7, g: 0.3, b: 0.25, a: 1}
+    Foot: -0
+  - Name: Mushroom 3
+    Mesh: {fileID: 9123114826937983461, guid: 07796ed95070242d69885a51ac0548e7, type: 3}
+    Size: 0.8097887
+    Wide: 0.73259497
+    Colour: {r: 0.7, g: 0.3, b: 0.25, a: 1}
+    Foot: -0
+  - Name: Mushroom 4
+    Mesh: {fileID: 1381508847932258707, guid: a9f5b11b67c104e119a938a495914628, type: 3}
+    Size: 0.7590701
+    Wide: 0.6950638
+    Colour: {r: 0.7, g: 0.3, b: 0.25, a: 1}
+    Foot: -0
+  OurToadstools:
+  - Name: Toadstool 0
+    Mesh: {fileID: -6298280617827826108, guid: c06b975365a1641ea8cadad6ec373d0b, type: 3}
+    Size: 2.0795624
+    Wide: 1.9731364
+    Colour: {r: 0.6, g: 0.3, b: 0.5, a: 1}
+    Foot: 0.013296843
+  - Name: Toadstool 1
+    Mesh: {fileID: 168344555851542299, guid: f6080479fedee4b269986c9e50a67beb, type: 3}
+    Size: 1.9092187
+    Wide: 1.9008777
+    Colour: {r: 0.6, g: 0.3, b: 0.5, a: 1}
+    Foot: 0.013730407
+  - Name: Toadstool 2
+    Mesh: {fileID: 7393071439984551441, guid: 601bbf27be0fe405a90925d28290ec9e, type: 3}
+    Size: 2.0278275
+    Wide: 1.8722507
+    Colour: {r: 0.6, g: 0.3, b: 0.5, a: 1}
+    Foot: 0.015429795
+  OurBoulders:
+  - Name: Boulder 0
+    Mesh: {fileID: -4478402930728956107, guid: 54e3d1c4f64034e7288c54f48f82c211, type: 3}
+    Size: 0.696826
+    Wide: 1.358114
+    Colour: {r: 0.48, g: 0.48, b: 0.46, a: 1}
+    Foot: -0.08654368
+  - Name: Boulder 1
+    Mesh: {fileID: 7454460776019930532, guid: 602645248f01f4c8ea6f45fbc8d0c27e, type: 3}
+    Size: 0.6586875
+    Wide: 1.9805981
+    Colour: {r: 0.48, g: 0.48, b: 0.46, a: 1}
+    Foot: -0.087525785
+  - Name: Boulder 2
+    Mesh: {fileID: -4252181829613159275, guid: 272832b5dae984658a2b30cf4ad58f04, type: 3}
+    Size: 0.7751323
+    Wide: 1.0389084
+    Colour: {r: 0.48, g: 0.48, b: 0.46, a: 1}
+    Foot: -0.11717409
+  - Name: Boulder 3
+    Mesh: {fileID: 8369162187774417737, guid: ca0f2a0b2a63b415286442528f31531c, type: 3}
+    Size: 1.0628061
+    Wide: 2.1846066
+    Colour: {r: 0.48, g: 0.48, b: 0.46, a: 1}
+    Foot: -0.08957684
+  OurStones:
+  - Name: Desert Stone 0
+    Mesh: {fileID: -1177078184322571083, guid: 871c6d3b5206b4a0abc47c8d33acb39d, type: 3}
+    Size: 0.42698115
+    Wide: 0.9115473
+    Colour: {r: 0.72, g: 0.62, b: 0.44, a: 1}
+    Foot: -0.048623025
+  - Name: Desert Stone 1
+    Mesh: {fileID: -7298427042363636061, guid: 38ed81edc380a408681a9e261c6fbe4a, type: 3}
+    Size: 0.50599176
+    Wide: 0.6353033
+    Colour: {r: 0.72, g: 0.62, b: 0.44, a: 1}
+    Foot: -0.065113485
+  - Name: Desert Stone 2
+    Mesh: {fileID: 384875407686365913, guid: 89a548c1ecf7a4c12aa4b8a12efac261, type: 3}
+    Size: 0.3796868
+    Wide: 1.1342348
+    Colour: {r: 0.72, g: 0.62, b: 0.44, a: 1}
+    Foot: -0.040383846
+  OurDeadTrees:
+  - Name: Dead Tree 0
+    Mesh: {fileID: -1899053466904175382, guid: d741e5cdde9a049d59d42a9497f8f929, type: 3}
+    Size: 3.2335691
+    Wide: 1.8506875
+    Colour: {r: 0.48, g: 0.42, b: 0.36, a: 1}
+    Foot: 0.004950762
+  - Name: Dead Tree 1
+    Mesh: {fileID: 3006604405709524905, guid: c8897d9ba5f9f4e949ffeab569c96458, type: 3}
+    Size: 3.4620917
+    Wide: 1.7062125
+    Colour: {r: 0.48, g: 0.42, b: 0.36, a: 1}
+    Foot: 0.0034472942
+  - Name: Dead Tree 2
+    Mesh: {fileID: 4958704133117648033, guid: 36cebf0fd094c428a9e1121179d1e968, type: 3}
+    Size: 3.0637078
+    Wide: 1.8761407
+    Colour: {r: 0.48, g: 0.42, b: 0.36, a: 1}
+    Foot: 0.0041258335
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

@@ -85,5 +85,12 @@ public class Flora : ScriptableObject
     public Sprout[] SnowBirches;
     public Sprout[] SnowSaplings;
 
+    /// <summary>The small standing things of our own: what the undergrowth plants instead of the pack's.</summary>
+    public Sprout[] OurMushrooms;
+    public Sprout[] OurToadstools;
+    public Sprout[] OurBoulders;
+    public Sprout[] OurStones;
+    public Sprout[] OurDeadTrees;
+
     public Material Paint;
 }

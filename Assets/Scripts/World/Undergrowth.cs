@@ -106,11 +106,12 @@ public class Undergrowth : MonoBehaviour
         // multiplier, because the models are nothing like each other: a
         // mushroom out of the pack is a third of a unit and a palm is nearly
         // four, and one number over both would be absurd at one end or the other.
-        var mushrooms = Take(flora.Mushrooms, 0.45f, 1.25f);
+        var mushrooms = Take(Ours(flora.OurMushrooms, flora.Mushrooms), 0.45f, 1.05f);
+        var toadstools = Take(flora.OurToadstools ?? new Flora.Sprout[0], 1.50f, 2.60f);
         var cacti = Take(flora.Cacti, 1.40f, 2.60f);
         var palms = Take(flora.Palms, 3.20f, 5.00f);
-        var stones = Take(flora.Stones, 0.35f, 0.95f);
-        var boulders = Take(flora.Boulders, 0.40f, 1.30f);
+        var stones = Take(Ours(flora.OurStones, flora.Stones), 0.35f, 0.95f);
+        var boulders = Take(Ours(flora.OurBoulders, flora.Boulders), 0.40f, 1.30f);
         // The pack's trees run from narrow to broad. The narrow ones read as
         // conifers, which is what belongs on a snowfield; the broad ones are
         // what a warm wood is made of.
@@ -135,7 +136,7 @@ public class Undergrowth : MonoBehaviour
         var snowBirches = Take(flora.SnowBirches ?? new Flora.Sprout[0], 4.60f, 5.60f);
         var snowSaplings = Take(flora.SnowSaplings ?? new Flora.Sprout[0], 2.20f, 3.00f);
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
-        var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
+        var deadTrees = Take(Ours(flora.OurDeadTrees, flora.DeadTrees), 2.40f, 3.60f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
 
         // and the same narrow trees again, under snow
@@ -151,13 +152,14 @@ public class Undergrowth : MonoBehaviour
         every = all.ToArray();
 
         Planting With(Planting p, float share) { p.Share = share; return p; }
+        Flora.Sprout[] Ours(Flora.Sprout[] own, Flora.Sprout[] pack) => own != null && own.Length > 0 ? own : pack;
 
         // What each sort of country carries. The order within a set is the
         // order they get first refusal on a tile, so the rarer things are
         // listed first and the ground cover last.
         // A mushroom wood is not only mushrooms: what makes it read is the
         // dead standing timber they are growing out of.
-        fungal = new[] { With(deadTrees, 0.075f), With(boulders, 0.05f), With(mushrooms, 0.46f) };
+        fungal = new[] { With(toadstools, 0.15f), With(mushrooms, 0.26f), With(deadTrees, 0.07f), With(boulders, 0.03f) };
         // the desert stands on its own sand now, which carries its own stones and scrub, under its own cacti;
         // the pack's dead trees stay, and a palm now and then
         desert = new[] { With(beachPalms, 0.006f), With(deadTrees, 0.02f), With(saguaros, 0.028f), With(smallCacti, 0.05f), With(stones, 0.04f) };
@@ -172,11 +174,10 @@ public class Undergrowth : MonoBehaviour
         // rather than only whatever the tiles happen to carry.
         // the forest stands mostly on its own trees now, over a floor that carries its own
         // mushrooms and stones; the pack's trees and the pines are kept for variety
-        forest = new[] { With(forestTrees, 0.19f), With(pines, 0.02f), With(firs, 0.02f), With(trees, 0.02f),
-                         With(mushrooms, 0.015f), With(boulders, 0.03f) };
+        forest = new[] { With(forestTrees, 0.21f), With(pines, 0.03f), With(mushrooms, 0.015f), With(boulders, 0.03f) };
         // the open country's trees stood on the pack's grass tiles, four of every twenty-five; now
         // that the grass is our own and carries none, they are planted here at about that rate
-        ordinary = new[] { With(forestTrees, 0.10f), With(trees, 0.035f), With(firs, 0.02f), With(mushrooms, 0.006f), With(boulders, 0.012f) };
+        ordinary = new[] { With(forestTrees, 0.13f), With(pines, 0.02f), With(mushrooms, 0.006f), With(boulders, 0.012f) };
 
         flora.Paint.enableInstancing = true;
 
