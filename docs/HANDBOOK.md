@@ -539,7 +539,13 @@ to hold on the sea side as well, the shallows have no fixed surface:
 sand within five tiles) is left out of `WaterSurface.BuildMesh`, so those
 tiles' only water is the shallows' sheet, which draws back with the front
 and bares their sand on every wave. Deeper water keeps the sea's own
-surface, so on a steep shore the wave never draws back far. On the way
+surface, so on a steep shore the wave never draws back far. So do any
+shallows within two tiles of a lake or a pond (`Surf.ByAnotherWater`):
+bared by the wash, they left the pond's fixed sheet hanging in the air over
+the sand beside it. `Tools/probe/Shore.cs.txt` counts, in the title's
+world, the shallow sea tiles that lie by another body (140 within 150
+tiles of the origin) and how many the wash still bares (none), then stands
+by the nearest at low water for a picture. On the way
 out the sheet on the sand thins toward its edge (`thin`, 0.55 at the front
 to full four and a half metres behind it), so the sand shows through the
 last of it as it slides away. The wave has a crest: the vertex shader lifts

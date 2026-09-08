@@ -34,7 +34,27 @@ public static class Surf
         if (!WaterSurface.IsOpenWater(tileX, tileZ, seed)) return false;
         if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 0.6f) return false;
         if (Regions.CharacterAtTile(tileX, tileZ, seed, false) != Regions.Character.Water) return false;
-        return Nearest(tileX, tileZ, seed, false, Out) > 0;
+        if (Nearest(tileX, tileZ, seed, false, Out) <= 0) return false;
+        return !ByAnotherWater(tileX, tileZ, seed);
+    }
+
+    /// <summary>
+    /// Whether a lake or a pond lies within two tiles. Where the sea's
+    /// shallows meet another body of water they keep the sea's fixed
+    /// surface: bared by the wash, they left the pond's sheet hanging in
+    /// the air over the sand beside it.
+    /// </summary>
+    public static bool ByAnotherWater(int tileX, int tileZ, int seed)
+    {
+        for (int dx = -2; dx <= 2; dx++)
+        for (int dz = -2; dz <= 2; dz++)
+        {
+            if (dx == 0 && dz == 0) continue;
+            int tx = tileX + dx, tz = tileZ + dz;
+            if (!WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            if (WaterSurface.BodyAt(tx, tz, seed) != WaterSurface.Body.Beach) return true;
+        }
+        return false;
     }
 
     private static bool IsShallows(int tileX, int tileZ, int seed) => IsSurfShallows(tileX, tileZ, seed);

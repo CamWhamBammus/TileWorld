@@ -1,0 +1,75 @@
+// A probe: where the sea's shallows meet a pond. Counts, in the title's world, the shallow sea
+// tiles that lie within two of another body of water and says whether any of them still drain;
+// then goes and stands by one at low water and takes a picture.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        int seed = 24; int byPond = 0, drained = 0; Vector2Int at = Vector2Int.zero; bool found = false;
+        for (int x = -150; x <= 150; x++)
+        for (int z = -150; z <= 150; z++)
+        {
+            if (!WaterSurface.IsOpenWater(x, z, seed) || WaterSurface.BodyAt(x, z, seed) != WaterSurface.Body.Beach) continue;
+            if (WaterSurface.Level - WorldHeight.SurfaceY(x, z, seed) > 0.6f) continue;
+            if (!Surf.ByAnotherWater(x, z, seed)) continue;
+            byPond++;
+            if (Surf.IsSurfShallows(x, z, seed)) drained++;
+            if (!found || x * x + z * z < at.x * at.x + at.y * at.y) { at = new Vector2Int(x, z); found = true; }
+        }
+        Mark("SHORE seed " + seed + ": shallow sea tiles within two of another body " + byPond + ", of which still bared by the wash " + drained + (found ? " | nearest at tile " + at : ""));
+        if (!found) { Mark("done"); yield break; }
+
+        var save = WorldLibrary.Create("Probe shore", seed, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        var world = FindFirstObjectByType<ChunkManager>();
+        var player = world.PlayerTransform;
+        // stand on the nearest dry tile to it
+        Vector3 spot = new Vector3(at.x * WorldGrid.TileSize, WaterSurface.Level + 1.5f, at.y * WorldGrid.TileSize);
+        for (int r = 1; r < 12; r++) { bool ok = false; for (int dx = -r; dx <= r && !ok; dx++) for (int dz = -r; dz <= r && !ok; dz++) if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) == r && !WaterSurface.IsUnderwater(at.x + dx, at.y + dz, seed)) { spot = new Vector3((at.x + dx) * WorldGrid.TileSize, WorldHeight.SurfaceY(at.x + dx, at.y + dz, seed) + 1.2f, (at.y + dz) * WorldGrid.TileSize); ok = true; } if (ok) break; }
+        var body = player.GetComponent<CharacterController>(); if (body != null) body.enabled = false;
+        player.position = spot; player.rotation = Quaternion.LookRotation(new Vector3(at.x * WorldGrid.TileSize - spot.x, 0f, at.y * WorldGrid.TileSize - spot.z).normalized);
+        if (body != null) body.enabled = true;
+        yield return new WaitForSecondsRealtime(9f);
+        // wait for low water on the strand nearest
+        Vector3 shallow = new Vector3(at.x * WorldGrid.TileSize, WaterSurface.Level, at.y * WorldGrid.TileSize);
+        float waited = 0f;
+        while (Surf.Covered(shallow, seed) && waited < 16f) { waited += 0.25f; yield return new WaitForSecondsRealtime(0.25f); }
+        Mark("SHORE standing at " + player.position.ToString("F0") + " looking at the meeting of the waters; the tile there counts as covered " + Surf.Covered(shallow, seed) + " after " + waited.ToString("F1") + " s");
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        Vector3 fwd = player.forward;
+        for (int i = 0; i < 2; i++) { cam.transform.position = player.position + Vector3.up * 3f - fwd * 5f; cam.transform.LookAt(shallow); yield return null; }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-sh-meet.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}
