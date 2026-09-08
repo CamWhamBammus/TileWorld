@@ -677,16 +677,17 @@ lowland: 63% of nine chunks our grass and the rest the marsh flats,
 3,900 plants in reach, 5.0 ms a frame, the faces all facing out.
 
 The marsh followed: `Tools/marsh_tiles.py`, five tiles of wet mud -- a
-pool with sedge, algae and stones, a half-sunk log, cracked mud with reed
-stubs, two pools -- of 385 to 530 vertices, twelve more colours,
+puddle sunk into the top with sedge round it, a sedge bed with a hummock,
+wet stones, a half-sunk rotten log with dark mushrooms, hummocks and twigs
+-- of 350 to 510 vertices, thirteen more colours,
 `Assets/Editor/MarshSet.cs` (`MarshSet.Batch`) making them definitions 55
-to 59. `Chunk.MarshCategory` simply points at the new category now, so
+to 59. (A first version was rebuilt the same day; this is the second.) `Chunk.MarshCategory` simply points at the new category now, so
 everything the marsh was used for -- the low flats, the sodden woods and
 reedbeds, the beds of lakes and ponds seen through the water -- is on it,
 and the pack's Very Dark band stays in the library unused. The mud was
 warmed once after a look in the game, like the forest floor.
 `Tools/probe/Marsh.cs.txt` is the grass probe pointed at a reedbed: all
-of nine chunks the marsh, 3.7 ms a frame, the faces facing out.
+of nine chunks the marsh, 3.5 ms a frame, the faces facing out.
 
 ## Player
 
