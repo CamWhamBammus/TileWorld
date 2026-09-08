@@ -20,7 +20,7 @@ public class LandmarkSpawner : MonoBehaviour
     [Tooltip("Stand this close to a landmark and you can rest there until morning.")]
     [SerializeField] private float restRange = 12f;
 
-    [SerializeField] private KeyCode restKey = KeyCode.E;
+    private KeyCode restKey => Keys.Rest;
 
     private ChunkManager world;
     private Transform player;

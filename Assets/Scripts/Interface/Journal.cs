@@ -10,7 +10,7 @@ using UnityEngine.UI;
 /// </summary>
 public class Journal : MonoBehaviour
 {
-    [SerializeField] private KeyCode toggleKey = KeyCode.J;
+    private KeyCode toggleKey => Keys.Journal;
 
     private ChunkManager world;
     private Transform player;

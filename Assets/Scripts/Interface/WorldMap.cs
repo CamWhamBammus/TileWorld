@@ -14,10 +14,10 @@ using UnityEngine.UI;
 public class WorldMap : MonoBehaviour
 {
     [Header("Input")]
-    [SerializeField] private KeyCode toggleKey = KeyCode.M;
+    private KeyCode toggleKey => Keys.Map;
 
     [Tooltip("Writes the chart to a PNG while the map is open.")]
-    [SerializeField] private KeyCode exportKey = KeyCode.F9;
+    private KeyCode exportKey => Keys.MapPicture;
 
     [Header("Look")]
     [SerializeField] private int textureSize = 512;

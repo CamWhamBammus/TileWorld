@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -152,6 +153,12 @@ public class TitleMenu : MonoBehaviour
     private string deletedId; private float deletedAt = -100f;
     private CanvasGroup shadeGroup;
     private Vector3 lastMouse; private float lastTouch;
+    private readonly Dictionary<string, TMP_Text> keyLabels = new Dictionary<string, TMP_Text>();
+    private InputActionRebindingExtensions.RebindingOperation rebinding;
+    private bool listening;
+
+    /// <summary>What the Controls page shows for a key, by name, for the probes.</summary>
+    public string KeyShown(string name) => keyLabels.TryGetValue(name, out var label) ? label.text : "";
 
     /// <summary>How long the title waits untouched before the menu steps aside and the country stands alone.</summary>
     public static float IdleAfter = 75f;
@@ -248,6 +255,7 @@ public class TitleMenu : MonoBehaviour
         }
         cardGroup.alpha = 1f;
         cardRect.anchoredPosition = new Vector2(0f, -100f);
+        cardGroup.interactable = cardGroup.blocksRaycasts = true;
     }
 
     /// <summary>Sets the hour and the sky for one of the titles: morning, afternoon, dusk or night.</summary>
@@ -398,6 +406,9 @@ public class TitleMenu : MonoBehaviour
             else forgetLabel.text = "Undo delete  (" + Mathf.CeilToInt(left) + ")";
         }
 
+        // while a key is being chosen on the Controls page, the keys mean nothing else
+        if (listening || rebinding != null) return;
+
         // Escape from any other page goes back; from the list, twice quits
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -492,7 +503,65 @@ public class TitleMenu : MonoBehaviour
     {
         worldsPage.SetActive(false); newPage.SetActive(false); optionsPage.SetActive(false); renamePage.SetActive(false);
         controlsPage.SetActive(true);
-        heading.text = "<size=30><b>CONTROLS</b></size>\n<size=17><color=#8B7860>how it is played</color></size>";
+        heading.text = "<size=30><b>CONTROLS</b></size>\n<size=17><color=#8B7860>the keys, and what they do</color></size>";
+        RefreshControls();
+    }
+
+    /// <summary>Every key button says what it is on now.</summary>
+    private void RefreshControls()
+    {
+        foreach (var b in Keys.Actions) if (keyLabels.TryGetValue(b.Name, out var label)) label.text = Keys.Describe(b).ToUpperInvariant();
+        foreach (var n in Keys.Legacy) if (keyLabels.TryGetValue(n.Name, out var label)) label.text = Keys.Get(n.Id).ToString();
+    }
+
+    /// <summary>One of the player's actions listens for its new key.</summary>
+    private void Rebind(Keys.Bound b)
+    {
+        if (rebinding != null || listening) return;
+        var action = Keys.Asset != null ? Keys.Asset.FindAction(b.Action) : null;
+        int index = Keys.BindingIndex(b);
+        if (action == null || index < 0) return;
+        keyLabels[b.Name].text = "press a key";
+        bool wasEnabled = action.enabled;
+        action.Disable();
+        rebinding = action.PerformInteractiveRebinding(index)
+            .WithControlsExcluding("<Mouse>")
+            .WithControlsExcluding("<Pointer>")
+            .WithCancelingThrough("<Keyboard>/escape")
+            .OnMatchWaitForAnother(0.1f)
+            .OnComplete(op => { op.Dispose(); rebinding = null; if (wasEnabled) action.Enable(); Keys.Save(); RefreshControls(); })
+            .OnCancel(op => { op.Dispose(); rebinding = null; if (wasEnabled) action.Enable(); RefreshControls(); })
+            .Start();
+    }
+
+    private static KeyCode[] allKeys;
+
+    /// <summary>One of the keyboard keys listens for its new key: the next one pressed, Escape leaving it.</summary>
+    private IEnumerator Listen(Keys.Named n)
+    {
+        if (rebinding != null || listening) yield break;
+        if (allKeys == null) allKeys = (KeyCode[])System.Enum.GetValues(typeof(KeyCode));
+        listening = true;
+        keyLabels[n.Name].text = "press a key";
+        yield return null;
+        while (true)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape)) break;
+            if (Input.anyKeyDown)
+            {
+                foreach (var k in allKeys)
+                {
+                    if (k == KeyCode.None || k == KeyCode.Escape || (k >= KeyCode.Mouse0 && k <= KeyCode.Mouse6) || !Input.GetKeyDown(k)) continue;
+                    Keys.Set(n.Id, k);
+                    break;
+                }
+                break;
+            }
+            yield return null;
+        }
+        yield return null;   // the key that chose is not read again by the page
+        listening = false;
+        RefreshControls();
     }
 
     /// <summary>Escape on the list: once is a warning, twice within a moment is out.</summary>
@@ -779,6 +848,7 @@ public class TitleMenu : MonoBehaviour
         ParchmentPanel.Shade(cardRect, 46f);
         cardGroup = cardGo.AddComponent<CanvasGroup>();
         cardGroup.alpha = 0f;
+        cardGroup.interactable = cardGroup.blocksRaycasts = false;   // nothing on it can be pressed before it can be seen
 
         heading = Label("Heading", card, 24f, new Vector2(-190f, 256f), new Vector2(680f, 90f));
         heading.alignment = TextAlignmentOptions.Left;
@@ -862,17 +932,32 @@ public class TitleMenu : MonoBehaviour
         controlsPage = new GameObject("Controls");
         controlsPage.transform.SetParent(card, false);
         Stretch(controlsPage.AddComponent<RectTransform>());
-        var keys = Label("Keys", controlsPage.transform, 19f, new Vector2(20f, -30f), new Vector2(900f, 380f));
-        keys.alignment = TextAlignmentOptions.TopLeft;
-        keys.text = "<b>W A S D</b>  move        <b>mouse</b>  look        <b>Shift</b>  sprint        <b>Space</b>  jump\n"
-                  + "walk into deep water to swim\n\n"
-                  + "<b>G</b>  the sketchbook        <b>F</b> (held)  draw what you are looking at, scroll to zoom\n"
-                  + "<b>M</b>  the map: click to place a marker, right click to take it away        <b>J</b>  the journal\n"
-                  + "<b>E</b>  rest at a structure you have found, after dark\n\n"
-                  + "<b>F9</b>  saves the map as a picture        <b>F3</b>  world statistics\n"
-                  + "<b>Escape</b>  closes what is open, or pauses; the pause menu has Main menu\n\n"
-                  + "<size=80%><color=#8B7860>On this page: the arrows and Enter choose and play a world, Delete deletes it, Escape twice quits.</color></size>";
-        Button("Back", controlsPage.transform, new Vector2(0f, -284f), new Vector2(240f, 56f), ShowWorlds);
+        var how = Label("How", controlsPage.transform, 15f, new Vector2(0f, 226f), new Vector2(900f, 26f));
+        how.text = "Click a key to change it, then press the new one. Escape leaves it as it was.";
+        how.color = ParchmentPanel.InkFaint;
+
+        // the player's actions down the left, the keys read off the keyboard down the right
+        for (int i = 0; i < Keys.Actions.Length; i++)
+        {
+            var b = Keys.Actions[i]; float ky = 186f - i * 40f;
+            var name = Label(b.Name, controlsPage.transform, 19f, new Vector2(-330f, ky), new Vector2(220f, 34f));
+            name.alignment = TextAlignmentOptions.Right; name.text = b.Name;
+            keyLabels[b.Name] = Button("", controlsPage.transform, new Vector2(-140f, ky), new Vector2(130f, 34f), () => Rebind(b));
+        }
+        for (int i = 0; i < Keys.Legacy.Length; i++)
+        {
+            var n = Keys.Legacy[i]; float ky = 186f - i * 40f;
+            var name = Label(n.Name, controlsPage.transform, 19f, new Vector2(150f, ky), new Vector2(240f, 34f));
+            name.alignment = TextAlignmentOptions.Right; name.text = n.Name;
+            keyLabels[n.Name] = Button("", controlsPage.transform, new Vector2(350f, ky), new Vector2(130f, 34f), () => StartCoroutine(Listen(n)));
+        }
+        var rest = Label("Rest of it", controlsPage.transform, 15f, new Vector2(0f, -150f), new Vector2(900f, 90f));
+        rest.text = "Look is the mouse. Walk into deep water to swim. Scroll zooms while drawing; on the map, click to place a marker and right click to take it away. "
+                  + "Escape closes what is open, or pauses; the pause menu has Main menu. "
+                  + "On this page: the arrows and Enter choose and play a world, Delete deletes it, Escape twice quits.";
+        rest.color = ParchmentPanel.InkFaint;
+        Button("Reset to defaults", controlsPage.transform, new Vector2(-150f, -284f), new Vector2(360f, 56f), () => { Keys.ResetAll(); RefreshControls(); });
+        Button("Back", controlsPage.transform, new Vector2(230f, -284f), new Vector2(200f, 56f), ShowWorlds);
         controlsPage.SetActive(false);
 
         // the build's number, small, in the corner

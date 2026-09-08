@@ -748,6 +748,27 @@ chosen world's picture sits large over the buttons. And Enter does the
 page's thing wherever it is, unless something is being typed into: plays
 the chosen world, creates the new one, saves the name.
 
+Two things after those. The card takes no clicks until it can be seen:
+its `CanvasGroup` starts with `interactable` and `blocksRaycasts` off and
+`CardIn` turns them on as it lands, since a world could be pressed while
+the paper was still invisible under the curtain. And the Controls page is
+where the keys are changed. `Keys` (in `Systems/`) is the one place they
+live: moving, jumping and sprinting are actions in the player's input
+asset (`StarterAssets.inputactions`, found among what is loaded by name),
+and a change to those is a binding override kept as JSON in the prefs and
+put back on the asset by `Keys.Apply` on every scene; the sketchbook, the
+draw key, the map, the journal, resting, saving the map and the statistics
+are read straight off the keyboard, and each is a `KeyCode` kept by name,
+which `WorldMap`, `Journal`, `FieldGuideScreen`, `Sketching`,
+`LandmarkSpawner` and `DebugOverlay` read through `Keys` instead of their
+old serialized fields. On the page, the actions are down the left and the
+keys down the right, each on a button that says what it is on; pressing one
+listens -- `PerformInteractiveRebinding` for an action (the mouse excluded,
+Escape cancelling), a coroutine over `KeyCode` for the rest -- and while it
+listens the page's own keys mean nothing. Reset to defaults clears the lot.
+The player's `PlayerInput` uses the asset itself, not a copy, so an override
+made on the title is what the world plays with.
+
 `Tools/probe/TitleLive.cs.txt` reads the curtain, the volume and the fallen
 name at half a second and again later, times the first wave over the
 strand, checks what is and is not running under the title, lists what
@@ -763,7 +784,11 @@ finds it in the row and large over the buttons, with the row saying where
 and how long; and before all that, with `IdleAfter` set to eight seconds,
 it finds the menu stepped aside and brings it back, drops the name, opens
 the Controls page, makes a world and renames, deletes and undeletes it,
-and turns the music off and hears it stop (16.5 ms a frame at radius 8);
+and turns the music off and hears it stop; it also reads whether the card
+takes clicks at half a second (no) and once it is up (yes), puts Map on N
+and Jump on K, reads them back off the Controls page, finds Jump on K on the
+player's own actions once in the world, and resets them (16.5 ms a frame at
+radius 8);
 `Tools/probe/Title.cs.txt` walks the worlds pages. The old panoramas --
 cubemaps baked from six faces, 34 MB of them -- are gone with their capture
 tool, the dev tools' Title page, `MakePanorama`, `MakeTitleScene`,

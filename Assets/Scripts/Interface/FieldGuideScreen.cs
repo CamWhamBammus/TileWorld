@@ -13,7 +13,7 @@ using UnityEngine.UI;
 /// </summary>
 public class FieldGuideScreen : MonoBehaviour
 {
-    [SerializeField] private KeyCode toggleKey = KeyCode.G;
+    private KeyCode toggleKey => Keys.Sketchbook;
 
     private const string Ink = "#332C22";
     private const string Dim = "#8B7860";

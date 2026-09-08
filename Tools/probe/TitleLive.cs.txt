@@ -59,7 +59,8 @@ public class _Probe : MonoBehaviour
         TitleMenu.IdleAfter = 8f;      // the menu steps aside sooner, for the probe
         yield return new WaitForSecondsRealtime(0.5f);
         var title = FindFirstObjectByType<TitleMenu>();
-        Mark("EARLY 0.5 s: " + Early(title));
+        var cg0 = (CanvasGroup)typeof(TitleMenu).GetField("cardGroup", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(title);
+        Mark("EARLY 0.5 s: " + Early(title) + " | card takes clicks " + cg0.blocksRaycasts);
         yield return new WaitForSecondsRealtime(1.2f);
         Mark("EARLY 1.7 s: " + Early(title));
 
@@ -80,11 +81,11 @@ public class _Probe : MonoBehaviour
         yield return new WaitForSecondsRealtime(1f);
         var flagsEarly = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
         var cardGroupEarly = (CanvasGroup)typeof(TitleMenu).GetField("cardGroup", flagsEarly).GetValue(title);
-        Mark("ASIDE: untouched for " + TitleMenu.IdleAfter + " s: hidden " + title.Hidden + ", card alpha " + cardGroupEarly.alpha.ToString("F2"));
+        Mark("ASIDE: untouched for " + TitleMenu.IdleAfter + " s: hidden " + title.Hidden + ", card alpha " + cardGroupEarly.alpha.ToString("F2") + " | card takes clicks " + cardGroupEarly.blocksRaycasts);
         yield return Shot("attract");
         typeof(TitleMenu).GetMethod("Touched", flagsEarly).Invoke(title, null);
         yield return new WaitForSecondsRealtime(0.8f);
-        Mark("ASIDE: touched: hidden " + title.Hidden + ", card alpha " + cardGroupEarly.alpha.ToString("F2"));
+        Mark("ASIDE: touched: hidden " + title.Hidden + ", card alpha " + cardGroupEarly.alpha.ToString("F2") + " | card takes clicks " + cardGroupEarly.blocksRaycasts);
         TitleMenu.IdleAfter = 75f;
         Mark("TITLE: " + State());
         Mark("LATE: " + Early(title) + " | when " + title.When + " | pad voices " + (FindFirstObjectByType<TitlePad>() != null ? FindFirstObjectByType<TitlePad>().Sounding : -1)
@@ -135,10 +136,12 @@ public class _Probe : MonoBehaviour
         float landedAtOnce = title.Logo.Landed;
         yield return new WaitForSecondsRealtime(2.5f);
         Mark("TEN: name dropped: landed " + landedAtOnce.ToString("F2") + " at once, " + title.Logo.Landed.ToString("F2") + " after");
+        // the keys: changed, shown, kept; put back
+        Keys.Set("map", KeyCode.N);
+        Keys.SetBinding(Keys.Actions[4], "<Keyboard>/k");
         typeof(TitleMenu).GetMethod("ShowControls", flags).Invoke(title, null);
         var controls = (GameObject)typeof(TitleMenu).GetField("controlsPage", flags).GetValue(title);
-        var keysText = GameObject.Find("Keys") != null ? GameObject.Find("Keys").GetComponent<TMPro.TMP_Text>().text : "";
-        Mark("TEN: controls page up " + controls.activeSelf + ", " + keysText.Length + " characters, mentions the map " + keysText.Contains("the map"));
+        Mark("KEYS page up " + controls.activeSelf + " | shows Forward " + title.KeyShown("Forward") + ", Jump " + title.KeyShown("Jump") + ", Sprint " + title.KeyShown("Sprint") + ", Map " + title.KeyShown("Map") + ", Draw " + title.KeyShown("Draw (hold)") + " | Keys.Map " + Keys.Map + " | asset " + (Keys.Asset != null ? Keys.Asset.name : "none") + " | kept " + PlayerPrefs.GetString("tileworld.bindings", "").Length + " chars");
         yield return Shot("controls");
         typeof(TitleMenu).GetMethod("ShowWorlds", flags).Invoke(title, null);
         // a world made, renamed, deleted and brought back
@@ -227,6 +230,11 @@ public class _Probe : MonoBehaviour
         var arrival = FindFirstObjectByType<Arrival>();
         if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
         yield return new WaitForSecondsRealtime(9f);
+        var playerInput = FindFirstObjectByType<UnityEngine.InputSystem.PlayerInput>();
+        var jump = playerInput != null ? playerInput.actions.FindAction("Jump") : null;
+        Mark("KEYS in the world: jump on " + (jump != null ? jump.bindings[Keys.BindingIndex(Keys.Actions[4])].effectivePath : "?") + " | map on " + Keys.Map + " | player's asset is the kept one " + (playerInput != null && playerInput.actions == Keys.Asset));
+        Keys.ResetAll();
+        Mark("KEYS reset: jump on " + (jump != null ? jump.bindings[Keys.BindingIndex(Keys.Actions[4])].effectivePath : "?") + " | map on " + Keys.Map);
         Mark("IN: " + State() + " | pictures " + SaveCoordinator.Pictures + " | file " + File.Exists(WorldLibrary.PicturePath(save.id)));
         yield return Shot("in");
         WorldLibrary.LeaveToMenu();

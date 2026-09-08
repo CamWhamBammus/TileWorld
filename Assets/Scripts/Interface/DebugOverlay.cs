@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// </summary>
 public class DebugOverlay : MonoBehaviour
 {
-    [SerializeField] private KeyCode toggleKey = KeyCode.F3;
+    private KeyCode toggleKey => Keys.Stats;
 
     private ChunkManager world;
     private Transform player;

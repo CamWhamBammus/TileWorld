@@ -29,7 +29,7 @@ public class Sketching : MonoBehaviour
     [SerializeField] private float seconds = 4.2f;
 
     [Tooltip("Held down to raise the glass and draw through it.")]
-    [SerializeField] private KeyCode drawKey = KeyCode.F;
+    private KeyCode drawKey => Keys.Draw;
 
     [Tooltip("How narrow a view it takes when raised, and the range the wheel works over.")]
     [SerializeField] private float closest = 10f;
