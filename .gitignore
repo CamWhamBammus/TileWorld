@@ -34,3 +34,7 @@ sysinfo.txt
 *.unitypackage
 # Working files of the command line tools
 Tools/.check/
+
+# What the Blender scripts turn out: meshes on their way into Assets, and preview renders
+Tools/*.fbx
+Tools/*.png
