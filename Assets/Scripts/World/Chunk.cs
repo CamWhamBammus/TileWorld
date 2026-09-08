@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 17;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow
+    private const int Categories = 19;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -17,6 +17,8 @@ public class Chunk
     // and the other two are used for ground that should be bare anyway.
     private static readonly int[] ShadeByHeight = { DarkGrassCategory, LightGrassCategory, PaleGrassCategory };   // dark, light, pale
 
+    private const int FungalCategory = 17;      // the fungal country's loam, toadstools and glowing caps
+    private const int DeadCategory = 18;        // the dead woods' ash, charred wood and bones
     private const int SnowCategory = 16;        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
     private const int BareSteepCategory = 15;  // our scree: broken rock and gravel on the steep faces (the pack's Big Grass, 3, is left unused)
     private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
@@ -108,7 +110,7 @@ public class Chunk
 
             // Ground that is dark and wet underfoot: the dead woods and the
             // reedbeds both stand on it.
-            bool sodden = character == Regions.Character.Dead || character == Regions.Character.Reed;
+            bool sodden = character == Regions.Character.Reed;   // the dead woods have a floor of their own now
 
             // Height and steepness decide the ground; noise only softens the edge.
             float relief = Mathf.Clamp01(WorldHeight.HeightAt(gx, gz, worldSeed) / WorldHeight.MaxRelief);
@@ -158,6 +160,14 @@ public class Chunk
             else if (SnowCover.IsSnowy(gx, gz, worldSeed))
             {
                 category = SnowCategory;            // the snowfields, and any summit above the snowline
+            }
+            else if (fungal)
+            {
+                category = FungalCategory;
+            }
+            else if (character == Regions.Character.Dead)
+            {
+                category = DeadCategory;
             }
             else if (desert)
             {

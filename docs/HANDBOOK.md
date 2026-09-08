@@ -754,6 +754,22 @@ variety. `Tools/probe/Snow.cs.txt` stands in a snowfield (seed 5,
 Blackblanket): all of nine chunks the snow, 1,568 of our trees in reach,
 3.4 ms a frame, the faces facing out.
 
+The last two grounds borrowed: the fungal country stood on the darkest
+grass and the dead woods on the marsh. `Tools/dark_tiles.py` builds five
+of each -- the fungal floor a purple-brown loam with red-capped toadstools,
+a fairy ring, glowing caps, puffballs and a rotten log; the dead woods'
+floor grey ash with dead leaves and twigs, a charred bough, a charred
+stump, old bones and dark mushrooms -- and `Assets/Editor/DarkSet.cs`
+(`DarkSet.Batch`) makes them definitions 85 to 89 and 90 to 94, with
+`Chunk.FungalCategory` and `Chunk.DeadCategory` of their own; the Reed
+character keeps the marsh. `Tools/probe/Dark.cs.txt` stands in a fungal
+country (seed 24, the Silent Rot: 97% of nine chunks the fungal floor, the
+rest the beds of its ponds, 4.6 ms) and in the dead woods (the Narrow
+Kindling: 76%, the rest snow on the summits above the snowline). With that
+the pack lays no ground anywhere; what it still lends is the small plants
+the undergrowth borrows -- mushrooms, boulders, stones, dead trees, a few
+trees and firs -- and the kit the structures are built from.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride
