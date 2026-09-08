@@ -2731,6 +2731,43 @@ MonoBehaviour:
     Wide: 1.8761407
     Colour: {r: 0.48, g: 0.42, b: 0.36, a: 1}
     Foot: 0.0041258335
+  Corals:
+  - Name: Brain Coral
+    Mesh: {fileID: -7036627762497178332, guid: 3b837306919f5400d8334d1251d35ae2, type: 3}
+    Size: 0.5154252
+    Wide: 1.6443094
+    Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
+    Foot: 0.032981336
+  - Name: Staghorn Coral
+    Mesh: {fileID: 6974204004161230580, guid: 360fe4934314742b6a54b956cec826a0, type: 3}
+    Size: 1.4840196
+    Wide: 1.420155
+    Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
+    Foot: 0.029919863
+  - Name: Table Coral
+    Mesh: {fileID: -3925489996096460335, guid: 2122c20df4eac4c4cab496d3a76f80fc, type: 3}
+    Size: 0.89120144
+    Wide: 1.849627
+    Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
+    Foot: 0.021422923
+  - Name: Sea Fan
+    Mesh: {fileID: 1572480087191705397, guid: 5fcabbec433234ed6a864a8821868667, type: 3}
+    Size: 1.8383855
+    Wide: 2.2948492
+    Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
+    Foot: 0.01999998
+  - Name: Barrel Sponge
+    Mesh: {fileID: 4435881809424097220, guid: 046c8c94251da4d65935a199a90bf738, type: 3}
+    Size: 0.9939896
+    Wide: 1.4128743
+    Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
+    Foot: 0.014952004
+  - Name: Pillar Coral
+    Mesh: {fileID: 541125344595910094, guid: bb288f980a55146b385aa64dce29a25d, type: 3}
+    Size: 1.6174598
+    Wide: 0.9220352
+    Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
+    Foot: 0.03181863
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

@@ -1,0 +1,205 @@
+// A probe: into a world with a reef in it, down to the water, and what is there: how many of the
+// tiles are the reef floor, how much coral is planted, how near any of it comes to the surface,
+// the frame time, and photographs above and under the water.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Shot(string name, Camera cam, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rf-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+
+        // a seed with a reef near its origin, found by asking the country itself
+        int seedWanted = -1;
+        foreach (int trySeed in new[] { 5, 24, 1, 4, 7, 12, 16, 21, 22, 23, 2, 3, 6, 8, 9, 10, 11, 13, 14, 15 })
+        {
+            bool found = false;
+            for (int r = 0; r < 160 && !found; r += 4)
+            for (int dx = -r; dx <= r && !found; dx += 4)
+            for (int dz = -r; dz <= r && !found; dz += 4)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                if (Regions.CharacterAtTile(dx, dz, trySeed, false) == Regions.Character.Reef) found = true;
+            }
+            if (found) { seedWanted = trySeed; break; }
+        }
+        Mark("REEF seed with a reef near the origin: " + seedWanted);
+        if (seedWanted < 0) { Mark("REEF none found in twenty seeds"); yield break; }
+
+        var save = WorldLibrary.Create("Probe reef", seedWanted, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+
+        TimeOfDay.Instance.SetTime(0.5f); TimeOfDay.Instance.Paused = true; TimeOfDay.Instance.ForceOvercast(0.10f);
+
+        var world = FindFirstObjectByType<ChunkManager>();
+        var player = world.PlayerTransform;
+        int seed = world.WorldSeed;
+
+        // The dev tools only look a little way for a country, and a reef can be
+        // a long way off, so the walk is done here: out in rings for a reef tile
+        // that is dry, has water beside it, and is somewhere to stand.
+        int standX = 0, standZ = 0; bool ashore = false;
+        for (int r = 1; r < 400 && !ashore; r++)
+        for (int ox = -r; ox <= r && !ashore; ox++)
+        for (int oz = -r; oz <= r && !ashore; oz++)
+        {
+            if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oz)) != r) continue;
+            if (Regions.CharacterAtTile(ox, oz, seed, false) != Regions.Character.Reef) continue;
+            if (WaterSurface.IsUnderwater(ox, oz, seed)) continue;
+            if (WorldHeight.SurfaceY(ox, oz, seed) > WaterSurface.Level + 1.2f) continue;
+            bool wet = false;
+            for (int k = 1; k <= 3 && !wet; k++)
+                wet = WaterSurface.IsUnderwater(ox + k, oz, seed) || WaterSurface.IsUnderwater(ox - k, oz, seed)
+                   || WaterSurface.IsUnderwater(ox, oz + k, seed) || WaterSurface.IsUnderwater(ox, oz - k, seed);
+            if (!wet) continue;
+            standX = ox; standZ = oz; ashore = true;
+        }
+        Mark("REEF shore found: " + ashore + " at tile " + standX + "," + standZ);
+        var body = FindFirstObjectByType<CharacterController>();
+        if (body != null) body.enabled = false;
+        player.position = new Vector3(standX * WorldGrid.TileSize, WorldHeight.SurfaceY(standX, standZ, seed) + 1.4f, standZ * WorldGrid.TileSize);
+        if (body != null) body.enabled = true;
+        yield return new WaitForSecondsRealtime(10f);
+        var centre = WorldGrid.WorldToChunk(player.position);
+        Mark("REEF at " + player.position.ToString("F0") + " | region " + Regions.At(centre, seed).Name
+             + " (" + Regions.CharacterAtTile(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize), seed, false) + ")"
+             + " | water at " + WaterSurface.Level.ToString("F2"));
+
+        // the tiles in the player's chunk and the eight round it
+        var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
+        int floor = 0, total = 0; var ids = new SortedDictionary<int, int>();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
+        {
+            if (!chunks.TryGetValue(centre + new Vector2Int(dx, dz), out var chunk)) continue;
+            foreach (var pair in chunk.idToTransforms)
+            {
+                total += pair.Value.Length;
+                if (pair.Key >= 95 && pair.Key <= 99) floor += pair.Value.Length;
+                ids[pair.Key] = (ids.TryGetValue(pair.Key, out int n) ? n : 0) + pair.Value.Length;
+            }
+        }
+        var idsSaid = new System.Text.StringBuilder();
+        foreach (var pair in ids) idsSaid.Append(" " + pair.Key + ":" + pair.Value);
+        Mark("TILES in nine chunks: " + total + ", reef floor " + floor + " (" + (100f * floor / Mathf.Max(1, total)).ToString("F0") + "%) | by id" + idsSaid);
+
+        // the coral: how much is planted, and how near the top of the water any of it comes
+        var under = FindFirstObjectByType<Undergrowth>();
+        var every = (Flora.Sprout[])typeof(Undergrowth).GetField("every", flags).GetValue(under);
+        var gathered = (Matrix4x4[][])typeof(Undergrowth).GetField("gathered", flags).GetValue(under);
+        var counts = (int[])typeof(Undergrowth).GetField("counts", flags).GetValue(under);
+        int coral = 0; float leastClear = 999f; string nearest = "";
+        var byKind = new System.Text.StringBuilder();
+        if (every != null && gathered != null)
+            for (int k = 0; k < every.Length && k < gathered.Length; k++)
+            {
+                string name = every[k].Name ?? "";
+                bool isCoral = name.Contains("Coral") || name.Contains("Sponge") || name.Contains("Fan");
+                int many = counts != null && k < counts.Length ? counts[k] : 0;
+                if (!isCoral || gathered[k] == null || many == 0) continue;
+                coral += many;
+                byKind.Append(" " + name + ":" + many);
+                var mesh = every[k].Mesh;
+                for (int i = 0; i < many; i++)
+                {
+                    var m = gathered[k][i];
+                    float up = new Vector3(m.m01, m.m11, m.m21).magnitude;      // the y column is the scale; lossyScale asserts
+                    float top = m.m13 + mesh.bounds.max.y * up;
+                    float clear = WaterSurface.Level - top;
+                    if (clear < leastClear) { leastClear = clear; nearest = name; }
+                }
+            }
+        Mark("CORAL planted " + coral + " |" + byKind + " | nearest the surface " + (coral > 0 ? leastClear.ToString("F2") + " m under (" + nearest + ")" : "none"));
+
+        // the winding of the floor's faces: a face wound inward is culled, and a culled face is a hole
+        TileLibrary library = null;
+        foreach (var f in typeof(ChunkManager).GetFields(flags)) if (f.FieldType == typeof(TileLibrary)) library = (TileLibrary)f.GetValue(world);
+        var wound = new System.Text.StringBuilder("WINDING:");
+        for (int id = 95; id <= 99 && library != null; id += 2)
+        {
+            if (!library.TryGet(id, out var def)) continue;
+            var mesh = def.MeshGetter(); var v = mesh.vertices; var t = mesh.triangles;
+            int sidesOut = 0, sidesIn = 0, topsUp = 0, topsDown = 0;
+            for (int i = 0; i < t.Length; i += 3)
+            {
+                Vector3 a = v[t[i]], b = v[t[i + 1]], c = v[t[i + 2]];
+                Vector3 n = Vector3.Cross(b - a, c - a).normalized;
+                Vector3 mid = (a + b + c) / 3f;
+                bool side = Mathf.Abs(Mathf.Abs(mid.x) - 1f) < 0.01f && Mathf.Abs(a.x - b.x) < 0.01f && Mathf.Abs(a.x - c.x) < 0.01f
+                         || Mathf.Abs(Mathf.Abs(mid.z) - 1f) < 0.01f && Mathf.Abs(a.z - b.z) < 0.01f && Mathf.Abs(a.z - c.z) < 0.01f;
+                float area = Vector3.Cross(b - a, c - a).magnitude * 0.5f;
+                bool top = area > 0.06f && a.y >= 1.04f && b.y >= 1.04f && c.y >= 1.04f && a.y <= 1.2f && b.y <= 1.2f && c.y <= 1.2f && Mathf.Abs(n.y) > 0.8f;
+                if (side) { if (Vector3.Dot(n, new Vector3(mid.x, 0f, mid.z)) > 0f) sidesOut++; else sidesIn++; }
+                else if (top) { if (n.y > 0f) topsUp++; else topsDown++; }
+            }
+            wound.Append(" tile " + id + ": sides out " + sidesOut + " in " + sidesIn + ", tops up " + topsUp + " down " + topsDown + ";");
+        }
+        Mark(wound.ToString());
+
+        float frames = 0f, seconds = 0f;
+        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+        Mark("REEF frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
+
+        // the photographs
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+
+        // out to sea from where the player stands, then the water from above, then under it
+        Vector3 fwd = player.forward;
+        yield return Shot("eye", cam, player.position + Vector3.up * 1.7f - fwd * 2.5f, player.position + fwd * 10f + Vector3.up * 1.0f);
+        yield return Shot("high", cam, player.position + Vector3.up * 22f - fwd * 12f, player.position + fwd * 8f);
+
+        // walk out over the water and look straight down into it
+        Vector3 sea = player.position; float deepest = 0f;
+        int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+        for (int ox = -30; ox <= 30; ox++)
+        for (int oz = -30; oz <= 30; oz++)
+        {
+            int tx = px + ox, tz = pz + oz;
+            if (!WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            if (Regions.CharacterAtTile(tx, tz, seed, false) != Regions.Character.Reef) continue;
+            float d = WaterSurface.Level - WorldHeight.SurfaceY(tx, tz, seed);
+            if (d <= deepest) continue;
+            deepest = d; sea = new Vector3(tx * WorldGrid.TileSize, WorldHeight.SurfaceY(tx, tz, seed), tz * WorldGrid.TileSize);
+        }
+        Mark("SEA deepest reef water within thirty tiles: " + deepest.ToString("F2") + " m at " + sea.ToString("F0"));
+        yield return Shot("down", cam, sea + Vector3.up * 9f - fwd * 5f, sea);
+        yield return Shot("under", cam, new Vector3(sea.x, WaterSurface.Level - 0.9f, sea.z) - fwd * 6f, new Vector3(sea.x, WaterSurface.Level - 1.4f, sea.z) + fwd * 4f);
+        yield return Shot("deep", cam, new Vector3(sea.x, WaterSurface.Level - 1.3f, sea.z) - fwd * 3f, new Vector3(sea.x, WaterSurface.Level - 1.9f, sea.z) + fwd * 6f);
+
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

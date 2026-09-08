@@ -138,6 +138,10 @@ public class Undergrowth : MonoBehaviour
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(Ours(flora.OurDeadTrees, flora.DeadTrees), 2.40f, 3.60f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
+        // The coral is not planted from a country's table -- it is put down under
+        // the water below -- but it goes through Take all the same, so it lands in
+        // the one list of everything and gets drawn with the rest.
+        Take(flora.Corals ?? new Flora.Sprout[0], 0.60f, 2.00f);
 
         // and the same narrow trees again, under snow
         var whiteFirs = Take(
@@ -295,6 +299,7 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Snow => snow,
                 Regions.Character.Forest => forest,
                 Regions.Character.Water => shore,
+                Regions.Character.Reef => shore,
                 _ => ordinary
             };
 
@@ -308,6 +313,45 @@ public class Undergrowth : MonoBehaviour
                 // Nothing green stands in a frozen lake. A snowfield's water
                 // is left bare, the same reason its shore has no sand.
                 if (character == Regions.Character.Snow) continue;
+
+                // A reef grows its coral out of the floor. It is planted by
+                // how deep the water is and never allowed to reach the top of
+                // it: coral standing proud of the sea would read as a rock.
+                if (character == Regions.Character.Reef && flora.Corals != null && flora.Corals.Length > 0
+                    && WaterSurface.BodyAt(gx, gz, seed) == WaterSurface.Body.Beach)
+                {
+                    if (Hash(gx, gz, seed + 7717) % 100 >= 22) continue;
+
+                    var head = flora.Corals[(int)(Hash(gx, gz, seed + 53) % (uint)flora.Corals.Length)];
+
+                    if (head.Mesh == null || head.Size < 0.0001f) continue;
+
+                    // whatever it wants to be, or whatever the water leaves it
+                    float wants = Mathf.Lerp(0.6f, 2.0f, ((Hash(gx, gz, seed + 131) >> 7) % 100) / 100f);
+                    float stands = Mathf.Min(wants, deep - 0.4f);
+
+                    if (stands < 0.45f) continue;
+
+                    int coralSlot = System.Array.IndexOf(every, head);
+
+                    if (coralSlot < 0) continue;
+
+                    if (patch.ByKind[coralSlot] == null) patch.ByKind[coralSlot] = new List<Matrix4x4>();
+
+                    // off the middle of the tile, or the coral stands in rows
+                    uint shift = Hash(gx, gz, seed + 811);
+                    float alongX = ((shift >> 5) % 1000) / 1000f - 0.5f;
+                    float alongZ = ((shift >> 15) % 1000) / 1000f - 0.5f;
+
+                    patch.ByKind[coralSlot].Add(Matrix4x4.TRS(
+                        new Vector3(gx * WorldGrid.TileSize + alongX * WorldGrid.TileSize * 0.7f,
+                                    WorldHeight.SurfaceY(gx, gz, seed),
+                                    gz * WorldGrid.TileSize + alongZ * WorldGrid.TileSize * 0.7f),
+                        Quaternion.Euler(0f, (Hash(gx, gz, seed + 29) % 360), 0f),
+                        Vector3.one * (stands / head.Size)));
+
+                    continue;
+                }
 
                 if (deep > 1.1f || flora.Reeds == null || flora.Reeds.Length == 0) continue;
 
@@ -390,7 +434,7 @@ public class Undergrowth : MonoBehaviour
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
 
             // only stones lie on a shore
-            if (beach && sort.High > 1.5f && character != Regions.Character.Water) continue;   // the shore's own table is palms, which belong on it
+            if (beach && sort.High > 1.5f && !Regions.Sea(character)) continue;   // the shore's own table is palms, which belong on it
 
             // above the treeline nothing tall, which is what makes a summit read as a summit
             if (sort.High > 2.2f && WorldHeight.HeightAt(gx, gz, seed) / WorldHeight.MaxRelief > 0.72f) continue;

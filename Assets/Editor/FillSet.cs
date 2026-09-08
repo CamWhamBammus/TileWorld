@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// The fill blocks from Tools/fill_tiles.py: plain bodies the chunk lays
 /// under a tile wherever the ground beside it drops further than a tile is
-/// deep. Earth is definition 95, rock 96.
+/// deep. Earth is definition 100, rock 101, kept clear of the tile categories.
 /// </summary>
 public static class FillSet
 {
@@ -14,7 +14,7 @@ public static class FillSet
     private const string Defs = "Assets/ScriptableObjects";
     private const string Library = "Assets/ScriptableObjects/TileLibrary.asset";
     private const string Paint = "Assets/Low Poly Isometric Tiles - Cartoon Pack/Models/Main Material.mat";
-    public const int EarthId = 95, RockId = 96;
+    public const int EarthId = 100, RockId = 101;
 
     [MenuItem("Tools/Tile World/Build the fill blocks")]
     public static void Go()

@@ -240,6 +240,8 @@ public static class Landmarks
         // picked by hash. Rolled the other way round, a kind whose country
         // is rare was rarer still.
         var here = Regions.CharacterAt(chunk, worldSeed);
+        // A reef is a coast: it takes what the sea builds, the wreck and the light.
+        if (here == Regions.Character.Reef) here = Regions.Character.Water;
         int fitting = 0;
         for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here && !kinds[i].Small) fitting++;
         if (fitting == 0) return result;

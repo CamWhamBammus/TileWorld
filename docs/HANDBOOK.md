@@ -74,6 +74,21 @@ A probe that starts at the title is looking at the title's own world (seed
 24, radius 8, the player switched off); enter a world first for anything
 that needs the player.
 
+The palette sheet is 512 by 512, sixteen by sixteen cells of 32 px, and a
+model's colour is a UV pointing at the middle of a cell. `Tools/palette_add.py`
+paints new colours into it and records them in `Tools/palette.json`. It once
+looked for cells that were blank, and by the reef there was one left. There is
+no more room to be had by making the sheet bigger: UV space is [0,1] either way
+and it is the artwork the sheet came with that fills it, not the pixel count.
+What is free is what nothing reads. The building kit samples that artwork at
+twenty-two single points (`Kit.asset`, `Where`), our own meshes read cell
+middles, and the animals and the player are painted with plain materials and
+read nothing. Everything else -- most of the sheet -- is the pack's tile
+artwork, and no pack tile is drawn any more. So the allocator now takes any
+cell nothing samples, keeping two texels clear of anything that does, which
+leaves 72. Do not paint a cell without running it: the margin matters, since
+the texture is filtered.
+
 The README's pictures come from `Tools/probe/Readme.cs.txt`, which shoots the
 title, then each structure framed the way the gallery frames it, then a stand
 of every country and the animals, with the interface hidden; `Readme2.cs.txt`
@@ -792,6 +807,48 @@ how many are the pack's: none, in all four. So the pack is down to its
 palette sheet and the material on it, which everything of ours shares,
 and the kit the structures are built from is code that only borrows
 colours off that sheet.
+
+### The reef
+
+The first ground built for a country that did not exist yet, rather than to
+replace something. `Tools/reef_tiles.py` builds five floor tiles for the warm
+shallows -- a sand channel, a coral garden, a worn shelf, a seagrass bed, and
+old ground where the coral died and went white -- and `Tools/reef_corals.py`
+six colonies that stand up off them: brain, staghorn, table, fan, barrel
+sponge and pillar, half a metre to one metre eighty. The coral script runs the
+tile script and borrows its parts, setting `GROUND` to nought so a colony
+stands on its own foot instead of on a tile's top; it must set it back before
+it builds any tiles for a preview, or their detail is laid at the origin and
+buried inside the block.
+
+Every reef tile carries a band of `crust` under its rim, so a ledge reads as
+living rock from any distance, and the five share their sides so they tile.
+`Assets/Editor/ReefSet.cs` (`ReefSet.Batch`) makes them definitions 95 to 99
+and puts the coral into the flora as `Corals`.
+
+That took definitions 95 and 96, which the fill blocks had, so those moved to
+100 and 101 (`Chunk.FillEarthId`, `FillRockId`, `FillSet.EarthId`, `RockId`,
+and the `blockID` in `T100.asset` and `T101.asset`, renamed from T95 and T96).
+Nothing else knows the numbers; the library is a dictionary keyed on `blockID`,
+so the assets keep their GUIDs and the library's list needs no editing.
+
+A reef is not a country of its own so much as a stretch of sea that happens to
+be coral, so `Regions.Character.Reef` is a wet region caught before it is named
+for its water: `wetShare > 0.22`, low ground, no snow, one in four. Everything
+the sea does has to know about it, which is what `Regions.Sea(character)` is
+for -- the body of water itself (`WaterSurface.BodyAt`, which without this
+reads a reef as an inland lake), the wash, the gulls, the sand prints, the
+palms on the strand, the wreck and the lighthouse. `Chunk` asks for the reef
+*before* it asks how deep the water is, or the coral would only get the sandy
+fringe and stand in water up to your shins.
+
+The coral is planted by `Undergrowth`, in the underwater branch, not from a
+country's table: it goes through `Take` only so it lands in `every` and gets
+drawn. It is capped at the depth (`deep - 0.4`), which is what keeps it under
+the surface. `Tools/probe/Reef.cs.txt` walks its own way to a reef, since the
+dev tools only look thirty chunks for a country and a reef can be further:
+seed 5, the Deep Banks, 92% of nine chunks the reef floor, 1092 colonies, the
+nearest 0.41 m under the surface, 2.9 ms.
 
 ## Underfoot
 

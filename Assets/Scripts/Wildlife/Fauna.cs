@@ -519,7 +519,7 @@ public static class Fauna
                 Notices = 7f, Bolts = 3.5f, Settles = 5f
             },
             Lowest = 0f, Highest = 0.5f,
-            Countries = new[] { Regions.Character.Water },
+            Countries = new[] { Regions.Character.Water, Regions.Character.Reef },
             Wades = 0.4f,
             Sideways = true, Burrows = true,
             Hours = null,
@@ -628,7 +628,7 @@ public static class Fauna
                 Notices = 9f, Bolts = 4.5f, Settles = 18f
             },
             Lowest = 0f, Highest = 0.6f,
-            Countries = new[] { Regions.Character.Lowland, Regions.Character.Forest, Regions.Character.Water, Regions.Character.Reed },
+            Countries = new[] { Regions.Character.Lowland, Regions.Character.Forest, Regions.Character.Water, Regions.Character.Reef, Regions.Character.Reed },
             Wades = 99f,
             Flies = true, Airborne = true,
             Hours = new[] { new Vector2(0.70f, 0.24f) },

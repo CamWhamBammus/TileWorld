@@ -29,6 +29,7 @@ The world is split into regions about 240m across. Each one gets a character bas
 | Hills | higher | fewer trees, paler grass the higher you go, scree on the steep faces |
 | Peaks | mostly above the snowline | bare rock and summits |
 | Water | very wet regions | open water with sandy beaches, shells, driftwood, palms |
+| Reef | some of the warmest, lowest wet regions | coral under shallow sea, seagrass, urchins, sand channels |
 | Reedbed | damp but not flooded | reeds in the shallows, wet mud with puddles |
 | Fungal | low ground, rare | giant toadstools over dark loam, glowing caps |
 | Desert | low, dry, open | sand everywhere, cacti, dead trees, a palm now and then |
@@ -47,6 +48,16 @@ Water sits at one level across the whole world, and what kind of water it is dep
 ![A beach, the sea running up the sand](docs/images/beach.jpg)
 
 *A beach. The sea runs up the sand and back, over and over.*
+
+Some of the warmest, lowest stretches of sea are reef. The floor of one is coral instead of sand: heads, tables, fans, sponges and pillars standing up out of it, seagrass, urchins and old white rubble, with sand channels blown between. It has a beach and a wash like any other coast, and the coral stops short of the surface, so you find it by looking down into the water or by wading in.
+
+![A reef seen from the shore](docs/images/reef.jpg)
+
+*A reef from its own shore, with a lighthouse standing at the end of it.*
+
+![Under the water on a reef](docs/images/reef-under.jpg)
+
+*The same reef from under the water.*
 
 Walking into water throws up a few drops and leaves a ring on the surface with every step, more the faster you go and the deeper it is. Going in off a bank makes a proper splash. Swimming leaves a ring with each stroke and a wake behind you. Animals wading do the same. When it rains you hear it everywhere, and by a lake you hear it on the water too; every drop that lands on the water rings it. A downpour brings lightning, with the thunder a few seconds behind it, and the ground takes on a wet sheen that dries off once the sun is back. On the beaches the sea runs up the sand, sits a moment, and slides back. The white line of foam is the water's edge: everything behind it is water, everything ahead of it is sand, and when the wave draws back it bares the wet sand before the next one comes. You hear the surf as you come near. In the snow country it snows instead, your breath shows, and the lakes are frozen: you can walk across them, though the ice is slippery and creaks under you, and hares and wolves cross it too. In snow and sand you leave boot prints, and after a swim you drip for a while.
 
@@ -76,7 +87,7 @@ Every tile in the world, and every tree, bush, mushroom and stone on it, is made
 
 *The forest floor: leaf litter, roots, a fallen log, ferns round a stump, moss on a boulder.*
 
-The grounds so far: the forest floor; grass in three shades by height, with tufts, flowers, clover, molehills and lichened rocks; wet marsh with puddles and sedge; beach sand with shells and driftwood; desert sand with ripples, a cracked pan and scrub; slabs of stone for the barrens and scree for the steep faces; snow; the fungal country's dark loam; and the ash of the dead woods. Plain fill goes under any tile where the ground drops away, so a cliff is solid to its foot.
+The grounds so far: the forest floor; grass in three shades by height, with tufts, flowers, clover, molehills and lichened rocks; wet marsh with puddles and sedge; beach sand with shells and driftwood; desert sand with ripples, a cracked pan and scrub; slabs of stone for the barrens and scree for the steep faces; snow; the fungal country's dark loam; the ash of the dead woods; and the coral floor of a reef. Plain fill goes under any tile where the ground drops away, so a cliff is solid to its foot.
 
 ![Grass on the low ground](docs/images/grass.jpg)
 

@@ -43,7 +43,7 @@ public class Tracks : MonoBehaviour
         else
         {
             var here = Regions.CharacterAtTile(tx, tz, seed);
-            if (here == Regions.Character.Desert || here == Regions.Character.Water) sort = Sort.SandPrint;
+            if (here == Regions.Character.Desert || Regions.Sea(here)) sort = Sort.SandPrint;
             else return;
         }
 
@@ -111,7 +111,7 @@ public class Tracks : MonoBehaviour
         else
         {
             var here = Regions.CharacterAtTile(tx, tz, seed);
-            if (here == Regions.Character.Desert || here == Regions.Character.Water) sort = Sort.SandPrint;
+            if (here == Regions.Character.Desert || Regions.Sea(here)) sort = Sort.SandPrint;
             else return;                                     // grass keeps no print
         }
 

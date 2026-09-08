@@ -92,5 +92,8 @@ public class Flora : ScriptableObject
     public Sprout[] OurStones;
     public Sprout[] OurDeadTrees;
 
+    /// <summary>The coral that stands up off a reef floor: heads, tables, fans, sponges, pillars.</summary>
+    public Sprout[] Corals;
+
     public Material Paint;
 }

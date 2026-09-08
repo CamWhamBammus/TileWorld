@@ -159,7 +159,7 @@ public class BirdSong : MonoBehaviour
         if (WorldHeight.HeightAt(tileX, tileZ, seed) / WorldHeight.MaxRelief > highestRelief) return;
 
         // by the sea it is mostly gulls, crying over the water
-        if (Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Water && Random.value < 0.65f)
+        if (Regions.Sea(Regions.CharacterAtTile(tileX, tileZ, seed, false)) && Random.value < 0.65f)
         {
             source.pitch = Random.Range(0.9f, 1.12f);
             source.PlayOneShot(gulls[Random.Range(0, gulls.Length)], volume * Random.Range(0.7f, 1f));

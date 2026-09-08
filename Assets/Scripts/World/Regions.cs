@@ -15,7 +15,15 @@ public static class Regions
     /// <summary>Chunks across one region. About 240 metres, a few minutes' walk.</summary>
     public const int ChunksAcross = 8;
 
-    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed }
+    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed, Reef }
+
+    /// <summary>
+    /// Whether a region is open sea rather than an inland pool. A reef is a
+    /// stretch of sea that happens to be coral, so everything the sea does --
+    /// a sand strand above the tide, the wash running up it, gulls, crabs,
+    /// wrecks -- belongs to it as much as to plain water.
+    /// </summary>
+    public static bool Sea(Character character) => character == Character.Water || character == Character.Reef;
 
     public struct Region
     {
@@ -27,6 +35,7 @@ public static class Regions
     private static readonly string[] LowlandNouns = { "Flats", "Meadows", "Green", "Bottom", "Common", "Reach", "Vale", "Furlong" };
     private static readonly string[] ForestNouns = { "Wood", "Thicket", "Forest", "Holt", "Shaw", "Weald", "Coppice", "Stand" };
     private static readonly string[] WaterNouns = { "Mere", "Marsh", "Waters", "Tarns", "Sink", "Fen", "Shallows", "Lough" };
+    private static readonly string[] ReefNouns = { "Reef", "Garden", "Shoal", "Coral", "Banks", "Bloom", "Ledges", "Bar" };
     private static readonly string[] HillNouns = { "Downs", "Rise", "Fells", "Ridge", "Brow", "Bank", "Scarp", "Shoulder" };
     private static readonly string[] PeakNouns = { "Heights", "Crags", "Spires", "Roof", "Teeth", "Cairns", "Horns", "Summit" };
     private static readonly string[] FungalNouns = { "Rings", "Caps", "Gills", "Blight", "Hollow", "Rot", "Spores", "Damp" };
@@ -224,7 +233,13 @@ public static class Regions
         // Water names were going to nearly a quarter of regions when only
         // about a twentieth of the ground is actually under water, so a region
         // has to be properly wet before it is named for it.
-        if (wetShare > 0.22f) return Character.Water;
+        // A reef is warm shallow sea, so it is asked of the wettest regions
+        // before they are named for their water: low ground, no snow near it,
+        // and only one in four, since a coast of nothing but coral is a coast
+        // with nothing to find.
+        if (wetShare > 0.22f)
+            return relief < 0.30f && snowShare <= 0f && Hash(cell.x, cell.y, worldSeed + 5309) % 4 == 0
+                 ? Character.Reef : Character.Water;
         if (snowShare > 0.16f) return Character.Peaks;
 
         // The fungus is asked before the sand. Both want low ground and the
@@ -265,6 +280,7 @@ public static class Regions
         string[] nouns = character switch
         {
             Character.Water => WaterNouns,
+            Character.Reef => ReefNouns,
             Character.Peaks => PeakNouns,
             Character.Hills => HillNouns,
             Character.Forest => ForestNouns,
@@ -296,6 +312,7 @@ public static class Regions
         switch (character)
         {
             case Character.Water: return "standing water";
+            case Character.Reef: return "coral in warm shallows";
             case Character.Peaks: return "snow and bare rock";
             case Character.Hills: return "high ground";
             case Character.Forest: return "deep forest";

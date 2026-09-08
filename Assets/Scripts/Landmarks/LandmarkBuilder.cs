@@ -1282,7 +1282,8 @@ public static partial class LandmarkBuilder
         switch (Regions.CharacterAtTile(b.At.TileX, b.At.TileZ, b.Seed, false))
         {
             case Regions.Character.Desert:
-            case Regions.Character.Water: return Kit.Builder.Weather.Sand;
+            case Regions.Character.Water:
+            case Regions.Character.Reef: return Kit.Builder.Weather.Sand;
             case Regions.Character.Dead: return Kit.Builder.Weather.Char;
             case Regions.Character.Stone:
             case Regions.Character.Peaks: return Kit.Builder.Weather.None;

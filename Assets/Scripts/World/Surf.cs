@@ -20,7 +20,7 @@ public static class Surf
     {
         if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return false;
         if (WorldHeight.SurfaceY(tileX, tileZ, seed) - WaterSurface.Level > StrandHeight) return false;
-        return Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Water;
+        return Regions.Sea(Regions.CharacterAtTile(tileX, tileZ, seed, false));
     }
 
     /// <summary>
@@ -33,7 +33,7 @@ public static class Surf
     {
         if (!WaterSurface.IsOpenWater(tileX, tileZ, seed)) return false;
         if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 0.6f) return false;
-        if (Regions.CharacterAtTile(tileX, tileZ, seed, false) != Regions.Character.Water) return false;
+        if (!Regions.Sea(Regions.CharacterAtTile(tileX, tileZ, seed, false))) return false;
         return Nearest(tileX, tileZ, seed, false, Out) > 0;
     }
 

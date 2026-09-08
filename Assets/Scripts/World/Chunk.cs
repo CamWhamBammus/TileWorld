@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 19;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead
+    private const int Categories = 20;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -19,8 +19,9 @@ public class Chunk
 
     private const int FungalCategory = 17;      // the fungal country's loam, toadstools and glowing caps
     private const int DeadCategory = 18;        // the dead woods' ash, charred wood and bones
+    private const int ReefCategory = 19;        // the coral floor of the warm shallows: sand channels, coral heads, seagrass, urchins
     private const int SnowCategory = 16;
-    private const int FillEarthId = 95, FillRockId = 96;   // plain blocks laid under a tile where the ground drops away
+    private const int FillEarthId = 100, FillRockId = 101;   // plain blocks laid under a tile where the ground drops away
     private const float FillDepth = 2.05f;                // how deep a tile's body is, from its top at 1.05 to -1.00        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
     private const int BareSteepCategory = 15;  // our scree: broken rock and gravel on the steep faces (the pack's Big Grass, 3, is left unused)
     private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
@@ -146,8 +147,12 @@ public class Chunk
                 // in the shallows and rock below, which is what gives water a
                 // bottom rather than an edge. A lake or a pond inland is soft
                 // dark mud, because that is what is under one.
+                // A reef is the whole floor of its sea, deep water and all:
+                // asked after the depth it would only be the sandy fringe, and
+                // coral in ankle-deep water reads as a flooded field.
                 category = underSnow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
+                         : character == Regions.Character.Reef ? ReefCategory
                          : underBy >= DeepWater ? StoneCategory
                          : BeachCategory;
             }

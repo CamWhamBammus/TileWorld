@@ -8,26 +8,40 @@
 #     python3 Tools/palette_add.py coralpink=F2809C coralrose=C65076
 #
 # Names already in palette.json are left alone, so it is safe to run twice.
-import json, os, sys
+import json, os, re, sys
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHEET = os.path.join(HERE, "..", "Assets", "Low Poly Isometric Tiles - Cartoon Pack", "Models", "Texture.png")
 WORKING = os.path.join(HERE, "TileWorldPalette.png")   # the copy Blender renders with
 PALETTE = os.path.join(HERE, "palette.json")
+MARGIN = 2                                             # texels kept clear round anything the game reads
+
+def sampled(palette):
+    """Every point on the sheet the game reads: the flat colours the Blender scripts use,
+    and the building kit's swatches, which are single points picked out of the artwork the
+    sheet came with rather than cell middles."""
+    pts = [(u, v) for u, v in palette.values()]
+    kit = os.path.join(HERE, "..", "Assets", "Resources", "Kit.asset")
+    if os.path.exists(kit):
+        block = open(kit).read()
+        block = block[block.index("Where:"):]
+        for u, v in re.findall(r"-\s*\{x: ([0-9.eE-]+), y: ([0-9.eE-]+)\}", block)[:22]:
+            pts.append((float(u), float(v)))
+    return pts
 
 def free_cells(im, palette):
-    """Cells no colour claims and that are blank: every pixel the same and see-through."""
+    """Cells nothing reads. The sheet has no blank space left, but most of the artwork it
+    came with is never sampled, and a cell no one reads is a cell we can paint. A margin of
+    two texels is kept round every point the game does read, since the texture is filtered."""
     W, H = im.size; cell = W // 16
-    taken = set()
-    for u, v in palette.values():
-        taken.add((int((1 - v) * H) // cell, int(u * W) // cell))
+    pts = sampled(palette)
     out = []
     for r in range(16):
         for c in range(16):
-            if (r, c) in taken: continue
-            px = set(im.getpixel((c * cell + x, r * cell + y)) for x in range(cell) for y in range(cell))
-            if len(px) == 1 and px.pop()[3] == 0: out.append((r, c))
+            x0, x1, y0, y1 = c * cell, (c + 1) * cell, r * cell, (r + 1) * cell
+            if any(x0 - MARGIN <= u * W <= x1 + MARGIN and y0 - MARGIN <= (1 - v) * H <= y1 + MARGIN for u, v in pts): continue
+            out.append((r, c))
     return out
 
 def add(colours):
