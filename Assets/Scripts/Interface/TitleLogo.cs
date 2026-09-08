@@ -23,6 +23,18 @@ public class TitleLogo : MonoBehaviour
     private float t;
     private bool fogWas;
 
+    // the fall: each block starts above its place and drops in, the columns one after another
+    private class Falling { public Transform Block; public Vector3 Place; public float Delay, Drop; }
+    private readonly List<Falling> falling = new List<Falling>();
+    private int blocks, landed;
+
+    // the blocks' own materials, so they can glow when there is no sun on them
+    private readonly List<Material> materials = new List<Material>();
+    private readonly List<Color> colours = new List<Color>();
+
+    /// <summary>How much of the word has landed, 0 to 1, for the probes.</summary>
+    public float Landed => blocks > 0 ? landed / (float)blocks : 0f;
+
     private static readonly Dictionary<char, string[]> Glyphs = new Dictionary<char, string[]>
     {
         ['T'] = new[] { "#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.." },
@@ -60,12 +72,12 @@ public class TitleLogo : MonoBehaviour
         var cube = probe.GetComponent<MeshFilter>().sharedMesh;
         Destroy(probe);
 
-        var top = Paint.Flat(new Color(0.47f, 0.64f, 0.31f));
+        var top = Own(new Color(0.47f, 0.64f, 0.31f));
         var sands = new[]
         {
-            Paint.Flat(new Color(0.86f, 0.78f, 0.60f)),
-            Paint.Flat(new Color(0.83f, 0.74f, 0.56f)),
-            Paint.Flat(new Color(0.89f, 0.82f, 0.65f)),
+            Own(new Color(0.86f, 0.78f, 0.60f)),
+            Own(new Color(0.83f, 0.74f, 0.56f)),
+            Own(new Color(0.89f, 0.82f, 0.65f)),
         };
 
         const string Word = "TILE WORLD";
@@ -99,8 +111,12 @@ public class TitleLogo : MonoBehaviour
             var block = new GameObject("Block");
             block.layer = Layer;
             block.transform.SetParent(root, false);
-            block.transform.localPosition = new Vector3(cell.x - centre, cell.y, 0f);
+            var place = new Vector3(cell.x - centre, cell.y, 0f);
+            float drop = 12f + (float)rng.NextDouble() * 5f;
+            block.transform.localPosition = place + Vector3.up * drop;
             block.transform.localScale = Vector3.one * 0.94f;
+            falling.Add(new Falling { Block = block.transform, Place = place, Delay = 0.3f + (cell.x - minX) * 0.022f + (float)rng.NextDouble() * 0.18f, Drop = drop });
+            blocks++;
             block.AddComponent<MeshFilter>().sharedMesh = cube;
             var renderer = block.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = topmost[cell.x] == cell.y ? top : sands[rng.Next(sands.Length)];
@@ -152,6 +168,22 @@ public class TitleLogo : MonoBehaviour
         Top(imageGo.GetComponent<RectTransform>(), new Vector2(0f, -160f), new Vector2(1240f, 310f));
     }
 
+    private Material Own(Color colour)
+    {
+        var m = new Material(Paint.Flat(colour));
+        m.EnableKeyword("_EMISSION");
+        m.SetColor("_EmissionColor", Color.black);
+        materials.Add(m); colours.Add(colour);
+        return m;
+    }
+
+    /// <summary>How much sun there is on the letters: with none, they hold a little light of their own so the name still reads.</summary>
+    public void SetDaylight(float daylight)
+    {
+        float glow = (1f - Mathf.Clamp01(daylight)) * 0.5f;
+        for (int i = 0; i < materials.Count; i++) materials[i].SetColor("_EmissionColor", colours[i] * glow);
+    }
+
     private static void Top(RectTransform rect, Vector2 at, Vector2 size)
     {
         rect.anchorMin = new Vector2(0.5f, 1f);
@@ -180,6 +212,18 @@ public class TitleLogo : MonoBehaviour
         t += Time.unscaledDeltaTime;
         root.localRotation = Quaternion.Euler(-7f + Mathf.Sin(t * 0.5f) * 1.5f, Mathf.Sin(t * 0.37f) * 2.5f, 0f);
         root.position = new Vector3(0f, 3000f + Mathf.Sin(t * 0.8f) * 0.18f, 0f);
+
+        if (landed < blocks)
+        {
+            landed = 0;
+            foreach (var f in falling)
+            {
+                float u = Mathf.Clamp01((t - f.Delay) / 0.75f);
+                float eased = 1f - (1f - u) * (1f - u) * (1f - u);
+                f.Block.localPosition = f.Place + Vector3.up * f.Drop * (1f - eased);
+                if (u >= 1f) landed++;
+            }
+        }
     }
 
     private void OnDestroy()
@@ -187,5 +231,6 @@ public class TitleLogo : MonoBehaviour
         RenderPipelineManager.beginCameraRendering -= NoFog;
         RenderPipelineManager.endCameraRendering -= FogBack;
         if (picture != null) { picture.Release(); Destroy(picture); }
+        foreach (var m in materials) Destroy(m);
     }
 }

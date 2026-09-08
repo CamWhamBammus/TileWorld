@@ -42,7 +42,18 @@ public static class Surf
     // the wave's timing, the same numbers the water shader uses in wash mode; the clock is handed
     // to the shader every frame, so the game and the picture agree about where the wave is
     private const float Period = 14f, ReachMetres = 6.5f, Back = -5f;
-    public static float Now => Time.time;
+    public static float Now => Time.time + Offset;
+
+    /// <summary>A shift of the wave's clock, so the title can have a wave due when its picture comes up.</summary>
+    public static float Offset { get; private set; }
+
+    /// <summary>Sets the clock so the wave at a tile is just beginning to come in, so many seconds from now.</summary>
+    public static void WaveDue(int tileX, int tileZ, int seed, float inSeconds)
+    {
+        float phase = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
+        float then = Time.time + inSeconds;
+        Offset = Mathf.Repeat((0.02f - phase) * Period - then, Period);
+    }
 
     /// <summary>Where the wave's front is now, in metres from the waterline (out to sea is negative), for a tile's phase.</summary>
     private static float Front(float phase)

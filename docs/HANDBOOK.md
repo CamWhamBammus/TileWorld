@@ -671,10 +671,39 @@ component that wants a RectTransform) is added to it is dead afterwards,
 because adding the component swaps the Transform out, and the logo went
 under nothing. `canvasRoot` is taken after `AddComponent<Canvas>`.
 
-`Tools/probe/TitleLive.cs.txt` photographs the title across a wave and once
-with the card hidden, reads the logo's picture back and says how much of it
-the word fills, checks what is and is not running under the title, enters a
-world, comes back and checks again (17 ms a frame at radius 8);
+Ten more things the title does. It comes up through a curtain: black
+for a moment while the near country builds, then lifted over two seconds
+with the sound rising with it (`AudioListener.volume` is 0 at Awake and
+follows the curtain; the Options page's own volume changes go straight to
+the listener as before), and the name falls into place meanwhile, each
+block dropping from above its cell with the columns one after another
+(`TitleLogo.Landed`). Which title it is follows the clock on the wall
+(`TitleMenu.WhenNow`, `Look`): a morning (hour 0.30, thin cloud), an
+afternoon (0.69, more cloud), a dusk (0.745, the sun on the horizon) or a
+night (0.96, stars, the moon on the water); after dark the letters keep a
+little light of their own (their materials are the logo's own copies,
+with emission by daylight) so the name still reads. The first wave is due
+as the picture comes up: `Surf.WaveDue` shifts the wave's clock
+(`Surf.Offset`, added to `Surf.Now`) so the strand the title looks from is
+about to be covered four seconds in, which the probe times at six. The
+view leans a little toward the cursor, a couple of degrees at most, and
+rests when the window is not in front. Two crabs are put on the sand and
+a heron in the shallows (`Wildlife.Summon`, then `Direct`). A soft pad
+plays under the wind and the surf (`TitlePad`: four voices on a pentatonic
+scale, each a sustained tone of a few harmonics with a slow beat, swelling
+in over four seconds and fading over six, chords drifting by chance). The
+Play button names the world it will play, Enter plays it, and the arrows
+move the choice. The build's version sits small in the corner. Play, New
+world and Quit all go out through the curtain, picture and sound together,
+before the scene changes.
+
+`Tools/probe/TitleLive.cs.txt` reads the curtain, the volume and the fallen
+name at half a second and again later, times the first wave over the
+strand, checks what is and is not running under the title, lists what
+lives within thirty metres, works the keys and reads the Play button, reads
+the logo's picture back and says how much of it the word fills, photographs
+all four hours with the card hidden, enters a world through the curtain,
+comes back and checks again (16.5 ms a frame at radius 8);
 `Tools/probe/Title.cs.txt` walks the worlds pages. The old panoramas --
 cubemaps baked from six faces, 34 MB of them -- are gone with their capture
 tool, the dev tools' Title page, `MakePanorama`, `MakeTitleScene`,

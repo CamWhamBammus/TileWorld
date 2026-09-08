@@ -1,5 +1,6 @@
-// A probe: the title with the country live behind it. Photographs it three times across a wave,
-// checks what is and is not running under it, enters a world and comes back, and photographs it again.
+// A probe: the title with the country live behind it. Reads the curtain, the sound and the
+// falling name early and late, times the first wave, checks what runs under the title, looks
+// at it at all four hours, works the keys, photographs it, enters a world and comes back.
 using System.Collections;
 using System.IO;
 using UnityEngine;
@@ -47,64 +48,89 @@ public class _Probe : MonoBehaviour
              + " | scene " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
     }
 
+    private string Early(TitleMenu title)
+    {
+        return "curtain " + (title != null ? title.CurtainAlpha.ToString("F2") : "-") + " | volume " + AudioListener.volume.ToString("F2") + " of " + Settings.Volume.ToString("F2")
+             + " | name landed " + (title != null && title.Logo != null ? title.Logo.Landed.ToString("F2") : "-");
+    }
+
     private IEnumerator Start()
     {
-        yield return new WaitForSecondsRealtime(16f);
-        Mark("TITLE: " + State());
-        var image = GameObject.Find("Logo picture");
-        if (image != null)
+        yield return new WaitForSecondsRealtime(0.5f);
+        var title = FindFirstObjectByType<TitleMenu>();
+        Mark("EARLY 0.5 s: " + Early(title));
+        yield return new WaitForSecondsRealtime(1.2f);
+        Mark("EARLY 1.7 s: " + Early(title));
+
+        // the first wave over the strand tile the title looks from
+        TitleMenu.Viewpoint(TitleMenu.Seed, out _, out _, out _, out var strand, out _);
+        Vector3 strandAt = new Vector3(strand.x * WorldGrid.TileSize, WaterSurface.Level, strand.y * WorldGrid.TileSize);
+        float firstWave = -1f; float t0 = Time.realtimeSinceStartup;
+        for (float t = 0f; t < 14f; t += 0.25f)
         {
-            var rectT = image.GetComponent<RectTransform>(); var raw = image.GetComponent<UnityEngine.UI.RawImage>();
-            Mark("LOGO image rect " + (rectT != null) + " | raw " + (raw != null) + " | parent " + (image.transform.parent != null ? image.transform.parent.name : "none") + " | active " + image.activeInHierarchy);
-            if (rectT != null) { var corners = new Vector3[4]; rectT.GetWorldCorners(corners); Mark("LOGO image corners " + corners[0].ToString("F0") + " to " + corners[2].ToString("F0") + " | size " + rectT.sizeDelta + " anchored " + rectT.anchoredPosition); }
-            if (raw != null) Mark("LOGO raw enabled " + raw.enabled + " | texture " + (raw.texture != null ? raw.texture.width + "x" + raw.texture.height : "none") + " | canvas " + (raw.canvas != null) + " | colour " + raw.color);
+            if (Surf.Covered(strandAt, TitleMenu.Seed)) { firstWave = Time.realtimeSinceStartup - t0 + 1.7f; break; }
+            yield return new WaitForSecondsRealtime(0.25f);
         }
-        else Mark("LOGO image missing");
+        Mark("WAVE first over the strand at " + (firstWave < 0f ? "never" : firstWave.ToString("F1") + " s after the start"));
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, 16f - (Time.realtimeSinceStartup - t0) - 1.7f));
+
+        title = FindFirstObjectByType<TitleMenu>();
+        title.Look("afternoon");
+        yield return new WaitForSecondsRealtime(1f);
+        Mark("TITLE: " + State());
+        Mark("LATE: " + Early(title) + " | when " + title.When + " | pad voices " + (FindFirstObjectByType<TitlePad>() != null ? FindFirstObjectByType<TitlePad>().Sounding : -1)
+             + " | version " + (GameObject.Find("Version") != null) + " | camera off rest " + Quaternion.Angle(Camera.main.transform.rotation, title.BaseRotation).ToString("F2") + " deg");
+        var near = new System.Text.StringBuilder("LIFE within 30 m:");
+        foreach (var a in Wildlife.Near(Camera.main.transform.position, 30f)) near.Append(" " + a.Kind + "@" + Vector3.Distance(a.transform.position, Camera.main.transform.position).ToString("F0") + "m");
+        Mark(near.ToString());
+
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var play = (TMPro.TMP_Text)typeof(TitleMenu).GetField("playLabel", flags).GetValue(title);
+        string before = play.text;
+        typeof(TitleMenu).GetMethod("Choose", flags).Invoke(title, new object[] { 1 });
+        Mark("KEYS: play said '" + before + "', after down '" + play.text + "'");
+        typeof(TitleMenu).GetMethod("Choose", flags).Invoke(title, new object[] { -1 });
+
+        float frames = 0f, seconds = 0f;
+        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+        Mark("TITLE frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
+
+        var image = GameObject.Find("Logo picture");
         var camGo = GameObject.Find("Title logo camera");
         if (camGo != null)
         {
-            var c = camGo.GetComponent<Camera>();
-            var blocks = GameObject.Find("Title blocks");
-            Mark("LOGO camera enabled " + c.enabled + " | target " + (c.targetTexture != null) + " | at " + c.transform.position.ToString("F0") + " | blocks " + (blocks != null ? blocks.transform.childCount : -1) + " | block layer " + (blocks != null && blocks.transform.childCount > 0 ? blocks.transform.GetChild(0).gameObject.layer : -1) + " | main mask has layer " + ((Camera.main.cullingMask & (1 << 30)) != 0));
-            var tex = c.targetTexture;
-            if (tex != null)
-            {
-                RenderTexture.active = tex;
-                var t2 = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
-                t2.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0); t2.Apply();
-                RenderTexture.active = null;
-                var px = t2.GetPixels32(); int opaque = 0, lit = 0, left = tex.width, right = 0, top = 0, bottom = tex.height;
-                for (int i = 0; i < px.Length; i++)
-                {
-                    if (px[i].a <= 128) continue;
-                    opaque++; int x = i % tex.width, y = i / tex.width;
-                    left = Mathf.Min(left, x); right = Mathf.Max(right, x); bottom = Mathf.Min(bottom, y); top = Mathf.Max(top, y);
-                    if (px[i].r + px[i].g + px[i].b > 60) lit++;
-                }
-                Mark("LOGO picture opaque " + opaque + " lit " + lit + " of " + px.Length + " | spans x " + left + ".." + right + " of " + tex.width + ", y " + bottom + ".." + top + " of " + tex.height);
-                File.WriteAllBytes(Path.Combine(Application.persistentDataPath, "probe-tl-logo.png"), t2.EncodeToPNG());
-            }
+            var tex = camGo.GetComponent<Camera>().targetTexture;
+            RenderTexture.active = tex;
+            var t2 = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
+            t2.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0); t2.Apply();
+            RenderTexture.active = null;
+            var px = t2.GetPixels32(); int opaque = 0, left = tex.width, right = 0;
+            for (int i = 0; i < px.Length; i++) { if (px[i].a <= 128) continue; opaque++; int x = i % tex.width; left = Mathf.Min(left, x); right = Mathf.Max(right, x); }
+            Mark("LOGO picture opaque " + opaque + " of " + px.Length + " | spans x " + left + ".." + right + " of " + tex.width + " | image under " + (image != null && image.transform.parent != null ? image.transform.parent.name : "nothing"));
         }
-        else Mark("LOGO camera missing");
+
+        yield return Shot("a");
         var cardGo = GameObject.Find("Card");
         if (cardGo != null)
         {
             cardGo.SetActive(false);
-            yield return Shot("scene");
+            foreach (var when in new[] { "afternoon", "morning", "dusk", "night" })
+            {
+                title.Look(when);
+                yield return new WaitForSecondsRealtime(2f);
+                yield return Shot(when);
+            }
+            title.Look("afternoon");
             cardGo.SetActive(true);
         }
-        float frames = 0f, seconds = 0f;
-        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
-        Mark("TITLE frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
-        yield return Shot("a");
-        yield return new WaitForSecondsRealtime(4.7f);
-        yield return Shot("b");
-        yield return new WaitForSecondsRealtime(4.7f);
+        yield return new WaitForSecondsRealtime(3f);
         yield return Shot("c");
 
         // in, and back out
         var save = WorldLibrary.Create("Probe title", 5, true, true, 0.5f, 20f, true, true);
-        WorldLibrary.Enter(save);
+        typeof(TitleMenu).GetMethod("Enter", flags).Invoke(title, new object[] { save });
+        yield return new WaitForSecondsRealtime(0.4f);
+        Mark("LEAVING: " + Early(title));
         yield return new WaitForSecondsRealtime(9f);
         Mark("IN: " + State());
         yield return Shot("in");

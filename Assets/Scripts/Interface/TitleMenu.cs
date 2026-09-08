@@ -27,8 +27,19 @@ public class TitleMenu : MonoBehaviour
     /// <summary>The world behind the title, picked for a beach near its origin.</summary>
     public const int Seed = 24;
 
-    /// <summary>The hour held behind the title, as a fraction of the day.</summary>
-    private const float Hour = 0.69f;
+    /// <summary>
+    /// Which title it is by the clock on the wall: a morning, an afternoon, a
+    /// dusk or a night. The hour and the clouds behind the title follow it.
+    /// </summary>
+    public static string WhenNow()
+    {
+        int h = System.DateTime.Now.Hour;
+        return h < 5 || h >= 21 ? "night" : h < 10 ? "morning" : h < 17 ? "afternoon" : "dusk";
+    }
+
+    /// <summary>The title that is up, by name; and the camera's rest, for the probes.</summary>
+    public string When { get; private set; } = "";
+    public Quaternion BaseRotation => baseRotation;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -45,6 +56,9 @@ public class TitleMenu : MonoBehaviour
     /// what the world is drawn around.
     /// </summary>
     public static void Viewpoint(int seed, out Vector3 eye, out Vector3 look, out Vector3 stand)
+        => Viewpoint(seed, out eye, out look, out stand, out _, out _);
+
+    public static void Viewpoint(int seed, out Vector3 eye, out Vector3 look, out Vector3 stand, out Vector2Int strand, out Vector3 toSea)
     {
         int sx = 0, sz = 0; bool found = false;
         for (int r = 0; r < 70 && !found; r++)
@@ -55,7 +69,7 @@ public class TitleMenu : MonoBehaviour
             if (Surf.IsStrand(dx, dz, seed)) { found = true; sx = dx; sz = dz; }
         }
 
-        Vector2 toSea = Vector2.zero; int sea = 0;
+        Vector2 seaSum = Vector2.zero; int sea = 0;
         if (found)
         {
             for (int dx = -20; dx <= 20; dx++)
@@ -63,11 +77,13 @@ public class TitleMenu : MonoBehaviour
             {
                 int tx = sx + dx, tz = sz + dz;
                 if (!WaterSurface.IsUnderwater(tx, tz, seed) || WaterSurface.BodyAt(tx, tz, seed) != WaterSurface.Body.Beach) continue;
-                toSea += new Vector2(dx, dz); sea++;
+                seaSum += new Vector2(dx, dz); sea++;
             }
         }
-        Vector3 dir = sea > 0 ? new Vector3(toSea.x, 0f, toSea.y).normalized : Vector3.forward;
+        Vector3 dir = sea > 0 ? new Vector3(seaSum.x, 0f, seaSum.y).normalized : Vector3.forward;
         Vector3 tile = new Vector3(sx * WorldGrid.TileSize, WorldHeight.SurfaceY(sx, sz, seed), sz * WorldGrid.TileSize);
+        strand = new Vector2Int(sx, sz);
+        toSea = dir;
 
         stand = tile - dir * 8f + Vector3.up * 1.5f;
         eye = tile - dir * 5f + Vector3.up * 2.6f;
@@ -99,6 +115,11 @@ public class TitleMenu : MonoBehaviour
 
     private Camera eye;
     private TitleLogo logo;
+    private TitlePad pad;
+    private Quaternion baseRotation;
+    private bool viewSet, leaving;
+    private RawImage curtain;
+    private float curtainAlpha = 1f;
 
     /// <summary>The name in blocks at the top, for the probes.</summary>
     public TitleLogo Logo => logo;
@@ -114,6 +135,7 @@ public class TitleMenu : MonoBehaviour
         Build();
         ShowWorlds();
         Settings.Apply();
+        AudioListener.volume = 0f;   // the sound comes up with the picture
     }
 
     private IEnumerator Start()
@@ -130,21 +152,114 @@ public class TitleMenu : MonoBehaviour
 
             Viewpoint(Seed, out var at, out var look, out _);
             eye.transform.position = at;
-            eye.transform.rotation = Quaternion.LookRotation(look - at);
+            baseRotation = Quaternion.LookRotation(look - at);
+            eye.transform.rotation = baseRotation;
             eye.fieldOfView = 58f;
             eye.farClipPlane = 3000f;
             eye.cullingMask &= ~(1 << TitleLogo.Layer);
+            viewSet = true;
         }
+
+        logo = TitleLogo.Make(canvasRoot);
+        Look(WhenNow());
+
+        // a wave due as the picture comes up
+        Viewpoint(Seed, out _, out _, out _, out var strand, out var toSea);
+        Surf.WaveDue(strand.x, strand.y, Seed, 3.8f);
+
+        pad = gameObject.AddComponent<TitlePad>();
+
+        yield return new WaitForSecondsRealtime(0.6f);
+        Life(strand, toSea);
+
+        // the curtain: held a moment while the near country builds, then lifted, the sound with it
+        yield return new WaitForSecondsRealtime(0.6f);
+        for (float f = 0f; f < 1f; f += Time.unscaledDeltaTime / 2.2f)
+        {
+            Curtain(1f - Mathf.SmoothStep(0f, 1f, f));
+            yield return null;
+        }
+        Curtain(0f);
+    }
+
+    /// <summary>Sets the hour and the sky for one of the titles: morning, afternoon, dusk or night.</summary>
+    public void Look(string when)
+    {
+        float hour, clouds;
+        switch (when)
+        {
+            case "morning": hour = 0.30f; clouds = 0.22f; break;
+            case "dusk": hour = 0.745f; clouds = 0.50f; break;
+            case "night": hour = 0.96f; clouds = 0.25f; break;
+            default: when = "afternoon"; hour = 0.69f; clouds = 0.45f; break;
+        }
+        When = when;
 
         var tod = TimeOfDay.Instance;
         if (tod != null)
         {
-            tod.SetTime(Hour);
+            tod.SetTime(hour);
             tod.Paused = true;
-            tod.ForceOvercast(0.45f);
+            tod.ForceOvercast(clouds);
         }
 
-        logo = TitleLogo.Make(canvasRoot);
+        // no sun on the letters after dark: they keep a little light of their own
+        float daylight = Mathf.Clamp01(Mathf.Min((hour - 0.22f) / 0.06f, (0.78f - hour) / 0.06f));
+        if (logo != null) logo.SetDaylight(daylight);
+    }
+
+    /// <summary>A few of the beach's own on it: crabs on the sand, a heron in the shallows.</summary>
+    private void Life(Vector2Int strand, Vector3 toSea)
+    {
+        Vector3 tile = new Vector3(strand.x * WorldGrid.TileSize, WaterSurface.Level, strand.y * WorldGrid.TileSize);
+        Vector3 along = Vector3.Cross(Vector3.up, toSea);
+        Vector3[] sand = { tile - toSea * 1.5f + along * 3.5f, tile - toSea * 2.5f - along * 4f };
+        foreach (var at in sand)
+        {
+            int tx = Mathf.RoundToInt(at.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(at.z / WorldGrid.TileSize);
+            var crab = Wildlife.Summon(FaunaKind.Crab, new Vector3(at.x, WorldHeight.SurfaceY(tx, tz, Seed) + 0.1f, at.z));
+            if (crab != null) crab.Direct("graze");
+        }
+        var heron = Wildlife.Summon(FaunaKind.Heron, tile + toSea * 9f + along * 2f);
+        if (heron != null) heron.Direct("rest");
+    }
+
+    private void Curtain(float alpha)
+    {
+        curtainAlpha = alpha;
+        if (curtain != null) curtain.color = new Color(0f, 0f, 0f, alpha);
+        AudioListener.volume = Settings.Volume * (1f - alpha);
+    }
+
+    /// <summary>How dark the curtain is, 0 to 1, for the probes.</summary>
+    public float CurtainAlpha => curtainAlpha;
+
+    /// <summary>Out through the curtain: the picture and the sound go down together, then the thing is done.</summary>
+    private IEnumerator Leave(System.Action then)
+    {
+        leaving = true;
+        float from = curtainAlpha;
+        for (float f = 0f; f < 1f; f += Time.unscaledDeltaTime / 0.7f)
+        {
+            Curtain(Mathf.Lerp(from, 1f, Mathf.SmoothStep(0f, 1f, f)));
+            yield return null;
+        }
+        Curtain(1f);
+        then();
+    }
+
+    private void LateUpdate()
+    {
+        if (eye == null || !viewSet) return;
+
+        // the view leans a little toward the cursor, and rests when the window is not looked at
+        Vector2 m = Vector2.zero;
+        if (Application.isFocused && Screen.width > 0 && Screen.height > 0)
+        {
+            m = new Vector2(Mathf.Clamp(Input.mousePosition.x / Screen.width - 0.5f, -0.5f, 0.5f), Mathf.Clamp(Input.mousePosition.y / Screen.height - 0.5f, -0.5f, 0.5f));
+        }
+        var target = baseRotation * Quaternion.Euler(-m.y * 1.6f, m.x * 2.4f, 0f);
+        eye.transform.rotation = Quaternion.Slerp(eye.transform.rotation, target, 1f - Mathf.Exp(-2.5f * Time.unscaledDeltaTime));
     }
 
     private void ShowOptions()
@@ -172,6 +287,26 @@ public class TitleMenu : MonoBehaviour
 
         // Escape from the new world page goes back; from the list, nothing
         if (Input.GetKeyDown(KeyCode.Escape) && ((newPage != null && newPage.activeSelf) || (optionsPage != null && optionsPage.activeSelf))) ShowWorlds();
+
+        // on the list, the keys do what the mouse does: up and down choose, Enter plays
+        if (worldsPage != null && worldsPage.activeSelf && !leaving)
+        {
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Enter(chosen);
+            if (Input.GetKeyDown(KeyCode.DownArrow)) Choose(1);
+            if (Input.GetKeyDown(KeyCode.UpArrow)) Choose(-1);
+        }
+    }
+
+    /// <summary>Moves the choice up or down the list.</summary>
+    private void Choose(int step)
+    {
+        var worlds = WorldLibrary.All();
+        if (worlds.Count == 0) return;
+        int i = chosen != null ? worlds.FindIndex(w => w.id == chosen.id) : 0;
+        i = Mathf.Clamp(i + step, 0, Mathf.Min(worlds.Count, 6) - 1);
+        chosen = worlds[i];
+        pendingForget = null;
+        Refresh();
     }
 
     // -------------------------------------------------------------- pages
@@ -234,7 +369,7 @@ public class TitleMenu : MonoBehaviour
             rows.Add(more.gameObject);
         }
 
-        playLabel.text = "Play";
+        playLabel.text = chosen != null ? "Play  " + Short(chosen.name, 16) : "Play";
         forgetLabel.text = chosen != null && pendingForget == chosen.id ? "Press again to delete" : "Delete world";
     }
 
@@ -267,9 +402,12 @@ public class TitleMenu : MonoBehaviour
 
     private void Enter(WorldSave world)
     {
-        if (world == null) return;
-        WorldLibrary.Enter(world);
+        if (world == null || leaving) return;
+        StartCoroutine(Leave(() => WorldLibrary.Enter(world)));
     }
+
+    private static string Short(string name, int most)
+        => string.IsNullOrEmpty(name) ? "" : name.Length <= most ? name : name.Substring(0, most - 1) + "\u2026";
 
     private void Forget()
     {
@@ -289,8 +427,9 @@ public class TitleMenu : MonoBehaviour
             if (!int.TryParse(seedField.text.Trim(), out seed)) seed = Mathf.Abs(seedField.text.Trim().GetHashCode());
             if (seed == 0) seed = 1;
         }
+        if (leaving) return;
         var world = WorldLibrary.Create(nameField.text, seed, weather, dayCycle, StartHours[startAt], LengthMinutes[dayLength], animals, ruins);
-        WorldLibrary.Enter(world);
+        Enter(world);
     }
 
     private void NewWorldSettings()
@@ -306,11 +445,15 @@ public class TitleMenu : MonoBehaviour
 
     private void Quit()
     {
+        if (leaving) return;
+        StartCoroutine(Leave(() =>
+        {
 #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
+            UnityEditor.EditorApplication.isPlaying = false;
 #else
-        Application.Quit();
+            Application.Quit();
 #endif
+        }));
     }
 
     // ---------------------------------------------------------------- build
@@ -403,6 +546,23 @@ public class TitleMenu : MonoBehaviour
 
         Button("Back", optionsPage.transform, new Vector2(0f, -284f), new Vector2(240f, 56f), ShowWorlds);
         optionsPage.SetActive(false);
+
+        // the build's number, small, in the corner
+        var version = Label("Version", canvasGo.transform, 13f, Vector2.zero, new Vector2(420f, 22f));
+        var vr = version.rectTransform;
+        vr.anchorMin = vr.anchorMax = new Vector2(1f, 0f); vr.pivot = new Vector2(1f, 0f); vr.anchoredPosition = new Vector2(-18f, 12f);
+        version.alignment = TextAlignmentOptions.Right;
+        version.color = new Color(1f, 1f, 1f, 0.55f);
+        version.text = "Tile World " + Application.version;
+
+        // the curtain, over everything but the name: black until the country is ready
+        var curtainGo = new GameObject("Curtain", typeof(RectTransform));
+        curtainGo.transform.SetParent(canvasGo.transform, false);
+        curtain = curtainGo.AddComponent<RawImage>();
+        curtain.texture = Texture2D.whiteTexture;
+        curtain.color = Color.black;
+        curtain.raycastTarget = false;
+        Stretch(curtainGo.GetComponent<RectTransform>());
     }
 
     /// <summary>One setting with a less and a more either side of its value.</summary>
