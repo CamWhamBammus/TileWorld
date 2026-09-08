@@ -1,0 +1,148 @@
+// A probe: the ground underfoot. In the hills, the collider's height across a tile beside a step and
+// beside a cliff, measured against the tile's own top; how far a fall from six metres goes into the
+// ground and how long it takes to settle; the fill laid under cliffs; and photographs of a cliff from below.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Shot(string name, Camera cam, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-gd-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private static float Under(Vector3 at, Transform player)
+    {
+        float best = float.MinValue;
+        foreach (var hit in Physics.RaycastAll(at + Vector3.up * 3f, Vector3.down, 12f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.collider.transform == player || hit.collider.transform.IsChildOf(player)) continue;
+            if (hit.point.y > best) best = hit.point.y;
+        }
+        return best;
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var save = WorldLibrary.Create("Probe ground", 5, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        var tools = FindFirstObjectByType<DevTools>();
+        var goTo = typeof(DevTools).GetMethod("GoTo", flags, null, new[] { typeof(Regions.Character) }, null);
+        goTo.Invoke(tools, new object[] { Regions.Character.Peaks });
+        yield return new WaitForSecondsRealtime(9f);
+        var world = FindFirstObjectByType<ChunkManager>(); var player = world.PlayerTransform; int seed = world.WorldSeed;
+        int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+
+        // a step of one terrace and a cliff of a metre or more, within the collided chunks
+        Vector2Int stepTile = default, cliffTile = default; Vector2Int stepDir = default, cliffDir = default; float stepDrop = 0f, cliffDrop = 0f; bool foundStep = false, foundCliff = false;
+        float biggest = 0f; Vector2Int biggestTile = default, biggestDir = default; var histogram = new SortedDictionary<int, int>();
+        var dirs = new[] { new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1) };
+        for (int r = 0; r < 22 && !(foundStep && foundCliff); r++)
+        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++)
+        {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+            int tx = px + dx, tz = pz + dz;
+            if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            float h = WaterSurface.WalkingY(tx, tz, seed);
+            foreach (var d in dirs)
+            {
+                float drop = h - WaterSurface.WalkingY(tx + d.x, tz + d.y, seed);
+                if (!foundStep && Mathf.Abs(drop - 0.25f) < 0.01f) { foundStep = true; stepTile = new Vector2Int(tx, tz); stepDir = d; stepDrop = drop; }
+                if (!foundCliff && drop >= 1.0f && drop < 2.6f) { foundCliff = true; cliffTile = new Vector2Int(tx, tz); cliffDir = d; cliffDrop = drop; }
+                if (drop > 0.01f) { int bin = Mathf.RoundToInt(drop / 0.25f); histogram[bin] = (histogram.TryGetValue(bin, out int c) ? c : 0) + 1; }
+                if (drop > biggest) { biggest = drop; biggestTile = new Vector2Int(tx, tz); biggestDir = d; }
+            }
+        }
+        var bins = new System.Text.StringBuilder(); foreach (var pair in histogram) bins.Append(" " + (pair.Key * 0.25f).ToString("F2") + ":" + pair.Value);
+        Mark("DROPS between neighbours within 22 tiles, by height:" + bins + " | biggest " + biggest.ToString("F2") + " m at tile " + biggestTile);
+        if (!foundCliff && biggest >= 0.5f) { foundCliff = true; cliffTile = biggestTile; cliffDir = biggestDir; cliffDrop = biggest; }
+        foreach (var (name, tile, dir, drop, found) in new[] { ("STEP", stepTile, stepDir, stepDrop, foundStep), ("CLIFF", cliffTile, cliffDir, cliffDrop, foundCliff) })
+        {
+            if (!found) { Mark(name + ": none within reach"); continue; }
+            float h = WaterSurface.WalkingY(tile.x, tile.y, seed);
+            Vector3 centre = new Vector3(tile.x * WorldGrid.TileSize, h, tile.y * WorldGrid.TileSize);
+            Vector3 toward = new Vector3(dir.x, 0f, dir.y);
+            var said = new System.Text.StringBuilder(name + " of " + drop.ToString("F2") + " m: collider under the higher tile's top, at the centre, halfway and near the edge:");
+            foreach (float off in new[] { 0f, 0.5f, 0.9f }) said.Append(" " + (Under(centre + toward * off, player) - h).ToString("F3"));
+            // and on the lower tile, near the shared edge and at its centre
+            Vector3 lowCentre = centre + toward * WorldGrid.TileSize; float lh = h - drop;
+            said.Append(" | on the lower tile near the edge and at its centre: " + (Under(lowCentre - toward * 0.9f, player) - lh).ToString("F3") + " " + (Under(lowCentre, player) - lh).ToString("F3"));
+            Mark(said.ToString());
+        }
+
+        // the fall: six metres onto the step tile, and where the feet go
+        {
+            var tile = foundStep ? stepTile : new Vector2Int(px, pz);
+            float h = WaterSurface.WalkingY(tile.x, tile.y, seed);
+            var body = player.GetComponent<CharacterController>(); body.enabled = false;
+            player.position = new Vector3(tile.x * WorldGrid.TileSize, h + 6f, tile.y * WorldGrid.TileSize);
+            body.enabled = true;
+            float lowest = 999f, settled = -1f, t = 0f; int frames = 0;
+            while (t < 2.5f)
+            {
+                t += Time.deltaTime; frames++;
+                float feet = player.position.y - h;
+                lowest = Mathf.Min(lowest, feet);
+                if (settled < 0f && feet < 0.06f && feet > -0.06f && t > 0.5f) settled = t;
+                yield return null;
+            }
+            Mark("FALL of six metres onto a tile: feet went " + (lowest < 0f ? lowest.ToString("F3") + " m under" : "no lower than " + lowest.ToString("F3") + " m above") + " the top, settled on it after " + (settled < 0f ? "never" : settled.ToString("F2") + " s") + " | resting at " + (player.position.y - h).ToString("F3"));
+        }
+
+        // the fill under cliffs, in the nine chunks round the player
+        var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
+        var centreChunk = WorldGrid.WorldToChunk(player.position);
+        int earth = 0, rock = 0, loaded = 0;
+        foreach (var chunk in chunks.Values)
+        {
+            loaded++;
+            foreach (var pair in chunk.idToTransforms) { if (pair.Key == 95) earth += pair.Value.Length; if (pair.Key == 96) rock += pair.Value.Length; }
+        }
+        Mark("FILL in " + loaded + " loaded chunks: " + earth + " earth blocks, " + rock + " rock blocks");
+
+        float frames2 = 0f, seconds = 0f;
+        for (float tt = 0f; tt < 3f; tt += Time.unscaledDeltaTime) { frames2++; seconds += Time.unscaledDeltaTime; yield return null; }
+        Mark("GROUND frame " + (seconds / frames2 * 1000f).ToString("F1") + " ms");
+
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        if (foundCliff)
+        {
+            float h = WaterSurface.WalkingY(cliffTile.x, cliffTile.y, seed);
+            Vector3 top = new Vector3(cliffTile.x * WorldGrid.TileSize, h, cliffTile.y * WorldGrid.TileSize);
+            Vector3 toward = new Vector3(cliffDir.x, 0f, cliffDir.y);
+            yield return Shot("cliff", cam, top + toward * 7f + Vector3.up * (1.2f - cliffDrop), top + Vector3.up * 0.3f);
+            yield return Shot("cliffside", cam, top + toward * 5f + Vector3.Cross(Vector3.up, toward) * 5f + Vector3.up * (0.6f - cliffDrop * 0.5f), top);
+        }
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

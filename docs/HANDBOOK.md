@@ -786,6 +786,38 @@ palette sheet and the material on it, which everything of ours shares,
 and the kit the structures are built from is code that only borrows
 colours off that sheet.
 
+## Underfoot
+
+The walkable collider is the tiles' own tops now. It used to be one
+vertex per tile centre with the triangles between, which ramped from the
+centre of a tile down toward any lower neighbour: a foot under the edge
+beside a one-terrace step, a metre under it beside a cliff, so landing or
+walking there stood the player inside the tile, and the camera's floor,
+asked the same way, could put the camera inside the hillside looking out.
+`TerrainCollision` now lays five vertices a side per tile, none shared, at
+the tile's own height, and ramps only in the band beside an edge where
+the neighbour stands taller than the controller steps by itself (0.42):
+the lower tile rises to meet it over a band as wide as forty degrees needs
+(up to 0.84 m of rise in a metre), and where a step is taller than that,
+the higher tile gives the remainder at its own outer metre, so a two-metre
+cliff is still the climb it was and the surface is continuous. Underneath,
+`Chunk` lays plain fill blocks (definitions 95 earth and 96 rock, from
+`Tools/fill_tiles.py`, `FillSet.Batch`) under any tile whose neighbour
+drops away further than a body is deep (2.05 m), block on block, so a
+cliff is solid to its foot. `SimpleFollowCamera` keeps its interpolated
+floor and, on top of it, sweeps a sphere from the player's head to where
+the camera wants to be and comes in to the first thing it meets, the
+ground or a landmark's wall; animals are passed over.
+`Tools/probe/Ground.cs.txt` measures the collider against a tile top at a
+step (flat to the edge, and flat on the lower tile beside a 0.25 step,
+which the controller steps by itself), drops the player six metres onto a
+tile (9 mm into the top, settled with the fall), and counts the fill
+(none in seed 5's peaks, where no neighbour drops more than 0.75 m: the
+fill is for levelled sites and steeper seeds). `Tools/probe/Camera.cs.txt`
+stands the player at the biggest step near the peaks and swings the camera
+through 32 angles: never lower than 0.34 m above the tile under it, and
+never with ground between it and the player.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride

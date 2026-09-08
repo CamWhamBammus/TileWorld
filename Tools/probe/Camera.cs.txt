@@ -1,0 +1,87 @@
+// A probe: the follow camera at a ridge. The player stands on the higher side of a step, facing away
+// from the drop, and the camera is swung round and tipped up through a sweep of angles; at each, how
+// far the camera sits above the top of the tile it is over, and whether anything is between it and the
+// player's head. It should never be under the ground and never be looking through it.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var save = WorldLibrary.Create("Probe camera", 5, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        var tools = FindFirstObjectByType<DevTools>();
+        var goTo = typeof(DevTools).GetMethod("GoTo", flags, null, new[] { typeof(Regions.Character) }, null);
+        goTo.Invoke(tools, new object[] { Regions.Character.Peaks });
+        yield return new WaitForSecondsRealtime(8f);
+        var world = FindFirstObjectByType<ChunkManager>(); var player = world.PlayerTransform; int seed = world.WorldSeed;
+        int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
+
+        // the biggest step nearby, and the player stood on its high side facing away from it
+        float biggest = 0f; Vector2Int at = default, dir = default;
+        var dirs = new[] { new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1) };
+        for (int dx = -14; dx <= 14; dx++) for (int dz = -14; dz <= 14; dz++)
+        {
+            int tx = px + dx, tz = pz + dz;
+            if (WaterSurface.IsUnderwater(tx, tz, seed)) continue;
+            foreach (var d in dirs)
+            {
+                float drop = WaterSurface.WalkingY(tx, tz, seed) - WaterSurface.WalkingY(tx + d.x, tz + d.y, seed);
+                if (drop > biggest) { biggest = drop; at = new Vector2Int(tx, tz); dir = d; }
+            }
+        }
+        var body = player.GetComponent<CharacterController>(); body.enabled = false;
+        float h = WaterSurface.WalkingY(at.x, at.y, seed);
+        player.position = new Vector3(at.x * WorldGrid.TileSize - dir.x * 0.6f, h + 0.1f, at.y * WorldGrid.TileSize - dir.y * 0.6f);
+        player.rotation = Quaternion.LookRotation(new Vector3(-dir.x, 0f, -dir.y));
+        body.enabled = true;
+        yield return new WaitForSecondsRealtime(1f);
+
+        var cam = Camera.main; var follow = cam.GetComponent<SimpleFollowCamera>();
+        var yawField = typeof(SimpleFollowCamera).GetField("yaw", flags); var pitchField = typeof(SimpleFollowCamera).GetField("pitch", flags);
+        float worst = 999f; string worstAt = ""; int through = 0, tries = 0;
+        foreach (float pitch in new[] { 15f, 0f, -20f, -40f })
+        foreach (float yaw in new[] { 0f, 45f, 90f, 135f, 180f, 225f, 270f, 315f })
+        {
+            yawField.SetValue(follow, player.eulerAngles.y + yaw); pitchField.SetValue(follow, pitch);
+            yield return new WaitForSecondsRealtime(0.45f);
+            tries++;
+            Vector3 c = cam.transform.position;
+            float under = WaterSurface.WalkingY(Mathf.RoundToInt(c.x / WorldGrid.TileSize), Mathf.RoundToInt(c.z / WorldGrid.TileSize), seed);
+            float clear = c.y - under;
+            if (clear < worst) { worst = clear; worstAt = "yaw " + yaw + " pitch " + pitch; }
+            Vector3 head = player.position + Vector3.up * 1.4f;
+            foreach (var hit in Physics.RaycastAll(c, (head - c).normalized, Vector3.Distance(c, head), ~0, QueryTriggerInteraction.Ignore))
+                if (hit.collider.transform != player && !hit.collider.transform.IsChildOf(player) && hit.collider.GetComponentInParent<Animal>() == null) { through++; break; }
+        }
+        Mark("CAMERA at a step of " + biggest.ToString("F2") + " m, " + tries + " angles: lowest the camera sat above the tile under it " + worst.ToString("F2") + " m (" + worstAt + "), ground between camera and player at " + through + " of them");
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-cm-ridge.png"));
+        yield return new WaitForSecondsRealtime(0.5f);
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

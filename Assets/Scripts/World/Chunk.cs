@@ -19,7 +19,9 @@ public class Chunk
 
     private const int FungalCategory = 17;      // the fungal country's loam, toadstools and glowing caps
     private const int DeadCategory = 18;        // the dead woods' ash, charred wood and bones
-    private const int SnowCategory = 16;        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
+    private const int SnowCategory = 16;
+    private const int FillEarthId = 95, FillRockId = 96;   // plain blocks laid under a tile where the ground drops away
+    private const float FillDepth = 2.05f;                // how deep a tile's body is, from its top at 1.05 to -1.00        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
     private const int BareSteepCategory = 15;  // our scree: broken rock and gravel on the steep faces (the pack's Big Grass, 3, is left unused)
     private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
     private const int SandCategory = 5;        // the sand update, for the deserts
@@ -253,6 +255,20 @@ public class Chunk
             }
 
             list.Add(Matrix4x4.TRS(position, rotation, Vector3.one));
+
+            // A tile is a body 2.05 deep. Where a neighbour stands further down than that,
+            // plain fill is laid under it, block on block, so a cliff is solid to its foot
+            // rather than a shelf with the void under it.
+            float lowest = Mathf.Min(Mathf.Min(WorldHeight.TileYOffset(gx + 1, gz, worldSeed), WorldHeight.TileYOffset(gx - 1, gz, worldSeed)),
+                                     Mathf.Min(WorldHeight.TileYOffset(gx, gz + 1, worldSeed), WorldHeight.TileYOffset(gx, gz - 1, worldSeed)));
+            float drop = WorldHeight.TileYOffset(gx, gz, worldSeed) - lowest;
+            if (drop > FillDepth)
+            {
+                int fillId = category == StoneCategory || category == BareSteepCategory || category == SnowCategory ? FillRockId : FillEarthId;
+                if (!buckets.TryGetValue(fillId, out var fills)) { fills = new List<Matrix4x4>(); buckets[fillId] = fills; }
+                for (int k = 1; k * FillDepth < drop; k++)
+                    fills.Add(Matrix4x4.TRS(position - Vector3.up * (FillDepth * k), Quaternion.identity, Vector3.one));
+            }
         }
 
         foreach (var pair in buckets)

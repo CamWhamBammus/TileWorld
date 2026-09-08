@@ -91,6 +91,28 @@ public class SimpleFollowCamera : MonoBehaviour
 
         if (desiredPosition.y < floor) desiredPosition.y = floor;
 
+        // And nothing between the player and the camera. The floor above is
+        // asked between the tiles, so beside a ridge or a wall it is half a
+        // step under the tile's real top, and the camera could sit inside the
+        // hillside looking out through it. A sphere swept from the player's
+        // head to where the camera wants to be stops at the ground or a wall
+        // (the collider is the tiles' own tops now, and the landmarks' walls),
+        // and the camera comes in to there.
+        Vector3 line = desiredPosition - pivot;
+        float length = line.magnitude;
+        if (length > 0.05f)
+        {
+            float nearest = length;
+            foreach (var hit in Physics.SphereCastAll(pivot, 0.28f, line / length, length, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.distance <= 0.001f) continue;
+                if (hit.collider.transform == target || hit.collider.transform.IsChildOf(target)) continue;
+                if (hit.collider.GetComponentInParent<Animal>() != null) continue;
+                if (hit.distance < nearest) nearest = hit.distance;
+            }
+            if (nearest < length) desiredPosition = pivot + line / length * Mathf.Max(nearest, 0.45f);
+        }
+
         transform.position = Vector3.SmoothDamp(
             transform.position,
             desiredPosition,
