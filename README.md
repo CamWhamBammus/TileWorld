@@ -2,21 +2,21 @@
 
 A third person exploration game in Unity. You play a surveyor in an abandoned world, walking around drawing what you find: the animals, the ruins, and the land itself. The world is generated from a seed as you walk into it, so it goes on forever and nothing needs to be stored.
 
-![Two Forester's Watches on a reed lake](docs/images/hero.png)
+![The title screen: the name in blocks over a beach](docs/images/title.jpg)
 
-*Two Forester's Watches on a reed lake.*
+*The title screen. The beach behind it is a real place in the game, with the sea running up the sand.*
 
-**Contents:** [The world](#the-world) · [Structures](#structures) · [Animals](#animals) · [The sketchbook](#the-sketchbook) · [The map](#the-map) · [Worlds and saving](#worlds-and-saving) · [Controls](#controls) · [Running it](#running-it) · [Code layout](#code-layout)
+**Contents:** [The world](#the-world) · [The ground](#the-ground) · [Structures](#structures) · [Animals](#animals) · [The sketchbook](#the-sketchbook) · [The map](#the-map) · [Worlds and saving](#worlds-and-saving) · [Controls](#controls) · [Running it](#running-it) · [Code layout](#code-layout)
 
 ## The world
 
 Everything comes from the seed and a position. Terrain height, which tile goes where, which region you're in, where the structures are and even which planks have fallen off them are all recalculated whenever they're needed. A save file is just the seed plus where you've been and what you've found. The same seed always gives you the same world.
 
-The ground is a grid of tiles from a low poly tile pack, streamed in chunks of 15x15 and drawn with GPU instancing. Heights come from layered noise (a large scale mask picks where the mountains go, ridged noise shapes the ranges, smaller noise rolls the ground in between) and snap to steps so the tiles stay flat. A separate collision mesh ramps between the steps so you can walk up a hill instead of catching on every ledge.
+![A Forester's Watch in the woods](docs/images/hero.jpg)
 
-![A jetty and a lighthouse at dawn](docs/images/lake.png)
+*A Forester's Watch in the woods.*
 
-*A jetty and a lighthouse at dawn.*
+The ground is a grid of tiles, streamed in chunks of 15x15 and drawn with GPU instancing. Heights come from layered noise (a large scale mask picks where the mountains go, ridged noise shapes the ranges, smaller noise rolls the ground in between) and snap to steps so the tiles stay flat. The collider you walk on is flat across each tile and ramps only where a neighbour is too tall to step onto, so you can walk up a hill without catching on every ledge or sinking into the edge of one.
 
 ### Regions
 
@@ -24,41 +24,75 @@ The world is split into regions about 240m across. Each one gets a character bas
 
 | Region | Where it shows up | What it looks like |
 | --- | --- | --- |
-| Lowland | low dry ground | meadow, a few trees, fireflies at night |
-| Forest | mid height | dense trees over grass |
-| Hills | higher | fewer trees, paler ground the higher you go |
+| Lowland | low dry ground | meadow with flowers, a few trees, fireflies at night |
+| Forest | mid height | oaks, beeches and birches over a floor of leaf litter, roots and logs |
+| Hills | higher | fewer trees, paler grass the higher you go, scree on the steep faces |
 | Peaks | mostly above the snowline | bare rock and summits |
-| Water | very wet regions | open water with sandy beaches |
-| Reedbed | damp but not flooded | reeds in the shallows, dark wet ground |
-| Fungal | low ground, rare | giant colourful mushrooms, darker ground |
-| Desert | low, dry, open | sand everywhere, cacti, palms, dead trees |
-| Snowfield | a plain that stays frozen | deep snow, snow pines, frozen lakes |
-| Stone barrens | higher ground, rare | bare rock and boulders, nothing growing |
-| Dead wood | low ground, rare | dead standing trees, dark ground |
+| Water | very wet regions | open water with sandy beaches, shells, driftwood, palms |
+| Reedbed | damp but not flooded | reeds in the shallows, wet mud with puddles |
+| Fungal | low ground, rare | giant toadstools over dark loam, glowing caps |
+| Desert | low, dry, open | sand everywhere, cacti, dead trees, a palm now and then |
+| Snowfield | a plain that stays frozen | deep snow, laden spruces and firs, bare birches, frozen lakes |
+| Stone barrens | higher ground, rare | slabs of rock and boulders, lichen, nothing growing |
+| Dead wood | low ground, rare | dead standing trees over ash, charred wood, old bones |
 
-![The Sand Gate next to an oasis](docs/images/desert.png)
+![A jetty on a lake at dawn](docs/images/lake.jpg)
 
-*The Sand Gate next to an oasis.*
+*A jetty on a lake at dawn.*
 
 ### Water
 
 Water sits at one level across the whole world, and what kind of water it is depends on where you are. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under.
 
-Walking into it throws up a few drops and leaves a ring on the surface with every step, more the faster you go and the deeper it is. Going in off a bank makes a proper splash. Swimming leaves a ring with each stroke and a wake behind you. Animals wading do the same, so a heron working the shallows leaves rings behind it. When it rains you hear it everywhere, and by a lake you hear it on the water too; every drop that lands on the water rings it. A downpour brings lightning, with the thunder a few seconds behind it, and the ground takes on a wet sheen that dries off once the sun is back. On the beaches the sea itself runs up the sand, sits a moment, and slides back, over and over. The white line of foam is the water's edge: everything behind it is water, everything ahead of it is sand, and when the wave draws back it bares the wet sand of the shallows before the next one comes. You hear the surf as you come near. In the snow country it snows instead, your breath shows, and the lakes there are frozen: you can walk across them, though the ice is slippery and creaks under you, and hares and wolves cross it too. The ice has cracks in it and snow drifted onto it, and the map shows it as ice. In snow and sand you leave boot prints, and after a swim you drip for a while.
+![A beach, the sea running up the sand](docs/images/beach.jpg)
+
+*A beach. The sea runs up the sand and back, over and over.*
+
+Walking into water throws up a few drops and leaves a ring on the surface with every step, more the faster you go and the deeper it is. Going in off a bank makes a proper splash. Swimming leaves a ring with each stroke and a wake behind you. Animals wading do the same. When it rains you hear it everywhere, and by a lake you hear it on the water too; every drop that lands on the water rings it. A downpour brings lightning, with the thunder a few seconds behind it, and the ground takes on a wet sheen that dries off once the sun is back. On the beaches the sea runs up the sand, sits a moment, and slides back. The white line of foam is the water's edge: everything behind it is water, everything ahead of it is sand, and when the wave draws back it bares the wet sand before the next one comes. You hear the surf as you come near. In the snow country it snows instead, your breath shows, and the lakes are frozen: you can walk across them, though the ice is slippery and creaks under you, and hares and wolves cross it too. In snow and sand you leave boot prints, and after a swim you drip for a while.
 
 ### Snow
 
-Snow covers the ground above the snowline and all of a snowfield, with a ragged edge instead of a clean contour. It's a thick layer that hangs over the edges of the tiles like the grass does on the normal ones, and it has no collider, so you wade through it about a boot deep. Snow-covered trees and pines come with it.
+Snow covers the ground above the snowline and all of a snowfield, with a ragged edge instead of a clean contour. The snow tiles have drifts, rocks showing through, frozen puddles, bare shrubs with snow on them, and tracks. Snow trees come with it: spruces and firs with snow on every bough, and bare birches.
 
-![The Trapper's Cabin, with the desert in the distance](docs/images/snow.png)
+![The Trapper's Cabin in the snow](docs/images/snow.jpg)
 
-*The Trapper's Cabin, with the desert in the distance.*
+*The Trapper's Cabin, at the edge of the snow.*
 
 ### Time and weather
 
-A full day and night takes twenty minutes. Dawn and dusk go orange, night is dark but you can still see, there are stars, and the sky, ambient light and fog all follow the sun. Weather drifts on its own: it clears and clouds over, and when it closes in the light goes flat, shadows soften, the fog pulls in and it rains. Wind picks up with altitude and bad weather, birds sing in the lowlands during the day. All the sound is generated in code, there are no recordings.
+A full day and night takes twenty minutes. Dawn and dusk go orange, night is dark but you can still see, there are stars, and the sky, ambient light and fog all follow the sun. Weather drifts on its own: it clears and clouds over, and when it closes in the light goes flat, shadows soften, the fog pulls in and it rains. Wind picks up with altitude and bad weather, birds sing in the lowlands during the day and gulls cry over the water. All the sound is generated in code, there are no recordings.
 
-The picture is graded: tonemapped so sunsets don't clip, a little bloom on the sun and the water, a soft vignette, and a colour grade that follows the clock and the weather. Dawn and dusk are warm, rain is grey and washed out, the snow country is blue-white, and night lifts the shadows a little blue instead of going black. The water has its own shader: clear and green in the shallows, dark in the deep, the bed seen through it and bent a little, the sun glinting off a surface that moves, and foam along the shore and around anything standing in it. At night the moon is up, and it glints on the water too. There are clouds: puffy ones drifting on the wind that thicken as the weather closes in, a grey ceiling with breaks in it when it's overcast, and thin high cloud in clear weather that takes the sunset. When the sky is partly clouded, their shadows drift over the land. Fireflies come out after dark on the low ground and drift about on their own. At night there's a proper sky: a few thousand stars that twinkle, the Milky Way, and a shooting star now and then. The sun is a thing in the sky, with a halo that swells at sunset and a soft flare when you look toward it. Mist lies on the lakes and in the hollows at dawn and burns off by mid-morning. When the sun comes out after rain there's a rainbow, with a fainter second bow outside it. And by day, flocks of birds cross the sky. When the sun is low in a wood, shafts of it come down between the trees. The grass and reeds lean in the wind, and the trees a little. Leaves turn down through the woods, seeds ride the wind over the low ground, dust hangs over the sand. The lanterns at the ruins burn at night. With the glass up, everything but the subject softens. Under the water the world goes blue-green and bends at the edges. Edges are smoothed, shadows reach further, and the corners under things are darker.
+![A night on the low ground](docs/images/night.jpg)
+
+*A night on the low ground. Stars, and fireflies under the trees.*
+
+The picture is graded: tonemapped so sunsets don't clip, a little bloom on the sun and the water, a soft vignette, and a colour grade that follows the clock and the weather. Dawn and dusk are warm, rain is grey and washed out, the snow country is blue-white, and night lifts the shadows a little blue instead of going black. The water has its own shader: clear and green in the shallows, dark in the deep, the bed seen through it and bent a little, the sun glinting off a surface that moves. At night the moon is up, and it glints on the water too. There are clouds: puffy ones drifting on the wind that thicken as the weather closes in, a grey ceiling with breaks in it when it's overcast, and thin high cloud in clear weather that takes the sunset. When the sky is partly clouded, their shadows drift over the land. Fireflies come out after dark on the low ground. At night there's a proper sky: a few thousand stars, the Milky Way, and a shooting star now and then. Mist lies on the lakes and in the hollows at dawn and burns off by mid-morning. When the sun comes out after rain there's a rainbow. By day, flocks of birds cross the sky. When the sun is low in a wood, shafts of it come down between the trees. The grass and reeds lean in the wind, and the trees a little. Leaves turn down through the woods, seeds ride the wind over the low ground, dust hangs over the sand.
+
+## The ground
+
+Every tile in the world, and every tree, bush, mushroom and stone on it, is made by the project's own scripts in Blender. The scripts are in `Tools/` and they rebuild the whole set on demand. The game started on a bought tile pack; of that pack only the colour sheet remains, and the new pieces paint their colours into its blank cells so everything still draws as one batch.
+
+![The forest floor](docs/images/forest.jpg)
+
+*The forest floor: leaf litter, roots, a fallen log, ferns round a stump, moss on a boulder.*
+
+The grounds so far: the forest floor; grass in three shades by height, with tufts, flowers, clover, molehills and lichened rocks; wet marsh with puddles and sedge; beach sand with shells and driftwood; desert sand with ripples, a cracked pan and scrub; slabs of stone for the barrens and scree for the steep faces; snow; the fungal country's dark loam; and the ash of the dead woods. Plain fill goes under any tile where the ground drops away, so a cliff is solid to its foot.
+
+![Grass on the low ground](docs/images/grass.jpg)
+
+*Grass on the low ground, with the trees planted rather than built into the tiles.*
+
+![A snowfield](docs/images/snowfield.jpg)
+
+*A snowfield.*
+
+![A reedbed](docs/images/marsh.jpg)
+
+*A reedbed.*
+
+![The stone barrens](docs/images/rock.jpg)
+
+*The stone barrens.*
 
 ## Structures
 
@@ -78,23 +112,27 @@ There are fifteen kinds of structure and each belongs to one kind of region, so 
 | Wayside Shrine, Standing Stones | Lowland |
 | Lighthouse, Shipwreck | Beaches |
 
-![The Toadstool Ring](docs/images/fungal.png)
+![The fungal country, toadstools as far as you can see](docs/images/fungal.jpg)
 
-*The Toadstool Ring.*
+*The fungal country.*
 
-They're built from a kit of parts: log walls, stone walls, timber framing, plank/thatch/slate roofs, doors, windows, round towers, battlements, piers, and a pile of props. All of it is generated geometry that takes its colours from the tile pack's palette texture, so the buildings use the same material as the ground.
+They're built from a kit of parts: log walls, stone walls, timber framing, plank/thatch/slate roofs, doors, windows, round towers, battlements, piers, and a pile of props. All of it is generated geometry, coloured from the same colour sheet as the ground.
 
 Every structure is a ruin. Each one has a decay value from 0 (intact) to 1 (about to fall over) and every part of the kit reacts to it: wall tops crumble, roofs lose sections, doors hang open or fall off, railings break, windows lose their glass, grass grows through the floor, wood goes grey. On top of that the biome adds its own wear. Vines and moss in the forest, snow on the roofs and drifted against the walls, sand piled up against the gate, char where the camp burned down. Each structure also has its own specific damage, like a hide with one stilt gone that hangs at an angle, a breached wall, a snapped mast, or a lighthouse with the light out.
 
-![The Lighthouse at dusk](docs/images/dusk.png)
+![The Lighthouse at dusk](docs/images/dusk.jpg)
 
 *The Lighthouse at dusk.*
 
 Walk up to a structure and it gets added to your map with its name, and there's something written at each one. Climb the tall ones and you survey the area around them, which fills in a chunk of the map without having to walk it. Once it's dark you can rest at any structure you've found and skip to morning.
 
-![The Buried Tower](docs/images/ruin.png)
+![The Buried Tower](docs/images/ruin.jpg)
 
 *The Buried Tower.*
+
+![The Sand Gate](docs/images/desert.jpg)
+
+*The Sand Gate, where the desert meets the woods.*
 
 ### Small finds
 
@@ -104,9 +142,9 @@ Between the ruins there are smaller things to come across: a fallen tree, a dead
 
 There are nineteen kinds. Each one sticks to its own biome and its own hours, so what you run into depends on where you are and what time it is.
 
-![A deer walking](docs/images/deer.png)
+![A stag on the meadow](docs/images/deer.jpg)
 
-*A deer walking.*
+*A stag on the meadow.*
 
 | Animal | Where | When | What it does |
 | --- | --- | --- | --- |
@@ -136,9 +174,9 @@ There are nineteen kinds. Each one sticks to its own biome and its own hours, so
 
 The legs are actual two bone legs with IK, so feet plant on the ground and stay put while the body moves over them instead of sliding, and on a hillside the uphill legs bend more than the downhill ones. Ears and tails are on springs so they lag behind a bit. Every animal gets a random size and a slightly different coat colour, and herds sometimes have young ones that stay close to the adults.
 
-![A hare gone flat](docs/images/hare.png)
+![A hare in the snow](docs/images/hare.jpg)
 
-*A hare gone flat.*
+*A hare in the snow.*
 
 They also react to each other. If one animal spooks, everything nearby spooks too a moment later, so a whole herd takes off in a wave and one marmot whistle clears the hillside. Foxes chase rabbits and wolves chase hares. Nothing ever actually gets caught, the hunter lunges at the end and misses, but the chase is fun to watch. Groups follow a leader, wolves howl back at each other, calls get answered, and birds roost at night instead of despawning.
 
@@ -182,19 +220,23 @@ The first few minutes, on a brand new save only, walk you through this with one 
 
 Press M. Chunks you've walked through are shaded by height with water and snow marked. Ground you've only seen from a high point is faded. Structures you've found show as diamonds with their names. Click to place a marker. The compass along the top shows every structure you've found plus your marker. J opens the journal, which lists everything you've found.
 
-## The forest
+![A map saved with F9](docs/images/map.png)
 
-The forests stand on ground of our own: five floor tiles built in Blender, with leaf litter, moss, roots, a fallen log with mushrooms, a stump with ferns and a mossy boulder, under oaks, beeches and birches built the same way. The open country's grass is ours too, in three shades by height, with tufts, flowers, clover, molehills, lichened rocks and fallen branches, and its trees are planted rather than built into the tiles, stopping at the treeline. The marsh is ours as well: wet mud with pools, algae, sedge, sunk logs and reed stubs, which is also what you see on the bottom of a lake. The marsh, the beaches, the deserts, the barrens and the scree are ours as well, with cacti and palms of our own; every ground tile the world lays is now its own, the snowfields, the fungal country and the dead woods included, under laden spruces and firs and bare birches of our own; so are the mushrooms, the toadstools, the boulders, the stones and the dead trees. Of the asset pack the game began with, only the palette sheet remains. They all share the pack's palette and draw in the same batch as everything else.
+*A map saved with F9: a long walk south, with the ruins found on the way.*
 
 ## Worlds and saving
 
-The game opens on a title screen: the game's name in blocks over a beach in a world of its own, drawn out to the horizon, with the sea running up the sand and back, clouds going over, crabs on the sand, a heron in the shallows, and the surf and a soft pad in your ears. It's a morning, an afternoon, a dusk or a night there depending on the time where you are. Under it, it lists the worlds you've kept with their seed, how much you've charted, what you've found and when you last played. Each world's row carries a small picture of the last thing you saw in it, where it is and how long you've played it, and the list scrolls when there are more than six. Worlds can be renamed, and a deleted one can be brought back for ten seconds. There's a Controls page where every key can be changed (click one, press the new key; Reset to defaults puts them back), Options has a switch for the title's music, and left alone for a while the menu steps aside so the beach stands on its own until you touch something. Pick one and press Play (or Enter; the arrows move the choice), or make a new one: name and seed (or leave them blank for random ones), plus world settings: weather on/off, day cycle on/off, start time, day length, animals on/off and ruins on/off. Preview seed shows you the country of the seed you've typed, behind the menu, before you commit to it. Those are fixed when the world is created. Escape in a world gives you Main menu, which saves and goes back to the title. The title also has Options: volume, view distance, mouse look speed and fullscreen, kept between runs.
+The game opens on a title screen. The name is in blocks at the top and behind the menu is a beach in a world of its own, drawn out to the horizon: the sea runs up the sand and back, clouds go over, crabs sit on the sand and a heron stands in the shallows, and you hear the surf and a soft pad. It's morning, afternoon, dusk or night there depending on the time where you are. Left alone for a while, the menu steps aside so the beach stands on its own until you touch something.
+
+The menu lists the worlds you've kept: seed, how much you've charted, what you've found, where you are, how long you've played and when. Each row has a small picture of the last thing you saw there, and the list scrolls past six. Pick one and press Play, or Enter; the arrows move the choice. Worlds can be renamed, and a deleted one can be brought back for ten seconds. New world takes a name and a seed (or leaves them random) plus world settings: weather on or off, day cycle on or off, start time, day length, animals on or off, ruins on or off. Preview seed shows you the country of the seed you've typed behind the menu before you commit to it. Those settings are fixed when the world is created. Escape in a world gives you Main menu, which saves and goes back to the title.
+
+Options has volume, view distance, mouse look speed, fullscreen and the title's music, kept between runs. Controls shows every key and lets you change it: click one, press the new key. Reset to defaults puts them back.
 
 The game saves every thirty seconds, on quit, and on the way back to the title.
 
 ## Controls
 
-These are the defaults; all of them can be changed on the title's Controls page.
+These are the defaults. All of them can be changed on the title's Controls page.
 
 - WASD to move, mouse to look, Shift to sprint, Space to jump
 - Walk into deep water to swim
@@ -204,20 +246,23 @@ These are the defaults; all of them can be changed on the title's Controls page.
 - Click the map to place a marker, right click to remove it
 - F9 saves the map as an image, F3 shows world stats
 - Escape closes whatever is open, or pauses; the pause menu has Main menu
-- F8 (editor and dev builds only) opens the dev tools. Places: teleport to the nearest region, water type, frozen lake, structure or small find, replay the intro, wipe the save. Animals: put any kind down in front of you, stage a herd, a wolf pair or a fox hunting a rabbit, tell everything nearby to walk, run, rest, spook or hunt, or jump to the nearest animal. Weather: hold the sky at clear, cloudy, light rain, rain or a downpour, let it go again, give it a minute of rain, set the hour, slow time. Title: capture the view from where you stand as a backdrop for the title screen (baked in the editor)
+- F8 (editor and dev builds only) opens the dev tools. Places: teleport to the nearest region, water type, frozen lake, structure or small find, replay the intro, wipe the save. Animals: put any kind down in front of you, stage a herd, a wolf pair or a fox hunting a rabbit, tell everything nearby to walk, run, rest, spook or hunt. Weather: hold the sky at clear, cloudy, light rain, rain or a downpour, let it go again, give it a minute of rain, set the hour, slow time.
 
 ## Running it
 
-Open the project in Unity 6000.2.13f1 and load `Assets/Scenes/SampleScene`. World Seed on the WorldCreator object is 0 by default, which gives a random world every run. View Radius is the draw distance in chunks. The screenshots here are at the max of 8; if it runs badly, turn that down first.
+Open the project in Unity 6000.2.13f1 and press Play in `Assets/Scenes/SampleScene`. The game opens on the title, in the editor as in a build. View distance is set in Options; the screenshots here are at the maximum of 8 chunks, and if it runs badly, turn that down first.
+
+The pictures in this file were taken from a development build by a script, with the interface hidden. The four animal pictures that don't show much ground are older than the rest.
 
 ## Code layout
 
 - `World/` - the grid, terrain function, chunks and collision, water, snow, regions, planting, streaming
 - `Landmarks/` - structure placement, the building kit, weathering, inscriptions
 - `Player/` - the character model and animation, follow camera, swimming, underwater view
-- `Interface/` - map, journal, sketchbook, compass, notices, intro, pause menu, worlds screen
+- `Interface/` - map, journal, sketchbook, compass, notices, intro, pause menu, title
 - `Wildlife/` - what lives where, how animals are built and move, their behaviour, the field guide
-- `Atmosphere/` - day cycle, weather, wind, birdsong, music, rain, stars, fireflies
-- `Systems/` - saving, the worlds library, dev tools
+- `Atmosphere/` - day cycle, weather, wind, birdsong, rain, stars, fireflies, clouds
+- `Systems/` - saving, the worlds library, keys, dev tools
+- `Tools/` - the Blender scripts that build the tiles, trees and plants, and the probes that check the game
 
-For how the code is organised, what has to stay true, and how to build and screenshot the game from the command line without opening the editor, see [docs/HANDBOOK.md](docs/HANDBOOK.md). The scripts it mentions are in `Tools/`.
+For how the code is organised, what has to stay true, and how to build and screenshot the game from the command line without opening the editor, see [docs/HANDBOOK.md](docs/HANDBOOK.md).

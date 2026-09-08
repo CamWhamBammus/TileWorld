@@ -74,6 +74,13 @@ A probe that starts at the title is looking at the title's own world (seed
 24, radius 8, the player switched off); enter a world first for anything
 that needs the player.
 
+The README's pictures come from `Tools/probe/Readme.cs.txt`, which shoots the
+title, then each structure framed the way the gallery frames it, then a stand
+of every country and the animals, with the interface hidden; `Readme2.cs.txt`
+re-shoots the ones that came out badly (an animal lost in the sun, the camera
+inside a cactus) from a different stand. The good frames are saved as JPEG,
+1400 wide, into `docs/images/`. Shoot again when the ground changes.
+
 The editor's console can show what a build's log does not. `Assets/Editor/PlayCheck.cs`
 plays the game in the editor from the command line: copy a probe to
 `Assets/Scripts/_Probe.cs` (as `run-probe.sh` does), run
