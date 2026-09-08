@@ -131,6 +131,9 @@ public class Undergrowth : MonoBehaviour
         var saguaros = Take(flora.Saguaros ?? new Flora.Sprout[0], 3.20f, 4.60f);
         var smallCacti = Take(flora.SmallCacti ?? new Flora.Sprout[0], 0.70f, 1.25f);
         var beachPalms = Take(flora.BeachPalms ?? new Flora.Sprout[0], 4.20f, 7.00f);
+        var snowConifers = Take(flora.SnowConifers ?? new Flora.Sprout[0], 5.40f, 7.60f);
+        var snowBirches = Take(flora.SnowBirches ?? new Flora.Sprout[0], 4.60f, 5.60f);
+        var snowSaplings = Take(flora.SnowSaplings ?? new Flora.Sprout[0], 2.20f, 3.00f);
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
@@ -162,7 +165,9 @@ public class Undergrowth : MonoBehaviour
         stone = new[] { With(boulders, 0.34f) };
         dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
-        snow = new[] { With(snowPines, 0.055f), With(whiteFirs, 0.02f), With(boulders, 0.05f) };
+        // the snowfields stand on their own snow now, which carries its own rocks, under their own trees;
+        // the code-grown snow pines are kept for variety
+        snow = new[] { With(snowConifers, 0.055f), With(snowBirches, 0.014f), With(snowSaplings, 0.02f), With(snowPines, 0.02f), With(boulders, 0.015f) };
         // Thicker than it was, and with the pack's own trees standing in it
         // rather than only whatever the tiles happen to carry.
         // the forest stands mostly on its own trees now, over a floor that carries its own

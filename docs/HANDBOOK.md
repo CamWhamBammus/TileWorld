@@ -737,6 +737,23 @@ library unused. With that every ground tile the world lays is our own.
 of nine chunks the stone, 4.0 ms) and in the hills, where the scree shows
 only on the faces steep enough for it.
 
+The snow, and its trees: `Tools/snow_tiles.py` builds five snow tiles --
+deep snow with drifts, snow over a rock showing through, a frozen puddle
+with a laden shrub, two shrubs and a frosted stone, tracks past a buried
+log; 270 to 1430 vertices -- and `Tools/snow_trees.py` two laden spruces,
+a fir, a bare birch with snow along its branches, and a young spruce.
+`Assets/Editor/SnowSet.cs` (`SnowSet.Batch`) makes the tiles definitions 80
+to 84 and puts the trees into the flora as `SnowConifers`, `SnowBirches`
+and `SnowSaplings`. `Chunk` lays a snow tile wherever `SnowCover.IsSnowy`
+says -- the snow character, and any summit above the snowline -- so the
+cap the snow cover used to lay over the ground is not laid any more
+(`SnowCover.OwnSnowTiles`; `BuildMesh` returns null); the drifts on the
+ice are made elsewhere with the cover's material and stay. The snow table
+plants our trees at about the old rate, the code-grown snow pines kept for
+variety. `Tools/probe/Snow.cs.txt` stands in a snowfield (seed 5,
+Blackblanket): all of nine chunks the snow, 1,568 of our trees in reach,
+3.4 ms a frame, the faces facing out.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride

@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 16;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree
+    private const int Categories = 17;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -17,6 +17,7 @@ public class Chunk
     // and the other two are used for ground that should be bare anyway.
     private static readonly int[] ShadeByHeight = { DarkGrassCategory, LightGrassCategory, PaleGrassCategory };   // dark, light, pale
 
+    private const int SnowCategory = 16;        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
     private const int BareSteepCategory = 15;  // our scree: broken rock and gravel on the steep faces (the pack's Big Grass, 3, is left unused)
     private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
     private const int SandCategory = 5;        // the sand update, for the deserts
@@ -154,13 +155,17 @@ public class Chunk
                 // in a wood has grass to its edge, not a beach.
                 category = BeachCategory;
             }
+            else if (SnowCover.IsSnowy(gx, gz, worldSeed))
+            {
+                category = SnowCategory;            // the snowfields, and any summit above the snowline
+            }
             else if (desert)
             {
                 // sand over the whole of it, steep faces and all: scree in the
                 // middle of a desert reads as a patch of somewhere else
                 category = DesertCategory;
             }
-            else if (stone || underSnow)
+            else if (stone)
             {
                 category = StoneCategory;
             }

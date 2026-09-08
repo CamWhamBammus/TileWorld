@@ -10,6 +10,9 @@ using UnityEngine.Rendering;
 /// </summary>
 public static class SnowCover
 {
+    /// <summary>The snow is tiles of its own, and the cap over the ground is not laid.</summary>
+    public const bool OwnSnowTiles = true;
+
     /// <summary>Fraction of full relief where snow starts to appear.</summary>
     public const float SnowlineFraction = 0.62f;
 
@@ -70,6 +73,11 @@ public static class SnowCover
 
     public static Mesh BuildMesh(Vector2Int chunkIndex, int worldSeed)
     {
+        // The ground carries its own snow now: wherever IsSnowy says, the chunk
+        // lays a snow tile, so there is no cap to lay over it. The drifts on
+        // the ice are made elsewhere with this cover's material.
+        if (OwnSnowTiles) return null;
+
         int originX = chunkIndex.x * WorldGrid.TilesPerChunk;
         int originZ = chunkIndex.y * WorldGrid.TilesPerChunk;
 

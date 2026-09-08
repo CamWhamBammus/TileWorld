@@ -80,5 +80,10 @@ public class Flora : ScriptableObject
     /// <summary>And the shore's palms.</summary>
     public Sprout[] BeachPalms;
 
+    /// <summary>The snowfields' own trees: laden spruces and a fir, a bare birch with snow on it, and a young spruce.</summary>
+    public Sprout[] SnowConifers;
+    public Sprout[] SnowBirches;
+    public Sprout[] SnowSaplings;
+
     public Material Paint;
 }
