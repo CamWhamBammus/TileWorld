@@ -200,7 +200,7 @@ public class ChunkManager : MonoBehaviour
         {
             // the title: a world of its own, drawn as far as the game can
             // draw, and nothing filed for it
-            worldSeed = TitleMenu.Seed;
+            worldSeed = TitleMenu.BackdropSeed;
             viewRadius = 8;
         }
         else if (WorldLibrary.HasCurrent)

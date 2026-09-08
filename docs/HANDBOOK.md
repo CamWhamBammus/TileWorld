@@ -697,13 +697,52 @@ move the choice. The build's version sits small in the corner. Play, New
 world and Quit all go out through the curtain, picture and sound together,
 before the scene changes.
 
+Ten more. The surf's sound is in step with the wave: `SurfSound` keeps
+the strand tile it found, and every ten seconds puts the loop where the
+wave is (`Wanted`: the loop's swell peaks 4.2 s in and comes round every
+14 s, the wave reaches the sand about 2.06 s into its cycle, so the loop's
+time is `Surf.Now + phase * 14 - 2.06 + 4.2` mod 28), so the swell breaks
+as the water runs up. By the sea the birds are mostly gulls (`BirdSong.
+BuildGull`, a cry that climbs and falls with four harmonics, two thirds of
+the calls in a Water region). Somebody walked into the sea: `TitleMenu.
+Prints` lays twelve boot prints down the sand from beside the camera to the
+water, again every two minutes since they last 150 s. Each world's row has
+a picture: `SaveCoordinator.Picture` takes the screen at the end of a frame
+six seconds after arriving and then with each save, never with a page or
+the pause over the view (it tries again in five seconds until it gets one),
+scales it to 256 by 144 and writes it beside the save
+(`WorldLibrary.PicturePath`); the title reads it once per world and puts it
+at the row's end, 100 by 56, and deleting a world deletes its picture. The
+list moves when there are more than six (`offset`, `Shown`): the arrows
+carry the choice past the ends, the wheel moves the window, and small
+lines say how many are above and below. Every button ticks as the pointer
+comes onto it and tocks when pressed (`MenuSounds`, a few milliseconds of
+shaped noise on one shared source). The paper comes up from a little below
+and settles as the curtain lifts (`CardIn`, a `CanvasGroup`), and the heron
+takes off when you leave (`Direct("spook")`). The new world page has
+Preview seed: it keeps the page's fields in a static, sets
+`TitleMenu.PreviewSeed`, goes out through the curtain and reloads the title,
+whose backdrop is then built from that seed (`BackdropSeed`, which
+`ChunkManager.Start` reads) with the new page back as it was and a line
+saying which seed is behind you; a seed with no beach within seventy tiles
+is looked at from a little above its origin instead. Delete asks by name
+("Delete the Thin Ro...?"), and Escape on the list warns once and quits on
+a second press within two and a half seconds. And the sky is never quite
+the same: the forced overcast drifts by 0.15 either side of the hour's own
+figure on a 75-second sine, so a long sit sees the cloud thicken and thin.
+
 `Tools/probe/TitleLive.cs.txt` reads the curtain, the volume and the fallen
 name at half a second and again later, times the first wave over the
 strand, checks what is and is not running under the title, lists what
 lives within thirty metres, works the keys and reads the Play button, reads
 the logo's picture back and says how much of it the word fills, photographs
-all four hours with the card hidden, enters a world through the curtain,
-comes back and checks again (16.5 ms a frame at radius 8);
+all four hours with the card hidden, reads the surf loop against the wave
+and counts gulls, prints and menu sounds, presses delete and Escape once
+each and reads what they say, makes seven worlds for a moment and walks
+the choice to the bottom of the list, previews a seed and checks the
+backdrop and the page after the reload, enters a world through the
+curtain, closes the arrival page so a picture gets taken, comes back and
+finds it in the row (16.5 ms a frame at radius 8);
 `Tools/probe/Title.cs.txt` walks the worlds pages. The old panoramas --
 cubemaps baked from six faces, 34 MB of them -- are gone with their capture
 tool, the dev tools' Title page, `MakePanorama`, `MakeTitleScene`,

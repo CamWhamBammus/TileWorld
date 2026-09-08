@@ -35,6 +35,34 @@ public class SaveCoordinator : MonoBehaviour
 
         player = world.PlayerTransform;
         nextSave = Time.time + saveEverySeconds;
+        nextPicture = Time.time + 6f;
+    }
+
+    private float nextPicture;
+
+    /// <summary>How many pictures have been taken, for the probes.</summary>
+    public static int Pictures { get; private set; }
+
+    /// <summary>
+    /// A small picture of what the player is looking at, kept beside the
+    /// save for the title's list: soon after arriving, then with each save,
+    /// and never with a page or the pause over the view.
+    /// </summary>
+    private System.Collections.IEnumerator Picture()
+    {
+        yield return new WaitForEndOfFrame();
+        if (WorldLibrary.Current == null || PauseMenu.Paused || ScreenState.Current != ScreenState.Screen.None || TitleMenu.IsUp) yield break;
+        var shot = ScreenCapture.CaptureScreenshotAsTexture();
+        if (shot == null) yield break;
+        var small = RenderTexture.GetTemporary(256, 144, 0);
+        Graphics.Blit(shot, small);
+        var was = RenderTexture.active; RenderTexture.active = small;
+        var tex = new Texture2D(256, 144, TextureFormat.RGB24, false);
+        tex.ReadPixels(new Rect(0, 0, 256, 144), 0, 0); tex.Apply();
+        RenderTexture.active = was; RenderTexture.ReleaseTemporary(small);
+        try { System.IO.File.WriteAllBytes(WorldLibrary.PicturePath(WorldLibrary.Current.id), tex.EncodeToPNG()); Pictures++; }
+        catch (System.Exception e) { Debug.LogWarning("[Save] Could not keep the world's picture: " + e.Message); }
+        Destroy(shot); Destroy(tex);
     }
 
     private void Update()
@@ -45,6 +73,15 @@ public class SaveCoordinator : MonoBehaviour
         {
             restored = true;
             Restore();
+        }
+
+        if (Time.time >= nextPicture)
+        {
+            // not while a page or the pause is over the view: try again soon, and once one is
+            // taken, one with each save
+            bool clear = !PauseMenu.Paused && ScreenState.Current == ScreenState.Screen.None;
+            nextPicture = Time.time + (clear ? saveEverySeconds : 5f);
+            if (clear) StartCoroutine(Picture());
         }
 
         if (Time.time >= nextSave)

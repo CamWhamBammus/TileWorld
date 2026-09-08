@@ -16,8 +16,11 @@ public class BirdSong : MonoBehaviour
     private ChunkManager world;
     private Transform player;
     private AudioSource source;
-    private AudioClip[] calls;
+    private AudioClip[] calls, gulls;
     private float next;
+
+    /// <summary>How many gulls have called, for the probes.</summary>
+    public static int Gulls { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -47,6 +50,8 @@ public class BirdSong : MonoBehaviour
 
         calls = new AudioClip[5];
         for (int i = 0; i < calls.Length; i++) calls[i] = BuildCall(i);
+        gulls = new AudioClip[3];
+        for (int i = 0; i < gulls.Length; i++) gulls[i] = BuildGull(i);
 
         next = Time.time + Random.Range(gapSeconds.x, gapSeconds.y);
     }
@@ -92,6 +97,36 @@ public class BirdSong : MonoBehaviour
         return clip;
     }
 
+    /// <summary>A gull: a cry that climbs and falls, harsh with harmonics, sometimes twice.</summary>
+    public static AudioClip BuildGull(int variant)
+    {
+        const int rate = 44100;
+        var rng = new System.Random(2000 + variant);
+        int cries = 1 + rng.Next(2);
+        float length = 0.38f + (float)rng.NextDouble() * 0.2f;
+        int per = Mathf.RoundToInt(rate * length), gap = Mathf.RoundToInt(rate * 0.16f);
+        var data = new float[cries * (per + gap)];
+        for (int c = 0; c < cries; c++)
+        {
+            float top = 1500f + (float)rng.NextDouble() * 500f;
+            float phase = 0f; int offset = c * (per + gap);
+            for (int i = 0; i < per; i++)
+            {
+                float t = i / (float)per;
+                // up quickly to the top, then down and away
+                float frequency = t < 0.25f ? Mathf.Lerp(top * 0.62f, top, Mathf.SmoothStep(0f, 1f, t / 0.25f)) : Mathf.Lerp(top, top * 0.55f, (t - 0.25f) / 0.75f);
+                frequency *= 1f + 0.02f * Mathf.Sin(t * 70f);
+                phase += 2f * Mathf.PI * frequency / rate;
+                float envelope = Mathf.Sin(Mathf.Pow(t, 0.7f) * Mathf.PI);
+                float s = Mathf.Sin(phase) + 0.55f * Mathf.Sin(phase * 2f) + 0.3f * Mathf.Sin(phase * 3f) + 0.12f * Mathf.Sin(phase * 4f);
+                data[offset + i] = s * envelope * 0.28f;
+            }
+        }
+        var clip = AudioClip.Create("Gull" + variant, data.Length, 1, rate, false);
+        clip.SetData(data, 0);
+        return clip;
+    }
+
     private bool onTitle;
 
     private void Update()
@@ -122,6 +157,15 @@ public class BirdSong : MonoBehaviour
         int tileZ = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
 
         if (WorldHeight.HeightAt(tileX, tileZ, seed) / WorldHeight.MaxRelief > highestRelief) return;
+
+        // by the sea it is mostly gulls, crying over the water
+        if (Regions.CharacterAtTile(tileX, tileZ, seed, false) == Regions.Character.Water && Random.value < 0.65f)
+        {
+            source.pitch = Random.Range(0.9f, 1.12f);
+            source.PlayOneShot(gulls[Random.Range(0, gulls.Length)], volume * Random.Range(0.7f, 1f));
+            Gulls++;
+            return;
+        }
 
         source.pitch = Random.Range(0.85f, 1.2f);
         source.PlayOneShot(calls[Random.Range(0, calls.Length)], volume * Random.Range(0.6f, 1f));

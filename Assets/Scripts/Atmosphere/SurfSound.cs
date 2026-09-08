@@ -13,6 +13,20 @@ public class SurfSound : MonoBehaviour
     private AudioSource source;
     private ChunkManager world;
     private float next, nearest = 999f;
+    private Vector2Int strand;
+    private float nextSync;
+
+    /// <summary>Where the loop is and where it should be, for the probes.</summary>
+    public float ClipTime => source != null ? source.time : 0f;
+    public float WantedTime => Wanted();
+
+    // The loop's first swell peaks 4.2 s in and comes round every 14 s; the wave at the
+    // nearest strand reaches the sand about 2.06 s into its own 14 s cycle. Put the one on the other.
+    private float Wanted()
+    {
+        float phase = Mathf.PerlinNoise(strand.x * 0.018f + (world != null ? world.WorldSeed : 0) * 0.01f, strand.y * 0.018f);
+        return Mathf.Repeat(Surf.Now + phase * 14f - 2.06f + 4.2f, 28f);
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
@@ -48,15 +62,24 @@ public class SurfSound : MonoBehaviour
             for (int dz = -r; dz <= r; dz += 2)
             {
                 if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
-                if (Surf.IsStrand(px + dx, pz + dz, world.WorldSeed)) { nearest = r * WorldGrid.TileSize; break; }
+                if (Surf.IsStrand(px + dx, pz + dz, world.WorldSeed)) { nearest = r * WorldGrid.TileSize; strand = new Vector2Int(px + dx, pz + dz); break; }
             }
         }
 
         float want = nearest > 900f ? 0f : 0.5f * Mathf.Clamp01(1f - nearest / 70f);
         Level = Mathf.Lerp(Level, want, 1f - Mathf.Exp(-1.5f * Time.deltaTime));
         source.volume = Level;
-        if (Level > 0.01f && !source.isPlaying) source.Play();
+        if (Level > 0.01f && !source.isPlaying) { source.Play(); source.time = Wanted(); nextSync = Time.time + 10f; }
         else if (Level <= 0.01f && source.isPlaying) source.Pause();
+
+        // kept in step with the wave: the swell breaks as the water runs up the sand
+        if (source.isPlaying && Time.time > nextSync)
+        {
+            nextSync = Time.time + 10f;
+            float wanted = Wanted();
+            float off = Mathf.Abs(Mathf.DeltaAngle(source.time / 28f * 360f, wanted / 28f * 360f)) / 360f * 28f;
+            if (off > 0.35f) source.time = wanted;
+        }
     }
 
     /// <summary>Surf: two swells a little out of step, noise shaped low and high, in fast and out slow.</summary>

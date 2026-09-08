@@ -91,6 +91,36 @@ public class _Probe : MonoBehaviour
         Mark("KEYS: play said '" + before + "', after down '" + play.text + "'");
         typeof(TitleMenu).GetMethod("Choose", flags).Invoke(title, new object[] { -1 });
 
+        // the ten more
+        var surf = FindFirstObjectByType<SurfSound>();
+        var cardGroup = (CanvasGroup)typeof(TitleMenu).GetField("cardGroup", flags).GetValue(title);
+        float overcastThen = TimeOfDay.Instance.Overcast;
+        Mark("MORE: surf loop at " + surf.ClipTime.ToString("F1") + " s, wanted " + surf.WantedTime.ToString("F1") + " | gulls so far " + BirdSong.Gulls + " | boot prints " + Tracks.Boots + " | card alpha " + cardGroup.alpha.ToString("F2") + " | menu sounds " + MenuSounds.Played);
+        MenuSounds.Tick(); MenuSounds.Tock();
+        var forget = (TMPro.TMP_Text)typeof(TitleMenu).GetField("forgetLabel", flags).GetValue(title);
+        typeof(TitleMenu).GetMethod("Forget", flags).Invoke(title, null);
+        string asks = forget.text;
+        typeof(TitleMenu).GetField("pendingForget", flags).SetValue(title, null);
+        typeof(TitleMenu).GetMethod("Refresh", flags).Invoke(title, null);
+        typeof(TitleMenu).GetMethod("Escape", flags).Invoke(title, null);
+        var escapeHint = (TMPro.TMP_Text)typeof(TitleMenu).GetField("escapeHint", flags).GetValue(title);
+        Mark("MORE: delete asks '" + asks + "' | escape hint showing " + escapeHint.gameObject.activeSelf + " | menu sounds now " + MenuSounds.Played);
+        yield return new WaitForSecondsRealtime(3f);
+
+        // a long list: seven more worlds for a moment, the choice walked to the bottom
+        var extras = new System.Collections.Generic.List<WorldSave>();
+        for (int i = 0; i < 7; i++) extras.Add(WorldLibrary.Create("Probe list " + i, 100 + i));
+        typeof(TitleMenu).GetMethod("Refresh", flags).Invoke(title, null);
+        int offsetBefore = title.Offset;
+        for (int i = 0; i < 9; i++) typeof(TitleMenu).GetMethod("Choose", flags).Invoke(title, new object[] { 1 });
+        bool above = GameObject.Find("Above") != null;
+        Mark("LIST: " + WorldLibrary.All().Count + " worlds, offset " + offsetBefore + " then " + title.Offset + " after nine downs, 'more above' shown " + above + ", play says '" + play.text + "'");
+        yield return Shot("list");
+        foreach (var w in extras) WorldLibrary.Delete(w.id);
+        typeof(TitleMenu).GetMethod("Refresh", flags).Invoke(title, null);
+        yield return new WaitForSecondsRealtime(4f);
+        Mark("MORE: overcast " + overcastThen.ToString("F3") + " then " + TimeOfDay.Instance.Overcast.ToString("F3") + " seven seconds on | gulls " + BirdSong.Gulls);
+
         float frames = 0f, seconds = 0f;
         for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
         Mark("TITLE frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
@@ -126,17 +156,34 @@ public class _Probe : MonoBehaviour
         yield return new WaitForSecondsRealtime(3f);
         yield return Shot("c");
 
-        // in, and back out
+        // a seed previewed from the new page: the backdrop comes back as that seed, the page as it was
+        typeof(TitleMenu).GetMethod("ShowNew", flags).Invoke(title, null);
+        ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("seedField", flags).GetValue(title)).text = "5";
+        ((TMPro.TMP_InputField)typeof(TitleMenu).GetField("nameField", flags).GetValue(title)).text = "Probe title";
+        typeof(TitleMenu).GetMethod("Preview", flags).Invoke(title, null);
+        yield return new WaitForSecondsRealtime(15f);
+        title = FindFirstObjectByType<TitleMenu>();
+        var newPage = (GameObject)typeof(TitleMenu).GetField("newPage", flags).GetValue(title);
+        var seedField = (TMPro.TMP_InputField)typeof(TitleMenu).GetField("seedField", flags).GetValue(title);
+        Mark("PREVIEW: backdrop seed " + FindFirstObjectByType<ChunkManager>().WorldSeed + " | new page up " + newPage.activeSelf + " | seed field '" + seedField.text + "' | " + State());
+        yield return Shot("preview");
+
+        // in, and back out, with a picture taken in the world
+        typeof(TitleMenu).GetMethod("ShowWorlds", flags).Invoke(title, null);
         var save = WorldLibrary.Create("Probe title", 5, true, true, 0.5f, 20f, true, true);
         typeof(TitleMenu).GetMethod("Enter", flags).Invoke(title, new object[] { save });
         yield return new WaitForSecondsRealtime(0.4f);
         Mark("LEAVING: " + Early(title));
+        yield return new WaitForSecondsRealtime(4f);
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
         yield return new WaitForSecondsRealtime(9f);
-        Mark("IN: " + State());
+        Mark("IN: " + State() + " | pictures " + SaveCoordinator.Pictures + " | file " + File.Exists(WorldLibrary.PicturePath(save.id)));
         yield return Shot("in");
         WorldLibrary.LeaveToMenu();
         yield return new WaitForSecondsRealtime(14f);
-        Mark("BACK: " + State());
+        var row = GameObject.Find("World Probe title");
+        Mark("BACK: " + State() + " | row picture " + (row != null && row.transform.Find("Picture") != null));
         yield return Shot("back");
         WorldLibrary.Delete(save.id);
         Mark("done");

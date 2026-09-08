@@ -81,6 +81,9 @@ public static class WorldLibrary
 
     private static string PathFor(string id) => System.IO.Path.Combine(Root, "world-" + id + ".json");
 
+    /// <summary>Where a world's picture is kept: the last thing seen in it, small, for the title's list.</summary>
+    public static string PicturePath(string id) => System.IO.Path.Combine(Root, "world-" + id + ".png");
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Boot()
     {
@@ -241,6 +244,7 @@ public static class WorldLibrary
         {
             string path = PathFor(id);
             if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+            if (System.IO.File.Exists(PicturePath(id))) System.IO.File.Delete(PicturePath(id));
 
             if (Current != null && Current.id == id)
             {
