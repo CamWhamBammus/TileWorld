@@ -676,6 +676,18 @@ keep. `Tools/probe/Grass.cs.txt` is the forest probe pointed at a
 lowland: 63% of nine chunks our grass and the rest the marsh flats,
 3,900 plants in reach, 5.0 ms a frame, the faces all facing out.
 
+The marsh followed: `Tools/marsh_tiles.py`, five tiles of wet mud -- a
+pool with sedge, algae and stones, a half-sunk log, cracked mud with reed
+stubs, two pools -- of 385 to 530 vertices, twelve more colours,
+`Assets/Editor/MarshSet.cs` (`MarshSet.Batch`) making them definitions 55
+to 59. `Chunk.MarshCategory` simply points at the new category now, so
+everything the marsh was used for -- the low flats, the sodden woods and
+reedbeds, the beds of lakes and ponds seen through the water -- is on it,
+and the pack's Very Dark band stays in the library unused. The mud was
+warmed once after a look in the game, like the forest floor.
+`Tools/probe/Marsh.cs.txt` is the grass probe pointed at a reedbed: all
+of nine chunks the marsh, 3.7 ms a frame, the faces facing out.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride

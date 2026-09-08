@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 11;          // five of the pack's grass bands, sand, stone, the forest floor, and three shades of our own grass
+    private const int Categories = 12;          // the pack's five grass bands, sand, stone, the forest floor, three shades of our grass, and our marsh
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -18,7 +18,7 @@ public class Chunk
     private static readonly int[] ShadeByHeight = { DarkGrassCategory, LightGrassCategory, PaleGrassCategory };   // dark, light, pale
 
     private const int BareSteepCategory = 3;   // Big Grass, no trees: steep faces
-    private const int MarshCategory = 4;       // Very Dark, no trees: low flat ground
+    private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
     private const int SandCategory = 5;        // the sand update, for the deserts
     private const int StoneCategory = 6;       // the pack's stone tiles, for the barrens
     private const int ForestCategory = 7;       // the forest floor, built for it: litter, roots, logs, ferns, moss
