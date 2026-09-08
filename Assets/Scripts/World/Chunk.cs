@@ -8,20 +8,23 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 8;           // five grass bands, then sand, stone, and the forest floor
+    private const int Categories = 11;          // five of the pack's grass bands, sand, stone, the forest floor, and three shades of our own grass
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
     // cannot simply be spread across all five: two of the bands would come out
     // bare whatever the altitude. The gradient runs through the treed ones,
     // and the other two are used for ground that should be bare anyway.
-    private static readonly int[] ShadeByHeight = { 2, 1, 0 };   // dark, light, pale
+    private static readonly int[] ShadeByHeight = { DarkGrassCategory, LightGrassCategory, PaleGrassCategory };   // dark, light, pale
 
     private const int BareSteepCategory = 3;   // Big Grass, no trees: steep faces
     private const int MarshCategory = 4;       // Very Dark, no trees: low flat ground
     private const int SandCategory = 5;        // the sand update, for the deserts
     private const int StoneCategory = 6;       // the pack's stone tiles, for the barrens
     private const int ForestCategory = 7;       // the forest floor, built for it: litter, roots, logs, ferns, moss
+    private const int PaleGrassCategory = 8;    // our own meadows, by height: pale on the high ground,
+    private const int LightGrassCategory = 9;   // light between,
+    private const int DarkGrassCategory = 10;   // dark in the low. The pack's bands 0 to 2 are left in the library, unused.
 
     // These four tiles carry a tree. Above the treeline they are swapped out,
     // which is what makes a summit read as a summit.

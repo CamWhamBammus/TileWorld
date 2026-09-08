@@ -163,7 +163,9 @@ public class Undergrowth : MonoBehaviour
         // mushrooms and stones; the pack's trees and the pines are kept for variety
         forest = new[] { With(forestTrees, 0.19f), With(pines, 0.02f), With(firs, 0.02f), With(trees, 0.02f),
                          With(mushrooms, 0.015f), With(boulders, 0.03f) };
-        ordinary = new[] { With(mushrooms, 0.006f), With(boulders, 0.012f) };
+        // the open country's trees stood on the pack's grass tiles, four of every twenty-five; now
+        // that the grass is our own and carries none, they are planted here at about that rate
+        ordinary = new[] { With(forestTrees, 0.10f), With(trees, 0.035f), With(firs, 0.02f), With(mushrooms, 0.006f), With(boulders, 0.012f) };
 
         flora.Paint.enableInstancing = true;
 
@@ -376,6 +378,9 @@ public class Undergrowth : MonoBehaviour
 
             // only stones lie on a shore
             if (beach && sort.High > 1.5f) continue;
+
+            // above the treeline nothing tall, which is what makes a summit read as a summit
+            if (sort.High > 2.2f && WorldHeight.HeightAt(gx, gz, seed) / WorldHeight.MaxRelief > 0.72f) continue;
 
             float tall = Mathf.Lerp(sort.Low, sort.High, ((roll >> 17) % 100) / 100f);
             float size = tall / sprout.Size;

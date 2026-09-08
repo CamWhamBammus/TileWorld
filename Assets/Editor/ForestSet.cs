@@ -116,7 +116,7 @@ public static class ForestSet
     }
 
     /// <summary>A model as the game needs it: readable, with no materials of its own and nothing animated.</summary>
-    private static void Settle(string path)
+    public static void Settle(string path)
     {
         var importer = AssetImporter.GetAtPath(path) as ModelImporter;
         if (importer == null) { Debug.LogError("FOREST nothing imported at " + path); return; }
@@ -128,7 +128,7 @@ public static class ForestSet
         if (changed) importer.SaveAndReimport();
     }
 
-    private static Mesh FirstMesh(string path)
+    public static Mesh FirstMesh(string path)
     {
         foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path)) if (o is Mesh m) return m;
         return null;

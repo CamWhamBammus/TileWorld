@@ -184,7 +184,7 @@ Press M. Chunks you've walked through are shaded by height with water and snow m
 
 ## The forest
 
-The forests stand on ground of our own: five floor tiles built in Blender, with leaf litter, moss, roots, a fallen log with mushrooms, a stump with ferns and a mossy boulder, under oaks, beeches and birches built the same way. They share the pack's palette and draw in the same batch as everything else.
+The forests stand on ground of our own: five floor tiles built in Blender, with leaf litter, moss, roots, a fallen log with mushrooms, a stump with ferns and a mossy boulder, under oaks, beeches and birches built the same way. The open country's grass is ours too, in three shades by height, with tufts, flowers, clover, molehills, lichened rocks and fallen branches, and its trees are planted rather than built into the tiles, stopping at the treeline. They all share the pack's palette and draw in the same batch as everything else.
 
 ## Worlds and saving
 

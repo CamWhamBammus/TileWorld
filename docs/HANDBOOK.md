@@ -658,6 +658,24 @@ counts the floor among the tiles round the player (92% of nine chunks,
 the rest marsh in the low flats), counts the trees, times a frame (5.7 ms)
 and photographs it at a clear noon.
 
+The grass came next, the same way: `Tools/grass_tiles.py` builds five
+meadows -- tufts and flowers, clover and a molehill, a lichened rock, two
+drifts of flowers, a fallen branch -- in each of the three shades the
+country lays by height, fifteen meshes of 450 to 670 vertices, their
+nineteen colours in more free cells of the palette (the allocator in the
+palette step finds free cells itself now, and `Tools/palette.json` is the
+record). `Assets/Editor/GrassSet.cs` (`GrassSet.Batch`) makes them
+definitions 40 to 54: pale 40 to 44, light 45 to 49, dark 50 to 54, and
+`Chunk.ShadeByHeight` points at those three categories instead of the
+pack's; the pack's five grass bands stay in the library unused. The pack's
+grass carried the open country's trees, four tiles in twenty-five, so the
+undergrowth's `ordinary` table plants them now -- our trees at 10%, the
+pack's at 3.5%, firs at 2% -- and nothing taller than a bush is planted
+above 0.72 of full relief, which is the treeline the tile swap used to
+keep. `Tools/probe/Grass.cs.txt` is the forest probe pointed at a
+lowland: 63% of nine chunks our grass and the rest the marsh flats,
+3,900 plants in reach, 5.0 ms a frame, the faces all facing out.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride
