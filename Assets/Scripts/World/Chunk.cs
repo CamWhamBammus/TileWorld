@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 7;           // five grass bands, then sand, then stone
+    private const int Categories = 8;           // five grass bands, then sand, stone, and the forest floor
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -21,6 +21,7 @@ public class Chunk
     private const int MarshCategory = 4;       // Very Dark, no trees: low flat ground
     private const int SandCategory = 5;        // the sand update, for the deserts
     private const int StoneCategory = 6;       // the pack's stone tiles, for the barrens
+    private const int ForestCategory = 7;       // the forest floor, built for it: litter, roots, logs, ferns, moss
 
     // These four tiles carry a tree. Above the treeline they are swapped out,
     // which is what makes a summit read as a summit.
@@ -169,6 +170,10 @@ public class Chunk
             else if (bare < MarshFraction)
             {
                 category = MarshCategory;           // dark ground in the low flats
+            }
+            else if (character == Regions.Character.Forest)
+            {
+                category = ForestCategory;          // the forest's own floor under its own trees
             }
 
             int variant = Hash2D(gx, gz, worldSeed) % VariantsPerCategory;

@@ -1,0 +1,45 @@
+// A probe: every tile in the library, its id, name, mesh bounds and vertex count, from the title's world.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(4f);
+        var world = FindFirstObjectByType<ChunkManager>();
+        TileLibrary library = null;
+        foreach (var f in typeof(ChunkManager).GetFields(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance))
+            if (f.FieldType == typeof(TileLibrary)) library = (TileLibrary)f.GetValue(world);
+        if (library == null) { Mark("TILES: no library"); yield break; }
+        foreach (int id in library.AllIds())
+        {
+            if (!library.TryGet(id, out var def)) continue;
+            var mesh = def.MeshGetter();
+            if (mesh == null) { Mark("TILE " + id + " " + def.name + ": no mesh"); continue; }
+            var b = mesh.bounds;
+            Mark("TILE " + id.ToString("D2") + " " + def.name + " (" + (def.prefab != null ? def.prefab.name : "-") + "): verts " + mesh.vertexCount + " subs " + mesh.subMeshCount
+                 + " | x " + b.min.x.ToString("F2") + ".." + b.max.x.ToString("F2") + " y " + b.min.y.ToString("F2") + ".." + b.max.y.ToString("F2") + " z " + b.min.z.ToString("F2") + ".." + b.max.z.ToString("F2")
+                 + " | material " + (def.MaterialGetter() != null ? def.MaterialGetter().name + "/" + def.MaterialGetter().shader.name : "-"));
+        }
+        Mark("done");
+    }
+}

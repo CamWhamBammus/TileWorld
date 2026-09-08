@@ -606,6 +606,48 @@ builds pines, snow pines and reeds procedurally.
 plainest stone tiles by measuring coloured against grey surface area, laid
 1.10 wide so their rims overlap and the V between them is roofed over.
 
+## The forest set
+
+The first ground of our own, and its trees. `Tools/forest_tiles.py` and
+`Tools/forest_trees.py` build them in Blender (installed with Homebrew, run
+headless: `/opt/homebrew/bin/blender -b -P Tools/forest_tiles.py`) from
+arithmetic, the way `Grown` builds pines: a `Build` collects flat faces
+with a palette colour each and makes a mesh of unshared vertices, so the
+shading is flat; tubes carry one frame along their path so roots do not
+twist; lumps are icospheres pushed about. The tiles are on the pack's
+terms, measured from inside the game by `Tools/probe/TileBounds.cs.txt`:
+2.2 m wide on the 2 m grid, a body from -1.00 up to a top at 1.05, detail
+above. Five floors -- litter and moss, roots, a fallen log with mushrooms,
+a stump with ferns, a mossy boulder -- of 640 to 1,100 vertices, and six
+trees -- two oaks, a beech, two birches, a sapling -- of 190 to 500, each
+standing on its foot at the origin. The scripts are authored with the
+game's Y up and turned a quarter about X as the mesh is made, since
+Blender's up is Z; the FBX export then puts them back on Unity's axes.
+
+The colours are 33 cells painted into the blank middle of the pack's own
+palette (`Texture.png`, cells 2 to 12 across and 5 to 7 down, which were
+transparent), by `Tools/palette.json`: so the new tiles and trees draw
+with `Main Material` like everything else, one batch, and the undergrowth
+needs no second material. Dark browns went grey under the game's blue sky
+light and were warmed and lightened after the first look in the game;
+that is a matter of repainting the cells, not of regenerating anything.
+
+`Assets/Editor/ForestSet.cs` (`Tools/unity.sh -executeMethod
+ForestSet.Batch`) brings the models in: it makes each FBX readable with no
+materials of its own, builds a prefab per floor painted with the pack's
+material, writes tile definitions 35 to 39 into the library, and puts the
+six trees into `Flora.ForestTrees` on their feet. `Chunk` has an eighth
+category, the forest floor, chosen for the Forest character after the
+water, beach, desert, stone, sodden, steep and marsh cases have had their
+say; it carries no trees, so the treeline swap never touches it.
+`Undergrowth` plants the forest mostly with its own trees now (19% of
+tiles, standing 4.2 to 6.6 m) with a little of the pack's trees, pines and
+firs kept for variety, and fewer mushrooms and boulders since the floor
+carries its own. `Tools/probe/Forest.cs.txt` goes to the nearest forest,
+counts the floor among the tiles round the player (92% of nine chunks,
+the rest marsh in the low flats), counts the trees, times a frame (5.7 ms)
+and photographs it at a clear noon.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride

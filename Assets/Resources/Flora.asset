@@ -2497,6 +2497,43 @@ MonoBehaviour:
     Wide: 0.42741132
     Colour: {r: 0.36, g: 0.55, b: 0.15, a: 1}
     Foot: -0
+  ForestTrees:
+  - Name: Oak 0
+    Mesh: {fileID: 733038896470424046, guid: 40346d2fd801043ea86cca5ab5a8ac7a, type: 3}
+    Size: 4.8167124
+    Wide: 3.5953507
+    Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
+    Foot: 0.008184433
+  - Name: Oak 1
+    Mesh: {fileID: 880728330082506679, guid: 58140f5424a6446c082c60cb5a588a2b, type: 3}
+    Size: 4.785127
+    Wide: 3.8399668
+    Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
+    Foot: 0.005671978
+  - Name: Beech 0
+    Mesh: {fileID: -7716950225463894433, guid: 82580a89bee88478da9ab32dc0f9d19c, type: 3}
+    Size: 6.3071704
+    Wide: 3.092647
+    Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
+    Foot: 0.0027241707
+  - Name: Birch 0
+    Mesh: {fileID: -5904401532689152856, guid: 97d48857dad934af3a2ce85da7da70fe, type: 3}
+    Size: 5.9112225
+    Wide: 2.2005582
+    Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
+    Foot: 0.000770092
+  - Name: Birch 1
+    Mesh: {fileID: -7357124599725166294, guid: cc6f8ec26c3e34b2c984f2c7360cfe9c, type: 3}
+    Size: 6.077541
+    Wide: 2.4632802
+    Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
+    Foot: 0.0017576218
+  - Name: Sapling 0
+    Mesh: {fileID: -6637033483287465239, guid: 961eeeb23af204857b33f4cad520bbee, type: 3}
+    Size: 2.3726358
+    Wide: 1.1947849
+    Colour: {r: 0.38, g: 0.57, b: 0.21, a: 1}
+    Foot: 0.00254488
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

@@ -67,5 +67,11 @@ public class Flora : ScriptableObject
     /// <summary>Thin standing poles, for the reedbeds.</summary>
     public Sprout[] Reeds;
 
+    /// <summary>
+    /// The forest's own trees -- oaks, a beech, birches, a sapling -- built in
+    /// Blender for the forest floor, standing on their feet at the origin.
+    /// </summary>
+    public Sprout[] ForestTrees;
+
     public Material Paint;
 }

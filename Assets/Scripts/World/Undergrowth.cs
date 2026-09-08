@@ -127,6 +127,7 @@ public class Undergrowth : MonoBehaviour
         if (broad.Count == 0) broad.AddRange(flora.Trees);
 
         var trees = Take(broad.ToArray(), 3.00f, 4.60f);
+        var forestTrees = Take(flora.ForestTrees ?? new Flora.Sprout[0], 4.20f, 6.60f);
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(flora.DeadTrees, 1.80f, 3.10f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
@@ -158,8 +159,10 @@ public class Undergrowth : MonoBehaviour
         snow = new[] { With(snowPines, 0.055f), With(whiteFirs, 0.02f), With(boulders, 0.05f) };
         // Thicker than it was, and with the pack's own trees standing in it
         // rather than only whatever the tiles happen to carry.
-        forest = new[] { With(pines, 0.03f), With(firs, 0.04f), With(trees, 0.12f),
-                         With(mushrooms, 0.02f), With(boulders, 0.05f) };
+        // the forest stands mostly on its own trees now, over a floor that carries its own
+        // mushrooms and stones; the pack's trees and the pines are kept for variety
+        forest = new[] { With(forestTrees, 0.19f), With(pines, 0.02f), With(firs, 0.02f), With(trees, 0.02f),
+                         With(mushrooms, 0.015f), With(boulders, 0.03f) };
         ordinary = new[] { With(mushrooms, 0.006f), With(boulders, 0.012f) };
 
         flora.Paint.enableInstancing = true;
