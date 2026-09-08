@@ -724,6 +724,19 @@ near its origin (24), stands in it -- all of nine chunks the desert sand,
 3.6 ms -- and then on a beach: 587 tiles the beach sand, 384 palms in
 reach, the faces facing out.
 
+The rock came last of the ground, two sets from `Tools/rock_tiles.py`:
+five stone tiles (tilted slabs, cracks, lichen patches, a lichened
+boulder, shards; 76 to 232 vertices) and five scree tiles (broken rock and
+gravel in a warmer grey, one with a boulder; 470 to 1070).
+`Assets/Editor/RockSet.cs` (`RockSet.Batch`) makes them definitions 70 to
+74 and 75 to 79, and `Chunk.StoneCategory` and `Chunk.BareSteepCategory`
+point at them, so the barrens, the beds of deep and frozen water and the
+steep faces are all ours; the pack's stone and its Big Grass stay in the
+library unused. With that every ground tile the world lays is our own.
+`Tools/probe/Rock.cs.txt` stands in a barren (seed 5, the Pale Stones: all
+of nine chunks the stone, 4.0 ms) and in the hills, where the scree shows
+only on the faces steep enough for it.
+
 ## Player
 
 The character and its animations are built and driven in `Surveyor`; stride

@@ -1,0 +1,167 @@
+// A probe: into a world, to the nearest forest, and what stands there: how many of the tiles round
+// the player are the forest floor, how many of the trees are the forest's own, the frame time, and
+// three photographs.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Shot(string name, Camera cam, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-rk-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        // a seed with a desert near its origin, found by asking the country itself
+        int seedWanted = 5;
+        foreach (int trySeed in new[] { 5, 24, 1, 4, 7, 12, 16, 21, 22, 23, 2, 3, 6, 8, 9, 10 })
+        {
+            bool found = false;
+            for (int r = 0; r < 120 && !found; r += 4)
+            for (int dx = -r; dx <= r && !found; dx += 4)
+            for (int dz = -r; dz <= r && !found; dz += 4)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
+                if (Regions.CharacterAtTile(dx, dz, trySeed, false) == Regions.Character.Stone) found = true;
+            }
+            if (found) { seedWanted = trySeed; break; }
+        }
+        Mark("ROCK seed with a barren near the origin: " + seedWanted);
+        var save = WorldLibrary.Create("Probe rock", seedWanted, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+
+        var tools = FindFirstObjectByType<DevTools>();
+        var goTo = typeof(DevTools).GetMethod("GoTo", flags, null, new[] { typeof(Regions.Character) }, null);
+        goTo.Invoke(tools, new object[] { Regions.Character.Stone });
+        // a clear noon, dry underfoot, so the pictures are the tiles and not the weather
+        TimeOfDay.Instance.SetTime(0.5f); TimeOfDay.Instance.Paused = true; TimeOfDay.Instance.ForceOvercast(0.12f);
+        yield return new WaitForSecondsRealtime(9f);
+        FindFirstObjectByType<ChunkManager>().SetWetness(0f);
+        yield return new WaitForSecondsRealtime(1f);
+
+        var world = FindFirstObjectByType<ChunkManager>();
+        var player = world.PlayerTransform;
+        int seed = world.WorldSeed;
+        Mark("ROCK at " + player.position.ToString("F0") + " | region " + Regions.At(WorldGrid.WorldToChunk(player.position), seed).Name + " (" + Regions.CharacterAtTile(Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), Mathf.RoundToInt(player.position.z / WorldGrid.TileSize), seed, false) + ")");
+
+        // the tiles in the player's chunk and the eight round it
+        var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
+        var centre = WorldGrid.WorldToChunk(player.position);
+        int floor = 0, total = 0; var ids = new SortedDictionary<int, int>();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
+        {
+            if (!chunks.TryGetValue(centre + new Vector2Int(dx, dz), out var chunk)) continue;
+            foreach (var pair in chunk.idToTransforms)
+            {
+                total += pair.Value.Length;
+                if (pair.Key >= 70 && pair.Key <= 79) floor += pair.Value.Length;
+                ids[pair.Key] = (ids.TryGetValue(pair.Key, out int n) ? n : 0) + pair.Value.Length;
+            }
+        }
+        var idsSaid = new System.Text.StringBuilder();
+        foreach (var pair in ids) idsSaid.Append(" " + pair.Key + ":" + pair.Value);
+        Mark("TILES in nine chunks: " + total + ", our rock " + floor + " (" + (100f * floor / Mathf.Max(1, total)).ToString("F0") + "%) | by id" + idsSaid);
+
+        // the trees: which of what is planted is the forest's own
+        var under = FindFirstObjectByType<Undergrowth>();
+        var every = (Flora.Sprout[])typeof(Undergrowth).GetField("every", flags).GetValue(under);
+        var gathered = (Matrix4x4[][])typeof(Undergrowth).GetField("gathered", flags).GetValue(under);
+        int ours = 0, all = 0; var byKind = new System.Text.StringBuilder();
+        if (every != null && gathered != null)
+            for (int k = 0; k < every.Length && k < gathered.Length; k++)
+            {
+                int n = gathered[k] != null ? gathered[k].Length : 0;
+                all += n;
+                string name = every[k].Name ?? "";
+                if (name.StartsWith("Saguaro") || name.StartsWith("Barrel") || name.StartsWith("Prickly") || name.StartsWith("Palm")) { ours += n; if (n > 0) byKind.Append(" " + name + ":" + n); }
+            }
+        Mark("TREES drawn: " + all + " plants in reach, the forest's own " + ours + " |" + byKind + " | instances " + Undergrowth.Instances + " near " + Undergrowth.NearInstances);
+
+        // the winding of the floor's faces: a side or a top wound inward is culled, and a culled face is a hole
+        TileLibrary library = null;
+        foreach (var f in typeof(ChunkManager).GetFields(flags)) if (f.FieldType == typeof(TileLibrary)) library = (TileLibrary)f.GetValue(world);
+        var wound = new System.Text.StringBuilder("WINDING:");
+        for (int id = 70; id <= 79 && library != null; id += 3)
+        {
+            if (!library.TryGet(id, out var def)) continue;
+            var mesh = def.MeshGetter(); var v = mesh.vertices; var t = mesh.triangles;
+            int sidesOut = 0, sidesIn = 0, topsUp = 0, topsDown = 0;
+            for (int i = 0; i < t.Length; i += 3)
+            {
+                Vector3 a = v[t[i]], b = v[t[i + 1]], c = v[t[i + 2]];
+                Vector3 n = Vector3.Cross(b - a, c - a).normalized;   // Unity's front face, clockwise
+                Vector3 mid = (a + b + c) / 3f;
+                bool side = Mathf.Abs(Mathf.Abs(mid.x) - 1f) < 0.01f && Mathf.Abs(a.x - b.x) < 0.01f && Mathf.Abs(a.x - c.x) < 0.01f
+                         || Mathf.Abs(Mathf.Abs(mid.z) - 1f) < 0.01f && Mathf.Abs(a.z - b.z) < 0.01f && Mathf.Abs(a.z - c.z) < 0.01f;
+                float area = Vector3.Cross(b - a, c - a).magnitude * 0.5f;
+                bool top = area > 0.06f && a.y >= 1.04f && b.y >= 1.04f && c.y >= 1.04f && a.y <= 1.2f && b.y <= 1.2f && c.y <= 1.2f && Mathf.Abs(n.y) > 0.8f;
+                if (side) { if (Vector3.Dot(n, new Vector3(mid.x, 0f, mid.z)) > 0f) sidesOut++; else sidesIn++; }
+                else if (top) { if (n.y > 0f) topsUp++; else topsDown++; }
+            }
+            wound.Append(" tile " + id + ": sides out " + sidesOut + " in " + sidesIn + ", tops up " + topsUp + " down " + topsDown + ";");
+        }
+        Mark(wound.ToString());
+
+        float frames = 0f, seconds = 0f;
+        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+        Mark("ROCK frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
+
+        // the photographs: from the eye, from low along the ground, and from above
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        Vector3 fwd = player.forward;
+        yield return Shot("eye", cam, player.position + Vector3.up * 1.7f - fwd * 2.5f, player.position + fwd * 8f + Vector3.up * 1.2f);
+        yield return Shot("low", cam, player.position + Vector3.up * 0.9f + fwd * 1f, player.position + fwd * 12f + Vector3.up * 0.8f);
+        yield return Shot("high", cam, player.position + Vector3.up * 16f - fwd * 10f, player.position + fwd * 6f);
+        yield return Shot("steps", cam, player.position + Vector3.up * 3.5f - fwd * 6f, player.position + fwd * 5f + Vector3.up * 0.5f);
+
+        // and the hills, where the steep faces are scree
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = true;
+        goTo.Invoke(tools, new object[] { Regions.Character.Hills });
+        yield return new WaitForSecondsRealtime(9f);
+        centre = WorldGrid.WorldToChunk(player.position);
+        int screeCount = 0, all2 = 0; var ids2 = new SortedDictionary<int, int>();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
+        {
+            if (!chunks.TryGetValue(centre + new Vector2Int(dx, dz), out var chunk)) continue;
+            foreach (var pair in chunk.idToTransforms) { all2 += pair.Value.Length; if (pair.Key >= 75 && pair.Key <= 79) screeCount += pair.Value.Length; ids2[pair.Key] = (ids2.TryGetValue(pair.Key, out int n) ? n : 0) + pair.Value.Length; }
+        }
+        var said2 = new System.Text.StringBuilder(); foreach (var pair in ids2) said2.Append(" " + pair.Key + ":" + pair.Value);
+        Mark("HILLS at " + player.position.ToString("F0") + " (" + Regions.At(centre, seed).Name + ") | tiles in nine chunks " + all2 + ", scree " + screeCount + " | by id" + said2);
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        fwd = player.forward;
+        yield return Shot("hills", cam, player.position + Vector3.up * 2f - fwd * 3f, player.position + fwd * 10f + Vector3.up * 1.5f);
+        yield return Shot("hillshigh", cam, player.position + Vector3.up * 18f - fwd * 8f, player.position + fwd * 8f);
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

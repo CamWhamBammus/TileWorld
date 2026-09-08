@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 14;          // the pack's bands, sand and stone; then the forest floor, three grasses, the marsh, the beach and the desert
+    private const int Categories = 16;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -17,10 +17,10 @@ public class Chunk
     // and the other two are used for ground that should be bare anyway.
     private static readonly int[] ShadeByHeight = { DarkGrassCategory, LightGrassCategory, PaleGrassCategory };   // dark, light, pale
 
-    private const int BareSteepCategory = 3;   // Big Grass, no trees: steep faces
+    private const int BareSteepCategory = 15;  // our scree: broken rock and gravel on the steep faces (the pack's Big Grass, 3, is left unused)
     private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
     private const int SandCategory = 5;        // the sand update, for the deserts
-    private const int StoneCategory = 6;       // the pack's stone tiles, for the barrens
+    private const int StoneCategory = 14;      // our stone: slabs, cracks, lichen, shards, for the barrens and the beds of deep and frozen water (the pack's, 6, is left unused)
     private const int ForestCategory = 7;       // the forest floor, built for it: litter, roots, logs, ferns, moss
     private const int PaleGrassCategory = 8;    // our own meadows, by height: pale on the high ground,
     private const int LightGrassCategory = 9;   // light between,
