@@ -207,7 +207,7 @@ public static class Regions
         int span = ChunksAcross * WorldGrid.TilesPerChunk;
 
         float relief = 0f;
-        int wet = 0, snowy = 0, samples = 0;
+        int wet = 0, snowy = 0, deep = 0, samples = 0;
 
         for (int x = 0; x < span; x += 12)
         for (int z = 0; z < span; z += 12)
@@ -218,6 +218,7 @@ public static class Regions
             relief += WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief;
 
             if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) wet++;
+            if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, worldSeed) >= Chunk.ReefDepth) deep++;
             if (SnowCover.SnowByHeight(tileX, tileZ, worldSeed)) snowy++;
 
             samples++;
@@ -226,6 +227,7 @@ public static class Regions
         relief /= Mathf.Max(1, samples);
 
         float wetShare = wet / (float)Mathf.Max(1, samples);
+        float deepShare = deep / (float)Mathf.Max(1, samples);
         float snowShare = snowy / (float)Mathf.Max(1, samples);
 
         // Ordered by how much a feature dominates the impression of a place:
@@ -233,12 +235,16 @@ public static class Regions
         // Water names were going to nearly a quarter of regions when only
         // about a twentieth of the ground is actually under water, so a region
         // has to be properly wet before it is named for it.
-        // A reef is warm shallow sea, so it is asked of the wettest regions
-        // before they are named for their water: low ground, no snow near it,
-        // and only one in four, since a coast of nothing but coral is a coast
-        // with nothing to find.
+        // A reef is asked of the wettest regions before they are named for
+        // their water. It wants low warm ground with no snow near it, and it
+        // wants water with a middle to it: a reef needs somewhere the coral can
+        // stand without standing out of the top of the sea, so a region whose
+        // water is all shin-deep is left as plain water. One in five of those
+        // that qualify, since a coast of nothing but coral is a coast with
+        // nothing to find.
         if (wetShare > 0.22f)
-            return relief < 0.30f && snowShare <= 0f && Hash(cell.x, cell.y, worldSeed + 5309) % 4 == 0
+            return relief < 0.30f && snowShare <= 0f && deepShare > 0.10f
+                && Hash(cell.x, cell.y, worldSeed + 5309) % 5 == 0
                  ? Character.Reef : Character.Water;
         if (snowShare > 0.16f) return Character.Peaks;
 

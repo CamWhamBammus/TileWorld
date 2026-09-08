@@ -834,7 +834,9 @@ so the assets keep their GUIDs and the library's list needs no editing.
 
 A reef is not a country of its own so much as a stretch of sea that happens to
 be coral, so `Regions.Character.Reef` is a wet region caught before it is named
-for its water: `wetShare > 0.22`, low ground, no snow, one in four. Everything
+for its water: `wetShare > 0.22`, low ground, no snow, one in five -- and
+`deepShare > 0.10`, meaning a tenth of it is a metre or more under, so a reef
+never lands on a lagoon it cannot fit in. Everything
 the sea does has to know about it, which is what `Regions.Sea(character)` is
 for -- the body of water itself (`WaterSurface.BodyAt`, which without this
 reads a reef as an inland lake), the wash, the gulls, the sand prints, the
@@ -842,13 +844,49 @@ palms on the strand, the wreck and the lighthouse. `Chunk` asks for the reef
 *before* it asks how deep the water is, or the coral would only get the sandy
 fringe and stand in water up to your shins.
 
+Reef floor is only laid where there is `Chunk.ReefDepth` (a metre) of water
+over it; under that the floor is left sand. This is the rule that matters, and
+it was got wrong first time round. Laid at any depth, reef tiles landed on
+ground with a hand's width of water over it: their own detail stands up to 0.6
+above the block, so half of every tile was out in the air, and the wash --
+which bares anything under about two thirds of a metre within five tiles of
+sand -- left coral sitting on a dry beach twice a minute. A metre clears both.
+Measured over five seeds: of 11201 reef floor tiles, none is in water the wash
+can bare.
+
 The coral is planted by `Undergrowth`, in the underwater branch, not from a
 country's table: it goes through `Take` only so it lands in `every` and gets
-drawn. It is capped at the depth (`deep - 0.4`), which is what keeps it under
-the surface. `Tools/probe/Reef.cs.txt` walks its own way to a reef, since the
+drawn. It wants the same metre of water the floor does, and is then capped at
+the depth (`deep - 0.4`), which is what keeps it under the surface. `Tools/probe/Reef.cs.txt` walks its own way to a reef, since the
 dev tools only look thirty chunks for a country and a reef can be further:
-seed 5, the Deep Banks, 92% of nine chunks the reef floor, 1092 colonies, the
-nearest 0.41 m under the surface, 2.9 ms.
+seed 5, the Withered Ledges, 20% of nine chunks the reef floor with the rest
+its sand and its land, 652 colonies, the nearest 0.41 m under the surface,
+2.8 ms.
+
+### The sea floor
+
+The ground used to stop at the base plane. `TerraceAt` clamped its terrace at
+nought, the water sits four and a half above it, and that was the whole depth
+the world could hold: half of everything under water was less than a metre
+deep, and a sea was a film over a flat pan. That is no floor to put anything on.
+
+`WorldHeight.HeightAt` now pulls the ground down below the waterline, by
+`SeaFloorDrop` (two metres) at its lowest, smoothed in from `ShoreHeight` --
+which is 4.5, the height the land is at where the water's edge falls, given the
+terrace arithmetic. The pull is nought at that height and nothing above it is
+touched at all, so **no coast moves and no dry ground changes**: only the
+bottom of the sea drops away. The clamp in `TerraceAt` had to go with it, since
+a sea bed is now a negative terrace.
+
+`Tools/probe/Depth.cs.txt` measures this without entering a world, since the
+terrain, the water and the regions are all static functions of a seed. Over
+five seeds and 2.4 million tiles, water deeper than 2.5 m went from 4% of the
+sea to 14%, and the 0 to 0.5 m band barely moved, 19% to 18%. The number that
+had to be watched is the step between neighbouring tiles, which must stay under
+the depth of a tile's body or a raised tile shows daylight beneath it: the
+steepest step touching water is 0.75 m, so the deepening added no steep ground
+anywhere. (The steepest step in the world is 2.00 m, on dry land, and has
+always been; a tile body is 2.05 deep, so it is inside the limit by 5 cm.)
 
 ## Underfoot
 

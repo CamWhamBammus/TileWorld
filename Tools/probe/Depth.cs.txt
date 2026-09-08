@@ -1,0 +1,110 @@
+// A probe that does not enter a world at all: it asks the terrain and the water how deep the sea
+// gets, over several seeds, so the reef can be given a depth to keep to. Counts every tile in a
+// square about the origin, by how far under the water it is, and how much of it is a reef.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+        Mark("DEPTH water sits at " + WaterSurface.Level.ToString("F2") + ", the ground's floor at " + WorldHeight.BaseSurfaceY.ToString("F2")
+             + ", so the deepest water the world can hold is " + (WaterSurface.Level - WorldHeight.BaseSurfaceY).ToString("F2") + " m");
+
+        int[] seeds = { 5, 24, 1, 4, 7 };
+        int reach = 700;     // tiles either way about the origin, stepped
+        int step = 2;
+
+        long land = 0, wet = 0;
+        var bands = new SortedDictionary<int, long>();
+        long reefTiles = 0, reefWet = 0, reefDeep = 0;
+        var characters = new SortedDictionary<string, long>();
+
+        foreach (int seed in seeds)
+        {
+            for (int x = -reach; x <= reach; x += step)
+            for (int z = -reach; z <= reach; z += step)
+            {
+                var who = Regions.CharacterAtTile(x, z, seed, false);
+                characters[who.ToString()] = (characters.TryGetValue(who.ToString(), out long c) ? c : 0) + 1;
+                bool reef = who == Regions.Character.Reef;
+                if (reef) reefTiles++;
+
+                float deep = WaterSurface.Level - WorldHeight.SurfaceY(x, z, seed);
+                if (deep <= 0f) { land++; continue; }
+                wet++;
+                if (reef) { reefWet++; if (deep >= Chunk.ReefDepth) reefDeep++; }
+                int band = Mathf.FloorToInt(deep / 0.5f);
+                bands[band] = (bands.TryGetValue(band, out long n) ? n : 0) + 1;
+            }
+            yield return null;
+        }
+
+        // the steepest step between neighbours, which is what the tiles and the collider have to survive
+        float worstRise = 0f; int worstX = 0, worstZ = 0; float worstWet = 0f;
+        foreach (int seed in seeds)
+        {
+            for (int x = -reach; x <= reach; x += step)
+            for (int z = -reach; z <= reach; z += step)
+            {
+                float here = WorldHeight.SurfaceY(x, z, seed);
+                for (int k = 0; k < 2; k++)
+                {
+                    float there = WorldHeight.SurfaceY(x + (k == 0 ? 1 : 0), z + (k == 1 ? 1 : 0), seed);
+                    float rise = Mathf.Abs(there - here);
+                    if (rise > worstRise) { worstRise = rise; worstX = x; worstZ = z; }
+                    if (rise > worstWet && (here < WaterSurface.Level || there < WaterSurface.Level)) worstWet = rise;
+                }
+            }
+            yield return null;
+        }
+        Mark("RISE steepest step between neighbours " + worstRise.ToString("F2") + " m at (" + worstX + ", " + worstZ + "), the steepest touching water " + worstWet.ToString("F2") + " m");
+
+        var said = new System.Text.StringBuilder();
+        foreach (var pair in bands) said.Append(" " + (pair.Key * 0.5f).ToString("F1") + "-" + ((pair.Key + 1) * 0.5f).ToString("F1") + "m:" + (100f * pair.Value / Mathf.Max(1, wet)).ToString("F0") + "%");
+        Mark("DEPTH over " + seeds.Length + " seeds, " + (land + wet) + " tiles: " + (100f * wet / (land + wet)).ToString("F1") + "% under water | of the water" + said);
+
+        var whoSaid = new System.Text.StringBuilder();
+        foreach (var pair in characters) whoSaid.Append(" " + pair.Key + ":" + (100f * pair.Value / Mathf.Max(1, land + wet)).ToString("F1") + "%");
+        Mark("COUNTRY share of tiles:" + whoSaid);
+        Mark("REEF tiles " + reefTiles + ", of them under water " + reefWet + " (" + (100f * reefWet / Mathf.Max(1, reefTiles)).ToString("F0")
+             + "%), a metre or more under " + reefDeep + " (" + (100f * reefDeep / Mathf.Max(1, reefTiles)).ToString("F0") + "% of the reef, "
+             + (100f * reefDeep / Mathf.Max(1, reefWet)).ToString("F0") + "% of its water)");
+        // how much of the reef would ever be bared by the wash, which is what put coral on dry land
+        long bared = 0, reefFloor = 0;
+        foreach (int seed in seeds)
+        {
+            for (int x = -reach; x <= reach; x += step)
+            for (int z = -reach; z <= reach; z += step)
+            {
+                if (Regions.CharacterAtTile(x, z, seed, false) != Regions.Character.Reef) continue;
+                if (WaterSurface.Level - WorldHeight.SurfaceY(x, z, seed) < Chunk.ReefDepth) continue;
+                reefFloor++;
+                if (Surf.IsSurfShallows(x, z, seed)) bared++;
+            }
+            yield return null;
+        }
+        Mark("WASH reef floor tiles " + reefFloor + ", of them in water the wash bares " + bared);
+        Mark("done");
+    }
+}

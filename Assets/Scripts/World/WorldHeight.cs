@@ -50,6 +50,22 @@ public static class WorldHeight
     private const float HillScale = 0.011f;
     private const float HillAmplitude = 10.0f;
 
+    /// <summary>
+    /// How far the sea floor is pulled below where the land would have put it,
+    /// at the middle of a basin. Without this the water is a film: the ground
+    /// stops at the base plane, the surface is four and a half above it, and
+    /// half of everything under water is less than a metre deep -- so anything
+    /// standing on the bottom stands out of the top of it.
+    ///
+    /// The pull is nought at the waterline and greatest where the land was
+    /// lowest, so no coast moves and no dry ground changes at all: it is only
+    /// the bottom of the sea that drops away.
+    /// </summary>
+    private const float SeaFloorDrop = 2.0f;
+
+    /// <summary>The height the land is at when the water's edge is there.</summary>
+    public const float ShoreHeight = 4.5f;
+
     /// <summary>Terrain height above the base plane, in world units.</summary>
     public static float HeightAt(int tileX, int tileZ, int worldSeed)
     {
@@ -64,13 +80,22 @@ public static class WorldHeight
         float ridges = RidgedFbm(tileX * RidgeScale, tileZ * RidgeScale, o + 91f, 4);
         float hills = Fbm(tileX * HillScale, tileZ * HillScale, o + 311f, 2);
 
-        return mountainMask * ridges * MaxRelief + hills * HillAmplitude;
+        float ground = mountainMask * ridges * MaxRelief + hills * HillAmplitude;
+
+        if (ground >= ShoreHeight) return ground;
+
+        // Smoothed at both ends, so the slope into the deep does not jump at
+        // the shoreline and the floor of the basin comes out flat.
+        float under = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(ShoreHeight, 0f, ground));
+
+        return ground - under * SeaFloorDrop;
     }
 
     /// <summary>The terrace a tile sits on.</summary>
     public static int TerraceAt(int tileX, int tileZ, int worldSeed)
     {
-        return Mathf.Max(0, Mathf.FloorToInt(HeightAt(tileX, tileZ, worldSeed) / StepHeight));
+        // No floor under it any more: the sea bed goes below the base plane.
+        return Mathf.FloorToInt(HeightAt(tileX, tileZ, worldSeed) / StepHeight);
     }
 
     /// <summary>World Y of a tile's walking surface.</summary>

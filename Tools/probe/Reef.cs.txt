@@ -176,16 +176,11 @@ public class _Probe : MonoBehaviour
         var cam = Camera.main;
         foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name.Contains("Cinemachine") || beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
 
-        // out to sea from where the player stands, then the water from above, then under it
-        Vector3 fwd = player.forward;
-        yield return Shot("eye", cam, player.position + Vector3.up * 1.7f - fwd * 2.5f, player.position + fwd * 10f + Vector3.up * 1.0f);
-        yield return Shot("high", cam, player.position + Vector3.up * 22f - fwd * 12f, player.position + fwd * 8f);
-
-        // walk out over the water and look straight down into it
+        // where the reef's water is deepest, so the pictures face the sea and not the palms
         Vector3 sea = player.position; float deepest = 0f;
         int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
-        for (int ox = -30; ox <= 30; ox++)
-        for (int oz = -30; oz <= 30; oz++)
+        for (int ox = -40; ox <= 40; ox++)
+        for (int oz = -40; oz <= 40; oz++)
         {
             int tx = px + ox, tz = pz + oz;
             if (!WaterSurface.IsUnderwater(tx, tz, seed)) continue;
@@ -194,10 +189,17 @@ public class _Probe : MonoBehaviour
             if (d <= deepest) continue;
             deepest = d; sea = new Vector3(tx * WorldGrid.TileSize, WorldHeight.SurfaceY(tx, tz, seed), tz * WorldGrid.TileSize);
         }
-        Mark("SEA deepest reef water within thirty tiles: " + deepest.ToString("F2") + " m at " + sea.ToString("F0"));
+        Mark("SEA deepest reef water within forty tiles: " + deepest.ToString("F2") + " m at " + sea.ToString("F0"));
+
+        Vector3 toSea = (sea - player.position); toSea.y = 0f;
+        Vector3 fwd = toSea.sqrMagnitude > 1f ? toSea.normalized : player.forward;
+
+        // from the shore, out over it, down into it, and under it
+        yield return Shot("eye", cam, player.position + Vector3.up * 1.7f - fwd * 2.5f, sea + Vector3.up * 0.5f);
+        yield return Shot("high", cam, player.position + Vector3.up * 22f - fwd * 12f, sea);
         yield return Shot("down", cam, sea + Vector3.up * 9f - fwd * 5f, sea);
-        yield return Shot("under", cam, new Vector3(sea.x, WaterSurface.Level - 0.9f, sea.z) - fwd * 6f, new Vector3(sea.x, WaterSurface.Level - 1.4f, sea.z) + fwd * 4f);
-        yield return Shot("deep", cam, new Vector3(sea.x, WaterSurface.Level - 1.3f, sea.z) - fwd * 3f, new Vector3(sea.x, WaterSurface.Level - 1.9f, sea.z) + fwd * 6f);
+        yield return Shot("under", cam, new Vector3(sea.x, WaterSurface.Level - 0.7f, sea.z) - fwd * 9f, sea + Vector3.up * 0.6f);
+        yield return Shot("deep", cam, new Vector3(sea.x, sea.y + 1.0f, sea.z) - fwd * 5f, sea + Vector3.up * 0.4f + fwd * 6f);
 
         Mark("done");
         WorldLibrary.Delete(save.id);

@@ -318,7 +318,7 @@ public class Undergrowth : MonoBehaviour
                 // how deep the water is and never allowed to reach the top of
                 // it: coral standing proud of the sea would read as a rock.
                 if (character == Regions.Character.Reef && flora.Corals != null && flora.Corals.Length > 0
-                    && WaterSurface.BodyAt(gx, gz, seed) == WaterSurface.Body.Beach)
+                    && deep >= Chunk.ReefDepth && WaterSurface.BodyAt(gx, gz, seed) == WaterSurface.Body.Beach)
                 {
                     if (Hash(gx, gz, seed + 7717) % 100 >= 22) continue;
 

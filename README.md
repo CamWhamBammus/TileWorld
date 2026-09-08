@@ -43,13 +43,13 @@ The world is split into regions about 240m across. Each one gets a character bas
 
 ### Water
 
-Water sits at one level across the whole world, and what kind of water it is depends on where you are. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under.
+Water sits at one level across the whole world, and what kind of water it is depends on where you are. The bottom falls away from the shore, so a sea has a middle to it and gets to about six metres deep. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under.
 
 ![A beach, the sea running up the sand](docs/images/beach.jpg)
 
 *A beach. The sea runs up the sand and back, over and over.*
 
-Some of the warmest, lowest stretches of sea are reef. The floor of one is coral instead of sand: heads, tables, fans, sponges and pillars standing up out of it, seagrass, urchins and old white rubble, with sand channels blown between. It has a beach and a wash like any other coast, and the coral stops short of the surface, so you find it by looking down into the water or by wading in.
+Some of the warmest, lowest stretches of sea are reef. Out where the water is over a metre deep the floor is coral instead of sand: heads, tables, fans, sponges and pillars standing up off it, seagrass, urchins and old white rubble, with sand channels blown between. The shallows over it stay sand, so a reef has an ordinary beach and an ordinary wash, and the coral keeps under the surface. You find one by looking down into the water on your way past, or by swimming out over it.
 
 ![A reef seen from the shore](docs/images/reef.jpg)
 

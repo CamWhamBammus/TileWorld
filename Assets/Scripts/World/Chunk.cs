@@ -45,6 +45,13 @@ public class Chunk
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
     private const float DeepWater = 1.6f;
 
+    /// <summary>
+    /// How much water a reef wants over it. Under this the floor is left sand:
+    /// the wash bares anything shallower than about two thirds of a metre, and
+    /// coral standing in less than this comes out of the top of the water.
+    /// </summary>
+    public const float ReefDepth = 1.0f;
+
     /// <summary>And how far above the water the sand carries on up the shore.</summary>
     private const float BeachHeight = 0.7f;
     private const float BlendNoiseScale = 0.09f;
@@ -152,7 +159,7 @@ public class Chunk
                 // coral in ankle-deep water reads as a flooded field.
                 category = underSnow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
-                         : character == Regions.Character.Reef ? ReefCategory
+                         : character == Regions.Character.Reef && underBy >= ReefDepth ? ReefCategory
                          : underBy >= DeepWater ? StoneCategory
                          : BeachCategory;
             }
