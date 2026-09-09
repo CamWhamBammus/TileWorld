@@ -81,7 +81,7 @@ public static class Regions
     /// scattered into the region across it, so the two run into each other
     /// rather than meeting at an edge.
     /// </summary>
-    private const float Fray = 7f;
+    private const float Fray = 13f;
 
     /// <summary>Tiles across one region.</summary>
     private const int TilesAcross = ChunksAcross * WorldGrid.TilesPerChunk;
@@ -125,11 +125,28 @@ public static class Regions
 
         if (near >= Fray) return new Vector2Int(cx, cz);
 
-        // half the tiles on the line itself, none at the edge of the band
-        float chance = (1f - near / Fray) * 0.5f;
+        // Half the tiles on the line itself, none at the edge of the band -- eased, so the
+        // change is slow at both ends of the band rather than a straight ramp.
+        float across = 1f - near / Fray;
+        float chance = across * across * (3f - 2f * across) * 0.5f;
 
-        if ((uint)Hash(tileX, tileZ, worldSeed + 5557) % 1000 >= chance * 1000f)
-            return new Vector2Int(cx, cz);
+        // Which tiles change hands is decided by a noise field rather than by a hash of the
+        // tile. A hash gives every tile its own coin, so a border comes out as salt and
+        // pepper: single tiles of forest standing in sand, which reads as speckle and not as
+        // a border at all. One field over the whole world hands them over in patches and
+        // fingers instead, so the two grounds interlock the way they do on the way out of a
+        // wood. A little of the hash is kept in so the fingers have ragged edges.
+        // Two scales of it, so the fingers have fingers of their own.
+        float grain = Mathf.PerlinNoise(o + 411f + tileX * 0.075f, o + 411f + tileZ * 0.075f) * 0.68f
+                    + Mathf.PerlinNoise(o + 913f + tileX * 0.21f, o + 913f + tileZ * 0.21f) * 0.32f;
+        grain = Mathf.Clamp01((grain - 0.5f) * 2.4f + 0.5f);
+
+        // Nearly half of it left to the tile's own coin. All noise and the patches come out
+        // with clean edges, which is a staircase rather than a border; all coin and it is salt
+        // and pepper. The mix gives patches that interlock and fray into each other.
+        float roll = grain * 0.56f + ((uint)Hash(tileX, tileZ, worldSeed + 5557) % 1000) / 1000f * 0.44f;
+
+        if (roll >= chance) return new Vector2Int(cx, cz);
 
         if (acrossX) return new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz);
 

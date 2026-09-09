@@ -1,0 +1,132 @@
+// A probe for the joins between countries: walks a line from one into the next and prints what
+// every tile along it belongs to, so the width of the mixing can be read off rather than guessed,
+// then stands at the join and photographs it.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static char Letter(Regions.Character c)
+    {
+        switch (c)
+        {
+            case Regions.Character.Jungle: return 'J';
+            case Regions.Character.Water: return 'W';
+            case Regions.Character.Reef: return 'R';
+            case Regions.Character.Forest: return 'F';
+            case Regions.Character.Lowland: return 'L';
+            case Regions.Character.Desert: return 'D';
+            case Regions.Character.Snow: return 'S';
+            case Regions.Character.Peaks: return 'P';
+            case Regions.Character.Hills: return 'H';
+            case Regions.Character.Stone: return 'T';
+            case Regions.Character.Reed: return 'E';
+            case Regions.Character.Fungal: return 'U';
+            default: return 'X';
+        }
+    }
+
+    private IEnumerator Shot(string name, Camera cam, Vector3 at, Vector3 lookAt)
+    {
+        for (int i = 0; i < 2; i++) { cam.transform.position = at; cam.transform.LookAt(lookAt); yield return null; }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-bd-" + name + ".png"));
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        int seed = 4;
+        var save = WorldLibrary.Create("Probe borders", seed, true, true, 0.5f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        TimeOfDay.Instance.SetTime(0.42f); TimeOfDay.Instance.Paused = true; TimeOfDay.Instance.ForceOvercast(0.08f);
+
+        var world = FindFirstObjectByType<ChunkManager>();
+        var player = world.PlayerTransform;
+
+        // a jungle tile with sea within twenty tiles of it, which is the join the eye keeps finding
+        int jx = 0, jz = 0, dirX = 0, dirZ = 0; bool found = false;
+        for (int r = 1; r < 400 && !found; r++)
+        for (int ox = -r; ox <= r && !found; ox++)
+        for (int oz = -r; oz <= r && !found; oz++)
+        {
+            if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oz)) != r) continue;
+            if (Regions.CharacterAtTile(ox, oz, seed, false) != Regions.Character.Jungle) continue;
+            if (WaterSurface.IsUnderwater(ox, oz, seed)) continue;
+            for (int k = 6; k <= 22 && !found; k += 2)
+            {
+                if (Regions.Sea(Regions.CharacterAtTile(ox + k, oz, seed, false))) { jx = ox; jz = oz; dirX = 1; found = true; }
+                else if (Regions.Sea(Regions.CharacterAtTile(ox - k, oz, seed, false))) { jx = ox; jz = oz; dirX = -1; found = true; }
+                else if (Regions.Sea(Regions.CharacterAtTile(ox, oz + k, seed, false))) { jx = ox; jz = oz; dirZ = 1; found = true; }
+                else if (Regions.Sea(Regions.CharacterAtTile(ox, oz - k, seed, false))) { jx = ox; jz = oz; dirZ = -1; found = true; }
+            }
+        }
+        Mark("BORDER jungle at " + jx + "," + jz + " with sea " + (found ? "found" : "not found") + " toward " + dirX + "," + dirZ);
+        if (!found) { Mark("done"); yield break; }
+
+        // what every tile belongs to, walking from well inside the jungle to well inside the sea
+        var line = new System.Text.StringBuilder();
+        var ground = new System.Text.StringBuilder();
+        for (int k = -18; k <= 34; k++)
+        {
+            int tx = jx + dirX * k, tz = jz + dirZ * k;
+            line.Append(Letter(Regions.CharacterAtTile(tx, tz, seed)));
+        }
+        Mark("LINE  region by tile, jungle to sea: " + line);
+
+        var body = FindFirstObjectByType<CharacterController>();
+        if (body != null) body.enabled = false;
+        player.position = new Vector3(jx * WorldGrid.TileSize, WorldHeight.SurfaceY(jx, jz, seed) + 1.4f, jz * WorldGrid.TileSize);
+        if (body != null) body.enabled = true;
+        yield return new WaitForSecondsRealtime(12f);
+
+        // the tiles actually laid in the nine chunks about the join
+        var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
+        var centre = WorldGrid.WorldToChunk(player.position);
+        var ids = new SortedDictionary<int, int>(); int total = 0;
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++)
+        {
+            if (!chunks.TryGetValue(centre + new Vector2Int(dx, dz), out var chunk)) continue;
+            foreach (var pair in chunk.idToTransforms) { total += pair.Value.Length; ids[pair.Key] = (ids.TryGetValue(pair.Key, out int n) ? n : 0) + pair.Value.Length; }
+        }
+        var said = new System.Text.StringBuilder();
+        foreach (var pair in ids) said.Append(" " + pair.Key + ":" + pair.Value);
+        int verge = 0; foreach (var pair in ids) if (pair.Key >= 110 && pair.Key <= 114) verge += pair.Value;
+        Mark("TILES round the join: " + total + ", of them verge " + verge + " |" + said);
+
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        Vector3 toSea = new Vector3(dirX, 0, dirZ);
+        yield return Shot("join", cam, player.position + Vector3.up * 3.0f - toSea * 14f, player.position + toSea * 22f + Vector3.up * 1.0f);
+        yield return Shot("over", cam, player.position + Vector3.up * 30f - toSea * 22f, player.position + toSea * 14f);
+        yield return Shot("along", cam, player.position + Vector3.up * 2.0f + new Vector3(-toSea.z, 0, toSea.x) * 16f + toSea * 6f,
+                          player.position + toSea * 6f + Vector3.up * 1.0f);
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

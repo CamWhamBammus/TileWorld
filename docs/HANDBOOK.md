@@ -933,6 +933,39 @@ definition and the first cut reported a region that was half lowland grass.
 Seed 5, the Iron Heights: 77% of nine chunks the peaks' own ground, 2762 things
 standing where there used to be almost nothing, 2.9 ms.
 
+### Where two countries meet
+
+Three things decide how a border reads, and they were all wrong in different ways.
+
+**The fray.** `Regions.CellOfTile` hands a tile to its neighbour's cell when it is within
+`Fray` of a cell edge, with the chance running from a half on the line to nothing at the band's
+edge. That much was right. What was wrong is that the coin was `Hash(tile)` -- every tile had
+its own -- so a border came out as salt and pepper: single tiles of forest standing alone in
+sand, which the eye reads as speckle and not as a border. Deciding it from a noise field
+instead hands them over in patches, but a field on its own gives those patches clean edges,
+which is a staircase. It is now noise and coin mixed, 56 to 44, over two scales of noise, and
+`Fray` is 13 rather than 7. Measured along a line of tiles from a jungle into a sea, seed 4:
+
+    before   WWWWWWWWWWWJJJJJJJJWWWWWWWWWWWWWWWWWWWWWWWWWWWWJJJWWW
+    after    WWWWWWWWWWWJJWJJJJWWWJWWJJWJWWJJWJJWWWWWWWWJWWWWWWWWW
+
+**The strand.** The sand went up the shore to exactly `BeachHeight` everywhere, which draws a
+contour line round every island, and the eye finds a line like that at any distance. It now
+wanders by up to half a metre on a noise field, so the sand runs up a gully here and stops
+short there.
+
+**The verge.** New tiles, definitions 110 to 114, and they are a series rather than variants:
+0 is sand with a tuft in it, 4 is turf with sand showing through. `Chunk` chooses the variant by
+how far above the sand line the tile is, not by a hash, so a shore lays 0 upward and thins from
+one ground into the other. `VergeHeight` is a metre; wider and the whole series lands on the
+few tiles a steep shore has, all of them variant 0.
+
+What none of this fixes is that two adjacent tiles of different countries still meet along a
+hard edge, because a tile is instanced and cannot know what is beside it. The fray decides
+*which* tiles are which and the verge puts a third ground between them; the seam between any
+one pair is still a seam. Fixing that needs either pairwise transition tiles for every pair of
+countries, which is a square number of them, or a shader that samples the neighbour.
+
 ### The sea floor
 
 The ground used to stop at the base plane. `TerraceAt` clamped its terrace at

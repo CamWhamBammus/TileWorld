@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 22;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak
+    private const int Categories = 23;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -22,6 +22,15 @@ public class Chunk
     private const int ReefCategory = 19;        // the coral floor of the warm shallows: sand channels, coral heads, seagrass, urchins
     private const int JungleCategory = 20;      // the floor of a closed canopy: rotted leaf, buttress roots, standing water, undergrowth
     private const int PeakCategory = 21;        // the high country's own ground: frost-split slabs, thin turf, lichen, snow lying in the lee
+
+    /// <summary>
+    /// The ground between a beach and whatever grows behind it. Its five are a series rather
+    /// than variants: 0 is sand with a tuft in it, 4 is turf with sand showing through, and
+    /// the variant is chosen by how far up the shore the tile is instead of by a hash. Laid
+    /// in a band above the sand, it turns a line into a thinning.
+    /// </summary>
+    private const int VergeCategory = 22;
+    private const float VergeHeight = 1.0f;
     private const int SnowCategory = 16;
     private const int FillEarthId = 200, FillRockId = 201;   // plain blocks laid under a tile where the ground drops away
     private const float FillDepth = 2.05f;                // how deep a tile's body is, from its top at 1.05 to -1.00        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
@@ -143,6 +152,12 @@ public class Chunk
             // out of the pond, since the water is only a surface over the top.
             bool submerged = WaterSurface.IsUnderwater(gx, gz, worldSeed);
 
+            // Where the sand stops, this tile. Wandering, so no contour shows.
+            float sandLine = BeachHeight + (Mathf.PerlinNoise(offset + 133f + gx * 0.07f, offset + 133f + gz * 0.07f) - 0.5f) * 0.9f;
+
+            // A tile whose variant is decided by where it is rather than by a hash.
+            int forced = -1;
+
             // How far under, or how far clear. A lake bed was dark grass with
             // the trees taken out of it, which is a drowned field rather than a
             // lake: grass does not grow on a lake bottom and the eye knows it.
@@ -165,13 +180,25 @@ public class Chunk
                          : underBy >= DeepWater ? StoneCategory
                          : BeachCategory;
             }
-            else if (-underBy < BeachHeight && !underSnow && !stone
+            // How far up the shore the sand goes, wandering rather than following the
+            // contour: a strand that stops at one height all the way along a coast draws a
+            // line round the island, and the eye finds a line like that at any distance.
+            else if (-underBy < sandLine && !underSnow && !stone
                      && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Beach)
             {
                 // A strand of sand above the waterline, so the grass does not
                 // stop dead at the water -- but only on an open shore. A pond
                 // in a wood has grass to its edge, not a beach.
                 category = BeachCategory;
+            }
+            // And above the sand, the verge: the same shore thinning into whatever grows
+            // behind it over about two metres of height, rather than stopping dead.
+            else if (-underBy < sandLine + VergeHeight && !underSnow && !stone && !desert
+                     && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Beach)
+            {
+                category = VergeCategory;
+                float up = (-underBy - sandLine) / VergeHeight;
+                forced = Mathf.Clamp(Mathf.FloorToInt(up * VariantsPerCategory), 0, VariantsPerCategory - 1);
             }
             else if (SnowCover.IsSnowy(gx, gz, worldSeed))
             {
@@ -225,7 +252,7 @@ public class Chunk
                 category = ForestCategory;          // the forest's own floor under its own trees
             }
 
-            int variant = Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
+            int variant = forced >= 0 ? forced : Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
 
             // under the water the beach is bare sand: no dune grass on a lake bed. Of the five
             // beach tiles the first, third and fourth carry none.

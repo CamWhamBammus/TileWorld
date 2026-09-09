@@ -20,7 +20,7 @@ The ground is a grid of tiles, streamed in chunks of 15x15 and drawn with GPU in
 
 ### Regions
 
-The world is split into regions about 240m across. Each one gets a character based on its ground (how high, how wet, how much snow) and a generated name like "the Silent White" or "Weathered Holt". Borders between regions wander instead of running in straight lines, and the last few tiles of one region get mixed into the next so a forest thins out into desert rather than just stopping.
+The world is split into regions about 240m across. Each one gets a character based on its ground (how high, how wet, how much snow) and a generated name like "the Silent White" or "Weathered Holt". Borders between regions wander instead of running in straight lines, and the last twenty-odd tiles of one region get mixed into the next in patches and fingers, so a forest thins out into desert rather than just stopping. Where a shore meets whatever grows behind it there are verge tiles as well, a series that runs from sand with a tuft in it to turf with sand showing through, laid up the beach in order.
 
 | Region | Where it shows up | What it looks like |
 | --- | --- | --- |
