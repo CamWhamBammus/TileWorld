@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 94208a5864b6bdc49abc2cee55771079, type: 3}
-  m_Name: T101
+  m_Name: T96
   m_EditorClassIdentifier: Assembly-CSharp::TileDefinition
-  blockID: 101
-  prefab: {fileID: 7939007080789500326, guid: bb91dffb4f4af49a6b48cc88a9748548, type: 3}
+  blockID: 201
+  prefab: {fileID: 9133014161930815776, guid: abd7d7653cdc34a8bb6122602088ef58, type: 3}
   mesh: {fileID: 0}
   material: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}

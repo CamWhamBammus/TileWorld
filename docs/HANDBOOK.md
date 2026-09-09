@@ -863,6 +863,41 @@ seed 5, the Withered Ledges, 20% of nine chunks the reef floor with the rest
 its sand and its land, 652 colonies, the nearest 0.41 m under the surface,
 2.8 ms.
 
+### The jungle
+
+`Tools/jungle_tiles.py` builds five floor tiles for under a closed canopy --
+rotted leaf, a spread of buttress roots, a trunk gone soft under moss and
+bracket fungus, thick undergrowth, standing water -- and `Tools/jungle_trees.py`
+six plants that stand on them. The point of the set is the giant: twenty metres,
+ten tiles, against six and a half for the biggest tree in the temperate wood,
+with buttress roots you can walk between, a bare bole most of the way up and a
+lumpy crown with vines hanging off it.
+
+They are planted in four bands rather than one, which is what gives the canopy
+layers: `JungleGiants` at 15 to 21 m, `JungleTrees` (the tree and the strangler
+fig) at 9 to 14, `Bamboo` at 5 to 8, `JungleFerns` (the tree fern and the
+seedling) at 1.8 to 4.2. One band over all six would scale a seedling to the
+height of a giant, since `Take` gives a sort one height range and the
+undergrowth scales each mesh to a height drawn from it. The shares add to about
+0.42, half again what the forest carries, because a jungle you can see through
+is not a jungle.
+
+`Assets/Editor/JungleSet.cs` (`JungleSet.Batch`) makes the tiles definitions 100
+to 104. That took the numbers the fill blocks had been moved to for the reef, so
+they moved again, to 200 and 201, which is clear of anything the categories will
+reach. `Regions.Character.Jungle` is low warm ground with some water in it and
+no snow anywhere near: `relief < 0.20`, `wetShare > 0.02`, `snowShare <= 0`, one
+in two. The snow test matters -- a region averaging a third of the relief still
+has summits in it, and the first cut put a canopy up against a snowfield. A
+jungle takes what a wood takes for its ruins (`Landmarks` reads it as Forest)
+and the owl, the frog, the bat, the hedgehog and the boar live in one.
+
+`Tools/probe/Jungle.cs.txt` walks to one and counts: seed 4, the Ashen Green,
+51% of nine chunks the jungle floor with the rest its shore, 1943 plants
+standing of which 96 are giants, the tallest 20.9 m, 4.6 ms. That frame time is
+the highest of any country and the reason is the geometry standing in it, not
+the tiles.
+
 ### The sea floor
 
 The ground used to stop at the base plane. `TerraceAt` clamped its terrace at

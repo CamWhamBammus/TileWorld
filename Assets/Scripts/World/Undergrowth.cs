@@ -38,7 +38,7 @@ public class Undergrowth : MonoBehaviour
     private bool ready;
 
     private Flora.Sprout[] every;
-    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore;
+    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle;
 
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
@@ -138,6 +138,13 @@ public class Undergrowth : MonoBehaviour
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(Ours(flora.OurDeadTrees, flora.DeadTrees), 2.40f, 3.60f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
+        // A jungle is layered, so it is planted in four bands rather than one:
+        // the emergents stand clear of everything, the canopy fills in under
+        // them, and the bamboo and the ferns hold the floor.
+        var jungleGiants = Take(flora.JungleGiants ?? new Flora.Sprout[0], 15.0f, 21.0f);
+        var jungleTrees = Take(flora.JungleTrees ?? new Flora.Sprout[0], 9.0f, 14.0f);
+        var bamboo = Take(flora.Bamboo ?? new Flora.Sprout[0], 5.0f, 8.0f);
+        var jungleFerns = Take(flora.JungleFerns ?? new Flora.Sprout[0], 1.80f, 4.20f);
         // The coral is not planted from a country's table -- it is put down under
         // the water below -- but it goes through Take all the same, so it lands in
         // the one list of everything and gets drawn with the rest.
@@ -171,6 +178,10 @@ public class Undergrowth : MonoBehaviour
         stone = new[] { With(boulders, 0.34f) };
         dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
+        // Thicker than any wood in the world: the point of a jungle is that you
+        // cannot see through it.
+        jungle = new[] { With(jungleGiants, 0.025f), With(jungleTrees, 0.15f), With(bamboo, 0.055f),
+                         With(jungleFerns, 0.18f), With(mushrooms, 0.012f), With(boulders, 0.012f) };
         // the snowfields stand on their own snow now, which carries its own rocks, under their own trees;
         // the code-grown snow pines are kept for variety
         snow = new[] { With(snowConifers, 0.055f), With(snowBirches, 0.014f), With(snowSaplings, 0.02f), With(snowPines, 0.02f), With(boulders, 0.015f) };
@@ -300,6 +311,7 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Forest => forest,
                 Regions.Character.Water => shore,
                 Regions.Character.Reef => shore,
+                Regions.Character.Jungle => jungle,
                 _ => ordinary
             };
 

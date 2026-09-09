@@ -242,6 +242,8 @@ public static class Landmarks
         var here = Regions.CharacterAt(chunk, worldSeed);
         // A reef is a coast: it takes what the sea builds, the wreck and the light.
         if (here == Regions.Character.Reef) here = Regions.Character.Water;
+        // A jungle is a wood, and takes what people build in one.
+        if (here == Regions.Character.Jungle) here = Regions.Character.Forest;
         int fitting = 0;
         for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here && !kinds[i].Small) fitting++;
         if (fitting == 0) return result;

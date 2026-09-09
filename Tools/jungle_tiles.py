@@ -44,7 +44,7 @@ def jungle_body(b, rng, puddle=None):
 def big_leaf(b, rng, at, size=1.0, colour=None):
     """A fallen jungle leaf: broad, ribbed, one end lifted. Bigger than anything a wood drops."""
     x, z = at; a = rng.uniform(0, math.tau)
-    col = colour or rng.choice(["frond", "jungle2", "leafyellow", "litter2"])
+    col = colour or rng.choice(["frond", "jungle2", "jungle2", "junglelit", "humus2", "cocoa"])
     L = 0.30*size; W = 0.13*size
     tip = (x + math.cos(a)*L, GROUND + 0.05*size, z + math.sin(a)*L)
     tail = (x - math.cos(a)*L*0.55, GROUND, z - math.sin(a)*L*0.55)
@@ -173,7 +173,7 @@ def litter(b, rng, count, keep):
             big_leaf(b, rng, (x, z), size=rng.uniform(0.6, 1.0))
         else:
             a = rng.uniform(0, math.tau); s = rng.uniform(0.10, 0.17)
-            col = rng.choice(["litter2", "humus2", "cocoa", "jungle3"])
+            col = rng.choice(["humus2", "jfloor2", "jungle3", "cocoa"])
             ring = [(x + math.cos(a + k/5*math.tau)*s*0.8, GROUND + (0.03 if k == 0 else 0.0), z + math.sin(a + k/5*math.tau)*s*0.8) for k in range(5)]
             b.face(ring, col, out=(0,1,0))
 

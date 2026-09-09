@@ -15,7 +15,7 @@ public static class Regions
     /// <summary>Chunks across one region. About 240 metres, a few minutes' walk.</summary>
     public const int ChunksAcross = 8;
 
-    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed, Reef }
+    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed, Reef, Jungle }
 
     /// <summary>
     /// Whether a region is open sea rather than an inland pool. A reef is a
@@ -36,6 +36,7 @@ public static class Regions
     private static readonly string[] ForestNouns = { "Wood", "Thicket", "Forest", "Holt", "Shaw", "Weald", "Coppice", "Stand" };
     private static readonly string[] WaterNouns = { "Mere", "Marsh", "Waters", "Tarns", "Sink", "Fen", "Shallows", "Lough" };
     private static readonly string[] ReefNouns = { "Reef", "Garden", "Shoal", "Coral", "Banks", "Bloom", "Ledges", "Bar" };
+    private static readonly string[] JungleNouns = { "Tangle", "Canopy", "Deep", "Green", "Thicket", "Shade", "Reach", "Vault" };
     private static readonly string[] HillNouns = { "Downs", "Rise", "Fells", "Ridge", "Brow", "Bank", "Scarp", "Shoulder" };
     private static readonly string[] PeakNouns = { "Heights", "Crags", "Spires", "Roof", "Teeth", "Cairns", "Horns", "Summit" };
     private static readonly string[] FungalNouns = { "Rings", "Caps", "Gills", "Blight", "Hollow", "Rot", "Spores", "Damp" };
@@ -260,6 +261,14 @@ public static class Regions
         // Damp ground short of open water, where the reeds stand.
         if (wetShare > 0.09f && Hash(cell.x, cell.y, worldSeed + 8821) % 3 == 0) return Character.Reed;
 
+        // Jungle: low warm ground with water somewhere in it, and nothing
+        // frozen anywhere near it -- a region averaging a third of the relief
+        // still has summits in it, and a canopy running up into snow is two
+        // countries in one. Asked before the mushrooms and well before the
+        // sand, both of which want the same ground and would take it all.
+        if (relief < 0.20f && wetShare > 0.02f && snowShare <= 0f
+            && Hash(cell.x, cell.y, worldSeed + 1187) % 2 == 0) return Character.Jungle;
+
         if (relief < 0.44f && Hash(cell.x, cell.y, worldSeed + 7717) % 7 == 0) return Character.Fungal;
 
         // Woods that died standing.
@@ -287,6 +296,7 @@ public static class Regions
         {
             Character.Water => WaterNouns,
             Character.Reef => ReefNouns,
+            Character.Jungle => JungleNouns,
             Character.Peaks => PeakNouns,
             Character.Hills => HillNouns,
             Character.Forest => ForestNouns,
@@ -319,6 +329,7 @@ public static class Regions
         {
             case Character.Water: return "standing water";
             case Character.Reef: return "coral in warm shallows";
+            case Character.Jungle: return "jungle under a closed canopy";
             case Character.Peaks: return "snow and bare rock";
             case Character.Hills: return "high ground";
             case Character.Forest: return "deep forest";

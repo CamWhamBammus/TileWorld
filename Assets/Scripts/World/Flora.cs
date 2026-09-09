@@ -95,5 +95,17 @@ public class Flora : ScriptableObject
     /// <summary>The coral that stands up off a reef floor: heads, tables, fans, sponges, pillars.</summary>
     public Sprout[] Corals;
 
+    /// <summary>The emergent trees of a jungle: the ones that stand clear of the canopy.</summary>
+    public Sprout[] JungleGiants;
+
+    /// <summary>The canopy itself, under the giants.</summary>
+    public Sprout[] JungleTrees;
+
+    /// <summary>Bamboo, which grows in stands of its own.</summary>
+    public Sprout[] Bamboo;
+
+    /// <summary>What grows in the shade: tree ferns and seedlings.</summary>
+    public Sprout[] JungleFerns;
+
     public Material Paint;
 }

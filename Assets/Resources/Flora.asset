@@ -2768,6 +2768,46 @@ MonoBehaviour:
     Wide: 0.9220352
     Colour: {r: 0.85, g: 0.45, b: 0.55, a: 1}
     Foot: 0.03181863
+  JungleGiants:
+  - Name: Jungle Giant
+    Mesh: {fileID: 910552279246670448, guid: bebe31a3d81904e67adb38376fed163b, type: 3}
+    Size: 20.369133
+    Wide: 11.346309
+    Colour: {r: 0.3, g: 0.52, b: 0.24, a: 1}
+    Foot: 0.049999237
+  JungleTrees:
+  - Name: Jungle Tree
+    Mesh: {fileID: 5512289861837078246, guid: b9b6de0f49a344b1a967b089b83f4012, type: 3}
+    Size: 13.625933
+    Wide: 8.139324
+    Colour: {r: 0.26, g: 0.48, b: 0.22, a: 1}
+    Foot: 0.05000019
+  - Name: Strangler Fig
+    Mesh: {fileID: 5984968861769799594, guid: a5fab6f365aeb4b92867ad4bdba45b46, type: 3}
+    Size: 11.753296
+    Wide: 7.043415
+    Colour: {r: 0.26, g: 0.48, b: 0.22, a: 1}
+    Foot: 0.019023895
+  Bamboo:
+  - Name: Bamboo
+    Mesh: {fileID: 3955531651871782078, guid: 02bc092c0a5ef47b2a31f99d2c4cba21, type: 3}
+    Size: 7.3705597
+    Wide: 2.1033401
+    Colour: {r: 0.62, g: 0.72, b: 0.34, a: 1}
+    Foot: 0.0008573532
+  JungleFerns:
+  - Name: Tree Fern
+    Mesh: {fileID: -391171570231801233, guid: 31fdcc13fb43548dcb8082e31a30589e, type: 3}
+    Size: 3.6907117
+    Wide: 3.4205654
+    Colour: {r: 0.24, g: 0.5, b: 0.2, a: 1}
+    Foot: 0.0028483868
+  - Name: Jungle Sapling
+    Mesh: {fileID: 7973414278075961082, guid: 8028b72da14fe448b9ab66fd67e79925, type: 3}
+    Size: 2.4445586
+    Wide: 1.555315
+    Colour: {r: 0.24, g: 0.5, b: 0.2, a: 1}
+    Foot: 0.0025537014
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

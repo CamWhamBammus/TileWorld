@@ -123,7 +123,7 @@ public class _Probe : MonoBehaviour
         foreach (var chunk in chunks.Values)
         {
             loaded++;
-            foreach (var pair in chunk.idToTransforms) { if (pair.Key == 100) earth += pair.Value.Length; if (pair.Key == 101) rock += pair.Value.Length; }
+            foreach (var pair in chunk.idToTransforms) { if (pair.Key == 200) earth += pair.Value.Length; if (pair.Key == 201) rock += pair.Value.Length; }
         }
         Mark("FILL in " + loaded + " loaded chunks: " + earth + " earth blocks, " + rock + " rock blocks");
 

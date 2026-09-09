@@ -30,6 +30,7 @@ The world is split into regions about 240m across. Each one gets a character bas
 | Peaks | mostly above the snowline | bare rock and summits |
 | Water | very wet regions | open water with sandy beaches, shells, driftwood, palms |
 | Reef | some of the warmest, lowest wet regions | coral under shallow sea, seagrass, urchins, sand channels |
+| Jungle | low warm ground with water in it | giant trees over a closed canopy, bamboo, tree ferns, vines |
 | Reedbed | damp but not flooded | reeds in the shallows, wet mud with puddles |
 | Fungal | low ground, rare | giant toadstools over dark loam, glowing caps |
 | Desert | low, dry, open | sand everywhere, cacti, dead trees, a palm now and then |
@@ -40,6 +41,18 @@ The world is split into regions about 240m across. Each one gets a character bas
 ![A jetty on a lake at dawn](docs/images/lake.jpg)
 
 *A jetty on a lake at dawn.*
+
+### Jungle
+
+Low warm country with water in it grows jungle. The trees are the tallest in the world by a long way: the giants stand twenty metres, ten tiles, against six and a half for the biggest oak, on buttress roots you can walk between, with vines hanging off the crown. Under them is a second layer of ordinary jungle trees and stranglers, then bamboo, then tree ferns and seedlings on a floor of rotted leaf, buttress roots, fallen trunks and standing water. It is dense enough that you cannot see far through it, and dark underneath.
+
+![A jungle above a bay](docs/images/jungle.jpg)
+
+*A jungle running down to a bay, with a lighthouse and a wreck below it.*
+
+![The canopy from above](docs/images/jungle-canopy.jpg)
+
+*The canopy from above, where it meets the shore.*
 
 ### Water
 
