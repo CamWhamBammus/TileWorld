@@ -38,7 +38,7 @@ public class Undergrowth : MonoBehaviour
     private bool ready;
 
     private Flora.Sprout[] every;
-    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle;
+    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle, peaks;
 
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
@@ -145,6 +145,11 @@ public class Undergrowth : MonoBehaviour
         var jungleTrees = Take(flora.JungleTrees ?? new Flora.Sprout[0], 9.0f, 14.0f);
         var bamboo = Take(flora.Bamboo ?? new Flora.Sprout[0], 5.0f, 8.0f);
         var jungleFerns = Take(flora.JungleFerns ?? new Flora.Sprout[0], 1.80f, 4.20f);
+        // The high country. The krummholz band tops out above the treeline rule
+        // on purpose: that is what makes the trees stop where they should.
+        var krummholz = Take(flora.Krummholz ?? new Flora.Sprout[0], 1.20f, 2.40f);
+        var alpinePlants = Take(flora.AlpinePlants ?? new Flora.Sprout[0], 0.25f, 0.60f);
+        var alpineStones = Take(flora.AlpineStones ?? new Flora.Sprout[0], 1.00f, 2.20f);
         // The coral is not planted from a country's table -- it is put down under
         // the water below -- but it goes through Take all the same, so it lands in
         // the one list of everything and gets drawn with the rest.
@@ -176,6 +181,11 @@ public class Undergrowth : MonoBehaviour
         desert = new[] { With(beachPalms, 0.006f), With(deadTrees, 0.02f), With(saguaros, 0.028f), With(smallCacti, 0.05f), With(stones, 0.04f) };
         shore = new[] { With(beachPalms, 0.045f), With(boulders, 0.008f) };
         stone = new[] { With(boulders, 0.34f) };
+        // The peaks used to fall through to the ordinary table, which is oaks
+        // and pines, and then the treeline took nearly all of it away again --
+        // which is why a fifth of the world was bare.
+        peaks = new[] { With(krummholz, 0.05f), With(alpineStones, 0.045f),
+                        With(alpinePlants, 0.24f), With(boulders, 0.02f) };
         dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
         // Thicker than any wood in the world: the point of a jungle is that you
@@ -312,6 +322,7 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Water => shore,
                 Regions.Character.Reef => shore,
                 Regions.Character.Jungle => jungle,
+                Regions.Character.Peaks => peaks,
                 _ => ordinary
             };
 

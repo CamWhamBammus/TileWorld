@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 21;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle
+    private const int Categories = 22;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -21,6 +21,7 @@ public class Chunk
     private const int DeadCategory = 18;        // the dead woods' ash, charred wood and bones
     private const int ReefCategory = 19;        // the coral floor of the warm shallows: sand channels, coral heads, seagrass, urchins
     private const int JungleCategory = 20;      // the floor of a closed canopy: rotted leaf, buttress roots, standing water, undergrowth
+    private const int PeakCategory = 21;        // the high country's own ground: frost-split slabs, thin turf, lichen, snow lying in the lee
     private const int SnowCategory = 16;
     private const int FillEarthId = 200, FillRockId = 201;   // plain blocks laid under a tile where the ground drops away
     private const float FillDepth = 2.05f;                // how deep a tile's body is, from its top at 1.05 to -1.00        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
@@ -207,6 +208,13 @@ public class Chunk
             else if (steep > SteepFraction)
             {
                 category = BareSteepCategory;       // scree on the steep faces
+            }
+            else if (character == Regions.Character.Peaks)
+            {
+                // The high country used to stand on the lowland's pale grass,
+                // which is a meadow tile three thousand feet up. Its steep
+                // faces are still scree, asked for above this.
+                category = PeakCategory;
             }
             else if (bare < MarshFraction)
             {

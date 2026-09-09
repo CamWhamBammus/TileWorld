@@ -2808,6 +2808,39 @@ MonoBehaviour:
     Wide: 1.555315
     Colour: {r: 0.24, g: 0.5, b: 0.2, a: 1}
     Foot: 0.0025537014
+  Krummholz:
+  - Name: Krummholz
+    Mesh: {fileID: -6421932079448519110, guid: a6feebf2986604bad9d2c866e1c9b9f4, type: 3}
+    Size: 2.0191505
+    Wide: 2.602564
+    Colour: {r: 0.2, g: 0.32, b: 0.22, a: 1}
+    Foot: 0.018750966
+  - Name: Krummholz Mat
+    Mesh: {fileID: -3090739960796059860, guid: dea4aec663ca94611b5f34e2984a0d0d, type: 3}
+    Size: 1.2201746
+    Wide: 2.9800901
+    Colour: {r: 0.2, g: 0.32, b: 0.22, a: 1}
+    Foot: 0.048689127
+  AlpinePlants:
+  - Name: Cushion Plant
+    Mesh: {fileID: -8322849184861906864, guid: b33ecc9527ea94f41a7aeefd4903663b, type: 3}
+    Size: 0.1258211
+    Wide: 0.63469976
+    Colour: {r: 0.42, g: 0.46, b: 0.3, a: 1}
+    Foot: -0.040092215
+  - Name: Mountain Tussock
+    Mesh: {fileID: -6463654482416031081, guid: 2e67491172011456391f9bbdbd6fd635, type: 3}
+    Size: 0.4316582
+    Wide: 0.232454
+    Colour: {r: 0.42, g: 0.46, b: 0.3, a: 1}
+    Foot: -0
+  AlpineStones:
+  - Name: Erratic
+    Mesh: {fileID: -6897152475917107126, guid: 8c32e71041b184a5bb20324c3c7914fb, type: 3}
+    Size: 1.0298225
+    Wide: 1.99115
+    Colour: {r: 0.66, g: 0.68, b: 0.66, a: 1}
+    Foot: -0.03154576
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

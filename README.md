@@ -27,7 +27,7 @@ The world is split into regions about 240m across. Each one gets a character bas
 | Lowland | low dry ground | meadow with flowers, a few trees, fireflies at night |
 | Forest | mid height | oaks, beeches and birches over a floor of leaf litter, roots and logs |
 | Hills | higher | fewer trees, paler grass the higher you go, scree on the steep faces |
-| Peaks | mostly above the snowline | bare rock and summits |
+| Peaks | mostly above the snowline | frost-split rock, thin turf, lichen, erratics, wind-bent trees at the treeline |
 | Water | very wet regions | open water with sandy beaches, shells, driftwood, palms |
 | Reef | some of the warmest, lowest wet regions | coral under shallow sea, seagrass, urchins, sand channels |
 | Jungle | low warm ground with water in it | giant trees over a closed canopy, bamboo, tree ferns, vines |
@@ -41,6 +41,14 @@ The world is split into regions about 240m across. Each one gets a character bas
 ![A jetty on a lake at dawn](docs/images/lake.jpg)
 
 *A jetty on a lake at dawn.*
+
+### The high country
+
+The peaks have ground of their own: rock split flat by the frost, thin dry turf worked in between it, lichen over the stone in pale green and yellow, snow lying in the lee with ice down in the cracks, and boulders the ice left behind. What grows there is low and bent. Cushion plants flower on the rock, mountain tussock leans all one way, and at the treeline itself there are krummholz, trees that have given up growing upward: the trunk leans away from the weather, every branch grows downwind, the top is shorn level and the windward side is dead. They thin out and stop as you climb, which is how you know where the treeline is.
+
+![The high country](docs/images/peaks.jpg)
+
+*The high country, with krummholz leaning away from the weather and a Summit Cairn behind.*
 
 ### Jungle
 

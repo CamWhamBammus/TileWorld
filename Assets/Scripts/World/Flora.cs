@@ -107,5 +107,14 @@ public class Flora : ScriptableObject
     /// <summary>What grows in the shade: tree ferns and seedlings.</summary>
     public Sprout[] JungleFerns;
 
+    /// <summary>The wind-shorn trees of the treeline, which grow away from the weather.</summary>
+    public Sprout[] Krummholz;
+
+    /// <summary>What holds on above it: cushion plants and mountain tussock.</summary>
+    public Sprout[] AlpinePlants;
+
+    /// <summary>Blocks the ice left behind up there.</summary>
+    public Sprout[] AlpineStones;
+
     public Material Paint;
 }

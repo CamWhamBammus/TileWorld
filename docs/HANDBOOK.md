@@ -898,6 +898,41 @@ standing of which 96 are giants, the tallest 20.9 m, 4.6 ms. That frame time is
 the highest of any country and the reason is the geometry standing in it, not
 the tiles.
 
+### The peaks
+
+Not a new country: a fifth of the world that had never been given one. The
+peaks are the largest character there is, 21% of tiles, and until this they
+stood on the lowland's pale grass -- a meadow tile three thousand feet up --
+because `Chunk` had no branch for them and they fell through to the grass by
+height. Then `Undergrowth` had no case for them either, so they took the
+`ordinary` table, which is oaks and pines, and the treeline rule
+(`sort.High > 2.2 && relief > 0.72`) deleted nearly all of that again. What was
+left was a mushroom and a boulder on grass. That is the whole reason the high
+country looked empty.
+
+`Tools/peak_tiles.py` gives them ground: frost-split slabs lying where they
+cracked, rock heaved up through thin dry turf, snow lying in the lee with ice
+down in the cracks, alpine turf, and an erratic in the scatter. Lichen crusts
+go over the rock in pale green and a hot yellow, which is most of what says
+altitude. `Tools/peak_plants.py` gives them the five things that survive up
+there: two krummholz, a cushion plant, mountain tussock and a big erratic.
+
+The krummholz is the piece worth the trouble. It is a tree that has given up
+going upward: the trunk leans away from the weather, every living branch grows
+downwind, the top is shorn level, and the windward side is bare dead wood. Its
+planting band is 1.20 to 2.40 m, and the 2.40 is deliberate -- it is over the
+treeline rule's 2.2, so the krummholz thins out and stops as the ground rises,
+which is what a treeline is.
+
+`Assets/Editor/PeakSet.cs` (`PeakSet.Batch`) makes the tiles definitions 105 to
+109 and fills `Krummholz`, `AlpinePlants` and `AlpineStones`. The tile branch in
+`Chunk` sits *after* the steep test, so the steep faces stay scree, which was
+already right. `Tools/probe/Peaks.cs.txt` walks to one -- and has to walk into
+the middle of it, since a ring search out from the origin finds the border by
+definition and the first cut reported a region that was half lowland grass.
+Seed 5, the Iron Heights: 77% of nine chunks the peaks' own ground, 2762 things
+standing where there used to be almost nothing, 2.9 ms.
+
 ### The sea floor
 
 The ground used to stop at the base plane. `TerraceAt` clamped its terrace at
