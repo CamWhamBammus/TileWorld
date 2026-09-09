@@ -38,3 +38,5 @@ Tools/.check/
 # What the Blender scripts turn out: meshes on their way into Assets, and preview renders
 Tools/*.fbx
 Tools/*.png
+Tools/*.gif
+Tools/.frames/
