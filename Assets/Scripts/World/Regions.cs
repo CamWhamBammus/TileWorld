@@ -83,6 +83,9 @@ public static class Regions
     /// </summary>
     private const float Fray = 13f;
 
+    /// <summary>How wide the band of mixed ground either side of a border is, in tiles.</summary>
+    private const float Blend = 8f;
+
     /// <summary>Tiles across one region.</summary>
     private const int TilesAcross = ChunksAcross * WorldGrid.TilesPerChunk;
 
@@ -151,6 +154,48 @@ public static class Regions
         if (acrossX) return new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz);
 
         return new Vector2Int(cx, inZ < TilesAcross - inZ ? cz - 1 : cz + 1);
+    }
+
+    /// <summary>
+    /// The country on the other side of the nearest border, and how near the line this tile
+    /// lies: nought at the outer edge of the band and one on the line itself. Nought means
+    /// there is no border within reach, and <paramref name="other"/> is then meaningless.
+    ///
+    /// This repeats the wander that <see cref="CellOfTile"/> does, two noise lookups, rather
+    /// than returning it from there: the ground asks this once per tile and the cell it lands
+    /// in is remembered, so the cost is the noise and nothing else.
+    /// </summary>
+    public static float Border(int tileX, int tileZ, int worldSeed, out Character other)
+    {
+        other = Character.Lowland;
+
+        float o = 3000f + (worldSeed % 733) * 2.13f;
+        const float scale = 1f / 38f;
+
+        float wx = tileX + (Mathf.PerlinNoise(o + tileX * scale, o + tileZ * scale) - 0.5f) * 2f * Wander;
+        float wz = tileZ + (Mathf.PerlinNoise(o + 77f + tileX * scale, o + 77f + tileZ * scale) - 0.5f) * 2f * Wander;
+
+        int cx = Mathf.FloorToInt(wx / TilesAcross);
+        int cz = Mathf.FloorToInt(wz / TilesAcross);
+
+        float inX = wx - cx * TilesAcross;
+        float inZ = wz - cz * TilesAcross;
+
+        float toX = Mathf.Min(inX, TilesAcross - inX);
+        float toZ = Mathf.Min(inZ, TilesAcross - inZ);
+
+        bool acrossX = toX <= toZ;
+        float near = acrossX ? toX : toZ;
+
+        if (near >= Blend) return 0f;
+
+        var neighbour = acrossX
+            ? new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz)
+            : new Vector2Int(cx, inZ < TilesAcross - inZ ? cz - 1 : cz + 1);
+
+        other = CharacterOfCell(neighbour, worldSeed);
+
+        return 1f - near / Blend;
     }
 
     /// <summary>What the ground is like at one tile.</summary>

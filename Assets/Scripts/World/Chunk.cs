@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 23;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge
+    private const int Categories = 33;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -31,6 +31,48 @@ public class Chunk
     /// </summary>
     private const int VergeCategory = 22;
     private const float VergeHeight = 1.0f;
+
+    /// <summary>
+    /// The mixed ground where two countries meet. A tile for every pair of countries would be
+    /// a square number of them, but the fourteen grounds are only five things to look at --
+    /// sand, grass, dark floor, rock and snow -- so five families make ten pairs and ten
+    /// series of five cover every border in the world. Categories 23 to 32.
+    /// </summary>
+    private const int FirstBlendCategory = 23;
+    private const int Families = 5;
+    private const int Sand = 0, Grass = 1, Dark = 2, Rock = 3, White = 4;
+
+    /// <summary>Which of the five a laid ground belongs to, or -1 for one that does not mix.</summary>
+    private static int FamilyOfGround(int category)
+    {
+        switch (category)
+        {
+            case ForestCategory: case MarshCategory: case FungalCategory:
+            case DeadCategory: case JungleCategory: return Dark;
+            case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory: return Grass;
+            case BeachCategory: case DesertCategory: return Sand;
+            case StoneCategory: case BareSteepCategory: case PeakCategory: return Rock;
+            case SnowCategory: return White;
+            default: return -1;
+        }
+    }
+
+    /// <summary>What the country over the border mostly lays, taken from its character alone.</summary>
+    private static int FamilyOfCountry(Regions.Character who)
+    {
+        switch (who)
+        {
+            case Regions.Character.Lowland: case Regions.Character.Hills: return Grass;
+            case Regions.Character.Forest: case Regions.Character.Jungle:
+            case Regions.Character.Fungal: case Regions.Character.Dead:
+            case Regions.Character.Reed: return Dark;
+            case Regions.Character.Desert: case Regions.Character.Water:
+            case Regions.Character.Reef: return Sand;
+            case Regions.Character.Snow: return White;
+            case Regions.Character.Stone: case Regions.Character.Peaks: return Rock;
+            default: return -1;
+        }
+    }
     private const int SnowCategory = 16;
     private const int FillEarthId = 200, FillRockId = 201;   // plain blocks laid under a tile where the ground drops away
     private const float FillDepth = 2.05f;                // how deep a tile's body is, from its top at 1.05 to -1.00        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
@@ -67,6 +109,9 @@ public class Chunk
     private const float BeachHeight = 0.7f;
     private const float BlendNoiseScale = 0.09f;
     private const float BlendWeight = 0.22f;
+
+    /// <summary>Ground that already draws its own edge and must not be mixed away.</summary>
+    private static bool CarriesOwnEdge(int category) => category == ReefCategory;
 
     private static bool[] BuildTreeTable()
     {
@@ -250,6 +295,32 @@ public class Chunk
             else if (character == Regions.Character.Forest)
             {
                 category = ForestCategory;          // the forest's own floor under its own trees
+            }
+
+            // Where two countries meet, the ground between them: the tile's own family and
+            // the one over the border pick a series, and how near the line picks how far along
+            // it. Both sides walk toward the middle of the same series, so they meet there
+            // instead of meeting each other.
+            if (!submerged && category != VergeCategory && !CarriesOwnEdge(category))
+            {
+                float near = Regions.Border(gx, gz, worldSeed, out var over);
+                if (near > 0f)
+                {
+                    int mine = FamilyOfGround(category);
+                    int theirs = FamilyOfCountry(over);
+
+                    if (mine >= 0 && theirs >= 0 && mine != theirs)
+                    {
+                        int low = Mathf.Min(mine, theirs), high = Mathf.Max(mine, theirs);
+                        category = FirstBlendCategory + low * (2 * Families - 1 - low) / 2 + (high - low - 1);
+                        float toward = mine == low ? near * 0.5f : 1f - near * 0.5f;
+
+                        // Jittered, or every tile the same distance from the line picks the
+                        // same one of the five and the band comes out in stripes.
+                        toward += (Hash2D(gx, gz, worldSeed + 313) % 1000) / 1000f * 0.30f - 0.15f;
+                        forced = Mathf.Clamp(Mathf.RoundToInt(toward * (VariantsPerCategory - 1)), 0, VariantsPerCategory - 1);
+                    }
+                }
             }
 
             int variant = forced >= 0 ? forced : Hash2D(gx, gz, worldSeed) % VariantsPerCategory;

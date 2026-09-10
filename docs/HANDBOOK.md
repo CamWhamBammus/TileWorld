@@ -960,11 +960,26 @@ how far above the sand line the tile is, not by a hash, so a shore lays 0 upward
 one ground into the other. `VergeHeight` is a metre; wider and the whole series lands on the
 few tiles a steep shore has, all of them variant 0.
 
-What none of this fixes is that two adjacent tiles of different countries still meet along a
-hard edge, because a tile is instanced and cannot know what is beside it. The fray decides
-*which* tiles are which and the verge puts a third ground between them; the seam between any
-one pair is still a seam. Fixing that needs either pairwise transition tiles for every pair of
-countries, which is a square number of them, or a shader that samples the neighbour.
+**The mixed ground.** The seam between any one pair of tiles is still a seam, since a tile is
+instanced and cannot know what is beside it. What can be done is to put ground between them
+that is already half of each. A tile for every pair of countries would be a square number of
+them, but the fourteen grounds in the world are only five things to look at -- sand, grass,
+dark floor, rock, snow -- so five families make ten pairs, and each pair gets a series of five
+graded from one to the other. Fifty tiles, definitions 115 to 164, cover every border there is.
+
+`Regions.Border` gives a tile the country over the nearest border and how near the line it is,
+nought at the edge of the band and one on the line. `Chunk` takes its own laid ground's family
+and the other country's, picks the series, and walks along it: a tile of the first family goes
+0 to 2 as it nears the line, a tile of the second goes 4 to 2, so both sides arrive at the
+middle of the same series instead of arriving at each other. `Blend` is 8 tiles.
+
+Two things had to be tuned after seeing it. A band of 12 turned a third of the world into
+mixed ground and pushed the real floors, with their logs and ferns and mushrooms, well back
+from every border. And every tile the same distance from the line picked the same one of the
+five, so the band came out in stripes; the choice is jittered by about a third of a step now.
+
+`Tools/probe/Borders.cs.txt` walks a line of tiles from one country into the next and prints
+what each belongs to, which is how the fray was measured, and photographs the join.
 
 ### The sea floor
 
