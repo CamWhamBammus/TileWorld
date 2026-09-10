@@ -116,5 +116,17 @@ public class Flora : ScriptableObject
     /// <summary>Blocks the ice left behind up there.</summary>
     public Sprout[] AlpineStones;
 
+    /// <summary>The flat-topped trees of a plain, which stand alone and make its whole shape.</summary>
+    public Sprout[] Acacias;
+
+    /// <summary>Thorn bushes, which are scattered over a plain rather than covering it.</summary>
+    public Sprout[] SavannaScrub;
+
+    /// <summary>The tall grass itself, which is most of what a plain has on it.</summary>
+    public Sprout[] SavannaGrass;
+
+    /// <summary>Termite mounds, which stand on their own and rarely.</summary>
+    public Sprout[] TermiteMounds;
+
     public Material Paint;
 }

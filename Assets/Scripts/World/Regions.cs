@@ -15,7 +15,7 @@ public static class Regions
     /// <summary>Chunks across one region. About 240 metres, a few minutes' walk.</summary>
     public const int ChunksAcross = 8;
 
-    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed, Reef, Jungle }
+    public enum Character { Lowland, Forest, Water, Hills, Peaks, Fungal, Desert, Snow, Stone, Dead, Reed, Reef, Jungle, Savanna }
 
     /// <summary>
     /// Whether a region is open sea rather than an inland pool. A reef is a
@@ -37,6 +37,7 @@ public static class Regions
     private static readonly string[] WaterNouns = { "Mere", "Marsh", "Waters", "Tarns", "Sink", "Fen", "Shallows", "Lough" };
     private static readonly string[] ReefNouns = { "Reef", "Garden", "Shoal", "Coral", "Banks", "Bloom", "Ledges", "Bar" };
     private static readonly string[] JungleNouns = { "Tangle", "Canopy", "Deep", "Green", "Thicket", "Shade", "Reach", "Vault" };
+    private static readonly string[] SavannaNouns = { "Plain", "Flats", "Reach", "Grasslands", "Open", "Sweep", "Run", "Wide" };
     private static readonly string[] HillNouns = { "Downs", "Rise", "Fells", "Ridge", "Brow", "Bank", "Scarp", "Shoulder" };
     private static readonly string[] PeakNouns = { "Heights", "Crags", "Spires", "Roof", "Teeth", "Cairns", "Horns", "Summit" };
     private static readonly string[] FungalNouns = { "Rings", "Caps", "Gills", "Blight", "Hollow", "Rot", "Spores", "Damp" };
@@ -339,6 +340,11 @@ public static class Regions
         // Bare rock, where nothing has got a hold.
         if (relief > 0.22f && Hash(cell.x, cell.y, worldSeed + 6163) % 7 == 0) return Character.Stone;
 
+        // Savanna: low, dry and open, the same ground the sand wants, so it is asked first
+        // and takes a share of what would otherwise all have been desert.
+        if (relief < 0.46f && wetShare < 0.20f && snowShare <= 0f
+            && Hash(cell.x, cell.y, worldSeed + 4523) % 3 == 0) return Character.Savanna;
+
         // And then sand, wherever is low, dry and open enough to take it.
         // There is a good deal of it: somewhere you have to hunt for is not a
         // biome, it is a rumour.
@@ -359,6 +365,7 @@ public static class Regions
             Character.Water => WaterNouns,
             Character.Reef => ReefNouns,
             Character.Jungle => JungleNouns,
+            Character.Savanna => SavannaNouns,
             Character.Peaks => PeakNouns,
             Character.Hills => HillNouns,
             Character.Forest => ForestNouns,
@@ -392,6 +399,7 @@ public static class Regions
             case Character.Water: return "standing water";
             case Character.Reef: return "coral in warm shallows";
             case Character.Jungle: return "jungle under a closed canopy";
+            case Character.Savanna: return "dry grassland under flat-topped trees";
             case Character.Peaks: return "snow and bare rock";
             case Character.Hills: return "high ground";
             case Character.Forest: return "deep forest";

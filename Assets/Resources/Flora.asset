@@ -2841,6 +2841,40 @@ MonoBehaviour:
     Wide: 1.99115
     Colour: {r: 0.66, g: 0.68, b: 0.66, a: 1}
     Foot: -0.03154576
+  Acacias:
+  - Name: Acacia
+    Mesh: {fileID: 6287631019940354937, guid: b1fbcf3305f1845d3b85ef1559cfb50a, type: 3}
+    Size: 8.694623
+    Wide: 11.077398
+    Colour: {r: 0.3, g: 0.48, b: 0.24, a: 1}
+    Foot: 0.0027227402
+  - Name: Acacia Small
+    Mesh: {fileID: -6128052951371549232, guid: e94181bd3b42f49819c6fdd7523d8cd3, type: 3}
+    Size: 5.4970694
+    Wide: 6.9821043
+    Colour: {r: 0.3, g: 0.48, b: 0.24, a: 1}
+    Foot: 0.0042510033
+  SavannaScrub:
+  - Name: Thorn Bush
+    Mesh: {fileID: 5986063007951251379, guid: 2bd0ff9cbc36f40a18ee263382529961, type: 3}
+    Size: 1.1908525
+    Wide: 1.4943819
+    Colour: {r: 0.42, g: 0.5, b: 0.3, a: 1}
+    Foot: 0.016983151
+  SavannaGrass:
+  - Name: Tall Grass
+    Mesh: {fileID: -5417641456779713933, guid: 6de69c99a1517482c8a8ad8c3fdb3def, type: 3}
+    Size: 0.99774814
+    Wide: 0.51465744
+    Colour: {r: 0.78, g: 0.72, b: 0.44, a: 1}
+    Foot: -0
+  TermiteMounds:
+  - Name: Termite Mound
+    Mesh: {fileID: 2708192690405730330, guid: 7108b1f04164c48de8b3d0b541f5e920, type: 3}
+    Size: 1.9709933
+    Wide: 0.931064
+    Colour: {r: 0.69, g: 0.38, b: 0.24, a: 1}
+    Foot: -0
   Paint: {fileID: 2100000, guid: 6a76d4055f6516b45ac249d8b1889464, type: 2}
 --- !u!43 &132309860539210177
 Mesh:

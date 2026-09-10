@@ -244,6 +244,8 @@ public static class Landmarks
         if (here == Regions.Character.Reef) here = Regions.Character.Water;
         // A jungle is a wood, and takes what people build in one.
         if (here == Regions.Character.Jungle) here = Regions.Character.Forest;
+        // A plain is open country: the shrine and the standing stones belong on one.
+        if (here == Regions.Character.Savanna) here = Regions.Character.Lowland;
         int fitting = 0;
         for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here && !kinds[i].Small) fitting++;
         if (fitting == 0) return result;

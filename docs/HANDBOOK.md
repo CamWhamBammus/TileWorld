@@ -981,6 +981,38 @@ five, so the band came out in stripes; the choice is jittered by about a third o
 `Tools/probe/Borders.cs.txt` walks a line of tiles from one country into the next and prints
 what each belongs to, which is how the fray was measured, and photographs the join.
 
+### The savanna
+
+The country between the sand and the woods: dry open grassland, straw over red earth, with the
+earth showing through where it is worn. `Tools/savanna_tiles.py` builds five tiles -- open
+grass, ground worn bare and cracked, short grass over hard ground, a path beaten across it,
+thorn taking hold -- and `Tools/savanna_trees.py` five things that stand on it: two acacias, a
+thorn bush, a termite mound and a clump of tall grass. Definitions 165 to 169.
+
+The acacia is the whole country. A trunk with nothing on it for two thirds of its height, then
+everything at once, out sideways, under a canopy flat enough to walk on. A tree that branched
+low would read as an oak and the plain would read as a wood. It stands eight and a half metres
+with a canopy seven across.
+
+`Regions.Character.Savanna` is asked immediately before the desert and wants the same ground --
+`relief < 0.46`, `wetShare < 0.20`, no snow, one in three -- so it takes a share of what would
+otherwise all have been sand. Its ground belongs to the **grass** family, so it needs no blend
+series of its own: the ten that already exist carry it into sand, dark floor, rock and snow.
+That is the property that makes the family design worth having. A plain takes what open country
+builds, so `Landmarks` reads it as Lowland and it gets the shrine and the standing stones.
+
+Two things had to be pulled back after seeing it run. The termite mounds were built into a tile,
+which put one on a fifth of the whole country, like traffic cones; they are planted now, and
+rarely. And the planting was far too thick -- a tree every forty tiles and thorn on a quarter of
+them -- which came out as a wood with odd trees in it. A plain is mostly nothing and you can see
+across it, which is the point of one. `Tools/probe/Savanna.cs.txt`: seed 5, the Wandering Sweep,
+82% of nine chunks its own ground, 2.7 ms.
+
+**A trap worth knowing.** `Tools/check.sh` does not compile Editor scripts, and says so at the
+top of itself. A new set tool copied from an old one had two members of the same name and the
+check passed clean; it was Unity's own compile, on the way to running the tool, that caught it.
+Run the batch, do not trust the check for anything under `Assets/Editor`.
+
 ### The sea floor
 
 The ground used to stop at the base plane. `TerraceAt` clamped its terrace at

@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 33;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground
+    private const int Categories = 34;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground, then savanna
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -38,6 +38,7 @@ public class Chunk
     /// sand, grass, dark floor, rock and snow -- so five families make ten pairs and ten
     /// series of five cover every border in the world. Categories 23 to 32.
     /// </summary>
+    private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
     private const int FirstBlendCategory = 23;
     private const int Families = 5;
     private const int Sand = 0, Grass = 1, Dark = 2, Rock = 3, White = 4;
@@ -49,7 +50,8 @@ public class Chunk
         {
             case ForestCategory: case MarshCategory: case FungalCategory:
             case DeadCategory: case JungleCategory: return Dark;
-            case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory: return Grass;
+            case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory:
+            case SavannaCategory: return Grass;
             case BeachCategory: case DesertCategory: return Sand;
             case StoneCategory: case BareSteepCategory: case PeakCategory: return Rock;
             case SnowCategory: return White;
@@ -62,7 +64,8 @@ public class Chunk
     {
         switch (who)
         {
-            case Regions.Character.Lowland: case Regions.Character.Hills: return Grass;
+            case Regions.Character.Lowland: case Regions.Character.Hills:
+            case Regions.Character.Savanna: return Grass;
             case Regions.Character.Forest: case Regions.Character.Jungle:
             case Regions.Character.Fungal: case Regions.Character.Dead:
             case Regions.Character.Reed: return Dark;
@@ -278,6 +281,12 @@ public class Chunk
                 // all of it, steep faces included: scree through a jungle
                 // reads as a patch of somewhere else, the same as in the sand
                 category = JungleCategory;
+            }
+            else if (character == Regions.Character.Savanna)
+            {
+                // all of it, steep faces included, the same as the sand: scree through a plain
+                // reads as a patch of somewhere else
+                category = SavannaCategory;
             }
             else if (desert)
             {

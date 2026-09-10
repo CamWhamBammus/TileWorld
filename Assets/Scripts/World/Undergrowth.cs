@@ -38,7 +38,7 @@ public class Undergrowth : MonoBehaviour
     private bool ready;
 
     private Flora.Sprout[] every;
-    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle, peaks;
+    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle, peaks, savanna;
 
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
@@ -150,6 +150,10 @@ public class Undergrowth : MonoBehaviour
         var krummholz = Take(flora.Krummholz ?? new Flora.Sprout[0], 1.20f, 2.40f);
         var alpinePlants = Take(flora.AlpinePlants ?? new Flora.Sprout[0], 0.25f, 0.60f);
         var alpineStones = Take(flora.AlpineStones ?? new Flora.Sprout[0], 1.00f, 2.20f);
+        var acacias = Take(flora.Acacias ?? new Flora.Sprout[0], 5.50f, 9.00f);
+        var savannaScrub = Take(flora.SavannaScrub ?? new Flora.Sprout[0], 0.80f, 1.70f);
+        var savannaGrass = Take(flora.SavannaGrass ?? new Flora.Sprout[0], 0.70f, 1.40f);
+        var termites = Take(flora.TermiteMounds ?? new Flora.Sprout[0], 1.20f, 2.40f);
         // The coral is not planted from a country's table -- it is put down under
         // the water below -- but it goes through Take all the same, so it lands in
         // the one list of everything and gets drawn with the rest.
@@ -186,6 +190,13 @@ public class Undergrowth : MonoBehaviour
         // which is why a fifth of the world was bare.
         peaks = new[] { With(krummholz, 0.05f), With(alpineStones, 0.045f),
                         With(alpinePlants, 0.24f), With(boulders, 0.02f) };
+        // A plain is mostly nothing, and that is the point of it: the trees stand alone and
+        // you can see a long way between them.
+        // A plain is mostly nothing and you can see across it, which is the whole point. The
+        // first cut had a tree every forty tiles and thorn on a quarter of them, and came out
+        // as a wood with odd trees in it.
+        savanna = new[] { With(acacias, 0.010f), With(termites, 0.0035f), With(savannaScrub, 0.030f),
+                          With(savannaGrass, 0.150f), With(boulders, 0.006f) };
         dead = new[] { With(deadTrees, 0.26f), With(mushrooms, 0.04f), With(boulders, 0.06f) };
         reed = new[] { With(reeds, 0.42f), With(boulders, 0.02f) };
         // Thicker than any wood in the world: the point of a jungle is that you
@@ -323,6 +334,7 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Reef => shore,
                 Regions.Character.Jungle => jungle,
                 Regions.Character.Peaks => peaks,
+                Regions.Character.Savanna => savanna,
                 _ => ordinary
             };
 

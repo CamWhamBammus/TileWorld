@@ -33,6 +33,7 @@ The world is split into regions about 240m across. Each one gets a character bas
 | Jungle | low warm ground with water in it | giant trees over a closed canopy, bamboo, tree ferns, vines |
 | Reedbed | damp but not flooded | reeds in the shallows, wet mud with puddles |
 | Fungal | low ground, rare | giant toadstools over dark loam, glowing caps |
+| Savanna | low, dry, open, next to the sand | straw grass over red earth, flat-topped acacias standing alone, termite mounds |
 | Desert | low, dry, open | sand everywhere, cacti, dead trees, a palm now and then |
 | Snowfield | a plain that stays frozen | deep snow, laden spruces and firs, bare birches, frozen lakes |
 | Stone barrens | higher ground, rare | slabs of rock and boulders, lichen, nothing growing |
@@ -41,6 +42,14 @@ The world is split into regions about 240m across. Each one gets a character bas
 ![A jetty on a lake at dawn](docs/images/lake.jpg)
 
 *A jetty on a lake at dawn.*
+
+### The plains
+
+Between the sand and the woods there is savanna: dry grassland, straw coloured, with red earth showing through where it is worn and paths beaten across it. The trees are acacias and they stand alone. A bare trunk for two thirds of its height, then everything at once out sideways under a canopy flat enough to walk on, so the tree is a line and a plate with sky underneath. There is tall grass, thorn bushes, the odd termite mound standing up red and hard, and bones going white in the sun. You can see a long way across it, which is the point of it.
+
+![The plains](docs/images/savanna.jpg)
+
+*Acacias over dry grass, with a wood beyond.*
 
 ### The high country
 
