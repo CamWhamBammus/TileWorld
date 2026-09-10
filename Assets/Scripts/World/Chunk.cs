@@ -110,6 +110,15 @@ public class Chunk
     private const float BlendNoiseScale = 0.09f;
     private const float BlendWeight = 0.22f;
 
+    // How much the edges that compare a slope or a depth are allowed to wander, and how
+    // tight the wander is. The reef's is the smallest of the three on purpose: its floor
+    // carries seagrass 0.58 above the block, so the shallow end of its range has to stay
+    // deeper than that however far the line moves.
+    private const float EdgeNoiseScale = 0.16f;
+    private const float SteepWander = 0.14f;
+    private const float DeepWander = 0.55f;
+    private const float ReefWander = 0.22f;
+
     /// <summary>Ground that already draws its own edge and must not be mixed away.</summary>
     private static bool CarriesOwnEdge(int category) => category == ReefCategory;
 
@@ -185,6 +194,13 @@ public class Chunk
             float wobble = Mathf.PerlinNoise(offset + gx * BlendNoiseScale, offset + gz * BlendNoiseScale) - 0.5f;
             float bare = Mathf.Clamp01(relief + steep * 0.30f + wobble * BlendWeight);
 
+            // The grass bands, the marsh line and the treeline all read off bare, so they
+            // inherit that wobble and wander on their own. The three edges below are bare
+            // comparisons against a slope or a depth, and without this they follow a contour
+            // exactly: scree appears along a perfectly smooth curve, and the sea floor changes
+            // ground along a circle. A finer noise on the threshold itself is all they need.
+            float ripple = Mathf.PerlinNoise(offset + 311f + gx * EdgeNoiseScale, offset + 311f + gz * EdgeNoiseScale) - 0.5f;
+
             // Fungus keeps to the dark and the damp, so the ground under it is
             // read as lower and wetter than it is and comes out darker for it.
             if (fungal) bare = Mathf.Clamp01(bare - 0.20f);
@@ -221,8 +237,8 @@ public class Chunk
                 // coral in ankle-deep water reads as a flooded field.
                 category = underSnow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
-                         : character == Regions.Character.Reef && underBy >= ReefDepth ? ReefCategory
-                         : underBy >= DeepWater ? StoneCategory
+                         : character == Regions.Character.Reef && underBy >= ReefDepth + ripple * ReefWander ? ReefCategory
+                         : underBy >= DeepWater + ripple * DeepWander ? StoneCategory
                          : BeachCategory;
             }
             // How far up the shore the sand goes, wandering rather than following the
@@ -277,7 +293,7 @@ public class Chunk
             {
                 category = MarshCategory;
             }
-            else if (steep > SteepFraction)
+            else if (steep > SteepFraction + ripple * SteepWander)
             {
                 category = BareSteepCategory;       // scree on the steep faces
             }
