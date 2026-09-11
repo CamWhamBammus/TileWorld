@@ -355,6 +355,29 @@ public class WorldMap : MonoBehaviour
     private static readonly Color Ice = new Color(0.78f, 0.86f, 0.92f);
     private static readonly Color Snow = new Color(0.94f, 0.95f, 0.96f);
 
+    /// <summary>What each country is drawn as on the chart, kept muted to suit the paper.</summary>
+    private static Color CountryColour(Regions.Character who)
+    {
+        switch (who)
+        {
+            case Regions.Character.Lowland: return new Color(0.56f, 0.66f, 0.38f);
+            case Regions.Character.Forest:  return new Color(0.33f, 0.47f, 0.28f);
+            case Regions.Character.Jungle:  return new Color(0.22f, 0.42f, 0.22f);
+            case Regions.Character.Savanna: return new Color(0.76f, 0.68f, 0.40f);
+            case Regions.Character.Desert:  return new Color(0.84f, 0.76f, 0.52f);
+            case Regions.Character.Hills:   return new Color(0.55f, 0.56f, 0.36f);
+            case Regions.Character.Peaks:   return new Color(0.60f, 0.60f, 0.62f);
+            case Regions.Character.Stone:   return new Color(0.54f, 0.52f, 0.48f);
+            case Regions.Character.Snow:    return new Color(0.86f, 0.88f, 0.90f);
+            case Regions.Character.Reed:    return new Color(0.45f, 0.53f, 0.38f);
+            case Regions.Character.Fungal:  return new Color(0.48f, 0.38f, 0.50f);
+            case Regions.Character.Dead:    return new Color(0.46f, 0.42f, 0.38f);
+            case Regions.Character.Reef:    return new Color(0.40f, 0.62f, 0.62f);
+            case Regions.Character.Water:   return new Color(0.42f, 0.55f, 0.62f);
+            default: return new Color(0.56f, 0.62f, 0.44f);
+        }
+    }
+
     /// <summary>
     /// The colour of a chunk on the chart. Sampled across the chunk rather than
     /// taken from its centre tile, so a lake or a snow cap covering most of it
@@ -392,6 +415,12 @@ public class WorldMap : MonoBehaviour
         }
 
         Color ground = HeightColour(height / Mathf.Max(1, samples));
+
+        // And the country over the top of it. Without this a chart shades by height alone, so
+        // a jungle, a plain, a desert and a meadow all at the same altitude come out the same
+        // colour and the chart cannot tell you where anything is. Height still reads through
+        // it: the country is mixed in, not painted over.
+        ground = Color.Lerp(ground, CountryColour(Regions.CharacterAt(chunk, seed)), 0.45f);
 
         float wetShare = wet / (float)Mathf.Max(1, samples);
         float snowShare = snowy / (float)Mathf.Max(1, samples);
