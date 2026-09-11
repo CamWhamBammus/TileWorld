@@ -18,6 +18,8 @@ public enum LandmarkKind
     Lighthouse,       // a tower on a plinth at a beach's edge, a light on top
     HuntersHide,      // a small raised platform in the forest
     BuriedTower,      // a tower sunk in the sand, leaning
+    SunkenTemple,     // a stepped temple in the jungle, gone under the roots
+    ThornKraal,       // a ring of stakes on the plain, a pen with nothing in it
 
     // The small finds: a tile or two of something left between the ruins,
     // scattered by the seed like the ruins but never charted from, never on
@@ -79,8 +81,34 @@ public static class Landmarks
         public bool Small;
     }
 
+    /// <summary>
+    /// Whether a kind belongs in a country. Mostly it is its own country and nothing else, but
+    /// three of them borrow: a jungle is a wood and takes what people build in one, a plain is
+    /// open country, and a reef is a coast. They have one of their own each as well, so
+    /// borrowing widens the list rather than replacing it -- which is what remapping the
+    /// country did, and why a jungle could never have had a temple.
+    /// </summary>
+    private static bool Fits(Kind kind, Regions.Character here)
+    {
+        if (kind.Country == here) return true;
+        if (here == Regions.Character.Jungle && kind.Country == Regions.Character.Forest) return true;
+        if (here == Regions.Character.Savanna && kind.Country == Regions.Character.Lowland) return true;
+        if (here == Regions.Character.Reef && kind.Country == Regions.Character.Water) return true;
+        return false;
+    }
+
     private static readonly Kind[] kinds =
     {
+        new Kind { Chance = 14, Name = "Sunken Temple", Country = Regions.Character.Jungle, Site = Site.Level,
+                   SurveyRadius = 4, SurveyHeight = 1.4f, LabelHeight = 11f,
+                   Where = "in the jungle, a stepped temple with the forest growing through it",
+                   Behind = 6, Ahead = 6, Aside = 6, CoreHalf = 3, CoreVariation = 0.51f, ApronVariation = 1.0f },
+
+        new Kind { Chance = 13, Name = "Thorn Kraal", Country = Regions.Character.Savanna, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "out on the plain, a ring of stakes with the gate still standing",
+                   Behind = 7, Ahead = 7, Aside = 7, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 1.2f },
+
         new Kind { Chance = 22, Name = "Forester's Watch", Country = Regions.Character.Forest, Site = Site.Level,
                    SurveyRadius = 5, SurveyHeight = 1.4f, LabelHeight = 14f,
                    Where = "in the woods, its tower above the trees",
@@ -242,19 +270,15 @@ public static class Landmarks
         var here = Regions.CharacterAt(chunk, worldSeed);
         // A reef is a coast: it takes what the sea builds, the wreck and the light.
         if (here == Regions.Character.Reef) here = Regions.Character.Water;
-        // A jungle is a wood, and takes what people build in one.
-        if (here == Regions.Character.Jungle) here = Regions.Character.Forest;
-        // A plain is open country: the shrine and the standing stones belong on one.
-        if (here == Regions.Character.Savanna) here = Regions.Character.Lowland;
         int fitting = 0;
-        for (int i = 0; i < kinds.Length; i++) if (kinds[i].Country == here && !kinds[i].Small) fitting++;
+        for (int i = 0; i < kinds.Length; i++) if (Fits(kinds[i], here) && !kinds[i].Small) fitting++;
         if (fitting == 0) return result;
 
         int pick = Hash(chunk.x, chunk.y, worldSeed ^ 0x77) % fitting;
         int index = -1;
         for (int i = 0; i < kinds.Length; i++)
         {
-            if (kinds[i].Country != here || kinds[i].Small) continue;
+            if (!Fits(kinds[i], here) || kinds[i].Small) continue;
             if (pick-- == 0) { index = i; break; }
         }
 

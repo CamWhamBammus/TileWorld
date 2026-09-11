@@ -70,6 +70,26 @@ public static class Inscriptions
         "Something written round the idol's base in a script nobody in {0} can read."
     };
 
+    private static readonly string[] TempleLines =
+    {
+        "Cut over the door: \"{0}\". The rest of it is under the roots.",
+        "The stair has been swept. Not for a long time, but it has been swept.",
+        "Someone counted the courses in charcoal and stopped at forty.",
+        "A tree is growing out of the top tier and is winning.",
+        "Scratched on a fallen block: \"it was square when we left it\".",
+        "The doorway looks out on nothing now but more of the same green."
+    };
+
+    private static readonly string[] KraalLines =
+    {
+        "Burned into the lintel: \"{0}\". The gate outlasted the herd.",
+        "The thorn was cut and woven in green. It has been dry a long while.",
+        "Scratched on a post, a tally of something, and then it stops.",
+        "The trough is full of dust and the dust has not been disturbed.",
+        "Whatever was kept in here was kept in here at night.",
+        "Someone stacked wood for a fire they did not come back to light."
+    };
+
     private static readonly string[] RingLines =
     {
         "On the signboard: \"{0}. Do not eat these. Do not stand inside at dusk.\"",
@@ -227,6 +247,8 @@ public static class Inscriptions
             LandmarkKind.FishingJetty => JettyLines,
             LandmarkKind.SteppedAltar => AltarLines,
             LandmarkKind.ToadstoolRing => RingLines,
+            LandmarkKind.SunkenTemple => TempleLines,
+            LandmarkKind.ThornKraal => KraalLines,
             LandmarkKind.CharcoalCamp => CampLines,
             LandmarkKind.HilltopBeacon => BeaconLines,
             LandmarkKind.SummitCairn => CairnLines,

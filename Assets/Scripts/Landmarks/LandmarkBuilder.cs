@@ -90,6 +90,8 @@ public static partial class LandmarkBuilder
             case LandmarkKind.Lighthouse: Lighthouse(b); break;
             case LandmarkKind.HuntersHide: Hide(b); break;
             case LandmarkKind.BuriedTower: Buried(b); break;
+            case LandmarkKind.SunkenTemple: Temple(b); break;
+            case LandmarkKind.ThornKraal: Kraal(b); break;
             case LandmarkKind.FallenTree: Fallen(b); break;
             case LandmarkKind.DeadFire: Fire(b); break;
             case LandmarkKind.DroppedPack: Pack(b); break;
@@ -1028,6 +1030,116 @@ public static partial class LandmarkBuilder
     /// at its entrance, a flat stone with a fire in the middle, and an
     /// avenue of lesser stones leading out. Nobody keeps it.
     /// </summary>
+    /// <summary>
+    /// A temple in the jungle: three tiers of stone with a stair up the front and a doorway on
+    /// the top, and the forest taking it back a course at a time. Decayed hard on purpose --
+    /// a jungle does not leave anything standing square.
+    /// </summary>
+    private static void Temple(Job b)
+    {
+        const float M = 0.5f;
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.72f, Weathering = Kit.Builder.Weather.Vines };
+
+        Foundation(b, k, new Vector3(-7.5f, 0f, -7.5f), new Vector3(7.5f, 0f, 7.5f), M, 1.2f, 0, false);
+
+        // the tiers, each smaller and each leaning a little further than the last
+        float[] half = { 6.2f, 4.6f, 3.1f };
+        float[] rise = { 1.5f, 1.4f, 1.3f };
+        float top = M;
+        for (int t = 0; t < half.Length; t++)
+        {
+            float lean = t * 1.6f;
+            k.Block(new Vector3(0f, top + rise[t] * 0.5f, 0f), new Vector3(half[t] * 2f, rise[t], half[t] * 2f),
+                    Quaternion.Euler(lean * 0.4f, lean, lean * 0.3f), t % 2 == 0 ? Kit.Swatch.Stone : Kit.Swatch.DarkStone, 0.03f, true);
+            // the course of the tier above, laid as separate blocks so it reads as masonry
+            int blocks = 10 - t * 2;
+            for (int i = 0; i < blocks; i++)
+            {
+                float a = i / (float)blocks * Mathf.PI * 2f;
+                var at = new Vector3(Mathf.Cos(a) * half[t] * 0.92f, top + rise[t] + 0.16f, Mathf.Sin(a) * half[t] * 0.92f);
+                if (b.Rng.NextDouble() < 0.30) continue;                 // the ones that have gone
+                k.Block(at, new Vector3(1.0f, 0.34f, 0.8f), Quaternion.Euler(0f, a * Mathf.Rad2Deg + (float)b.Rng.NextDouble() * 16f - 8f, (float)b.Rng.NextDouble() * 9f - 4.5f),
+                        Kit.Swatch.WarmStone, 0.03f);
+            }
+            top += rise[t];
+        }
+
+        // the stair up the front, and the doorway on the top
+        k.Steps(new Vector3(half[0] + 0.4f, M, 0f), new Vector3(-1f, 0f, 0f), 9, (top - M) / 9f, 0.72f, 3.4f);
+        k.StoneWall(new Vector3(-1.6f, top, -1.4f), new Vector3(-1.6f, top, 1.4f), 2.6f, 0.5f);
+        k.StoneWall(new Vector3(1.6f, top, -1.4f), new Vector3(1.6f, top, 1.4f), 2.6f, 0.5f);
+        k.Block(new Vector3(0f, top + 2.75f, 0f), new Vector3(4.2f, 0.5f, 1.5f), Quaternion.Euler(0f, 0f, -3f), Kit.Swatch.DarkStone, 0.02f, true);
+
+        // what has come down, lying where it fell, and the forest over the rest
+        for (int i = 0; i < 9; i++)
+        {
+            float a = (float)b.Rng.NextDouble() * Mathf.PI * 2f;
+            float d = 6.8f + (float)b.Rng.NextDouble() * 4.5f;
+            k.Block(new Vector3(Mathf.Cos(a) * d, Ground + 0.22f, Mathf.Sin(a) * d), new Vector3(1.1f, 0.45f, 0.9f),
+                    Quaternion.Euler((float)b.Rng.NextDouble() * 24f - 12f, (float)b.Rng.NextDouble() * 360f, (float)b.Rng.NextDouble() * 24f - 12f),
+                    Kit.Swatch.Stone, 0.04f);
+        }
+        k.Pavers(new Vector3(10.5f, Ground + 0.02f, 0f), 5.5f, 3.2f, 0.8f);
+        k.HangingSign(new Vector3(12.8f, Ground, 2.2f), 2.5f, 180f);
+        for (int i = 0; i < 20; i++) k.Tuft(new Vector3(b.Rng.Next(-80, 80) * 0.12f, M, b.Rng.Next(-80, 80) * 0.12f), 0.7f);
+
+        k.Finish("Temple", b.Root, Vector3.zero, b.Flora.Paint);
+    }
+
+    /// <summary>
+    /// A kraal on the plain: a ring of stakes cut from thorn, a gate that is still up, and
+    /// nothing inside it any more but a hearth and a trough.
+    /// </summary>
+    private static void Kraal(Job b)
+    {
+        const float M = 0.15f;
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.6f, Weathering = WeatherAt(b) };
+
+        // the ring, with a gap at the front for the gate
+        const int posts = 34;
+        for (int i = 0; i < posts; i++)
+        {
+            float a = i / (float)posts * Mathf.PI * 2f;
+            if (Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, 0f)) < 13f) continue;      // the gateway
+            var foot = new Vector3(Mathf.Cos(a) * 6.4f, M, Mathf.Sin(a) * 6.4f);
+            if (b.Rng.NextDouble() < 0.22)
+            {
+                // a stake down, lying across the line of the fence
+                var along = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
+                k.Log(foot + Vector3.up * 0.12f - along * 0.7f, foot + Vector3.up * 0.16f + along * 0.7f, 0.09f, Kit.Swatch.OldWood);
+                continue;
+            }
+            k.Post(foot, 1.5f + (float)b.Rng.NextDouble() * 0.7f, 0.095f, Kit.Swatch.OldWood);
+            // the thorn woven between them
+            if (b.Rng.NextDouble() < 0.7)
+            {
+                float next = (i + 1) / (float)posts * Mathf.PI * 2f;
+                var to = new Vector3(Mathf.Cos(next) * 6.4f, M + 0.5f + (float)b.Rng.NextDouble() * 0.6f, Mathf.Sin(next) * 6.4f);
+                k.Log(foot + Vector3.up * (0.5f + (float)b.Rng.NextDouble() * 0.6f), to, 0.05f, Kit.Swatch.OldWood, 4);
+            }
+        }
+
+        // the gate itself, two heavy posts and a lintel, still standing when nothing else is
+        k.Post(new Vector3(6.4f, M, -1.5f), 2.5f, 0.16f, Kit.Swatch.DarkWood);
+        k.Post(new Vector3(6.4f, M, 1.5f), 2.4f, 0.16f, Kit.Swatch.DarkWood);
+        k.Block(new Vector3(6.4f, M + 2.45f, 0f), new Vector3(0.34f, 0.26f, 3.4f), Quaternion.Euler(0f, 0f, 2f), Kit.Swatch.DarkWood, 0.02f);
+
+        // and what is left inside: a hearth gone cold, a trough, a pile of wood nobody burned
+        k.Ash(new Vector3(-0.6f, M, 0.4f), 1.1f, 5);
+        for (int i = 0; i < 7; i++)
+        {
+            float a = i / 7f * Mathf.PI * 2f;
+            k.Block(new Vector3(-0.6f + Mathf.Cos(a) * 1.25f, M + 0.12f, 0.4f + Mathf.Sin(a) * 1.25f),
+                    new Vector3(0.38f, 0.26f, 0.34f), Quaternion.Euler(0f, a * Mathf.Rad2Deg, 0f), Kit.Swatch.Stone, 0.05f);
+        }
+        k.Trough(new Vector3(-3.4f, M, -2.6f), 1.9f, 24f);
+        k.Woodpile(new Vector3(2.6f, M, 3.4f), 1.4f, 3, 70f);
+        k.HangingSign(new Vector3(9.6f, Ground, 1.8f), 2.4f, 180f);
+        for (int i = 0; i < 16; i++) k.Tuft(new Vector3(b.Rng.Next(-75, 75) * 0.12f, M, b.Rng.Next(-75, 75) * 0.12f), 0.8f);
+
+        k.Finish("Kraal", b.Root, Vector3.zero, b.Flora.Paint);
+    }
+
     private static void Stones(Job b)
     {
         const float M = 0.5f;
@@ -1285,6 +1397,7 @@ public static partial class LandmarkBuilder
             case Regions.Character.Water:
             case Regions.Character.Reef: return Kit.Builder.Weather.Sand;
             case Regions.Character.Dead: return Kit.Builder.Weather.Char;
+            case Regions.Character.Savanna: return Kit.Builder.Weather.Sand;
             case Regions.Character.Stone:
             case Regions.Character.Peaks: return Kit.Builder.Weather.None;
             default: return Kit.Builder.Weather.Vines;
