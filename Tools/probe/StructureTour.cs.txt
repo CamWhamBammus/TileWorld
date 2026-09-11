@@ -38,7 +38,20 @@ public class _Probe : MonoBehaviour
 
     private IEnumerator Start()
     {
-        yield return new WaitForSecondsRealtime(6f);
+        yield return new WaitForSecondsRealtime(3f);
+
+        // This probe was written before the game had a title screen and never entered a world.
+        // Since the title arrived it has been running against the title's own backdrop -- seed
+        // 24, radius 8, the player switched off -- so every photograph it took was of the menu
+        // with a wood behind it, and nobody noticed because the counts it prints are static and
+        // came out right anyway.
+        var save = WorldLibrary.Create("Probe tour", 5, true, true, 0.38f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
 
         ChunkManager world = FindFirstObjectByType<ChunkManager>();
         for (int tries = 0; world == null || world.PlayerTransform == null; tries++)
@@ -61,7 +74,15 @@ public class _Probe : MonoBehaviour
             if (!subject.Wild) book += subject.Name + " [" + FieldGuide.Where(subject) + "] ";
         Mark("field guide structures: " + book);
 
+        // The interface off, once the world has settled. Doing this the instant a world is
+        // entered catches the arrival card mid-build and it throws every frame afterwards.
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+
+        // Taken here and not before: entering a world throws away the title's camera, and a
+        // reference to that one looks fine until it is used and then throws.
         var cam = Camera.main;
+        for (int tries = 0; cam == null && tries < 20; tries++) { yield return new WaitForSecondsRealtime(0.5f); cam = Camera.main; }
+        if (cam == null) { Mark("no camera"); Mark("done"); yield break; }
         foreach (var beh in cam.GetComponents<Behaviour>())
             if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
 
@@ -135,5 +156,6 @@ public class _Probe : MonoBehaviour
         }
 
         Mark("done");
+        WorldLibrary.Delete(save.id);
     }
 }
