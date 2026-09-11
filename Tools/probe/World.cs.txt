@@ -1,0 +1,81 @@
+// A census of the whole world, taken without entering one: the terrain, the water, the snow and
+// the regions are all static functions of a seed, so this walks a large square about the origin
+// over several seeds and reports what the world is actually made of. For balancing countries
+// against each other, which is otherwise done by looking and guessing.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private class Tally
+    {
+        public long Tiles, Wet, Snowy, Steep;
+        public double Relief;
+        public long Runs, RunTiles;      // how many separate stretches, and how big they are
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+
+        int[] seeds = { 5, 24, 1, 4, 7, 12 };
+        const int reach = 620, step = 2;
+        var all = new SortedDictionary<string, Tally>();
+        long total = 0;
+
+        foreach (int seed in seeds)
+        {
+            // a run is a stretch of one country along a row, which says how big a country
+            // reads on the ground rather than how much of the world it adds up to
+            for (int z = -reach; z <= reach; z += step)
+            {
+                string last = null;
+                for (int x = -reach; x <= reach; x += step)
+                {
+                    var who = Regions.CharacterAtTile(x, z, seed, false);
+                    string name = who.ToString();
+                    if (!all.TryGetValue(name, out var t)) all[name] = t = new Tally();
+                    t.Tiles++; total++;
+                    t.Relief += WorldHeight.HeightAt(x, z, seed) / WorldHeight.MaxRelief;
+                    if (WaterSurface.IsUnderwater(x, z, seed)) t.Wet++;
+                    if (SnowCover.IsSnowy(x, z, seed)) t.Snowy++;
+                    float rise = Mathf.Abs(WorldHeight.SurfaceY(x + 1, z, seed) - WorldHeight.SurfaceY(x, z, seed));
+                    if (rise > 0.5f) t.Steep++;
+                    if (name != last) { t.Runs++; last = name; }
+                    t.RunTiles++;
+                }
+            }
+            yield return null;
+        }
+
+        Mark("WORLD " + seeds.Length + " seeds, " + total + " tiles sampled every " + step + " over " + (reach * 2) + " square");
+        foreach (var pair in all)
+        {
+            var t = pair.Value;
+            Mark(string.Format("  {0,-9} {1,5:F2}% | relief {2,4:F2} | wet {3,3:F0}% snow {4,3:F0}% steep {5,3:F0}% | mean stretch {6,4:F0} tiles",
+                pair.Key, 100.0 * t.Tiles / total, t.Relief / Mathf.Max(1, t.Tiles),
+                100.0 * t.Wet / Mathf.Max(1, t.Tiles), 100.0 * t.Snowy / Mathf.Max(1, t.Tiles),
+                100.0 * t.Steep / Mathf.Max(1, t.Tiles), (double)t.RunTiles / Mathf.Max(1, t.Runs) * step));
+        }
+        Mark("done");
+    }
+}
