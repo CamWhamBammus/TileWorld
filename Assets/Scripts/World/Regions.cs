@@ -324,6 +324,13 @@ public static class Regions
         // Damp ground short of open water, where the reeds stand.
         if (wetShare > 0.09f && Hash(cell.x, cell.y, worldSeed + 8821) % 3 == 0) return Character.Reed;
 
+        // Meadow is the gentlest country there is and it was being left the scraps. It sits at
+        // the bottom of this list as the fallback, and everything that wants low ground -- the
+        // reeds, the jungle, the mushrooms, the dead wood, the plain, the sand -- is asked
+        // before it, so it came out at two percent of the world, rarer than the mushroom woods.
+        // It claims a share of its own ground first now.
+        if (relief < 0.26f && Hash(cell.x, cell.y, worldSeed + 9109) % 4 == 0) return Character.Lowland;
+
         // Jungle: low warm ground with water somewhere in it, and nothing
         // frozen anywhere near it -- a region averaging a third of the relief
         // still has summits in it, and a canopy running up into snow is two
