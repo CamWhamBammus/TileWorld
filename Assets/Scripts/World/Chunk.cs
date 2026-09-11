@@ -326,7 +326,10 @@ public class Chunk
             // the one over the border pick a series, and how near the line picks how far along
             // it. Both sides walk toward the middle of the same series, so they meet there
             // instead of meeting each other.
-            if (!submerged && category != VergeCategory && !CarriesOwnEdge(category))
+            // Under water too: a lake bed meeting a marsh, or sand meeting the rock of the
+            // deep, were the last hard joins left in the world. The reef is the exception --
+            // it draws its own edge against the sand that fringes it.
+            if (category != VergeCategory && !CarriesOwnEdge(category))
             {
                 float near = Regions.Border(gx, gz, worldSeed, out var over);
                 if (near > 0f)
