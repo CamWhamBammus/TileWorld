@@ -73,7 +73,7 @@ Low warm country with water in it grows jungle. The trees are the tallest in the
 
 ### Water
 
-Water sits at one level across the whole world, and what kind of water it is depends on where you are. The bottom falls away from the shore, so a sea has a middle to it and gets to about six metres deep. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under.
+Water sits at one level across the whole world, and what kind of water it is depends on where you are. The bottom falls away from the shore, so a sea has a middle to it and gets to about six metres deep. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under. How much depends on how deep you are and what water it is: a reef is clear enough to see across, an inland lake closes in on you.
 
 ![A beach, the sea running up the sand](docs/images/beach.jpg)
 
@@ -101,7 +101,7 @@ Snow covers the ground above the snowline and all of a snowfield, with a ragged 
 
 ### Time and weather
 
-A full day and night takes twenty minutes. Dawn and dusk go orange, night is dark but you can still see, there are stars, and the sky, ambient light and fog all follow the sun. Weather drifts on its own: it clears and clouds over, and when it closes in the light goes flat, shadows soften, the fog pulls in and it rains. Wind picks up with altitude and bad weather, birds sing in the lowlands during the day and gulls cry over the water. All the sound is generated in code, there are no recordings.
+A full day and night takes twenty minutes. Dawn and dusk go orange, night is dark but you can still see, there are stars, and the sky, ambient light and fog all follow the sun. Weather drifts on its own: it clears and clouds over, and when it closes in the light goes flat, shadows soften, the fog pulls in and it rains. Wind picks up with altitude and bad weather, birds sing in the lowlands during the day and gulls cry over the water. A jungle has something whooping in the canopy, day and night, and a dry plain rattles with insects. All the sound is generated in code, there are no recordings.
 
 ![A night on the low ground](docs/images/night.jpg)
 
@@ -137,11 +137,13 @@ The grounds so far: the forest floor; grass in three shades by height, with tuft
 
 ## Structures
 
-There are fifteen kinds of structure and each belongs to one kind of region, so if you want to find a biome you can look for what was built there:
+There are seventeen kinds of structure and each belongs to one kind of region, so if you want to find a biome you can look for what was built there:
 
 | Structure | Region |
 | --- | --- |
 | Forester's Watch, Hunter's Hide | Forest |
+| Sunken Temple | Jungle |
+| Thorn Kraal | Savanna |
 | Trapper's Cabin | Snowfield |
 | Sand Gate, Buried Tower | Desert |
 | Fishing Jetty | Reedbed |
@@ -259,7 +261,7 @@ The first few minutes, on a brand new save only, walk you through this with one 
 
 ## The map
 
-Press M. Chunks you've walked through are shaded by height with water and snow marked. Ground you've only seen from a high point is faded. Structures you've found show as diamonds with their names. Click to place a marker. The compass along the top shows every structure you've found plus your marker. J opens the journal, which lists everything you've found.
+Press M. Chunks you've walked through are shaded by height and by country, so a jungle, a plain, a desert and a meadow all read differently on it, with water and snow marked. Ground you've only seen from a high point is faded. Structures you've found show as diamonds with their names. Click to place a marker. The compass along the top shows every structure you've found plus your marker. J opens the journal, which lists everything you've found.
 
 ![A map saved with F9](docs/images/map.png)
 

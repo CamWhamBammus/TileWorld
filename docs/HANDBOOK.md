@@ -863,6 +863,28 @@ seed 5, the Withered Ledges, 20% of nine chunks the reef floor with the rest
 its sand and its land, 652 colonies, the nearest 0.41 m under the surface,
 2.8 ms.
 
+### What people built in the new countries
+
+A jungle and a plain had no structures of their own; `Landmarks` remapped them to Forest and
+Lowland so they at least got something. Remapping widens nothing -- it replaces -- so a jungle
+could never have had a temple. The country match is now `Fits`, which lets a kind belong to its
+own country and lets three countries borrow another's list as well: a jungle takes what people
+build in a wood, a plain what they build in open country, a reef what they build on a coast.
+
+The **Sunken Temple** is three tiers of stone with a stair up the front and a doorway on the top,
+decayed hard on purpose, since a jungle leaves nothing standing square. The **Thorn Kraal** is a
+ring of stakes with thorn woven between them, a gate still up when nothing else is, and a cold
+hearth and a trough inside. Both use the kit as it stands; neither needed new geometry.
+
+**A warning the tour gave.** `Tools/probe/StructureTour.cs.txt` was written before the game had a
+title screen and never entered a world. Since the title arrived it had been running against the
+title's own backdrop -- seed 24, radius 8, the player switched off -- so every photograph it took
+for months was of the menu with a wood behind it. Nobody noticed because the counts it prints are
+static functions of a seed and came out plausible anyway. It enters a world now, which the counts
+prove (the same square went from no Sunken Temples to six when the seed changed from the title's
+to its own). Its camera handling still throws after the first structure builds and it takes no
+photographs; that is not fixed.
+
 ### The jungle
 
 `Tools/jungle_tiles.py` builds five floor tiles for under a closed canopy --
@@ -897,6 +919,38 @@ and the owl, the frog, the bat, the hedgehog and the boar live in one.
 standing of which 96 are giants, the tallest 20.9 m, 4.6 ms. That frame time is
 the highest of any country and the reason is the geometry standing in it, not
 the tiles.
+
+### The air, the water and the chart
+
+Three things that were the same everywhere and should not have been.
+
+**Under water** was one flat wash of dark blue at four tenths, whatever the depth and whatever
+the water. A reef, whose entire point is its colour, came out nearly black a hand's breadth
+under the surface. `Underwater` now takes the depth (over five metres to the full dark) and the
+country: a reef is clear, the open sea nearly so, an inland lake is not. The tint runs from a
+pale teal wash at a sixth to the old dark at a half, and the fog from 78 m down to 26.
+
+**The air** was one grade for the whole world except the snow country, so a jungle at noon and a
+plain at noon were lit identically and only the ground told them apart. `Grading` reads the
+country now and eases between three kinds of air over two seconds: cold, humid and dry. A jungle
+is greener, more saturated, closes its fog to two thirds and darkens its corners; a plain is
+warmer, barer, and opens its fog out. The fog is written in `LateUpdate` after the clock has had
+its say, and skipped when the head is under water, since the water writes its own.
+
+**The chart** shaded by height alone, so a jungle, a plain, a desert and a meadow at the same
+altitude were the same colour and the chart could not tell you where anything was. Each country
+has a colour now, mixed in at 45% so the relief still reads through it. `Tools/probe/Chart.cs.txt`
+surveys a wide square and photographs the map; it opens the map by setting the fields the key
+sets, since there is no method to call.
+
+**And the voices.** The world synthesises every sound it makes. It had woodland calls up at
+2600-3400 Hz and gulls at 1600. A jungle sang like an English wood and a plain was silent.
+There is a whoop now, two or three rising notes around 900 Hz, and an insect rattle for the dry
+country: a tone chopped fifty or sixty times a second, a second or two long. The jungle is
+allowed them after dark, which the woodland calls are not, because half of what a jungle is is
+that it does not go quiet. `Tools/probe/Voices.cs.txt` builds every clip and measures its length,
+peak, level and rough pitch rather than listening to it -- a clip that comes out silent, clipped
+or an octave out shows up there and nowhere else.
 
 ### The peaks
 
@@ -980,6 +1034,37 @@ five, so the band came out in stripes; the choice is jittered by about a third o
 
 `Tools/probe/Borders.cs.txt` walks a line of tiles from one country into the next and prints
 what each belongs to, which is how the fray was measured, and photographs the join.
+
+### What the world is made of
+
+`Tools/probe/World.cs.txt` takes a census without entering a world -- the terrain, the water,
+the snow and the regions are all static functions of a seed -- and walks a 1240-tile square over
+six seeds, 2.3 million tiles. For every country it prints its share of the world, its mean
+relief, how much of it is wet, snowy or steep, and the mean length of an unbroken stretch of it.
+That last number is what a country is like to walk through rather than what it adds up to.
+
+Run it before and after touching any region rule. It is what found the problem below, which
+nobody had noticed by looking.
+
+| Country | Share | Country | Share |
+| --- | --- | --- | --- |
+| Peaks | 20.1% | Snow | 6.1% |
+| Water | 13.8% | Hills | 5.9% |
+| Desert | 12.4% | Lowland | 5.6% |
+| Forest | 10.0% | Stone | 4.7% |
+| Fungal | 4.5% | Savanna | 4.4% |
+| Reed | 4.2% | Dead | 3.7% |
+| Jungle | 2.6% | Reef | 2.0% |
+
+Mean stretch is about 90 tiles, 180 m, for everything except the peaks at 120 and the reef at 78.
+
+**Meadow was being left the scraps.** `Lowland` sits at the bottom of `CharacterOf` as the
+fallback, and everything that wants low ground -- the reeds, the jungle, the mushrooms, the dead
+wood, the plain, the sand -- is asked before it. Multiplying the survivals out: of tiles low
+enough to be meadow, about nine percent reached the bottom of the list. It came out at 2.25% of
+the world, rarer than the mushroom woods, for the gentlest and most ordinary country there is.
+It claims a quarter of `relief < 0.26` up front now, before the jungle, and comes out at 5.6%.
+The countries it took that from moved by well under a point each.
 
 ### The savanna
 
