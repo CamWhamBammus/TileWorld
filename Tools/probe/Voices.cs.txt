@@ -1,0 +1,58 @@
+// A probe for the voices the world makes: builds every call the game synthesises and measures it
+// rather than listening to it -- how long, how loud, and roughly what pitch, from the rate the
+// wave crosses zero. A clip that comes out silent, clipped, or an octave from where it was meant
+// to be shows up here and nowhere else short of putting headphones on.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private static void Measure(string name, AudioClip clip)
+    {
+        var data = new float[clip.samples * clip.channels];
+        clip.GetData(data, 0);
+        double sum = 0; float peak = 0; int crossings = 0; int loud = 0;
+        for (int i = 0; i < data.Length; i++)
+        {
+            sum += data[i] * data[i];
+            peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+            if (Mathf.Abs(data[i]) > 0.02f) loud++;
+            if (i > 0 && ((data[i - 1] < 0f && data[i] >= 0f) || (data[i - 1] > 0f && data[i] <= 0f))) crossings++;
+        }
+        float seconds = clip.samples / (float)clip.frequency;
+        double rms = System.Math.Sqrt(sum / Mathf.Max(1, data.Length));
+        // zero crossings over the part that is actually sounding, two per cycle
+        float pitch = loud > 0 ? crossings / 2f / Mathf.Max(0.001f, loud / (float)clip.frequency) : 0f;
+        Mark(string.Format("  {0,-10} {1,5:F2}s  peak {2,4:F2}  rms {3,5:F3}  about {4,6:F0} Hz{5}",
+            name, seconds, peak, rms, pitch, peak > 0.99f ? "  CLIPPED" : (rms < 0.002 ? "  SILENT" : "")));
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+        Mark("VOICES what the world sings, measured rather than listened to");
+        for (int i = 0; i < 5; i++) Measure("wood " + i, BirdSong.BuildCall(i));
+        for (int i = 0; i < 3; i++) Measure("gull " + i, BirdSong.BuildGull(i));
+        for (int i = 0; i < 3; i++) Measure("whoop " + i, BirdSong.BuildWhoop(i));
+        for (int i = 0; i < 3; i++) Measure("chirr " + i, BirdSong.BuildChirr(i));
+        Mark("done");
+    }
+}
