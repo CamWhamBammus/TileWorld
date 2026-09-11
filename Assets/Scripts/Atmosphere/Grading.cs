@@ -39,6 +39,7 @@ public class Grading : MonoBehaviour
     public bool Submerged { get; private set; }
     private Camera view;
     private ChunkManager world;
+    private float air, wet, dust;
 
     /// <summary>What the grade is doing now, for the probes.</summary>
     public float Saturation => colour != null ? colour.saturation.value : 0f;
@@ -129,9 +130,26 @@ public class Grading : MonoBehaviour
         float night = 1f - day;
 
         if (world == null) world = FindFirstObjectByType<ChunkManager>();
-        bool snow = world != null && Regions.CharacterAtTile(Mathf.RoundToInt(view.transform.position.x / WorldGrid.TileSize),
-                                                              Mathf.RoundToInt(view.transform.position.z / WorldGrid.TileSize), world.WorldSeed) == Regions.Character.Snow;
-        float cold = snow ? 1f : 0f;
+
+        // The country you are standing in, and what its air is like. The snow country already
+        // graded itself blue-white; the rest of the world all shared one set of numbers, so a
+        // jungle at noon and a plain at noon were lit identically and only the ground told them
+        // apart. Three kinds of air: cold, humid and dry.
+        var country = world != null
+            ? Regions.CharacterAtTile(Mathf.RoundToInt(view.transform.position.x / WorldGrid.TileSize),
+                                      Mathf.RoundToInt(view.transform.position.z / WorldGrid.TileSize), world.WorldSeed)
+            : Regions.Character.Lowland;
+
+        float cold = country == Regions.Character.Snow ? 1f : 0f;
+        float humid = country == Regions.Character.Jungle ? 1f : 0f;
+        float dry = country == Regions.Character.Savanna || country == Regions.Character.Desert ? 1f : 0f;
+
+        // eased, or the grade snaps as you cross a border
+        air = Mathf.MoveTowards(air, cold, Time.deltaTime * 0.5f);
+        wet = Mathf.MoveTowards(wet, humid, Time.deltaTime * 0.5f);
+        dust = Mathf.MoveTowards(dust, dry, Time.deltaTime * 0.5f);
+        cold = air; humid = wet; dry = dust;
+
         float rain = Rain.Intensity;
 
         // exposure: a touch up by day, down at night, down again under cloud
@@ -139,7 +157,8 @@ public class Grading : MonoBehaviour
 
         // contrast and saturation: clear days sing, rain washes out, snow is spare
         colour.contrast.Override(Mathf.Lerp(4f, 10f, day) - overcast * 8f);
-        colour.saturation.Override(Mathf.Lerp(-6f, 8f, day) - overcast * 22f - cold * 10f + goldHour * 6f);
+        colour.saturation.Override(Mathf.Lerp(-6f, 8f, day) - overcast * 22f - cold * 10f + goldHour * 6f
+                                   + humid * 7f - dry * 5f);
 
         // the filter: warm at the gold hour, blue-white in the cold, grey-blue in the rain
         Color filter = Color.white;
@@ -147,11 +166,14 @@ public class Grading : MonoBehaviour
         filter = Color.Lerp(filter, new Color(0.90f, 0.95f, 1.05f), cold * 0.7f);
         filter = Color.Lerp(filter, new Color(0.90f, 0.94f, 1.0f), rain * 0.6f);
         filter = Color.Lerp(filter, new Color(0.86f, 0.90f, 1.0f), night * 0.5f);
+        // a jungle is green even in the air; a plain is bleached and dusty
+        filter = Color.Lerp(filter, new Color(0.93f, 1.02f, 0.92f), humid * 0.55f);
+        filter = Color.Lerp(filter, new Color(1.04f, 0.99f, 0.88f), dry * 0.50f);
         colour.colorFilter.Override(filter);
 
         // white balance: warmer low sun, colder snow and rain
-        balance.temperature.Override(goldHour * 10f - cold * 12f - rain * 5f);
-        balance.tint.Override(cold * -2f);
+        balance.temperature.Override(goldHour * 10f - cold * 12f - rain * 5f + dry * 8f - humid * 3f);
+        balance.tint.Override(cold * -2f + humid * 4f);
 
         // the shadows lifted a little blue at night, so the dark is not black
         lift.lift.Override(new Vector4(-0.01f * night, 0f, 0.03f * night, 0f));
@@ -162,7 +184,7 @@ public class Grading : MonoBehaviour
         bloom.intensity.Override(0.3f + goldHour * 0.35f - overcast * 0.15f);
 
         // the vignette closes a little at night and in a downpour
-        vignette.intensity.Override(0.2f + night * 0.08f + rain * 0.08f);
+        vignette.intensity.Override(0.2f + night * 0.08f + rain * 0.08f + humid * 0.07f);
 
         // grain: a little at night and in the rain, none in the sun
         grain.intensity.Override(night * 0.22f + rain * 0.12f);
@@ -175,6 +197,17 @@ public class Grading : MonoBehaviour
 
         // under the water: blue-green, bent at the edges, colour bleeding
         Submerged = view.transform.position.y < WaterSurface.Level;
+
+        // The air itself, written after the clock has had its say and only when the head is
+        // above water, since under it the water writes its own. A jungle closes in and a plain
+        // opens out, which does as much for telling them apart as the ground does.
+        if (!Submerged)
+        {
+            RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor,
+                Color.Lerp(new Color(0.58f, 0.66f, 0.55f), new Color(0.80f, 0.76f, 0.64f), dry),
+                Mathf.Max(humid, dry) * 0.35f);
+            RenderSettings.fogEndDistance *= Mathf.Lerp(1f, 0.62f, humid) * Mathf.Lerp(1f, 1.18f, dry);
+        }
         if (Submerged)
         {
             colour.colorFilter.Override(new Color(0.55f, 0.82f, 0.86f));
