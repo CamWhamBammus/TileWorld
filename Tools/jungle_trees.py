@@ -79,9 +79,12 @@ def liana(b, rng, at, drop, leafy=True):
     pts = [(x + math.cos(across)*sway*(si/segs)**2, y - drop*si/segs, z + math.sin(across)*sway*(si/segs)**2) for si in range(segs+1)]
     tube(b, pts, [0.055, 0.050, 0.044, 0.038, 0.028], 4, ["vine", "jungle3"], cap_start=False, cap_end=True)
     if not leafy: return
+    # One leaf a segment rather than two, and fewer of those. A giant carried eighteen vines
+    # with up to eight leaves each, two-sided: nearly three hundred faces that do nothing for
+    # its shape and cost more than its crown.
     for si in range(1, segs+1):
-        for _ in range(2):
-            if rng.random() > 0.8: continue
+        for _ in range(1):
+            if rng.random() > 0.62: continue
             t = (si - rng.random())/segs
             p = (x + math.cos(across)*sway*t*t, y - drop*t, z + math.sin(across)*sway*t*t)
             a = rng.uniform(0, math.tau); L = rng.uniform(0.28, 0.48)
@@ -157,7 +160,7 @@ def tree(index):
                 leaves(b, rng, (t[0], t[1] + 0.4, t[2]), rng.uniform(1.3, 1.8), sub=1, flat=0.6)
 
         for t in tips:
-            for _ in range(3 if big else 2):
+            for _ in range(2 if big else 1):
                 liana(b, rng, (t[0] + rng.uniform(-1.0, 1.0), t[1] - 0.5, t[2] + rng.uniform(-1.0, 1.0)),
                       rng.uniform(2.5, 6.0) if big else rng.uniform(1.8, 3.5))
         name = "Jungle Giant" if big else "Jungle Tree"
