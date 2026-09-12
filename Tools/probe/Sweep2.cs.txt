@@ -45,7 +45,7 @@ public class _Probe : MonoBehaviour
         var body = FindFirstObjectByType<CharacterController>();
         var under = FindFirstObjectByType<Undergrowth>();
 
-        Mark("SWEEP country          | own ground | tiles drawn | standing | frame");
+        Mark("SWEEP country          | commonest  | mixed | tiles | standing | frame");
 
         foreach (Regions.Character want in System.Enum.GetValues(typeof(Regions.Character)))
         {
@@ -58,8 +58,8 @@ public class _Probe : MonoBehaviour
                 if (Regions.CharacterAtTile(ox, oz, seed, false) != want) continue;
                 if (WaterSurface.IsUnderwater(ox, oz, seed)) continue;
                 bool inside = true;
-                for (int dx = -20; dx <= 20 && inside; dx += 10)
-                for (int dz = -20; dz <= 20 && inside; dz += 10)
+                for (int dx = -30; dx <= 30 && inside; dx += 10)
+                for (int dz = -30; dz <= 30 && inside; dz += 10)
                     if (Regions.CharacterAtTile(ox + dx, oz + dz, seed, false) != want) inside = false;
                 if (!inside) continue;
                 standX = ox; standZ = oz; found = true;
@@ -84,8 +84,14 @@ public class _Probe : MonoBehaviour
                     ids[pair.Key] = (ids.TryGetValue(pair.Key, out int n) ? n : 0) + pair.Value.Length;
                 }
             }
-            int most = 0, mostId = -1;
-            foreach (var pair in ids) if (pair.Value > most) { most = pair.Value; mostId = pair.Key; }
+            int most = 0, mostId = -1, blended = 0;
+            foreach (var pair in ids)
+            {
+                if (pair.Value > most) { most = pair.Value; mostId = pair.Key; }
+                // 115 to 194 less the savanna's own 165 to 169, which sit in the middle of
+                // that run and were being counted as mixed ground, putting the plain at 94%
+                if (pair.Key >= 115 && pair.Key <= 194 && (pair.Key < 165 || pair.Key > 169)) blended += pair.Value;
+            }
 
             int standing = 0;
             var counts = under != null ? (int[])typeof(Undergrowth).GetField("counts", flags).GetValue(under) : null;
@@ -94,8 +100,9 @@ public class _Probe : MonoBehaviour
             float frames = 0f, seconds = 0f;
             for (float t = 0f; t < 2f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
 
-            Mark(string.Format("  {0,-16} | id {1,3} {2,4:F0}% | {3,5} | {4,6} | {5,4:F1} ms",
-                want, mostId, 100f * most / Mathf.Max(1, drawn), drawn, standing, seconds / frames * 1000f));
+            Mark(string.Format("  {0,-16} | id {1,3} {2,4:F0}% | {3,4:F0}% | {4,5} | {5,6} | {6,4:F1} ms",
+                want, mostId, 100f * most / Mathf.Max(1, drawn), 100f * blended / Mathf.Max(1, drawn),
+                drawn, standing, seconds / frames * 1000f));
         }
         Mark("done");
         WorldLibrary.Delete(save.id);
