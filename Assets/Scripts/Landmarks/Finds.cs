@@ -29,6 +29,15 @@ public static class Finds
         Regions.Character.Stone => new[] { LandmarkKind.Waymark, LandmarkKind.DroppedPack },
         Regions.Character.Desert => new[] { LandmarkKind.BrokenCart, LandmarkKind.DroppedPack, LandmarkKind.Waymark },
         Regions.Character.Reed => new[] { LandmarkKind.DeadFire, LandmarkKind.DroppedPack },
+
+        // These four had no entry at all, so four countries -- two of them the newest and best
+        // looking in the game -- had no trace of anybody ever having passed through them.
+        Regions.Character.Jungle => new[] { LandmarkKind.FallenTree, LandmarkKind.DeadFire,
+                                            LandmarkKind.DroppedPack, LandmarkKind.FallenTree },
+        Regions.Character.Savanna => new[] { LandmarkKind.DeadFire, LandmarkKind.BrokenCart,
+                                             LandmarkKind.Waymark, LandmarkKind.DroppedPack },
+        Regions.Character.Water => new[] { LandmarkKind.DeadFire, LandmarkKind.DroppedPack },
+        Regions.Character.Reef => new[] { LandmarkKind.DeadFire, LandmarkKind.DroppedPack },
         _ => None
     };
 
