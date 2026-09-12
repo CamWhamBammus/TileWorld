@@ -25,6 +25,10 @@ public class _Probe : MonoBehaviour
     {
         Application.runInBackground = true;
         AudioListener.volume = 0f;   // a probe runs beside other work; it has no business being heard
+        // Boot fires again on every scene load. Without this guard each load spawns another
+        // probe, and since this one now enters a world, each new probe entered another: the
+        // whole tour ran over and over, five seconds apart, and never reached a photograph.
+        if (FindFirstObjectByType<_Probe>() != null) return;
         Mark("boot");
         var go = new GameObject("_Probe");
         DontDestroyOnLoad(go);
@@ -139,6 +143,8 @@ public class _Probe : MonoBehaviour
             foreach (var tag in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None)) if (tag.Kind == want) built = true;
             Mark(want + " at " + at.Position + " yaw " + at.Yaw + " built " + built);
 
+            Mark("  step: camera " + (cam == null ? "gone" : "held") + ", player " + (player == null ? "gone" : "held"));
+
             float reach = about.Ahead * 2f + about.Behind * 2f + 6f + about.LabelHeight * 0.8f;
             Vector3 focus = at.Position + Vector3.up * (1f + about.LabelHeight * 0.25f);
 
@@ -146,6 +152,7 @@ public class _Probe : MonoBehaviour
             cam.transform.rotation = Quaternion.LookRotation(focus - cam.transform.position, Vector3.up);
             yield return new WaitForSecondsRealtime(1.5f);
             ScreenCapture.CaptureScreenshot(Path.Combine(dir, "probe-s" + k + "-a.png"));
+            Mark("  shot a written to " + dir);
             yield return new WaitForSecondsRealtime(1.5f);
 
             cam.transform.position = at.Position + turn * new Vector3(-reach * 0.6f, reach * 0.5f + 2f, -reach * 0.9f);
