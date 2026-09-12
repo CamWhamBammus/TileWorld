@@ -88,6 +88,25 @@ public static class Landmarks
     /// borrowing widens the list rather than replacing it -- which is what remapping the
     /// country did, and why a jungle could never have had a temple.
     /// </summary>
+    /// <summary>What a chunk mostly is, over five samples rather than the one at its middle.</summary>
+    private static Regions.Character Settled(Vector2Int chunk, int worldSeed)
+    {
+        int originX = chunk.x * WorldGrid.TilesPerChunk, originZ = chunk.y * WorldGrid.TilesPerChunk;
+        int half = WorldGrid.TilesPerChunk / 2, edge = WorldGrid.TilesPerChunk / 4;
+        var counts = new System.Collections.Generic.Dictionary<Regions.Character, int>();
+        Regions.Character best = Regions.CharacterAtTile(originX + half, originZ + half, worldSeed, false);
+        int most = 0;
+        foreach (var (dx, dz) in new[] { (half, half), (edge, edge), (WorldGrid.TilesPerChunk - edge, edge),
+                                         (edge, WorldGrid.TilesPerChunk - edge), (WorldGrid.TilesPerChunk - edge, WorldGrid.TilesPerChunk - edge) })
+        {
+            var who = Regions.CharacterAtTile(originX + dx, originZ + dz, worldSeed, false);
+            counts.TryGetValue(who, out int n);
+            counts[who] = ++n;
+            if (n > most) { most = n; best = who; }
+        }
+        return best;
+    }
+
     private static bool Fits(Kind kind, Regions.Character here)
     {
         if (kind.Country == here) return true;
@@ -267,9 +286,12 @@ public static class Landmarks
         // The country decides the kind: whichever kinds belong here, one is
         // picked by hash. Rolled the other way round, a kind whose country
         // is rare was rarer still.
-        var here = Regions.CharacterAt(chunk, worldSeed);
-        // A reef is a coast: it takes what the sea builds, the wreck and the light.
-        if (here == Regions.Character.Reef) here = Regions.Character.Water;
+        // The country of the chunk, taken as the majority over it rather than from the one tile
+        // at its middle. The ground is decided per tile with the border frayed, so a chunk on
+        // the edge of a country can have its centre in one and nearly all its tiles in the
+        // other -- which put a jungle temple in a pine wood, standing among the wrong trees on
+        // the wrong floor. Five samples and the most of them wins.
+        var here = Settled(chunk, worldSeed);
         int fitting = 0;
         for (int i = 0; i < kinds.Length; i++) if (Fits(kinds[i], here) && !kinds[i].Small) fitting++;
         if (fitting == 0) return result;
