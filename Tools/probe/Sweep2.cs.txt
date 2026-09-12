@@ -1,0 +1,103 @@
+// A sweep of every country in the world: stand in each in turn and report what the ground under
+// you actually is, how much is standing on it, and what a frame costs. One run, one table, so a
+// change that quietly wrecks one country shows up without anybody having to go and look at all
+// fourteen.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        AudioListener.volume = 0f;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var save = WorldLibrary.Create("Probe sweep", 5, true, true, 0.42f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        TimeOfDay.Instance.SetTime(0.42f); TimeOfDay.Instance.Paused = true;
+
+        var world = FindFirstObjectByType<ChunkManager>();
+        var player = world.PlayerTransform;
+        int seed = world.WorldSeed;
+        var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
+        var body = FindFirstObjectByType<CharacterController>();
+        var under = FindFirstObjectByType<Undergrowth>();
+
+        Mark("SWEEP country          | own ground | tiles drawn | standing | frame");
+
+        foreach (Regions.Character want in System.Enum.GetValues(typeof(Regions.Character)))
+        {
+            int standX = 0, standZ = 0; bool found = false;
+            for (int r = 1; r < 500 && !found; r++)
+            for (int ox = -r; ox <= r && !found; ox++)
+            for (int oz = -r; oz <= r && !found; oz++)
+            {
+                if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oz)) != r) continue;
+                if (Regions.CharacterAtTile(ox, oz, seed, false) != want) continue;
+                if (WaterSurface.IsUnderwater(ox, oz, seed)) continue;
+                bool inside = true;
+                for (int dx = -20; dx <= 20 && inside; dx += 10)
+                for (int dz = -20; dz <= 20 && inside; dz += 10)
+                    if (Regions.CharacterAtTile(ox + dx, oz + dz, seed, false) != want) inside = false;
+                if (!inside) continue;
+                standX = ox; standZ = oz; found = true;
+            }
+            if (!found) { Mark(string.Format("  {0,-16} none found within 500 tiles", want)); continue; }
+
+            if (body != null) body.enabled = false;
+            player.position = new Vector3(standX * WorldGrid.TileSize, WorldHeight.SurfaceY(standX, standZ, seed) + 1.4f, standZ * WorldGrid.TileSize);
+            if (body != null) body.enabled = true;
+            yield return new WaitForSecondsRealtime(10f);
+
+            var centre = WorldGrid.WorldToChunk(player.position);
+            var ids = new SortedDictionary<int, int>();
+            int drawn = 0;
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (!chunks.TryGetValue(centre + new Vector2Int(dx, dz), out var chunk)) continue;
+                foreach (var pair in chunk.idToTransforms)
+                {
+                    drawn += pair.Value.Length;
+                    ids[pair.Key] = (ids.TryGetValue(pair.Key, out int n) ? n : 0) + pair.Value.Length;
+                }
+            }
+            int most = 0, mostId = -1;
+            foreach (var pair in ids) if (pair.Value > most) { most = pair.Value; mostId = pair.Key; }
+
+            int standing = 0;
+            var counts = under != null ? (int[])typeof(Undergrowth).GetField("counts", flags).GetValue(under) : null;
+            if (counts != null) foreach (int n in counts) standing += n;
+
+            float frames = 0f, seconds = 0f;
+            for (float t = 0f; t < 2f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+
+            Mark(string.Format("  {0,-16} | id {1,3} {2,4:F0}% | {3,5} | {4,6} | {5,4:F1} ms",
+                want, mostId, 100f * most / Mathf.Max(1, drawn), drawn, standing, seconds / frames * 1000f));
+        }
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}
