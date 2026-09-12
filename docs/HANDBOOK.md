@@ -863,7 +863,32 @@ seed 5, the Withered Ledges, 20% of nine chunks the reef floor with the rest
 its sand and its land, 652 colonies, the nearest 0.41 m under the surface,
 2.8 ms.
 
+### Scree, outcrops, and what the ground does where it steepens
+
+The census made scree look dead: a tenth of the hills is steep enough for it and a walk through
+the hills turned up one scree tile in two thousand. `Tools/probe/Scree.cs.txt` counts, over the
+same nine chunks, how many tiles the slope rule would take and how many were actually laid. In
+the hills: 407 of 2025 steep enough, 162 laid. The rule is fine. The earlier reading was a flat
+shoulder, and a probe that stands in one spot says nothing about a country.
+
+The same probe pointed at the sand found the opposite. The desert and the plain used to take
+every tile including the steep ones -- deliberately, because scree through a desert reads as a
+patch of somewhere else -- and that left twelve percent of the world with one ground and no
+relief in it. They now show the stone slabs where the ground genuinely steepens, which reads as
+an outcrop rather than a patch of hillside. At the scree's own threshold this did nothing at
+all: two deserts sampled at random had not one steep tile between them. `DryOutcrop` is 0.30
+against the scree's 0.62, and the desert comes out at 6.4% rock, the plain at 0.6%.
+
 ### What people built in the new countries
+
+Small finds had the same hole and worse: `Finds.In` is a switch on the country and had no case
+for the jungle, the plain, the sea or a reef, so four countries -- two of them the newest in the
+game -- had no trace of anybody having passed through them at all. They have the existing finds
+now, and the share of chunks carrying one went from about a sixth to a fifth.
+
+Structures take the country a chunk mostly is, over five samples, rather than the one tile at
+its middle: the ground is decided per tile with the border frayed, so a chunk on an edge can
+have its centre in one country and nearly all its tiles in the other.
 
 A jungle and a plain had no structures of their own; `Landmarks` remapped them to Forest and
 Lowland so they at least got something. Remapping widens nothing -- it replaces -- so a jungle
@@ -880,10 +905,15 @@ hearth and a trough inside. Both use the kit as it stands; neither needed new ge
 title screen and never entered a world. Since the title arrived it had been running against the
 title's own backdrop -- seed 24, radius 8, the player switched off -- so every photograph it took
 for months was of the menu with a wood behind it. Nobody noticed because the counts it prints are
-static functions of a seed and came out plausible anyway. It enters a world now, which the counts
-prove (the same square went from no Sunken Temples to six when the seed changed from the title's
-to its own). Its camera handling still throws after the first structure builds and it takes no
-photographs; that is not fixed.
+static functions of a seed and came out plausible anyway. It enters a world now, which the counts prove
+(the same square went from no Sunken Temples to six when the seed changed from the title's to
+its own), and it photographs again.
+
+Making it enter a world exposed the second half of the fault. Its `Boot` had no guard, and Boot
+fires on every scene load: each load spawned another probe, and since each probe now entered a
+world, each entry spawned another probe. The whole tour ran over and over, five seconds apart,
+and never reached a photograph. That is the guard every other probe has and the one the Probes
+section above tells you to write.
 
 ### The jungle
 
@@ -1035,6 +1065,35 @@ five, so the band came out in stripes; the choice is jittered by about a third o
 `Tools/probe/Borders.cs.txt` walks a line of tiles from one country into the next and prints
 what each belongs to, which is how the fray was measured, and photographs the join.
 
+### The sweep
+
+`Tools/probe/Sweep2.cs.txt` stands in every country in turn and prints one row each: the
+commonest tile and its share, how much of the ground is mixed, how many tiles are drawn, how
+much is standing, and what a frame costs. One run, one table. A change that quietly wrecks one
+country shows up without anybody walking all fourteen.
+
+| Country | Commonest | Standing | Frame | Country | Commonest | Standing | Frame |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Lowland | 17% | 3166 | 3.0 ms | Desert | 20% | 3940 | 3.1 ms |
+| Forest | 16% | 5142 | 3.3 ms | Snow | 22% | 1553 | 2.9 ms |
+| Water | 25% | 803 | 2.7 ms | Stone | 21% | 4736 | 3.1 ms |
+| Hills | 9% | 2490 | 3.4 ms | Dead | 21% | 5978 | 3.1 ms |
+| Peaks | 21% | 4871 | 3.2 ms | Reed | 21% | 4269 | 2.8 ms |
+| Fungal | 21% | 5225 | 3.6 ms | Reef | 9% | 1888 | 3.3 ms |
+| Jungle | 21% | 4703 | 6.6 ms | Savanna | 21% | 4100 | 3.3 ms |
+
+Two things it caught about itself before it caught anything about the world. It called the
+savanna 94% mixed ground, because the savanna's own definitions, 165 to 169, sit inside the run
+of blend definitions and were being counted as blends. And it put the peaks at 51% mixed, which
+was true of where it stood: its test for being inside a country reached twenty tiles and the
+blend band reaches eight, so it kept landing near borders. At thirty tiles every country comes
+out under 3% mixed and its own ground commonest, which is what it should be.
+
+The jungle is the only country that costs noticeably more than the rest, and its giants were the
+reason: eighteen vines each carrying up to eight two-sided leaves, nearly three hundred faces
+that do nothing for the silhouette. One leaf a segment instead of two took the giant from 1179
+faces to 909 and the jungle from 7.5 ms to 6.6 at the same spot.
+
 ### What the world is made of
 
 `Tools/probe/World.cs.txt` takes a census without entering a world -- the terrain, the water,
@@ -1065,6 +1124,21 @@ enough to be meadow, about nine percent reached the bottom of the list. It came 
 the world, rarer than the mushroom woods, for the gentlest and most ordinary country there is.
 It claims a quarter of `relief < 0.26` up front now, before the jungle, and comes out at 5.6%.
 The countries it took that from moved by well under a point each.
+
+### Dry grass is a family
+
+The mixed ground groups the world's fourteen grounds into families, and the savanna was filed
+under grass because it is grass. But straw over red earth meeting green meadow is as big a
+change as meadow meeting sand, and while the two counted as the same family they met along a
+hard line with no mixed ground between them at all -- the one join the whole system was built
+for, and the one it skipped.
+
+Dry is a sixth family now, which makes fifteen pairs and seventy-five tiles. The first ten
+series keep the numbers they had, at 115 to 164; the savanna's own ground is at 165 to 169 in
+the middle of that run; the five new series follow at 170 to 194. So the pair index is no longer
+a formula into a base category and `Chunk.BlendCategory` is a table of fifteen. The fill blocks
+moved out to 900 and 901, far past anything the categories will ever reach, which is the third
+and last time they move.
 
 ### The savanna
 
