@@ -88,8 +88,15 @@ FAMILY = {
         top=["snow1", "snow1", "snow2", "snow3"], band="snowshade", low="frostrock2",
         strew=lambda b, rng, at: lump(b, rng, at, ["snow1", "snow2"], 0.08, 0.16, squash=0.2) if rng.random() < 0.6
                                  else flat_bit(b, rng, at, ["ice", "ice2", "snow3"])),
+    # Dry grass is its own family, not a shade of grass. Straw over red earth meeting green
+    # meadow is as big a change as meadow meeting sand, and while the plain counted as grass
+    # the two of them met along a hard line with no mixed ground between them at all.
+    "dry": dict(
+        top=["savgrass", "savgrass2", "savgrass3", "savearth"], band="savearth", low="savearth2",
+        strew=lambda b, rng, at: tufts(b, rng, at, ["savgrass", "savgrass2"], size=1.1, blades=7, high=(0.20, 0.38))
+                                 if rng.random() < 0.7 else flat_bit(b, rng, at, ["drysand", "savearth2", "bone"])),
 }
-ORDER = ["sand", "grass", "dark", "rock", "snow"]
+ORDER = ["sand", "grass", "dark", "rock", "snow", "dry"]
 PAIRS = [(a, b) for i, a in enumerate(ORDER) for b in ORDER[i+1:]]
 
 # ---------------------------------------------------------------- the tile

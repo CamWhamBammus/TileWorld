@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 34;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground, then savanna
+    private const int Categories = 39;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground, then savanna
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -39,9 +39,24 @@ public class Chunk
     /// series of five cover every border in the world. Categories 23 to 32.
     /// </summary>
     private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
-    private const int FirstBlendCategory = 23;
-    private const int Families = 5;
-    private const int Sand = 0, Grass = 1, Dark = 2, Rock = 3, White = 4;
+    private const int Families = 6;
+    private const int Sand = 0, Grass = 1, Dark = 2, Rock = 3, White = 4, Dry = 5;
+
+    /// <summary>
+    /// Which category each of the fifteen pairs lives in. Not a formula any more: the first ten
+    /// pairs were built and numbered before dry grass was a family of its own, and the savanna's
+    /// own ground sits at 33 between them and the five new ones, so the numbers are not
+    /// contiguous. The order here is the order the pairs come out of the two nested loops over
+    /// the families, which is also the order Tools/blend_tiles.py builds them in.
+    /// </summary>
+    private static readonly int[] BlendCategory =
+    {
+        23, 24, 25, 26, 34,      // sand with grass, dark, rock, snow, dry
+        27, 28, 29, 35,          // grass with dark, rock, snow, dry
+        30, 31, 36,              // dark with rock, snow, dry
+        32, 37,                  // rock with snow, dry
+        38                       // snow with dry
+    };
 
     /// <summary>Which of the five a laid ground belongs to, or -1 for one that does not mix.</summary>
     private static int FamilyOfGround(int category)
@@ -51,7 +66,7 @@ public class Chunk
             case ForestCategory: case MarshCategory: case FungalCategory:
             case DeadCategory: case JungleCategory: return Dark;
             case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory:
-            case SavannaCategory: return Grass;
+            case SavannaCategory: return Dry;
             case BeachCategory: case DesertCategory: return Sand;
             case StoneCategory: case BareSteepCategory: case PeakCategory: return Rock;
             case SnowCategory: return White;
@@ -64,8 +79,8 @@ public class Chunk
     {
         switch (who)
         {
-            case Regions.Character.Lowland: case Regions.Character.Hills:
-            case Regions.Character.Savanna: return Grass;
+            case Regions.Character.Lowland: case Regions.Character.Hills: return Grass;
+            case Regions.Character.Savanna: return Dry;
             case Regions.Character.Forest: case Regions.Character.Jungle:
             case Regions.Character.Fungal: case Regions.Character.Dead:
             case Regions.Character.Reed: return Dark;
@@ -77,7 +92,7 @@ public class Chunk
         }
     }
     private const int SnowCategory = 16;
-    private const int FillEarthId = 200, FillRockId = 201;   // plain blocks laid under a tile where the ground drops away
+    private const int FillEarthId = 900, FillRockId = 901;   // plain blocks laid under a tile where the ground drops away
     private const float FillDepth = 2.05f;                // how deep a tile's body is, from its top at 1.05 to -1.00        // our snow: drifts, frosted rock, a frozen puddle, laden shrubs, tracks, wherever snow lies
     private const int BareSteepCategory = 15;  // our scree: broken rock and gravel on the steep faces (the pack's Big Grass, 3, is left unused)
     private const int MarshCategory = 11;      // our marsh: the low flats, the sodden woods and reedbeds, and the beds of lakes and ponds (the pack's Very Dark, 4, is left unused)
@@ -340,7 +355,7 @@ public class Chunk
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
                         int low = Mathf.Min(mine, theirs), high = Mathf.Max(mine, theirs);
-                        category = FirstBlendCategory + low * (2 * Families - 1 - low) / 2 + (high - low - 1);
+                        category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
                         float toward = mine == low ? near * 0.5f : 1f - near * 0.5f;
 
                         // Jittered, or every tile the same distance from the line picks the
