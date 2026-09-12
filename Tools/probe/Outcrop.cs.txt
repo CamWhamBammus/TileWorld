@@ -1,0 +1,109 @@
+// A probe for the scree: the census says a tenth of the hills and a seventh of the peaks are
+// steep enough for it, but a walk through the hills turned up one scree tile in two thousand.
+// This stands in both and counts, for the same nine chunks, how many tiles the slope rule would
+// take and how many actually got laid as scree. If those two disagree, something between the
+// rule and the ground is eating them.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        AudioListener.volume = 0f;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var save = WorldLibrary.Create("Probe outcrop", 5, true, true, 0.42f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        TimeOfDay.Instance.SetTime(0.42f); TimeOfDay.Instance.Paused = true;
+
+        var world = FindFirstObjectByType<ChunkManager>();
+        var player = world.PlayerTransform;
+        int seed = world.WorldSeed;
+        var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
+        var body = FindFirstObjectByType<CharacterController>();
+
+        foreach (var want in new[] { Regions.Character.Desert, Regions.Character.Savanna })
+        {
+            int standX = 0, standZ = 0; bool found = false;
+            for (int r = 1; r < 400 && !found; r++)
+            for (int ox = -r; ox <= r && !found; ox++)
+            for (int oz = -r; oz <= r && !found; oz++)
+            {
+                if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oz)) != r) continue;
+                if (Regions.CharacterAtTile(ox, oz, seed, false) != want) continue;
+                if (WaterSurface.IsUnderwater(ox, oz, seed)) continue;
+                bool inside = true;
+                for (int dx = -20; dx <= 20 && inside; dx += 10)
+                for (int dz = -20; dz <= 20 && inside; dz += 10)
+                    if (Regions.CharacterAtTile(ox + dx, oz + dz, seed, false) != want) inside = false;
+                if (!inside) continue;
+                standX = ox; standZ = oz; found = true;
+            }
+            if (!found) { Mark("SCREE no " + want + " found"); continue; }
+
+            if (body != null) body.enabled = false;
+            player.position = new Vector3(standX * WorldGrid.TileSize, WorldHeight.SurfaceY(standX, standZ, seed) + 1.4f, standZ * WorldGrid.TileSize);
+            if (body != null) body.enabled = true;
+            yield return new WaitForSecondsRealtime(11f);
+
+            var centre = WorldGrid.WorldToChunk(player.position);
+
+            // what the rule would take: the slope as Chunk measures it, over the same nine chunks
+            int steep = 0, tiles = 0;
+            for (int cx = -1; cx <= 1; cx++)
+            for (int cz = -1; cz <= 1; cz++)
+            {
+                var c = centre + new Vector2Int(cx, cz);
+                for (int i = 0; i < WorldGrid.TilesPerChunk; i++)
+                for (int j = 0; j < WorldGrid.TilesPerChunk; j++)
+                {
+                    int gx = c.x * WorldGrid.TilesPerChunk + i, gz = c.y * WorldGrid.TilesPerChunk + j;
+                    float h = WorldHeight.SurfaceY(gx, gz, seed);
+                    float slope = Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, seed) - h),
+                                            Mathf.Abs(WorldHeight.SurfaceY(gx, gz + 1, seed) - h));
+                    tiles++;
+                    if (slope / 1.2f > 0.62f) steep++;
+                }
+            }
+
+            int laid = 0, all = 0;
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (!chunks.TryGetValue(centre + new Vector2Int(dx, dz), out var chunk)) continue;
+                foreach (var pair in chunk.idToTransforms)
+                {
+                    all += pair.Value.Length;
+                    if (pair.Key >= 70 && pair.Key <= 79) laid += pair.Value.Length;
+                }
+            }
+            Mark(string.Format("SCREE in {0} at {1}: {2} tiles, {3} steep enough ({4:F1}%), {5} laid as scree ({6:F1}% of {7} drawn)",
+                want, player.position.ToString("F0"), tiles, steep, 100f * steep / Mathf.Max(1, tiles), laid, 100f * laid / Mathf.Max(1, all), all));
+        }
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

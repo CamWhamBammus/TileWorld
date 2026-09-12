@@ -111,6 +111,9 @@ public class Chunk
 
     private const float TreelineFraction = 0.72f;
     private const float SteepFraction = 0.62f;
+
+    /// <summary>How steep the sand and the straw have to get before rock shows through.</summary>
+    private const float DryOutcrop = 0.30f;
     private const float MarshFraction = 0.10f;
 
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
@@ -297,17 +300,19 @@ public class Chunk
                 // reads as a patch of somewhere else, the same as in the sand
                 category = JungleCategory;
             }
-            else if (character == Regions.Character.Savanna)
+            else if (character == Regions.Character.Savanna || desert)
             {
-                // all of it, steep faces included, the same as the sand: scree through a plain
-                // reads as a patch of somewhere else
-                category = SavannaCategory;
-            }
-            else if (desert)
-            {
-                // sand over the whole of it, steep faces and all: scree in the
-                // middle of a desert reads as a patch of somewhere else
-                category = DesertCategory;
+                // Sand and straw over nearly all of it. Scree through a desert reads as a patch
+                // of somewhere else, which is why these two used to take every tile including
+                // the steep ones -- but that left a country of twelve percent of the world with
+                // one ground and no relief to look at. Genuinely steep ground gets the stone
+                // slabs instead: an outcrop standing out of the sand, which a desert does have.
+                // A lower bar than the scree's, because these countries are flat: at the
+                // scree's threshold two deserts sampled at random had not one steep tile
+                // between them and the rule did nothing at all.
+                category = steep > DryOutcrop + ripple * SteepWander
+                    ? StoneCategory
+                    : (desert ? DesertCategory : SavannaCategory);
             }
             else if (stone)
             {
