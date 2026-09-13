@@ -1065,6 +1065,24 @@ five, so the band came out in stripes; the choice is jittered by about a third o
 `Tools/probe/Borders.cs.txt` walks a line of tiles from one country into the next and prints
 what each belongs to, which is how the fray was measured, and photographs the join.
 
+### Small tunings, from the tables above
+
+The census and the sweep between them name the countries that are wrong, and most of what they
+name is a number rather than a system. Six of those, in one pass:
+
+- **Reefs were the rarest country in the world** at 2.0%, below the meadow before the meadow was
+  fixed. One in four of the wet regions that qualify rather than one in five.
+- **A Water region had 803 things standing** where every other country runs to three or four
+  thousand. A coast is bare by nature, but not that bare: more palms, a good many more boulders,
+  and the plain's tall grass above the tideline.
+- **A reef's air** is clearer and brighter than anywhere else, which is the one country you spend
+  your time looking at through several metres of water.
+- **The dry country takes a footprint** the way sand does. It is dust, and it was not.
+- **The dry country is not silent after dark.** The daylight gate sends the woodland calls to bed
+  at dusk; the jungle was already exempt, and a desert at night is the one time anything is
+  about. The insects carry on.
+- **The chart's key** still listed what the colours meant before the countries had any.
+
 ### The sweep
 
 `Tools/probe/Sweep2.cs.txt` stands in every country in turn and prints one row each: the
