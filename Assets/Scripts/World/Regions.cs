@@ -308,7 +308,7 @@ public static class Regions
         // nothing to find.
         if (wetShare > 0.22f)
             return relief < 0.30f && snowShare <= 0f && deepShare > 0.10f
-                && Hash(cell.x, cell.y, worldSeed + 5309) % 5 == 0
+                && Hash(cell.x, cell.y, worldSeed + 5309) % 4 == 0
                  ? Character.Reef : Character.Water;
         if (snowShare > 0.16f) return Character.Peaks;
 
