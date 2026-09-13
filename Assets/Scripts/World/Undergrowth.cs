@@ -183,7 +183,9 @@ public class Undergrowth : MonoBehaviour
         // the desert stands on its own sand now, which carries its own stones and scrub, under its own cacti;
         // the pack's dead trees stay, and a palm now and then
         desert = new[] { With(beachPalms, 0.006f), With(deadTrees, 0.02f), With(saguaros, 0.028f), With(smallCacti, 0.05f), With(stones, 0.04f) };
-        shore = new[] { With(beachPalms, 0.045f), With(boulders, 0.008f) };
+        // The sweep put a Water region at 803 things standing where every other country runs
+        // to three or four thousand. A coast is bare by nature, but that bare.
+        shore = new[] { With(beachPalms, 0.055f), With(boulders, 0.030f), With(savannaGrass, 0.045f) };
         stone = new[] { With(boulders, 0.34f) };
         // The peaks used to fall through to the ordinary table, which is oaks
         // and pines, and then the treeline took nearly all of it away again --
