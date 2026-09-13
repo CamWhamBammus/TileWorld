@@ -223,7 +223,9 @@ public class BirdSong : MonoBehaviour
         // Daylight only, and not up a mountain -- except in a jungle, which is as loud after
         // dark as before it, and that is half of what makes one.
         float time = TimeOfDay.Instance != null ? TimeOfDay.Instance.Normalized : 0.5f;
-        if (here != Regions.Character.Jungle && (time < 0.26f || time > 0.76f)) return;
+        bool loudAfterDark = here == Regions.Character.Jungle
+                          || here == Regions.Character.Savanna || here == Regions.Character.Desert;
+        if (!loudAfterDark && (time < 0.26f || time > 0.76f)) return;
 
         float overcast = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
         if (overcast > 0.7f) return;      // they go quiet before rain
@@ -243,7 +245,9 @@ public class BirdSong : MonoBehaviour
             return;
         }
 
-        // out on the plain, insects in the grass
+        // Out on the plain, insects in the grass. The dry country is let them after dark as
+        // well: a desert at night is not silent, it is the one time anything is about, and the
+        // daylight gate above sends the woodland calls to bed at dusk and left it with nothing.
         if ((here == Regions.Character.Savanna || here == Regions.Character.Desert) && Random.value < 0.66f)
         {
             source.pitch = Random.Range(0.92f, 1.1f);
