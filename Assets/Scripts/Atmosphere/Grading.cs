@@ -39,7 +39,7 @@ public class Grading : MonoBehaviour
     public bool Submerged { get; private set; }
     private Camera view;
     private ChunkManager world;
-    private float air, wet, dust;
+    private float air, wet, dust, clear;
 
     /// <summary>What the grade is doing now, for the probes.</summary>
     public float Saturation => colour != null ? colour.saturation.value : 0f;
@@ -143,12 +143,14 @@ public class Grading : MonoBehaviour
         float cold = country == Regions.Character.Snow ? 1f : 0f;
         float humid = country == Regions.Character.Jungle ? 1f : 0f;
         float dry = country == Regions.Character.Savanna || country == Regions.Character.Desert ? 1f : 0f;
+        float bright = country == Regions.Character.Reef ? 1f : 0f;
 
         // eased, or the grade snaps as you cross a border
         air = Mathf.MoveTowards(air, cold, Time.deltaTime * 0.5f);
+        clear = Mathf.MoveTowards(clear, bright, Time.deltaTime * 0.5f);
         wet = Mathf.MoveTowards(wet, humid, Time.deltaTime * 0.5f);
         dust = Mathf.MoveTowards(dust, dry, Time.deltaTime * 0.5f);
-        cold = air; humid = wet; dry = dust;
+        cold = air; humid = wet; dry = dust; bright = clear;
 
         float rain = Rain.Intensity;
 
@@ -158,7 +160,7 @@ public class Grading : MonoBehaviour
         // contrast and saturation: clear days sing, rain washes out, snow is spare
         colour.contrast.Override(Mathf.Lerp(4f, 10f, day) - overcast * 8f);
         colour.saturation.Override(Mathf.Lerp(-6f, 8f, day) - overcast * 22f - cold * 10f + goldHour * 6f
-                                   + humid * 7f - dry * 5f);
+                                   + humid * 7f - dry * 5f + bright * 6f);
 
         // the filter: warm at the gold hour, blue-white in the cold, grey-blue in the rain
         Color filter = Color.white;
@@ -181,7 +183,7 @@ public class Grading : MonoBehaviour
         lift.gain.Override(new Vector4(1f + goldHour * 0.03f, 1f, 1f + cold * 0.02f, 0f));
 
         // bloom: more at the gold hour, when the sun and the water glint
-        bloom.intensity.Override(0.3f + goldHour * 0.35f - overcast * 0.15f);
+        bloom.intensity.Override(0.3f + goldHour * 0.35f - overcast * 0.15f + bright * 0.12f);
 
         // the vignette closes a little at night and in a downpour
         vignette.intensity.Override(0.2f + night * 0.08f + rain * 0.08f + humid * 0.07f);
