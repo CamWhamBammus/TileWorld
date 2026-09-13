@@ -460,7 +460,7 @@ public class WorldMap : MonoBehaviour
                   " <color=#8A7E68>" + TimeOfDay.Instance.Label() + "</color></color>"
                 : "") +
             "\n<size=16><color=#8A7E68>lowland <color=#5C7A45>\u25A0</color>  hills <color=#8A8250>\u25A0</color>  " +
-            "slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
+            "countries  ·  slopes <color=#9A907F>\u25A0</color>  peaks <color=#E8E4DC>\u25A0</color>  " +
             "water <color=#5C8099>\u25A0</color>  ice <color=#C7DBEB>\u25A0</color>  snow <color=#F0F2F5>\u25A0</color>  " +
             "landmark <color=#5C442D>\u25C6</color>   " +
             "scroll to zoom   click to mark   F9 saves     " +
