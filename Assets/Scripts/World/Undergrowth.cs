@@ -477,8 +477,17 @@ public class Undergrowth : MonoBehaviour
             // only stones lie on a shore
             if (beach && sort.High > 1.5f && !Regions.Sea(character)) continue;   // the shore's own table is palms, which belong on it
 
-            // above the treeline nothing tall, which is what makes a summit read as a summit
-            if (sort.High > 2.2f && WorldHeight.HeightAt(gx, gz, seed) / WorldHeight.MaxRelief > 0.72f) continue;
+            // Above the treeline nothing tall, which is what makes a summit read as a summit.
+            // Tied to the snowline rather than to a height of its own: trees used to stop dead
+            // at 0.72 of the relief while the snow came in between 0.62 and 0.86, so there was
+            // a band of bare ground with neither on it, and a line across the mountain where
+            // the wood ended. They thin out through the same band the snow arrives in now.
+            if (sort.High > 2.2f)
+            {
+                float through = SnowCover.CoverAt(gx, gz, seed);
+                if (through >= 1f) continue;
+                if (through > 0f && (roll >> 7) % 1000 < through * 1000f) continue;
+            }
 
             float tall = Mathf.Lerp(sort.Low, sort.High, ((roll >> 17) % 100) / 100f);
             float size = tall / sprout.Size;
