@@ -27,6 +27,28 @@ public class _Probe : MonoBehaviour
         try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
     }
 
+    /// <summary>Whether a tile definition is the country's own ground rather than a neighbour's.</summary>
+    private static bool OwnGround(Regions.Character who, int id)
+    {
+        switch (who)
+        {
+            case Regions.Character.Forest: return id >= 35 && id <= 39;
+            case Regions.Character.Lowland: case Regions.Character.Hills: return id >= 40 && id <= 54;
+            case Regions.Character.Reed: return id >= 55 && id <= 59;
+            case Regions.Character.Water: return id >= 60 && id <= 64 || id >= 110 && id <= 114;
+            case Regions.Character.Desert: return id >= 65 && id <= 69;
+            case Regions.Character.Stone: return id >= 70 && id <= 79;
+            case Regions.Character.Snow: return id >= 80 && id <= 84;
+            case Regions.Character.Fungal: return id >= 85 && id <= 89;
+            case Regions.Character.Dead: return id >= 90 && id <= 94;
+            case Regions.Character.Reef: return id >= 95 && id <= 99 || id >= 195 && id <= 199 || id >= 60 && id <= 64;
+            case Regions.Character.Jungle: return id >= 100 && id <= 104;
+            case Regions.Character.Peaks: return id >= 105 && id <= 109 || id >= 75 && id <= 84;
+            case Regions.Character.Savanna: return id >= 165 && id <= 169;
+            default: return false;
+        }
+    }
+
     private IEnumerator Start()
     {
         yield return new WaitForSecondsRealtime(3f);
@@ -45,7 +67,7 @@ public class _Probe : MonoBehaviour
         var body = FindFirstObjectByType<CharacterController>();
         var under = FindFirstObjectByType<Undergrowth>();
 
-        Mark("SWEEP country          | commonest  | mixed | tiles | standing | frame");
+        Mark("SWEEP country          | own ground | mixed | standing | frame (median of four seconds)");
 
         foreach (Regions.Character want in System.Enum.GetValues(typeof(Regions.Character)))
         {
@@ -97,12 +119,23 @@ public class _Probe : MonoBehaviour
             var counts = under != null ? (int[])typeof(Undergrowth).GetField("counts", flags).GetValue(under) : null;
             if (counts != null) foreach (int n in counts) standing += n;
 
-            float frames = 0f, seconds = 0f;
-            for (float t = 0f; t < 2f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+            // The median of a longer run rather than the mean of two seconds. A single hitch
+            // in a short window once put the peaks at 9.0 ms against a true 3.2, which reads as
+            // a threefold regression and costs a run to disprove.
+            var spans = new List<float>();
+            for (float t = 0f; t < 4f; t += Time.unscaledDeltaTime) { spans.Add(Time.unscaledDeltaTime); yield return null; }
+            spans.Sort();
+            float middle = spans.Count > 0 ? spans[spans.Count / 2] * 1000f : 0f;
+            float worst = spans.Count > 0 ? spans[spans.Count - 1] * 1000f : 0f;
 
-            Mark(string.Format("  {0,-16} | id {1,3} {2,4:F0}% | {3,4:F0}% | {4,5} | {5,6} | {6,4:F1} ms",
-                want, mostId, 100f * most / Mathf.Max(1, drawn), 100f * blended / Mathf.Max(1, drawn),
-                drawn, standing, seconds / frames * 1000f));
+            // and what the country's own ground comes to, which is the number that matters and
+            // is not the same as the commonest tile: the savanna's bug hid behind exactly that
+            int own = 0;
+            foreach (var pair in ids) if (OwnGround(want, pair.Key)) own += pair.Value;
+
+            Mark(string.Format("  {0,-16} | own {1,3:F0}% | mixed {2,3:F0}% | {3,6} standing | {4,4:F1} ms (worst {5,4:F1})",
+                want, 100f * own / Mathf.Max(1, drawn), 100f * blended / Mathf.Max(1, drawn),
+                standing, middle, worst));
         }
         Mark("done");
         WorldLibrary.Delete(save.id);
