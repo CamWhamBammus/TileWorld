@@ -204,7 +204,10 @@ public class Undergrowth : MonoBehaviour
         // Thicker than any wood in the world: the point of a jungle is that you
         // cannot see through it.
         jungle = new[] { With(jungleGiants, 0.025f), With(jungleTrees, 0.15f), With(bamboo, 0.055f),
-                         With(jungleFerns, 0.18f), With(mushrooms, 0.012f), With(boulders, 0.012f) };
+                         With(jungleFerns, 0.150f), With(mushrooms, 0.012f), With(boulders, 0.012f) };
+        // The jungle is the only country that costs noticeably more than the rest, and the
+        // understorey is the bulk of what stands in it. A little thinner; it is still the
+        // densest thing in the world by a wide margin.
         // the snowfields stand on their own snow now, which carries its own rocks, under their own trees;
         // the code-grown snow pines are kept for variety
         // The sweep put a snowfield at 1553 things standing, second emptiest in the world after
