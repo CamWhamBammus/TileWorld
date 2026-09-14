@@ -100,7 +100,7 @@ ORDER = ["sand", "grass", "dark", "rock", "snow", "dry"]
 PAIRS = [(a, b) for i, a in enumerate(ORDER) for b in ORDER[i+1:]]
 
 # ---------------------------------------------------------------- the tile
-def blend_body(b, rng, first, second, mix):
+def blend_body(b, rng, first, second, mix, bottom="earth2"):
     """The block: the two grounds mixed on the top by a low field, so a tile carries one or two
     patches of the other rather than a rash of them. The sides take whichever is winning, so a
     step in the ground does not show a stripe of the wrong country."""
@@ -125,14 +125,14 @@ def blend_body(b, rng, first, second, mix):
                 use = B if theirs(cx, cz) else A
                 b.tri(*tri, rng.choice(use["top"]), out=(0,1,0))
     win = B if mix > 0.5 else A
-    bands = [(TOP, TOP-0.26, win["band"]), (TOP-0.26, 0.1, win["low"]), (0.1, BOTTOM, "earth2")]
+    bands = [(TOP, TOP-0.26, win["band"]), (TOP-0.26, 0.1, win["low"]), (0.1, BOTTOM, bottom)]
     corners = [(-HALF,-HALF),(HALF,-HALF),(HALF,HALF),(-HALF,HALF)]
     for k in range(4):
         (x0,z0),(x1,z1) = corners[k], corners[(k+1)%4]
         outward = ((x0+x1)*0.5, 0, (z0+z1)*0.5)
         for (y1,y0,col) in bands:
             b.quad((x0,y0,z0),(x1,y0,z1),(x1,y1,z1),(x0,y1,z0), col, out=outward)
-    b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), "earth2", out=(0,-1,0))
+    b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), bottom, out=(0,-1,0))
 
 def tile(first, second, step):
     mix = [0.10, 0.30, 0.50, 0.70, 0.90][step]

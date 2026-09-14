@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 39;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground, then savanna
+    private const int Categories = 40;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground, then savanna
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -38,6 +38,14 @@ public class Chunk
     /// sand, grass, dark floor, rock and snow -- so five families make ten pairs and ten
     /// series of five cover every border in the world. Categories 23 to 32.
     /// </summary>
+    /// <summary>
+    /// Sand into coral, graded by depth. The mixed ground covers borders between countries and
+    /// this is not one: a reef stops where the water stops being a metre deep, a line of depth
+    /// inside a single country, and it was the last hard edge left in the ground anywhere.
+    /// </summary>
+    private const int ReefVergeCategory = 39;
+    private const float ReefVergeBand = 0.60f;
+
     private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
     private const int Families = 6;
     private const int Sand = 0, Grass = 1, Dark = 2, Rock = 3, White = 4, Dry = 5;
@@ -141,7 +149,19 @@ public class Chunk
     private const float ReefWander = 0.22f;
 
     /// <summary>Ground that already draws its own edge and must not be mixed away.</summary>
-    private static bool CarriesOwnEdge(int category) => category == ReefCategory;
+    private static bool CarriesOwnEdge(int category) => category == ReefCategory || category == ReefVergeCategory;
+
+    /// <summary>
+    /// The reef floor, or its verge if the water has only just got deep enough for coral. The
+    /// variant runs 0 to 4 across the band, so the sand gives way to coral over about half a
+    /// metre of depth instead of changing between one tile and the next.
+    /// </summary>
+    private static int ReefOrVerge(float over, ref int forced)
+    {
+        if (over >= ReefVergeBand) return ReefCategory;
+        forced = Mathf.Clamp(Mathf.RoundToInt(over / ReefVergeBand * (VariantsPerCategory - 1)), 0, VariantsPerCategory - 1);
+        return ReefVergeCategory;
+    }
 
     private static bool[] BuildTreeTable()
     {
@@ -258,7 +278,8 @@ public class Chunk
                 // coral in ankle-deep water reads as a flooded field.
                 category = underSnow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
-                         : character == Regions.Character.Reef && underBy >= ReefDepth + ripple * ReefWander ? ReefCategory
+                         : character == Regions.Character.Reef && underBy >= ReefDepth + ripple * ReefWander
+                             ? ReefOrVerge(underBy - (ReefDepth + ripple * ReefWander), ref forced)
                          : underBy >= DeepWater + ripple * DeepWander ? StoneCategory
                          : BeachCategory;
             }
