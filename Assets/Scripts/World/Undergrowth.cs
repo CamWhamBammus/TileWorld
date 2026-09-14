@@ -207,7 +207,11 @@ public class Undergrowth : MonoBehaviour
                          With(jungleFerns, 0.18f), With(mushrooms, 0.012f), With(boulders, 0.012f) };
         // the snowfields stand on their own snow now, which carries its own rocks, under their own trees;
         // the code-grown snow pines are kept for variety
-        snow = new[] { With(snowConifers, 0.055f), With(snowBirches, 0.014f), With(snowSaplings, 0.02f), With(snowPines, 0.02f), With(boulders, 0.015f) };
+        // The sweep put a snowfield at 1553 things standing, second emptiest in the world after
+        // a coast. A snowfield should be open, but the shares here added to an eighth where
+        // every other country runs to a fifth or better, and it read as a white sheet.
+        snow = new[] { With(snowConifers, 0.075f), With(snowBirches, 0.024f), With(snowSaplings, 0.038f),
+                       With(snowPines, 0.026f), With(alpineStones, 0.022f), With(boulders, 0.030f) };
         // Thicker than it was, and with the pack's own trees standing in it
         // rather than only whatever the tiles happen to carry.
         // the forest stands mostly on its own trees now, over a floor that carries its own
