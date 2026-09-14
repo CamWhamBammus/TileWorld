@@ -1083,6 +1083,37 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Edges that are not borders
+
+The mixed ground covers borders between countries. Two changes in the ground are not borders and
+were left hard by it.
+
+**The reef's fringe.** A reef floor stops where the water stops being a metre deep -- a line of
+depth inside one country. `Tools/reef_verge.py` builds five tiles graded sand into coral,
+definitions 195 to 199, and `Chunk.ReefOrVerge` picks along them over `ReefVergeBand`, 0.6 m of
+depth. Measured at a reef: 349 verge tiles between the beach sand and 180 of reef floor.
+
+**The snowline.** `SnowCover.SnowByHeight` thins out with a hash between 0.62 and 0.86 of the
+relief, which breaks the contour up but leaves whole snow tiles scattered among whole bare ones:
+salt and pepper rather than a change. `SnowCover.CoverAt` exposes the fraction, and the tiles the
+hash left bare take the mixed ground between their own family and snow, graded by it. No new
+tiles -- that series already existed for the border between a snowfield and its neighbours. A
+peak inside the band came out with 577 graded tiles in nine chunks.
+
+And the treeline is tied to the same band. Tall things used to stop dead at 0.72 of the relief
+while the snow arrived between 0.62 and 0.86, so there was a strip with neither on it and a line
+across the mountain where the wood ended. They thin out through the snowline now.
+
+**A warning about short measurements.** The sweep measured a frame over two seconds and once put
+the peaks at 9.0 ms against a true 3.2, which reads as a threefold regression and cost a whole
+run to disprove. It takes the median of four seconds now and prints the worst frame beside it.
+The worst column is worth reading on its own: a forest showed a 172 ms frame, which is a chunk
+being built on the main thread and is visible as a hitch.
+
+The sweep also reports each country's share of its *own* ground rather than its commonest tile,
+which is the number that matters and is not the same thing -- the savanna bug hid behind exactly
+that difference.
+
 ### The sweep
 
 `Tools/probe/Sweep2.cs.txt` stands in every country in turn and prints one row each: the
