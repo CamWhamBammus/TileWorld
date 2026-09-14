@@ -39,6 +39,19 @@ public static class SnowCover
         return SnowByHeight(tileX, tileZ, worldSeed);
     }
 
+    /// <summary>
+    /// How far through the snowline a tile is: nought below it, one above full cover, and the
+    /// fraction between. The rule below turns this into a yes or no with a hash, which breaks
+    /// the contour up but leaves whole snow tiles scattered among whole bare ones. Anything
+    /// that wants to draw the change rather than decide it wants this.
+    /// </summary>
+    public static float CoverAt(int tileX, int tileZ, int worldSeed)
+    {
+        if (WaterSurface.IsUnderwater(tileX, tileZ, worldSeed)) return 0f;
+        float relief = WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief;
+        return Mathf.Clamp01(Mathf.InverseLerp(SnowlineFraction, FullCoverFraction, relief));
+    }
+
     /// <summary>Snow that is there because of how high the ground is, and nothing else.</summary>
     public static bool SnowByHeight(int tileX, int tileZ, int worldSeed)
     {

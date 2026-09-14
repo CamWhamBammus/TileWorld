@@ -76,6 +76,9 @@ public class _Probe : MonoBehaviour
             if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oz)) != r) continue;
             if (Regions.CharacterAtTile(ox, oz, seed, false) != Regions.Character.Peaks) continue;
             if (WaterSurface.IsUnderwater(ox, oz, seed)) continue;
+            // and inside the snowline band, which is where the change being looked at happens
+            float through = SnowCover.CoverAt(ox, oz, seed);
+            if (through <= 0.05f || through >= 0.95f) continue;
             // well inside it, not on the border: a ring search finds the edge by definition
             bool inside = true;
             for (int dx = -20; dx <= 20 && inside; dx += 10)

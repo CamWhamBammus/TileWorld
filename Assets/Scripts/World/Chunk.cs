@@ -363,6 +363,26 @@ public class Chunk
                 category = ForestCategory;          // the forest's own floor under its own trees
             }
 
+            // The snowline. The rule that decides it thins out with a hash, which breaks the
+            // contour up but leaves whole snow tiles scattered among whole bare ones: salt and
+            // pepper rather than a change. The tiles that the hash left bare, inside the band,
+            // take the mixed ground between their own family and snow instead, graded by how
+            // far through the band they are. No new tiles: the series already existed for the
+            // border between a snowfield and its neighbours.
+            if (!submerged && category != SnowCategory && !CarriesOwnEdge(category))
+            {
+                float cover = SnowCover.CoverAt(gx, gz, worldSeed);
+                int mine = FamilyOfGround(category);
+
+                if (cover > 0f && cover < 1f && mine >= 0 && mine != White)
+                {
+                    int low = Mathf.Min(mine, White), high = Mathf.Max(mine, White);
+                    category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
+                    float toward = mine == low ? cover * 0.5f : 1f - cover * 0.5f;
+                    forced = Mathf.Clamp(Mathf.RoundToInt(toward * (VariantsPerCategory - 1)), 0, VariantsPerCategory - 1);
+                }
+            }
+
             // Where two countries meet, the ground between them: the tile's own family and
             // the one over the border pick a series, and how near the line picks how far along
             // it. Both sides walk toward the middle of the same series, so they meet there
