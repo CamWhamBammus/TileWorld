@@ -85,7 +85,11 @@ public class Fireflies : MonoBehaviour
         int tileX = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize);
         int tileZ = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
         float relief = WorldHeight.HeightAt(tileX, tileZ, seed) / WorldHeight.MaxRelief;
-        bool active = night > 0.05f && relief < highestRelief && Rain.Intensity < 0.4f;
+
+        // A jungle is let them whatever the height rule says: warm, wet and under a closed
+        // canopy is where they are, and the low ground was the only place they had been.
+        bool jungle = world != null && Regions.CharacterAtTile(tileX, tileZ, seed) == Regions.Character.Jungle;
+        bool active = night > 0.05f && (relief < highestRelief || jungle) && Rain.Intensity < 0.4f;
         int wanted = active ? count : 0;
 
         // come up a few a second where they are wanted, and go the same way
