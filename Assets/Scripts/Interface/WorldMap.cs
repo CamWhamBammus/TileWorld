@@ -372,7 +372,7 @@ public class WorldMap : MonoBehaviour
             case Regions.Character.Reed:    return new Color(0.45f, 0.53f, 0.38f);
             case Regions.Character.Fungal:  return new Color(0.48f, 0.38f, 0.50f);
             case Regions.Character.Dead:    return new Color(0.46f, 0.42f, 0.38f);
-            case Regions.Character.Reef:    return new Color(0.40f, 0.62f, 0.62f);
+            case Regions.Character.Reef:    return new Color(0.36f, 0.66f, 0.64f);
             case Regions.Character.Water:   return new Color(0.42f, 0.55f, 0.62f);
             default: return new Color(0.56f, 0.62f, 0.44f);
         }
