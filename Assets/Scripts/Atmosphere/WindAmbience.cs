@@ -122,7 +122,18 @@ public class WindAmbience : MonoBehaviour
         float weather = TimeOfDay.Instance != null ? TimeOfDay.Instance.Overcast : 0f;
 
         // quiet in a sheltered valley, loud on an exposed ridge
-        float target = maximumVolume * Mathf.Clamp01(0.18f + relief * 0.95f + weather * 0.45f);
+        // Altitude and weather were the whole rule, so the one country in the world you can
+        // see across -- an open plain with nothing on it but grass and a tree every so often --
+        // was as still as the inside of a wood. Open ground carries the wind whatever its height.
+        float open = 0f;
+        if (world != null)
+        {
+            var here = Regions.CharacterAtTile(tileX, tileZ, seed, false);
+            if (here == Regions.Character.Savanna || here == Regions.Character.Desert) open = 0.30f;
+            else if (here == Regions.Character.Water || here == Regions.Character.Reef) open = 0.22f;
+        }
+
+        float target = maximumVolume * Mathf.Clamp01(0.18f + relief * 0.95f + weather * 0.45f + open);
 
         source.volume = Mathf.MoveTowards(source.volume, target, Time.deltaTime * 0.25f);
         source.pitch = Mathf.Lerp(0.85f, 1.15f, Mathf.Clamp01(relief * 0.7f + weather * 0.5f));
