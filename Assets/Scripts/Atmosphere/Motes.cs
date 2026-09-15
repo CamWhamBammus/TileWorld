@@ -61,7 +61,8 @@ public class Motes : MonoBehaviour
     {
         Regions.Character.Forest or Regions.Character.Fungal or Regions.Character.Dead
             or Regions.Character.Jungle => Kind.Leaves,
-        Regions.Character.Lowland or Regions.Character.Hills or Regions.Character.Reed => Kind.Seeds,
+        Regions.Character.Lowland or Regions.Character.Hills or Regions.Character.Reed
+            or Regions.Character.Water or Regions.Character.Reef => Kind.Seeds,
         Regions.Character.Desert or Regions.Character.Stone
             or Regions.Character.Savanna or Regions.Character.Peaks => Kind.Dust,
         _ => Kind.None
