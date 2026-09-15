@@ -44,7 +44,7 @@ public class Chunk
     /// inside a single country, and it was the last hard edge left in the ground anywhere.
     /// </summary>
     private const int ReefVergeCategory = 39;
-    private const float ReefVergeBand = 0.60f;
+    private const float ReefVergeBand = 0.75f;
 
     private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
     private const int Families = 6;
