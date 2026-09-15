@@ -1083,6 +1083,30 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Systems that had not been told about the new countries
+
+Adding a country to `Regions.Character` does not add it to anything else. Several systems switch
+on the character and had been written when there were eleven of them, so the new ones fell
+through to a default that meant nothing happened at all. Found by grepping each atmosphere file
+for `Character.` and seeing which names were missing:
+
+- **Motes**, what drifts in the air, knew woods, low ground and dry ground. A jungle, a plain,
+  the peaks, a shore and a reef had nothing in the air at all. Leaves in the jungle, dust on the
+  plain and the peaks, seed heads over a shore.
+- **Fireflies** were gated on height alone, so the low ground had them and nothing else did. A
+  warm wet night under a closed canopy is where they actually are, so a jungle is let them
+  whatever its height.
+- **The wind** rose with altitude and the weather and nothing else, so the one country you can
+  see across was as still as the inside of a wood. Open ground carries it now: a plain and a
+  desert most, a shore a little less.
+- **The grade** folded the plain in with the desert. It is grassland, and graded as bare sand it
+  came out looking like more desert; it takes seven tenths of the dry air now rather than all
+  of it.
+
+The lesson is worth keeping: when a country is added, grep `Character.` across the whole of
+`Assets/Scripts` and read every switch that comes back, because none of them will fail, error or
+look wrong. They will just quietly do nothing.
+
 ### Edges that are not borders
 
 The mixed ground covers borders between countries. Two changes in the ground are not borders and
