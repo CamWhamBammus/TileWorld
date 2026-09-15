@@ -142,7 +142,9 @@ public class Grading : MonoBehaviour
 
         float cold = country == Regions.Character.Snow ? 1f : 0f;
         float humid = country == Regions.Character.Jungle ? 1f : 0f;
-        float dry = country == Regions.Character.Savanna || country == Regions.Character.Desert ? 1f : 0f;
+        // The plain shares the desert's hot bleached air but keeps a little of its own green:
+        // it is grassland, and graded as bare sand it came out looking like more desert.
+        float dry = country == Regions.Character.Desert ? 1f : country == Regions.Character.Savanna ? 0.70f : 0f;
         float bright = country == Regions.Character.Reef ? 1f : 0f;
 
         // eased, or the grade snaps as you cross a border
