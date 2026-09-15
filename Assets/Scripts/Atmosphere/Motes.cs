@@ -59,9 +59,11 @@ public class Motes : MonoBehaviour
 
     private static Kind KindFor(Regions.Character c) => c switch
     {
-        Regions.Character.Forest or Regions.Character.Fungal or Regions.Character.Dead => Kind.Leaves,
+        Regions.Character.Forest or Regions.Character.Fungal or Regions.Character.Dead
+            or Regions.Character.Jungle => Kind.Leaves,
         Regions.Character.Lowland or Regions.Character.Hills or Regions.Character.Reed => Kind.Seeds,
-        Regions.Character.Desert or Regions.Character.Stone => Kind.Dust,
+        Regions.Character.Desert or Regions.Character.Stone
+            or Regions.Character.Savanna or Regions.Character.Peaks => Kind.Dust,
         _ => Kind.None
     };
 
