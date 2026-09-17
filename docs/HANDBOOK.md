@@ -1083,6 +1083,28 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### The probes were not silent
+
+Every probe is supposed to mute itself in its `Boot`, and `run-probe.sh` injected the line as
+well for any that forgot. Fifty-eight of the sixty-seven had forgotten, and the injection was
+not enough on its own: `Settings.Boot` and `TitleMenu` both write `AudioListener.volume`, so
+entering a world put the sound straight back. A probe that teleports round the world therefore
+played the game out loud at whoever was sitting at the machine.
+
+`AudioListener.pause` is the fix. Nothing in the game touches it, so it survives a world being
+entered, a scene being loaded and the settings being applied. Both the probes and the injection
+in `run-probe.sh` set it now, alongside the volume.
+
+### The snowline is where cold begins
+
+Three things keyed off `Character.Snow` alone and so happened on the plain that stays frozen and
+nowhere else -- including three thousand feet up with snow lying all round, which is the wrong
+way round. They read `SnowCover.CoverAt` now, over half cover:
+
+- it snows rather than rains,
+- your breath shows,
+- and there is something in the air, which a snowfield had none of at all.
+
 ### Systems that had not been told about the new countries
 
 Adding a country to `Regions.Character` does not add it to anything else. Several systems switch
