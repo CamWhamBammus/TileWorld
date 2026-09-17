@@ -271,7 +271,12 @@ public class Surveyor : MonoBehaviour
         }
 
         // the cold: breath in the snow country, faster on the move
-        bool cold = world != null && Regions.CharacterAtTile(Mathf.RoundToInt(body.x / WorldGrid.TileSize), Mathf.RoundToInt(body.z / WorldGrid.TileSize), world.WorldSeed) == Regions.Character.Snow;
+        // Cold is not only a snowfield. Breath showed on the plain that stays frozen and not
+        // at three thousand feet with snow lying all round, which is the wrong way round.
+        int coldX = Mathf.RoundToInt(body.x / WorldGrid.TileSize), coldZ = Mathf.RoundToInt(body.z / WorldGrid.TileSize);
+        bool cold = world != null
+                 && (Regions.CharacterAtTile(coldX, coldZ, world.WorldSeed) == Regions.Character.Snow
+                     || SnowCover.CoverAt(coldX, coldZ, world.WorldSeed) > 0.5f);
 
         if (cold && !wet && figure.Head != null && Time.time > nextBreath)
         {
