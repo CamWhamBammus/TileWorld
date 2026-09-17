@@ -20,7 +20,7 @@ STAGES="$OUT/probe-stages.txt"
 
 mkdir -p "$SHOTS"
 # every probe runs silent: the player's audio listener is turned down as it boots
-sed "s#__STAGES__#$STAGES#g; s#__KINDS__#$KINDS#g; s#Application.runInBackground = true;#Application.runInBackground = true; AudioListener.volume = 0f;#" "$PROBE" > "$PROJECT/Assets/Scripts/_Probe.cs"
+sed "s#__STAGES__#$STAGES#g; s#__KINDS__#$KINDS#g; s#Application.runInBackground = true;#Application.runInBackground = true; AudioListener.volume = 0f; AudioListener.pause = true;#" "$PROBE" > "$PROJECT/Assets/Scripts/_Probe.cs"
 "$HERE/check.sh" || { rm -f "$PROJECT/Assets/Scripts/_Probe.cs"*; exit 1; }
 "$HERE/build.sh" || { rm -f "$PROJECT/Assets/Scripts/_Probe.cs"*; exit 1; }
 rm -f "$PROJECT/Assets/Scripts/_Probe.cs" "$PROJECT/Assets/Scripts/_Probe.cs.meta"

@@ -11,7 +11,7 @@ public class _Probe : MonoBehaviour
     private static void Boot()
     {
         Application.runInBackground = true;
-        AudioListener.volume = 0f;   // a probe runs beside whatever else is going on and must not be heard
+        AudioListener.volume = 0f; AudioListener.pause = true;   // a probe runs beside whatever else is going on and must not be heard
         if (FindFirstObjectByType<_Probe>() != null) return;
         Mark("boot");
         PlayerPrefs.DeleteKey("tileworld.taught");

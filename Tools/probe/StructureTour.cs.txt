@@ -24,7 +24,7 @@ public class _Probe : MonoBehaviour
     private static void Boot()
     {
         Application.runInBackground = true;
-        AudioListener.volume = 0f;   // a probe runs beside other work; it has no business being heard
+        AudioListener.volume = 0f; AudioListener.pause = true;   // a probe runs beside other work; it has no business being heard
         // Boot fires again on every scene load. Without this guard each load spawns another
         // probe, and since this one now enters a world, each new probe entered another: the
         // whole tour ran over and over, five seconds apart, and never reached a photograph.
