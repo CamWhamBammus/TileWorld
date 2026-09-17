@@ -44,6 +44,8 @@ public class Chunk
     /// inside a single country, and it was the last hard edge left in the ground anywhere.
     /// </summary>
     private const int ReefVergeCategory = 39;
+    // Wider than ReefWander, or the verge is narrower than the wander on the very edge it is
+    // there to soften and the two fight each other.
     private const float ReefVergeBand = 0.75f;
 
     private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
