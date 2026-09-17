@@ -363,7 +363,7 @@ public class WorldMap : MonoBehaviour
             case Regions.Character.Lowland: return new Color(0.56f, 0.66f, 0.38f);
             case Regions.Character.Forest:  return new Color(0.33f, 0.47f, 0.28f);
             case Regions.Character.Jungle:  return new Color(0.22f, 0.42f, 0.22f);
-            case Regions.Character.Savanna: return new Color(0.76f, 0.68f, 0.40f);
+            case Regions.Character.Savanna: return new Color(0.78f, 0.70f, 0.42f);
             case Regions.Character.Desert:  return new Color(0.84f, 0.76f, 0.52f);
             case Regions.Character.Hills:   return new Color(0.55f, 0.56f, 0.36f);
             case Regions.Character.Peaks:   return new Color(0.60f, 0.60f, 0.62f);
