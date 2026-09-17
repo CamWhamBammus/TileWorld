@@ -478,7 +478,10 @@ public class Undergrowth : MonoBehaviour
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
 
             // only stones lie on a shore
-            if (beach && sort.High > 1.5f && !Regions.Sea(character)) continue;   // the shore's own table is palms, which belong on it
+            // A bare strand is right for a sea, where the water moves. A jungle runs right down
+            // to the edge of its standing water and stopping its trees a metre short of every
+            // pool left a clean ring of nothing round each one.
+            if (beach && sort.High > 1.5f && !Regions.Sea(character) && character != Regions.Character.Jungle) continue;   // the shore's own table is palms, which belong on it
 
             // Above the treeline nothing tall, which is what makes a summit read as a summit.
             // Tied to the snowline rather than to a height of its own: trees used to stop dead
