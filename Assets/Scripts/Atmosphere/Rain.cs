@@ -158,7 +158,12 @@ public class Rain : MonoBehaviour
         int seed = world != null ? world.WorldSeed : 0;
 
         // in the snow country it snows: slow, swaying, white, and nothing rings
-        Snowing = Regions.CharacterAtTile(Mathf.RoundToInt(view.position.x / WorldGrid.TileSize), Mathf.RoundToInt(view.position.z / WorldGrid.TileSize), seed) == Regions.Character.Snow;
+        // A snowfield snowed and a summit above the snowline rained, which is the wrong way
+        // round for the one place in the world that is white all year.
+        int flakeX = Mathf.RoundToInt(view.position.x / WorldGrid.TileSize);
+        int flakeZ = Mathf.RoundToInt(view.position.z / WorldGrid.TileSize);
+        Snowing = Regions.CharacterAtTile(flakeX, flakeZ, seed) == Regions.Character.Snow
+               || SnowCover.CoverAt(flakeX, flakeZ, seed) > 0.5f;
         float slow = Snowing ? 0.07f : 1f;
 
         // the rain itself, heard everywhere it falls; snow is quiet
