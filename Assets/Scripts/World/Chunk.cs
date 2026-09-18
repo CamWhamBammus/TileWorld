@@ -75,7 +75,11 @@ public class Chunk
         {
             case ForestCategory: case MarshCategory: case FungalCategory:
             case DeadCategory: case JungleCategory: return Dark;
-            case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory:
+            // These fell through into the savanna's case together, so every meadow tile called
+            // itself Dry while the country over the border called itself Grass. The Grass
+            // family was produced by no ground at all, and the two sides of a meadow border
+            // therefore picked different series and met each other rather than the middle.
+            case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory: return Grass;
             case SavannaCategory: return Dry;
             case BeachCategory: case DesertCategory: return Sand;
             case StoneCategory: case BareSteepCategory: case PeakCategory: return Rock;
