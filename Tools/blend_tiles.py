@@ -1,10 +1,10 @@
 # Mixed ground for Tile World: the tiles that go where two countries meet.
 #
 # A tile for every pair of countries would be a square number of them and most would never be
-# seen. But the fourteen grounds in the world are only five things to look at -- sand, grass,
-# dark floor, rock and snow -- and a join between two countries is a join between two of those.
-# Five families make ten pairs, and each pair gets a series of five graded from one to the other,
-# so fifty tiles cover every border in the world.
+# seen. But the grounds in the world are only six things to look at -- sand, grass, dark floor,
+# rock, snow and the plain's dry straw -- and a join between two countries is a join between two
+# of those. Six families make fifteen pairs, and each pair gets a series of five graded from one
+# to the other, so seventy-five tiles cover every border in the world.
 #
 # Each series runs 0 (nearly all of the first family) to 4 (nearly all of the second). The chunk
 # picks by which side of the border the tile is on and how near the line, so the two countries
