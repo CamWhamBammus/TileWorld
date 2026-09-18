@@ -121,7 +121,11 @@ public class Chunk
 
     // These four tiles carry a tree. Above the treeline they are swapped out,
     // which is what makes a summit read as a summit.
-    private static readonly bool[] CarriesTree = BuildTreeTable();
+    // There used to be a table here saying which tile ids had a tree modelled into them, and a
+    // swap above the treeline that reached for a bare one of the same shade. The ids it marked
+    // -- 4, 8, 11 and 13 -- are in the pack's own grass bands, categories 0 to 2, and nothing
+    // has selected those since the ground became ours: every tile the world lays now is bare,
+    // and what stands on it is planted separately by the undergrowth. The swap could not fire.
 
     private const float TreelineFraction = 0.72f;
     private const float SteepFraction = 0.62f;
@@ -169,12 +173,6 @@ public class Chunk
         return ReefVergeCategory;
     }
 
-    private static bool[] BuildTreeTable()
-    {
-        var table = new bool[Categories * VariantsPerCategory];
-        table[4] = table[8] = table[11] = table[13] = true;
-        return table;
-    }
 
     /// <summary>Tile transforms grouped by tile id, ready for instanced drawing.</summary>
     public readonly Dictionary<int, Matrix4x4[]> idToTransforms = new Dictionary<int, Matrix4x4[]>();
@@ -425,17 +423,6 @@ public class Chunk
             if (category == BeachCategory && submerged) variant = new[] { 0, 2, 3 }[variant % 3];
 
             int id = category * VariantsPerCategory + variant;
-
-            // Above the treeline, or under water, swap a treed tile for a bare
-            // one of the same shade.
-            if (CarriesTree[id] && (bare > TreelineFraction || submerged || Landmarks.Occupies(gx, gz, worldSeed)))
-            {
-                for (int step = 1; step < VariantsPerCategory; step++)
-                {
-                    int candidate = category * VariantsPerCategory + (variant + step) % VariantsPerCategory;
-                    if (!CarriesTree[candidate]) { id = candidate; break; }
-                }
-            }
 
             // The sand tiles are laid wider than the grid so that they meet,
             // which puts every cap through its neighbours. Two surfaces at the
