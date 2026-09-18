@@ -52,7 +52,7 @@ public class _Probe : MonoBehaviour
             }
             if (found) { seedWanted = trySeed; break; }
         }
-        Mark("JUNGLE seed with a reef near the origin: " + seedWanted);
+        Mark("JUNGLE seed with a jungle near the origin: " + seedWanted);
         if (seedWanted < 0) { Mark("JUNGLE none found in twenty seeds"); yield break; }
 
         var save = WorldLibrary.Create("Probe reef", seedWanted, true, true, 0.5f, 20f, true, true);
