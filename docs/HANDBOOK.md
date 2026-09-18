@@ -1083,6 +1083,18 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Measure a frame with a median
+
+Every biome probe took the mean of `Time.unscaledDeltaTime` over three seconds and called it the
+frame time. A chunk being built lands in that window often enough that the number swings by a
+factor of two between runs on identical code, and twice it read as a regression that was not
+there: the peaks once came out at 9.0 ms against a true 3.2, and the jungle at 6.4 against 4.0.
+
+Every probe that reports a frame now sorts five seconds of spans and takes the middle one. The
+sweep prints the worst frame alongside it, which is the number that was hiding inside the mean
+and is worth reading on its own -- a forest showed a 172 ms frame, which is a chunk built on the
+main thread and is visible as a hitch.
+
 ### The probes were not silent
 
 Every probe is supposed to mute itself in its `Boot`, and `run-probe.sh` injected the line as
