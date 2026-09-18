@@ -135,12 +135,21 @@ public class Grading : MonoBehaviour
         // graded itself blue-white; the rest of the world all shared one set of numbers, so a
         // jungle at noon and a plain at noon were lit identically and only the ground told them
         // apart. Three kinds of air: cold, humid and dry.
+        int eyeX = Mathf.RoundToInt(view.transform.position.x / WorldGrid.TileSize);
+        int eyeZ = Mathf.RoundToInt(view.transform.position.z / WorldGrid.TileSize);
+
         var country = world != null
-            ? Regions.CharacterAtTile(Mathf.RoundToInt(view.transform.position.x / WorldGrid.TileSize),
-                                      Mathf.RoundToInt(view.transform.position.z / WorldGrid.TileSize), world.WorldSeed)
+            ? Regions.CharacterAtTile(eyeX, eyeZ, world.WorldSeed)
             : Regions.Character.Lowland;
 
-        float cold = country == Regions.Character.Snow ? 1f : 0f;
+        // Cold is not only a snowfield. The rain and the surveyor's breath were both put right
+        // for this and the grade was missed, so on a summit the ground was snow, it snowed on
+        // you, your breath showed, and the picture kept its warm grade. Guarded on world for
+        // the same reason the country lookup is: there is a frame before the chunks exist.
+        bool frozen = world != null
+                   && (country == Regions.Character.Snow || SnowCover.CoverAt(eyeX, eyeZ, world.WorldSeed) > 0.5f);
+
+        float cold = frozen ? 1f : 0f;
         float humid = country == Regions.Character.Jungle ? 1f : 0f;
         // The plain shares the desert's hot bleached air but keeps a little of its own green:
         // it is grassland, and graded as bare sand it came out looking like more desert.
