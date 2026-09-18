@@ -10,7 +10,7 @@ using UnityEngine;
 /// </summary>
 public class Motes : MonoBehaviour
 {
-    public enum Kind { None, Leaves, Seeds, Dust }
+    public enum Kind { None, Leaves, Seeds, Dust, Spindrift }
 
     private struct Mote
     {
@@ -50,7 +50,8 @@ public class Motes : MonoBehaviour
             Paint.Flat(new Color(0.58f, 0.40f, 0.20f)),   // leaf, brown
             Paint.Flat(new Color(0.78f, 0.64f, 0.26f)),   // leaf, yellow
             Paint.Flat(new Color(0.94f, 0.92f, 0.84f)),   // seed
-            Paint.Flat(new Color(0.80f, 0.72f, 0.55f))    // dust
+            Paint.Flat(new Color(0.80f, 0.72f, 0.55f)),   // dust
+            Paint.Flat(new Color(0.93f, 0.95f, 0.98f))    // spindrift, off the top of the snow
         };
         for (int i = 0; i < batches.Length; i++) batches[i] = new List<Matrix4x4>(128);
     }
@@ -64,8 +65,10 @@ public class Motes : MonoBehaviour
         Regions.Character.Lowland or Regions.Character.Hills or Regions.Character.Reed
             or Regions.Character.Water or Regions.Character.Reef => Kind.Seeds,
         Regions.Character.Desert or Regions.Character.Stone
-            or Regions.Character.Savanna or Regions.Character.Peaks
-            or Regions.Character.Snow => Kind.Dust,
+            or Regions.Character.Savanna or Regions.Character.Peaks => Kind.Dust,
+        // A snowfield was given dust last time, which is the wrong colour for it in every
+        // weather. What blows about up there is snow off the top of the drifts.
+        Regions.Character.Snow => Kind.Spindrift,
         _ => Kind.None
     };
 
@@ -106,6 +109,11 @@ public class Motes : MonoBehaviour
                     m.At = new Vector3(at.x, ground + Random.Range(0.4f, 4f), at.z);
                     m.Vel = new Vector3(0f, Random.Range(-0.05f, 0.08f), 0f);
                     m.Size = Random.Range(0.035f, 0.055f); m.Lasts = Random.Range(6f, 12f); m.Tint = 3;
+                    break;
+                case Kind.Spindrift:
+                    m.At = new Vector3(at.x, ground + Random.Range(0.05f, 1.1f), at.z);
+                    m.Vel = new Vector3(0f, Random.Range(-0.02f, 0.06f), 0f);
+                    m.Size = Random.Range(0.03f, 0.05f); m.Lasts = Random.Range(3f, 7f); m.Tint = 5;
                     break;
                 default:
                     m.At = new Vector3(at.x, ground + Random.Range(0.1f, 1.6f), at.z);
