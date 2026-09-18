@@ -1083,6 +1083,41 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### What an audit found that nobody had noticed
+
+Five readers went over the world code in parallel, each on one subsystem, and a sceptic tried to
+refute everything each of them claimed. Most claims died. Five survived, and two of those were
+real bugs that had been shipping for several sessions.
+
+**The Grass family was unreachable.** When the plain got a ground family of its own, the edit
+turned `return Grass` into `return Dry` for a whole group of cases, and the three meadow grasses
+were in that group. So no laid ground anywhere reported the Grass family, while the country
+lookup still reported Grass for a meadow. Every meadow border therefore laid straw-over-red-earth
+instead of grass, the five Grass-into-Snow tiles could never be produced at all, and a meadow
+beside a plain computed the same family on both sides, failed the `mine != theirs` test and laid
+no mixed ground whatever -- the hard line the whole system exists to remove. Confirmed fixed: a
+border now lays 63 tiles of the Sand-into-Grass series where it had been laying Sand-into-Dry.
+
+**The building kit's snow was the reef's teal.** `Kit.asset` holds twenty-two swatches as bare
+UVs into the sheet, and the kit's Snow swatch pointed at the very corner cell, r15 c0. The reef's
+`coralteal` was painted into that cell, because the allocator at the time only asked whether a
+cell was blank and the corner was. Every snow cap and drift on every structure had been rendering
+teal since. The fix moves the kit's swatch to `snow1` rather than moving the colour, because the
+colour's UVs are baked into exported meshes and the kit's are not. Checked: no other kit swatch
+shares a cell with a palette colour.
+
+Three smaller ones: a treeline tile swap that no tile could trigger, since the ids it tested for
+are in the pack's own grass bands and nothing has selected those since the ground became ours;
+the region you are told you are in was keyed to the ruled grid rather than the wandering border,
+so the name was stale for a strip nearly thirty metres wide and announced twice if you crossed a
+grid line without leaving the region; and the cold grade was keyed to the snowfield alone, which
+is the same bug that had already been fixed in the rain and in the surveyor's breath and missed
+in the third place.
+
+The lesson that generalises: a fallthrough in a `switch` that groups several cases is invisible
+when you later change what the group returns. Nothing errors and nothing looks wrong -- the wrong
+ground is still ground.
+
 ### Measure a frame with a median
 
 Every biome probe took the mean of `Time.unscaledDeltaTime` over three seconds and called it the
