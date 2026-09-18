@@ -131,8 +131,13 @@ public class _Probe : MonoBehaviour
         }
         Mark(wound.ToString());
 
-        float frames = 0f, seconds = 0f;
-        for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime) { frames++; seconds += Time.unscaledDeltaTime; yield return null; }
+        // The median of a longer run, not the mean of a short one. A mean over three seconds
+        // swings by a factor of two between runs because a single chunk build lands in the
+        // window, and twice now that has read as a regression that was not there.
+        var spans = new System.Collections.Generic.List<float>();
+        for (float t = 0f; t < 5f; t += Time.unscaledDeltaTime) { spans.Add(Time.unscaledDeltaTime); yield return null; }
+        spans.Sort();
+        float frames = 1f, seconds = spans.Count > 0 ? spans[spans.Count / 2] : 0f;
         Mark("DARK frame " + (seconds / frames * 1000f).ToString("F1") + " ms");
 
         // the photographs: from the eye, from low along the ground, and from above
