@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public class Chunk
 {
-    private const int Categories = 40;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then ten pairs of mixed ground, then savanna
+    private const int Categories = 40;          // the pack's bands, sand and stone, unused now; then ours: forest floor, three grasses, marsh, beach, desert, stone, scree, snow, fungal, dead, reef, jungle, peak, verge, then fifteen pairs of mixed ground, then savanna
     private const int VariantsPerCategory = 5;  // grass tile meshes within a band
 
     // Only three of the five shade categories contain a treed tile, so height
@@ -34,9 +34,11 @@ public class Chunk
 
     /// <summary>
     /// The mixed ground where two countries meet. A tile for every pair of countries would be
-    /// a square number of them, but the fourteen grounds are only five things to look at --
-    /// sand, grass, dark floor, rock and snow -- so five families make ten pairs and ten
-    /// series of five cover every border in the world. Categories 23 to 32.
+    /// a square number of them, but the grounds are only six things to look at -- sand, grass,
+    /// dark floor, rock, snow and the plain's dry straw -- so six families make fifteen pairs
+    /// and fifteen series of five cover every border in the world. Categories 23 to 32 and
+    /// 34 to 38; BlendCategory below maps a pair index to its category, since the five the
+    /// plain added could not be given numbers next to the first ten.
     /// </summary>
     /// <summary>
     /// Sand into coral, graded by depth. The mixed ground covers borders between countries and
@@ -68,7 +70,7 @@ public class Chunk
         38                       // snow with dry
     };
 
-    /// <summary>Which of the five a laid ground belongs to, or -1 for one that does not mix.</summary>
+    /// <summary>Which of the six a laid ground belongs to, or -1 for one that does not mix.</summary>
     private static int FamilyOfGround(int category)
     {
         switch (category)
