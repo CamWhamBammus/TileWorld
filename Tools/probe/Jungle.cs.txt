@@ -1,6 +1,5 @@
-// A probe: into a world with a reef in it, down to the water, and what is there: how many of the
-// tiles are the reef floor, how much coral is planted, how near any of it comes to the surface,
-// the frame time, and photographs above and under the water.
+// A probe: into a world with a jungle in it, and what stands there: how many of the tiles are the
+// jungle floor, how much is planted and how tall it gets, the frame time, and photographs.
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -105,7 +104,7 @@ public class _Probe : MonoBehaviour
         }
         var idsSaid = new System.Text.StringBuilder();
         foreach (var pair in ids) idsSaid.Append(" " + pair.Key + ":" + pair.Value);
-        Mark("TILES in nine chunks: " + total + ", reef floor " + floor + " (" + (100f * floor / Mathf.Max(1, total)).ToString("F0") + "%) | by id" + idsSaid);
+        Mark("TILES in nine chunks: " + total + ", jungle floor " + floor + " (" + (100f * floor / Mathf.Max(1, total)).ToString("F0") + "%) | by id" + idsSaid);
 
         // the coral: how much is planted, and how near the top of the water any of it comes
         var under = FindFirstObjectByType<Undergrowth>();
