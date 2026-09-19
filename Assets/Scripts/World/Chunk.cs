@@ -90,6 +90,23 @@ public class Chunk
         }
     }
 
+    /// <summary>
+    /// The same, for a bed under water. Nothing grassy, straw or snowy has a sea bed: what is
+    /// down there is sand on an open shore, rock in the deep and off a bare coast, and mud
+    /// everywhere else, whatever the country looks like above the waterline.
+    /// </summary>
+    private static int FamilyUnderWater(Regions.Character who)
+    {
+        switch (who)
+        {
+            case Regions.Character.Water: case Regions.Character.Reef:
+            case Regions.Character.Desert: case Regions.Character.Savanna: return Sand;
+            case Regions.Character.Peaks: case Regions.Character.Stone:
+            case Regions.Character.Snow: return Rock;
+            default: return Dark;
+        }
+    }
+
     /// <summary>What the country over the border mostly lays, taken from its character alone.</summary>
     private static int FamilyOfCountry(Regions.Character who)
     {
@@ -403,6 +420,12 @@ public class Chunk
                 {
                     int mine = FamilyOfGround(category);
                     int theirs = FamilyOfCountry(over);
+
+                    // Under water, the country over the border is read for what it lays on its
+                    // sea bed rather than for what it lays in the air. A lake in a meadow is
+                    // still mud at the bottom, and blending toward the meadow's own family put
+                    // turf and flowers down there, a foot under the surface.
+                    if (submerged) theirs = FamilyUnderWater(over);
 
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
