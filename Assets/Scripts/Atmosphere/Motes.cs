@@ -27,7 +27,10 @@ public class Motes : MonoBehaviour
     public static int Alive => instance != null ? instance.motes.Count : 0;
 
     private readonly List<Mote> motes = new List<Mote>(256);
-    private readonly List<Matrix4x4>[] batches = new List<Matrix4x4>[5];
+    // One batch per paint, and the paints are the tints. Adding spindrift added a sixth tint and
+    // left this at five, so every spindrift mote threw on the frame it was drawn -- in a country
+    // with no spindrift in it, because the exception came from the shared draw loop.
+    private readonly List<Matrix4x4>[] batches = new List<Matrix4x4>[6];
     private Material[] paints;
     private Mesh leaf, lump;
     private ChunkManager world;
