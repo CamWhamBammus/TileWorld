@@ -91,6 +91,7 @@ public static partial class LandmarkBuilder
             case LandmarkKind.HuntersHide: Hide(b); break;
             case LandmarkKind.BuriedTower: Buried(b); break;
             case LandmarkKind.SunkenTemple: Temple(b); break;
+            case LandmarkKind.FishTraps: Traps(b); break;
             case LandmarkKind.ThornKraal: Kraal(b); break;
             case LandmarkKind.FallenTree: Fallen(b); break;
             case LandmarkKind.DeadFire: Fire(b); break;
@@ -1035,6 +1036,73 @@ public static partial class LandmarkBuilder
     /// the top, and the forest taking it back a course at a time. Decayed hard on purpose --
     /// a jungle does not leave anything standing square.
     /// </summary>
+    /// <summary>
+    /// Fish traps on a reef: two arms of stakes driven into the coral, set as a V with its
+    /// mouth to the open water and a pen at the point, so a tide going out leaves whatever
+    /// came in behind the stakes. Most of it is under water; what shows is the tops.
+    /// </summary>
+    private static void Traps(Job b)
+    {
+        float water = WaterSurface.Level - b.At.Position.y;
+        var k = new Kit.Builder(b.Rng.Next()) { Decay = 0.66f, Weathering = Kit.Builder.Weather.Sand };
+
+        // The two arms. They run out from the pen at the point, opening toward the sea, and the
+        // stakes stand a little proud of the water so the line of them can be read from a boat.
+        for (int side = -1; side <= 1; side += 2)
+        {
+            float a = side * 0.62f;
+            for (int i = 0; i < 16; i++)
+            {
+                float along = 0.7f + i * 0.78f;
+                var foot = new Vector3(Mathf.Cos(a) * along, Ground, Mathf.Sin(a) * along);
+                if (b.Rng.NextDouble() < 0.16 + i * 0.012) continue;                 // the ones the sea has had
+                float tall = water + (float)b.Rng.NextDouble() * 0.5f + 0.25f;
+                k.Post(foot, tall, 0.075f + (float)b.Rng.NextDouble() * 0.02f, Kit.Swatch.OldWood);
+
+                // the withies woven along between them, what is left of them
+                if (i > 0 && b.Rng.NextDouble() < 0.55)
+                {
+                    float back = 0.7f + (i - 1) * 0.78f;
+                    var prev = new Vector3(Mathf.Cos(a) * back, Ground, Mathf.Sin(a) * back);
+                    float h = water * (0.35f + (float)b.Rng.NextDouble() * 0.5f);
+                    k.Log(foot + Vector3.up * h, prev + Vector3.up * (h + (float)b.Rng.NextDouble() * 0.2f - 0.1f), 0.045f, Kit.Swatch.OldWood, 4);
+                }
+            }
+        }
+
+        // the pen at the point, a ring of closer stakes with a gap on the landward side
+        for (int i = 0; i < 11; i++)
+        {
+            float a = i / 11f * Mathf.PI * 2f;
+            if (Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, 180f)) < 26f) continue;
+            var foot = new Vector3(Mathf.Cos(a) * 1.5f, Ground, Mathf.Sin(a) * 1.5f);
+            k.Post(foot, water + 0.35f + (float)b.Rng.NextDouble() * 0.3f, 0.06f, Kit.Swatch.DarkWood);
+        }
+
+        // and what is left of whoever worked it: a platform on four legs over the pen, mostly gone
+        float deck = water + 0.9f;
+        for (int i = 0; i < 4; i++)
+        {
+            float a = i / 4f * Mathf.PI * 2f + 0.78f;
+            k.Post(new Vector3(Mathf.Cos(a) * 1.15f, Ground, Mathf.Sin(a) * 1.15f), deck, 0.115f, Kit.Swatch.DarkWood);
+        }
+        k.Block(new Vector3(0f, Ground + deck + 0.06f, 0f), new Vector3(2.4f, 0.12f, 2.4f), Quaternion.Euler(2.5f, 0f, -1.5f), Kit.Swatch.Plank, 0.02f);
+        k.Railing(new Vector3(-1.1f, Ground + deck + 0.12f, -1.1f), new Vector3(1.1f, Ground + deck + 0.12f, -1.1f), 0.8f);
+        k.Crate(new Vector3(0.5f, Ground + deck + 0.12f, 0.4f), 0.55f);
+
+        // a stake lying where it was pulled, and the sign on the shore side
+        for (int i = 0; i < 3; i++)
+        {
+            float a = (float)b.Rng.NextDouble() * Mathf.PI * 2f;
+            float d = 2.5f + (float)b.Rng.NextDouble() * 6f;
+            var at = new Vector3(Mathf.Cos(a) * d, Ground + 0.1f, Mathf.Sin(a) * d);
+            k.Log(at, at + new Vector3(Mathf.Cos(a + 1.4f), 0.05f, Mathf.Sin(a + 1.4f)) * 1.3f, 0.07f, Kit.Swatch.OldWood);
+        }
+        k.HangingSign(new Vector3(-9.5f, Ground, 1.6f), 2.4f, 0f);
+
+        k.Finish("Traps", b.Root, Vector3.zero, b.Flora.Paint);
+    }
+
     private static void Temple(Job b)
     {
         const float M = 0.5f;

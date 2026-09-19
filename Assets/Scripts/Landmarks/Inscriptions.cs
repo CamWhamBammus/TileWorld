@@ -70,6 +70,16 @@ public static class Inscriptions
         "Something written round the idol's base in a script nobody in {0} can read."
     };
 
+    private static readonly string[] TrapLines =
+    {
+        "Cut into the landward stake: \"{0}\". Below it, a depth in feet.",
+        "The stakes were driven into living coral. It has grown back round them.",
+        "Someone kept a tally on the platform post and gave up partway through a row.",
+        "The pen still holds water when the tide is out. Nothing is in it.",
+        "Scratched on a plank: \"the fish went first\".",
+        "Whoever set these knew which way the water came in."
+    };
+
     private static readonly string[] TempleLines =
     {
         "Cut over the door: \"{0}\". The rest of it is under the roots.",
@@ -248,6 +258,7 @@ public static class Inscriptions
             LandmarkKind.SteppedAltar => AltarLines,
             LandmarkKind.ToadstoolRing => RingLines,
             LandmarkKind.SunkenTemple => TempleLines,
+            LandmarkKind.FishTraps => TrapLines,
             LandmarkKind.ThornKraal => KraalLines,
             LandmarkKind.CharcoalCamp => CampLines,
             LandmarkKind.HilltopBeacon => BeaconLines,

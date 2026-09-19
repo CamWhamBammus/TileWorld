@@ -19,6 +19,7 @@ public enum LandmarkKind
     HuntersHide,      // a small raised platform in the forest
     BuriedTower,      // a tower sunk in the sand, leaning
     SunkenTemple,     // a stepped temple in the jungle, gone under the roots
+    FishTraps,        // rows of stakes driven into a reef's shallows, a weir with the tide out
     ThornKraal,       // a ring of stakes on the plain, a pen with nothing in it
 
     // The small finds: a tile or two of something left between the ruins,
@@ -118,6 +119,11 @@ public static class Landmarks
 
     private static readonly Kind[] kinds =
     {
+        new Kind { Chance = 15, Name = "Fish Traps", Country = Regions.Character.Reef, Site = Site.Shallows,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
+                   Where = "out in a reef's shallows, rows of stakes driven into the coral",
+                   Behind = 5, Ahead = 6, Aside = 5, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+
         new Kind { Chance = 14, Name = "Sunken Temple", Country = Regions.Character.Jungle, Site = Site.Level,
                    SurveyRadius = 4, SurveyHeight = 1.4f, LabelHeight = 11f,
                    Where = "in the jungle, a stepped temple with the forest growing through it",
