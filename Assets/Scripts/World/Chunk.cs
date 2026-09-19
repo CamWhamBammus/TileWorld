@@ -50,6 +50,9 @@ public class Chunk
     // there to soften and the two fight each other.
     private const float ReefVergeBand = 0.75f;
 
+    /// <summary>Half the depth over which an open sea's bed turns from sand to rock.</summary>
+    private const float BedBand = 0.45f;
+
     private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
     private const int Families = 6;
     private const int Sand = 0, Grass = 1, Dark = 2, Rock = 3, White = 4, Dry = 5;
@@ -181,6 +184,25 @@ public class Chunk
     private static bool CarriesOwnEdge(int category) => category == ReefCategory || category == ReefVergeCategory;
 
     /// <summary>
+    /// The bed of an open sea: sand in the shallows, rock in the deep, and the change graded
+    /// across half a metre of depth rather than made at a line. The same treatment the snowline
+    /// and the reef's fringe got, and for the same reason -- it is a line of depth inside one
+    /// country, so the mixed ground, which only covers borders between countries, never saw it.
+    /// No new tiles: the sand-into-rock series was built for the border between a desert and a
+    /// barrens and is laid here as well.
+    /// </summary>
+    private static int SandOrRockBed(float over, ref int forced)
+    {
+        if (over >= BedBand) return StoneCategory;
+        if (over <= -BedBand) return BeachCategory;
+
+        forced = Mathf.Clamp(Mathf.RoundToInt((over + BedBand) / (2f * BedBand) * (VariantsPerCategory - 1)),
+                             0, VariantsPerCategory - 1);
+
+        return BlendCategory[Sand * (2 * Families - 1 - Sand) / 2 + (Rock - Sand - 1)];
+    }
+
+    /// <summary>
     /// The reef floor, or its verge if the water has only just got deep enough for coral. The
     /// variant runs 0 to 4 across the band, so the sand gives way to coral over about half a
     /// metre of depth instead of changing between one tile and the next.
@@ -303,8 +325,7 @@ public class Chunk
                          : body != WaterSurface.Body.Beach ? MarshCategory
                          : character == Regions.Character.Reef && underBy >= ReefDepth + ripple * ReefWander
                              ? ReefOrVerge(underBy - (ReefDepth + ripple * ReefWander), ref forced)
-                         : underBy >= DeepWater + ripple * DeepWander ? StoneCategory
-                         : BeachCategory;
+                         : SandOrRockBed(underBy - (DeepWater + ripple * DeepWander), ref forced);
             }
             // How far up the shore the sand goes, wandering rather than following the
             // contour: a strand that stops at one height all the way along a coast draws a
