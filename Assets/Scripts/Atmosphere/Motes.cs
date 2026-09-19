@@ -58,6 +58,19 @@ public class Motes : MonoBehaviour
 
     private void OnDestroy() { if (instance == this) instance = null; }
 
+    /// <summary>
+    /// What is in the air here. Mostly the country decides, but the peaks are bare rock at the
+    /// bottom and snow at the top and want a different answer at each end.
+    /// </summary>
+    private static Kind KindAt(Regions.Character c, int tileX, int tileZ, int seed)
+    {
+        var kind = KindFor(c);
+
+        if (c == Regions.Character.Peaks && SnowCover.CoverAt(tileX, tileZ, seed) > 0.5f) return Kind.Spindrift;
+
+        return kind;
+    }
+
     private static Kind KindFor(Regions.Character c) => c switch
     {
         Regions.Character.Forest or Regions.Character.Fungal or Regions.Character.Dead
@@ -65,10 +78,15 @@ public class Motes : MonoBehaviour
         Regions.Character.Lowland or Regions.Character.Hills or Regions.Character.Reed
             or Regions.Character.Water or Regions.Character.Reef => Kind.Seeds,
         Regions.Character.Desert or Regions.Character.Stone
-            or Regions.Character.Savanna or Regions.Character.Peaks => Kind.Dust,
+            or Regions.Character.Savanna => Kind.Dust,
         // A snowfield was given dust last time, which is the wrong colour for it in every
         // weather. What blows about up there is snow off the top of the drifts.
         Regions.Character.Snow => Kind.Spindrift,
+        // The peaks are the one country the code disagreed with itself about: it snows on them,
+        // your breath shows, the picture goes cold, the ground is white -- and sand-coloured
+        // dust blew through it. Below the snowline it is bare rock and dust is right, so the
+        // snowline decides, the same as everything else up there.
+        Regions.Character.Peaks => Kind.Dust,
         _ => Kind.None
     };
 
@@ -80,7 +98,8 @@ public class Motes : MonoBehaviour
 
         int seed = world.WorldSeed;
         Vector3 eye = view.transform.position;
-        Current = KindFor(Regions.CharacterAtTile(Mathf.RoundToInt(eye.x / WorldGrid.TileSize), Mathf.RoundToInt(eye.z / WorldGrid.TileSize), seed));
+        int eyeX = Mathf.RoundToInt(eye.x / WorldGrid.TileSize), eyeZ = Mathf.RoundToInt(eye.z / WorldGrid.TileSize);
+        Current = KindAt(Regions.CharacterAtTile(eyeX, eyeZ, seed), eyeX, eyeZ, seed);
 
         float dt = Time.deltaTime;
         float rain = Rain.Intensity;
