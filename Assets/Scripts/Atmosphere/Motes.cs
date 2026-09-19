@@ -56,6 +56,14 @@ public class Motes : MonoBehaviour
             Paint.Flat(new Color(0.80f, 0.72f, 0.55f)),   // dust
             Paint.Flat(new Color(0.93f, 0.95f, 0.98f))    // spindrift, off the top of the snow
         };
+        // The batches and the paints are the same list twice and are paired by index, which is
+        // exactly how the landmark kinds and their enum slid apart. Say so rather than throwing
+        // once a frame from the draw loop, where the country it happens in is not the country
+        // the mistake is in.
+        if (paints.Length != batches.Length)
+            Debug.LogError("[Motes] " + paints.Length + " tints against " + batches.Length
+                + " batches. They are paired by index; add to both or neither.");
+
         for (int i = 0; i < batches.Length; i++) batches[i] = new List<Matrix4x4>(128);
     }
 
