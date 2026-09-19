@@ -1083,6 +1083,62 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Two lists paired by position, twice
+
+The worst bug in the game was three days old and nobody had seen it. `Landmarks` keeps the same
+list twice -- the `LandmarkKind` enum and the `kinds` array -- and pairs them by position:
+`var kind = (LandmarkKind)index;` where index is the array index. When the temple and the kraal
+were added, they went to the *top* of the array and the *bottom* of the enum, and the two lists
+slid three apart.
+
+From then on every structure in the world was built by the wrong builder, with the wrong
+inscription and the wrong name. A chunk due a ring of standing stones got a jungle temple on dry
+ground. A reef's fish traps were sited on a hillside: all fourteen placements measured were out
+of the water, one of them fifteen metres above it. Nothing errored and nothing looked broken,
+because a building is a building and the ground under it is still ground.
+
+There was already a guard. It compared the two lengths, and the lengths matched the whole time,
+because both lists were added to. It now checks the order, which is the thing that has to hold.
+
+The same shape of mistake was live in `Motes` at the same moment: the tints and the draw batches
+are also two lists paired by index, adding spindrift made a sixth tint against five batches, and
+every spindrift mote threw an IndexOutOfRange from the shared draw loop -- which surfaced in the
+mushroom country, where there is no spindrift at all. Both now say so at load instead.
+
+**The rule worth keeping: if two lists are paired by index, something has to assert it.** A count
+is not enough. Neither list will error when they part, and whatever is reading them will keep
+returning something that looks like an answer.
+
+### Edges that are not borders, continued
+
+Two more of the same kind, both reusing tiles that already existed:
+
+- **A sea bed** turned from sand to rock at an exact depth. It is graded across 0.9 m now, using
+  the sand-into-rock series built for the border between a desert and a barrens.
+- **Fish traps**, the reef's own ruin, sit in its shallows: two arms of stakes opening to the
+  sea with a pen at the point and a platform over it. A shallows site faces the shore, so the
+  weir had to be turned to open the other way or it caught whatever was walking out of the water.
+
+And the mixed ground no longer lays meadow turf and flowers on a sea bed: under water the country
+over the border is read for what it puts on its own bed -- sand, rock or mud -- not for what it
+grows in the air.
+
+### A completeness audit that found nothing
+
+Four readers went over all fourteen countries axis by axis -- ground, planting, structure, finds,
+voice, air, motes, weathering, map colour, description -- and proposed 39 gaps. Sceptics refuted
+all 39, mostly correctly: two-entry find tables are the commonest shape in the file, the default
+birdsong covers eight countries and always has, and most of the rest were taste.
+
+Three of the refutations were worth reading anyway, because their own reasoning said the codebase
+disagreed with itself rather than with a matter of taste: the peaks blew sand-coloured dust
+through a country where it snows, your breath shows and the picture goes cold; the desert and the
+plain fell through to a daytime hedgerow songbird for a third of their calls after dark; and the
+mushroom country, the most distinctive thing in the world to look at, was lit exactly like a
+meadow. All three are fixed.
+
+A null result from an adversarial pass is still a result. It is worth running for that.
+
 ### What an audit found that nobody had noticed
 
 Five readers went over the world code in parallel, each on one subsystem, and a sceptic tried to
