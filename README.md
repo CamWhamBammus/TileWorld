@@ -73,7 +73,7 @@ Low warm country with water in it grows jungle. The trees are the tallest in the
 
 ### Water
 
-Water sits at one level across the whole world, and what kind of water it is depends on where you are. The bottom falls away from the shore, so a sea has a middle to it and gets to about six metres deep. In a Water region it's open water with a beach: sand in the shallows, rock deeper down, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under. How much depends on how deep you are and what water it is: a reef is clear enough to see across, an inland lake closes in on you.
+Water sits at one level across the whole world, and what kind of water it is depends on where you are. The bottom falls away from the shore, so a sea has a middle to it and gets to about six metres deep. In a Water region it's open water with a beach: sand in the shallows, rock deeper down with the change spread over about a metre of depth, and a strip of sand above the waterline. Everywhere else it's a lake or a pond (the difference is depth) with a mud bottom and reeds along the edges. In a snowfield the lakes are frozen with a stone bed. Lakes are deep enough to swim in. Walk in and you float, the view goes green and the fog closes in while you're under. How much depends on how deep you are and what water it is: a reef is clear enough to see across, an inland lake closes in on you.
 
 ![A beach, the sea running up the sand](docs/images/beach.jpg)
 
@@ -137,12 +137,13 @@ The grounds so far: the forest floor; grass in three shades by height, with tuft
 
 ## Structures
 
-There are seventeen kinds of structure and each belongs to one kind of region, so if you want to find a biome you can look for what was built there:
+There are eighteen kinds of structure and each belongs to one kind of region, so if you want to find a biome you can look for what was built there:
 
 | Structure | Region |
 | --- | --- |
 | Forester's Watch, Hunter's Hide | Forest |
 | Sunken Temple | Jungle |
+| Fish Traps | Reef |
 | Thorn Kraal | Savanna |
 | Trapper's Cabin | Snowfield |
 | Sand Gate, Buried Tower | Desert |
