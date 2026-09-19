@@ -39,7 +39,7 @@ public class Grading : MonoBehaviour
     public bool Submerged { get; private set; }
     private Camera view;
     private ChunkManager world;
-    private float air, wet, dust, clear;
+    private float air, wet, dust, clear, damp;
 
     /// <summary>What the grade is doing now, for the probes.</summary>
     public float Saturation => colour != null ? colour.saturation.value : 0f;
@@ -155,13 +155,17 @@ public class Grading : MonoBehaviour
         // it is grassland, and graded as bare sand it came out looking like more desert.
         float dry = country == Regions.Character.Desert ? 1f : country == Regions.Character.Savanna ? 0.70f : 0f;
         float bright = country == Regions.Character.Reef ? 1f : 0f;
+        // The mushroom country is the most distinctive thing in the world to look at and was
+        // lit exactly like a meadow. Its air is the one that should be dim and close.
+        float spore = country == Regions.Character.Fungal ? 1f : 0f;
 
         // eased, or the grade snaps as you cross a border
         air = Mathf.MoveTowards(air, cold, Time.deltaTime * 0.5f);
         clear = Mathf.MoveTowards(clear, bright, Time.deltaTime * 0.5f);
         wet = Mathf.MoveTowards(wet, humid, Time.deltaTime * 0.5f);
         dust = Mathf.MoveTowards(dust, dry, Time.deltaTime * 0.5f);
-        cold = air; humid = wet; dry = dust; bright = clear;
+        damp = Mathf.MoveTowards(damp, spore, Time.deltaTime * 0.5f);
+        cold = air; humid = wet; dry = dust; bright = clear; spore = damp;
 
         float rain = Rain.Intensity;
 
@@ -171,7 +175,7 @@ public class Grading : MonoBehaviour
         // contrast and saturation: clear days sing, rain washes out, snow is spare
         colour.contrast.Override(Mathf.Lerp(4f, 10f, day) - overcast * 8f);
         colour.saturation.Override(Mathf.Lerp(-6f, 8f, day) - overcast * 22f - cold * 10f + goldHour * 6f
-                                   + humid * 7f - dry * 5f + bright * 6f);
+                                   + humid * 7f - dry * 5f + bright * 6f - spore * 4f);
 
         // the filter: warm at the gold hour, blue-white in the cold, grey-blue in the rain
         Color filter = Color.white;
@@ -182,6 +186,8 @@ public class Grading : MonoBehaviour
         // a jungle is green even in the air; a plain is bleached and dusty
         filter = Color.Lerp(filter, new Color(0.93f, 1.02f, 0.92f), humid * 0.55f);
         filter = Color.Lerp(filter, new Color(1.04f, 0.99f, 0.88f), dry * 0.50f);
+        // a violet cast, the colour of the light under all those caps
+        filter = Color.Lerp(filter, new Color(0.96f, 0.92f, 1.02f), spore * 0.55f);
         colour.colorFilter.Override(filter);
 
         // white balance: warmer low sun, colder snow and rain
@@ -197,7 +203,7 @@ public class Grading : MonoBehaviour
         bloom.intensity.Override(0.3f + goldHour * 0.35f - overcast * 0.15f + bright * 0.12f);
 
         // the vignette closes a little at night and in a downpour
-        vignette.intensity.Override(0.2f + night * 0.08f + rain * 0.08f + humid * 0.07f);
+        vignette.intensity.Override(0.2f + night * 0.08f + rain * 0.08f + humid * 0.07f + spore * 0.09f);
 
         // grain: a little at night and in the rain, none in the sun
         grain.intensity.Override(night * 0.22f + rain * 0.12f);
@@ -219,7 +225,7 @@ public class Grading : MonoBehaviour
             RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor,
                 Color.Lerp(new Color(0.58f, 0.66f, 0.55f), new Color(0.80f, 0.76f, 0.64f), dry),
                 Mathf.Max(humid, dry) * 0.35f);
-            RenderSettings.fogEndDistance *= Mathf.Lerp(1f, 0.62f, humid) * Mathf.Lerp(1f, 1.18f, dry);
+            RenderSettings.fogEndDistance *= Mathf.Lerp(1f, 0.62f, humid) * Mathf.Lerp(1f, 1.18f, dry) * Mathf.Lerp(1f, 0.74f, spore);
         }
         if (Submerged)
         {
