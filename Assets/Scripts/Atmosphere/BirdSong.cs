@@ -236,8 +236,9 @@ public class BirdSong : MonoBehaviour
 
         if (WorldHeight.HeightAt(tileX, tileZ, seed) / WorldHeight.MaxRelief > highestRelief) return;
 
-        // in the jungle, something whooping in the canopy
-        if (here == Regions.Character.Jungle && Random.value < 0.72f)
+        // In the jungle, something whooping in the canopy -- and after dark that is all there
+        // is, for the same reason: the fallthrough is a daytime woodland bird.
+        if (here == Regions.Character.Jungle && ((time < 0.26f || time > 0.76f) || Random.value < 0.72f))
         {
             source.pitch = Random.Range(0.88f, 1.14f);
             source.PlayOneShot(whoops[Random.Range(0, whoops.Length)], volume * Random.Range(0.6f, 1f));
@@ -248,7 +249,14 @@ public class BirdSong : MonoBehaviour
         // Out on the plain, insects in the grass. The dry country is let them after dark as
         // well: a desert at night is not silent, it is the one time anything is about, and the
         // daylight gate above sends the woodland calls to bed at dusk and left it with nothing.
-        if ((here == Regions.Character.Savanna || here == Regions.Character.Desert) && Random.value < 0.66f)
+        //
+        // Two thirds of the time by day, so a plain is not only insects; but all of the time
+        // after dark, because the other third fell through to the woodland call below and put a
+        // hedgerow songbird in a desert at midnight.
+        bool dry = here == Regions.Character.Savanna || here == Regions.Character.Desert;
+        bool dark = time < 0.26f || time > 0.76f;
+
+        if (dry && (dark || Random.value < 0.66f))
         {
             source.pitch = Random.Range(0.92f, 1.1f);
             source.PlayOneShot(chirrs[Random.Range(0, chirrs.Length)], volume * Random.Range(0.6f, 0.95f));
