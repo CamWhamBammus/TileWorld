@@ -1,0 +1,99 @@
+// A probe for the fish traps: finds every placement of them over a wide area and reports how deep the
+// water is where each one stands, which is the one thing a structure sited in the shallows has to get
+// right. Also photographs the nearest.
+using System.Collections;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        AudioListener.volume = 0f; AudioListener.pause = true;
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        var save = WorldLibrary.Create("Probe traps", 5, true, true, 0.4f, 20f, true, true);
+        WorldLibrary.Enter(save);
+        yield return new WaitForSecondsRealtime(9f);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var arrival = FindFirstObjectByType<Arrival>();
+        if (arrival != null) typeof(Arrival).GetMethod("Close", flags).Invoke(arrival, null);
+        TimeOfDay.Instance.SetTime(0.4f); TimeOfDay.Instance.Paused = true;
+
+        var world = FindFirstObjectByType<ChunkManager>();
+        int seed = world.WorldSeed;
+        var player = world.PlayerTransform;
+        var body = FindFirstObjectByType<CharacterController>();
+
+        int found = 0, wrong = 0;
+        Landmarks.Placement first = default; bool haveFirst = false;
+        for (int cx = -70; cx <= 70 && found < 40; cx++)
+        for (int cz = -70; cz <= 70 && found < 40; cz++)
+        {
+            var p = Landmarks.In(new Vector2Int(cx, cz), seed);
+            if (!p.Exists || p.Kind != LandmarkKind.FishTraps) continue;
+            found++;
+            float depth = WaterSurface.Level - WorldHeight.SurfaceY(p.TileX, p.TileZ, seed);
+            if (depth < 0.25f || depth > 1.4f) { wrong++; Mark("  OUT OF WATER: chunk " + cx + "," + cz + " depth " + depth.ToString("F2")); }
+            if (!haveFirst) { first = p; haveFirst = true; }
+        }
+        Mark("TRAPS placements found " + found + ", of them at a wrong depth " + wrong);
+        if (!haveFirst) { Mark("done"); WorldLibrary.Delete(save.id); yield break; }
+
+        float d0 = WaterSurface.Level - WorldHeight.SurfaceY(first.TileX, first.TileZ, seed);
+        Mark("TRAPS nearest at tile " + first.TileX + "," + first.TileZ + " y " + first.Position.y.ToString("F2")
+             + " water " + WaterSurface.Level.ToString("F2") + " so depth " + d0.ToString("F2") + " yaw " + first.Yaw);
+
+        var turn = Quaternion.Euler(0f, first.Yaw, 0f);
+        Vector3 stand = first.Position + turn * new Vector3(9f, 0f, 3f);
+        int tx = Mathf.RoundToInt(stand.x / WorldGrid.TileSize), tz = Mathf.RoundToInt(stand.z / WorldGrid.TileSize);
+        if (body != null) body.enabled = false;
+        player.position = new Vector3(stand.x, Mathf.Max(WorldHeight.SurfaceY(tx, tz, seed), WaterSurface.Level) + 0.4f, stand.z);
+        if (body != null) body.enabled = true;
+        yield return new WaitForSecondsRealtime(9f);
+
+        bool built = false;
+        foreach (var tag in FindObjectsByType<LandmarkTag>(FindObjectsSortMode.None)) if (tag.Kind == LandmarkKind.FishTraps) built = true;
+        Mark("TRAPS built in the scene: " + built);
+
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) c.enabled = false;
+        var cam = Camera.main;
+        foreach (var beh in cam.GetComponents<Behaviour>()) if (beh.GetType().Name == "SimpleFollowCamera") beh.enabled = false;
+        for (int i = 0; i < 2; i++)
+        {
+            cam.transform.position = first.Position + new Vector3(11f, 6.5f, 9f);
+            cam.transform.LookAt(first.Position + Vector3.up * 1.2f);
+            yield return null;
+        }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-tp-traps.png"));
+        yield return new WaitForSecondsRealtime(1.5f);
+        for (int i = 0; i < 2; i++)
+        {
+            cam.transform.position = first.Position + new Vector3(-3f, 1.2f, -14f);
+            cam.transform.LookAt(first.Position + Vector3.up * 1.0f);
+            yield return null;
+        }
+        yield return new WaitForEndOfFrame();
+        ScreenCapture.CaptureScreenshot(Path.Combine(Application.persistentDataPath, "probe-tp-low.png"));
+        yield return new WaitForSecondsRealtime(1.5f);
+        Mark("done");
+        WorldLibrary.Delete(save.id);
+    }
+}

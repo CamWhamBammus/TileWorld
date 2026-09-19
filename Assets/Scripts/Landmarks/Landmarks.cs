@@ -119,22 +119,7 @@ public static class Landmarks
 
     private static readonly Kind[] kinds =
     {
-        new Kind { Chance = 15, Name = "Fish Traps", Country = Regions.Character.Reef, Site = Site.Shallows,
-                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
-                   Where = "out in a reef's shallows, rows of stakes driven into the coral",
-                   Behind = 5, Ahead = 6, Aside = 5, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
-
-        new Kind { Chance = 14, Name = "Sunken Temple", Country = Regions.Character.Jungle, Site = Site.Level,
-                   SurveyRadius = 4, SurveyHeight = 1.4f, LabelHeight = 11f,
-                   Where = "in the jungle, a stepped temple with the forest growing through it",
-                   Behind = 6, Ahead = 6, Aside = 6, CoreHalf = 3, CoreVariation = 0.51f, ApronVariation = 1.0f },
-
-        new Kind { Chance = 13, Name = "Thorn Kraal", Country = Regions.Character.Savanna, Site = Site.Level,
-                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
-                   Where = "out on the plain, a ring of stakes with the gate still standing",
-                   Behind = 7, Ahead = 7, Aside = 7, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 1.2f },
-
-        new Kind { Chance = 22, Name = "Forester's Watch", Country = Regions.Character.Forest, Site = Site.Level,
+                                new Kind { Chance = 22, Name = "Forester's Watch", Country = Regions.Character.Forest, Site = Site.Level,
                    SurveyRadius = 5, SurveyHeight = 1.4f, LabelHeight = 14f,
                    Where = "in the woods, its tower above the trees",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
@@ -209,6 +194,21 @@ public static class Landmarks
                    Where = "in the sand, the ruin of a keep sunk to its shoulders and leaning",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
+        new Kind { Chance = 14, Name = "Sunken Temple", Country = Regions.Character.Jungle, Site = Site.Level,
+                   SurveyRadius = 4, SurveyHeight = 1.4f, LabelHeight = 11f,
+                   Where = "in the jungle, a stepped temple with the forest growing through it",
+                   Behind = 6, Ahead = 6, Aside = 6, CoreHalf = 3, CoreVariation = 0.51f, ApronVariation = 1.0f },
+
+        new Kind { Chance = 15, Name = "Fish Traps", Country = Regions.Character.Reef, Site = Site.Shallows,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 5f,
+                   Where = "out in a reef's shallows, rows of stakes driven into the coral",
+                   Behind = 5, Ahead = 6, Aside = 5, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 9f },
+
+        new Kind { Chance = 13, Name = "Thorn Kraal", Country = Regions.Character.Savanna, Site = Site.Level,
+                   SurveyRadius = 3, SurveyHeight = 0f, LabelHeight = 6f,
+                   Where = "out on the plain, a ring of stakes with the gate still standing",
+                   Behind = 7, Ahead = 7, Aside = 7, CoreHalf = 0, CoreVariation = 9f, ApronVariation = 1.2f },
+
         // the small finds -- Chance is 0 because Finds places them, by its own table of countries
         new Kind { Small = true, Chance = 0, Name = "Fallen Tree", Country = Regions.Character.Forest, Site = Site.Level,
                    SurveyRadius = 0, SurveyHeight = 99f, LabelHeight = 2f,
@@ -239,6 +239,17 @@ public static class Landmarks
     /// <summary>How many kinds there are, so nothing has to be told twice.</summary>
     public static int Count => kinds.Length;
 
+    /// <summary>
+    /// The kinds array and the LandmarkKind enum are the same list twice, and the code pairs them
+    /// by position: `var kind = (LandmarkKind)index;` where index is the array index. Nothing
+    /// enforced that, and when the temple and the kraal were added to the top of the array but the
+    /// bottom of the enum, the two lists slid three apart. Every structure in the world was then
+    /// built by the wrong builder with the wrong inscription and the wrong name: a chunk due a ring
+    /// of standing stones got a jungle temple, on dry ground, and a reef's fish traps were sited on
+    /// a hillside. Nothing errored, because a building is a building.
+    ///
+    /// This runs once, at load, and says so loudly if they ever slide again.
+    /// </summary>
     static Landmarks()
     {
         int named = System.Enum.GetValues(typeof(LandmarkKind)).Length;
@@ -247,6 +258,21 @@ public static class Landmarks
         {
             Debug.LogError("[Landmarks] " + named + " kinds are named but " + kinds.Length
                 + " are described. Every kind in LandmarkKind needs its entry, in the same order.");
+            return;
+        }
+
+        // The count matched all along while the order was three apart, which is why this said
+        // nothing. Check the order, which is the thing that actually has to hold.
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            string flat = kinds[i].Name.Replace("'", string.Empty).Replace(" ", string.Empty);
+
+            if (!string.Equals(flat, ((LandmarkKind)i).ToString(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.LogError("[Landmarks] kinds[" + i + "] is \"" + kinds[i].Name + "\" but the enum says "
+                    + (LandmarkKind)i + ". The two lists are paired by position and have slid apart, so every "
+                    + "structure from here down is built by the wrong builder.");
+            }
         }
     }
 
