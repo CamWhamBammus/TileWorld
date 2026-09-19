@@ -1048,9 +1048,12 @@ public static partial class LandmarkBuilder
 
         // The two arms. They run out from the pen at the point, opening toward the sea, and the
         // stakes stand a little proud of the water so the line of them can be read from a boat.
+        // A shallows site faces the shore: its +x is the dry ground. A weir has to open the other
+        // way, to the sea, or it catches whatever is walking out of the water rather than what is
+        // swimming in on the tide.
         for (int side = -1; side <= 1; side += 2)
         {
-            float a = side * 0.62f;
+            float a = Mathf.PI + side * 0.62f;
             for (int i = 0; i < 16; i++)
             {
                 float along = 0.7f + i * 0.78f;
@@ -1074,7 +1077,7 @@ public static partial class LandmarkBuilder
         for (int i = 0; i < 11; i++)
         {
             float a = i / 11f * Mathf.PI * 2f;
-            if (Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, 180f)) < 26f) continue;
+            if (Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, 0f)) < 26f) continue;   // the gap is on the shore side
             var foot = new Vector3(Mathf.Cos(a) * 1.5f, Ground, Mathf.Sin(a) * 1.5f);
             k.Post(foot, water + 0.35f + (float)b.Rng.NextDouble() * 0.3f, 0.06f, Kit.Swatch.DarkWood);
         }
@@ -1098,7 +1101,7 @@ public static partial class LandmarkBuilder
             var at = new Vector3(Mathf.Cos(a) * d, Ground + 0.1f, Mathf.Sin(a) * d);
             k.Log(at, at + new Vector3(Mathf.Cos(a + 1.4f), 0.05f, Mathf.Sin(a + 1.4f)) * 1.3f, 0.07f, Kit.Swatch.OldWood);
         }
-        k.HangingSign(new Vector3(-9.5f, Ground, 1.6f), 2.4f, 0f);
+        k.HangingSign(new Vector3(9.5f, Ground, 1.6f), 2.4f, 180f);   // on the shore, where you come from
 
         k.Finish("Traps", b.Root, Vector3.zero, b.Flora.Paint);
     }
