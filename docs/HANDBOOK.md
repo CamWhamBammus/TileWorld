@@ -1083,6 +1083,36 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Three things the compiler cannot see, now checked on every build
+
+Two lists paired by position slid apart and cost days. The lesson was that a count is not an
+assertion. So `Tools/check.sh`, which every probe runs before it builds, now runs three checks
+that no compiler and no probe would ever fail on:
+
+**`Tools/palette_add.py check`** -- the sheet. No palette colour may sit in a cell the building
+kit reads, and every one of the kit's twenty-two swatches has to be a plausible colour for its own
+name: snow pale, char dark, moss and vine green, water and glass blue, the stonework grey, the
+woodwork warm. The colour test is crude by design. It cannot tell a plank from old wood, but it
+catches a list that has slid, which is the failure that actually happens. It also prints the one
+cell that is shared on purpose -- the kit's snow is pointed at `snow1`, so a drift on a roof is
+the same white as a drift on the ground.
+
+**`Tools/ids.py`** -- the tile numbers. No two definitions may carry the same `blockID`, every
+definition must be referenced by the library or the chunk can never be handed it, and every id an
+editor tool declares must have an asset behind it. The reef and the fill blocks collided over 95
+and 96 once and the fills have had to move twice since; this is what would have said so. It prints
+the id space as runs, which is how you see at a glance that 0 to 34 are the pack's own tiles that
+nothing selects any more.
+
+**`Tools/shapes.py`** -- the numbers written down in both languages. Where a tile's top is
+(`TOP` in `forest_tiles.py` against `WorldHeight.BaseSurfaceY`), how deep its body goes
+(`TOP - BOTTOM` against `Chunk.FillDepth`), how wide it is (`HALF` doubled against
+`WorldGrid.TileSize`). Change one of those in Blender and nothing errors: the tiles come out a
+different height and the player walks through the floor, while the number that would have told
+you is in a C# file nobody opened.
+
+All three exit non-zero on a problem and print nothing but a count when clean.
+
 ### Two lists paired by position, twice
 
 The worst bug in the game was three days old and nobody had seen it. `Landmarks` keeps the same
