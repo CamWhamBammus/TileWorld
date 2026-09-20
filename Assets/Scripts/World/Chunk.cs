@@ -166,6 +166,23 @@ public class Chunk
     /// </summary>
     public const float ReefDepth = 1.0f;
 
+    /// <summary>
+    /// How much water a reef wants over it HERE, which is the constant above plus the wander that
+    /// breaks its line up. Both the ground and the planting have to ask the same question: the
+    /// ground asked with the wander and the planting asked without it, so in the band between the
+    /// two answers -- up to eleven centimetres of depth -- coral stood on plain sand.
+    ///
+    /// The noise is recomputed rather than passed in, because the only other copy of it is a local
+    /// inside the tile loop. Two Perlin lookups; the planting already does several per tile.
+    /// </summary>
+    public static float ReefLineAt(int tileX, int tileZ, int seed)
+    {
+        float o = 1000f + (seed % 1000) * 7.31f;
+
+        return ReefDepth + (Mathf.PerlinNoise(o + 311f + tileX * EdgeNoiseScale,
+                                              o + 311f + tileZ * EdgeNoiseScale) - 0.5f) * ReefWander;
+    }
+
     /// <summary>And how far above the water the sand carries on up the shore.</summary>
     private const float BeachHeight = 0.7f;
     private const float BlendNoiseScale = 0.09f;
@@ -323,8 +340,8 @@ public class Chunk
                 // coral in ankle-deep water reads as a flooded field.
                 category = underSnow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
-                         : character == Regions.Character.Reef && underBy >= ReefDepth + ripple * ReefWander
-                             ? ReefOrVerge(underBy - (ReefDepth + ripple * ReefWander), ref forced)
+                         : character == Regions.Character.Reef && underBy >= ReefLineAt(gx, gz, worldSeed)
+                             ? ReefOrVerge(underBy - ReefLineAt(gx, gz, worldSeed), ref forced)
                          : SandOrRockBed(underBy - (DeepWater + ripple * DeepWander), ref forced);
             }
             // How far up the shore the sand goes, wandering rather than following the
