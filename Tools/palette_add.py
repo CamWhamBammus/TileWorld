@@ -62,10 +62,78 @@ def add(colours):
     json.dump(palette, open(PALETTE, "w"), indent=1)
     print("%d colours, %d cells still free" % (len(palette), len(spare) - len(wanted)))
 
+def check():
+    """Everything about the sheet that has to hold, checked mechanically.
+
+    Two things have gone wrong here before. A colour was painted into a cell the building kit was
+    already reading, and every snow cap on every structure came out teal for days. And the kit's
+    twenty-two swatches are paired with the Swatch enum by position, which is the same shape of
+    mistake that put a jungle temple where a ring of standing stones belonged.
+
+    So: no palette colour may share a cell with a kit swatch, and every swatch's colour has to be
+    a plausible colour for its name. The second is crude on purpose -- it cannot tell plank from
+    old wood, but it catches a list that has slid, which is the failure that actually happens.
+    """
+    from PIL import Image
+    im = Image.open(SHEET).convert("RGBA")
+    W, H = im.size; cell = W // 16
+    palette = json.load(open(PALETTE))
+    swatches = kit_swatches()
+    bad = 0
+
+    # A kit swatch sharing a cell with a palette colour is not wrong in itself -- the kit's snow
+    # was deliberately pointed at snow1 so that a drift on a roof is the same white as a drift on
+    # the ground. It is worth printing, because it is only right when it is on purpose.
+    for name, (u, v) in swatches:
+        r, c = int((1 - v) * H) // cell, int(u * W) // cell
+        for colour, (pu, pv) in palette.items():
+            if int((1 - pv) * H) // cell == r and int(pu * W) // cell == c:
+                print("shared kit %-10s r%-2d c%-2d with palette %s" % (name, r, c, colour))
+
+    for name, (u, v) in swatches:
+        px = im.getpixel((min(W - 1, int(u * W)), min(H - 1, int((1 - v) * H))))[:3]
+        if not suits(name, px):
+            print("WRONG  kit %-10s is rgb%s, which is not a %s" % (name, px, name.lower()))
+            bad += 1
+
+    print("%d swatches, %d colours, %d cells free, %d problems" % (len(swatches), len(palette), len(free_cells(im, palette)), bad))
+    return bad
+
+SWATCHES = ["Wood", "DarkWood", "Plank", "EndGrain", "Stone", "DarkStone", "Mortar", "Plaster",
+            "Thatch", "Slate", "Iron", "Pane", "Cloth", "WarmStone", "Water", "Earth", "Snow",
+            "Moss", "Vine", "Sand", "Char", "OldWood"]
+
+def kit_swatches():
+    kit = os.path.join(HERE, "..", "Assets", "Resources", "Kit.asset")
+    block = open(kit).read()
+    block = block[block.index("Where:"):]
+    found = re.findall(r"-\s*\{x: ([0-9.eE-]+), y: ([0-9.eE-]+)\}", block)[:len(SWATCHES)]
+    return list(zip(SWATCHES, [(float(u), float(v)) for u, v in found]))
+
+def suits(name, px):
+    """Whether a colour could belong to a swatch of that name. Loose by design."""
+    r, g, b = px
+    light = (r + g + b) / 3.0
+    grey = max(px) - min(px) < 20
+    warm = r > g > b
+    green = g >= r and g > b
+    blue = b >= r and b >= g
+
+    if name == "Snow": return light > 190
+    if name == "Char": return light < 70
+    if name in ("Moss", "Vine"): return green
+    if name in ("Water", "Pane"): return blue or grey
+    if name in ("Stone", "DarkStone", "Mortar", "Slate", "Iron"): return grey or light < 80
+    if name in ("Wood", "DarkWood", "Plank", "EndGrain", "Thatch", "Sand", "Earth", "OldWood",
+                "WarmStone", "Plaster"): return warm or grey
+    return True
+
 def parse(text):
     name, hexed = text.split("=")
     hexed = hexed.lstrip("#")
     return name, tuple(int(hexed[i:i+2], 16) for i in (0, 2, 4))
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "check":
+        raise SystemExit(1 if check() else 0)
     add([parse(a) for a in sys.argv[1:]])
