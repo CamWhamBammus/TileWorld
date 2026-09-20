@@ -1111,7 +1111,16 @@ nothing selects any more.
 different height and the player walks through the floor, while the number that would have told
 you is in a C# file nobody opened.
 
-All three exit non-zero on a problem and print nothing but a count when clean.
+All three are silent when clean and **fail the build** when not, which is the point: they run
+inside `check.sh`, so a probe that would have been built against a broken sheet or a clashing id
+stops before it builds rather than producing a picture you then have to interpret. Proved by
+breaking one on purpose -- moving `TOP` half a metre made the build exit 1 with
+"forest_tiles.py TOP is 1.55 but WorldHeight.BaseSurfaceY is 1.05".
+
+`ids.py` also prints which numbers nothing can ask for. There are thirty: ids 0 to 24 and 30 to
+34, the pack's own tiles, kept in the library and selected by nothing since the ground became
+ours. That line is informational and does not fail anything, but it is the line that would have
+stopped the reef being given 95 to 99 while the fill blocks had them.
 
 ### Two lists paired by position, twice
 
