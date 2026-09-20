@@ -40,19 +40,28 @@ echo "compiles clean (checked)"
 
 # And the things the compiler cannot see: a colour painted over a swatch the building kit reads,
 # or a swatch list that has slid out of order. Both have happened and neither errors anywhere.
+# Quiet when clean: this runs before every build and every probe, and three lines of "0 problems"
+# on each of those is three lines of noise over the one line that will matter one day.
+CHECKS=""
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/palette_add.py" ]; then
-  python3 "$HERE/palette_add.py" check | grep -Ev "^shared " || true
+  CHECKS="$CHECKS$(python3 "$HERE/palette_add.py" check | grep -Ev "^(shared |[0-9]+ swatches)")"
 fi
 
 # And the tile ids: a definition with no library entry, two definitions with the same number, or a
 # range an editor tool writes that has no assets behind it. The reef and the fill blocks collided
 # over ids 95 and 96 once and the fills have had to move twice since.
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/ids.py" ]; then
-  python3 "$HERE/ids.py" | grep -Ev "^([0-9]+ definitions|spare )" || true
+  CHECKS="$CHECKS$(python3 "$HERE/ids.py" | grep -Ev "^([0-9]+ definitions|spare |[0-9]+ problems)")"
 fi
 
 # And the numbers written down in both languages: where a tile's top is, how deep its body goes,
 # how wide it is. The Blender scripts decide those and the game assumes them.
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/shapes.py" ]; then
-  python3 "$HERE/shapes.py" | grep -Ev "^[0-9]+ shapes" || true
+  CHECKS="$CHECKS$(python3 "$HERE/shapes.py" | grep -Ev "^[0-9]+ shapes")"
+fi
+
+if [ -n "$CHECKS" ]; then
+  echo "$CHECKS"
+  echo "-- the sheet, the ids or the shapes are wrong; the compiler cannot see any of it --"
+  exit 1
 fi
