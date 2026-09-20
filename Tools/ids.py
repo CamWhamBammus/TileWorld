@@ -68,6 +68,28 @@ def main():
                 print("MISSING    %s says %s = %d for %d, but %s have no definition"
                       % (tool, name, first, count, missing)); bad += 1
 
+    # Ids that exist but that the chunk has no way to select. They are not a fault, but they are a
+    # trap: the reef was given 95 to 99 partly because nothing said which numbers were spoken for.
+    chunk = open(os.path.join(PROJECT, "Assets", "Scripts", "World", "Chunk.cs")).read()
+    per = re.search(r"VariantsPerCategory = (\d+)", chunk)
+    used = set()
+    if per:
+        step = int(per.group(1))
+        for name, value in re.findall(r"(\w*Category) = (\d+)", chunk):
+            for k in range(step): used.add(int(value) * step + k)
+        for name, value in re.findall(r"(Fill\w*Id) = (\d+)", chunk): used.add(int(value))
+        for value in re.findall(r"FillRockId = (\d+)", chunk): used.add(int(value))
+        for value in re.findall(r"BlendCategory\s*=\s*{([^}]*)}", chunk):
+            for n in re.findall(r"\d+", value):
+                for k in range(step): used.add(int(n) * step + k)
+    spare = sorted(i for i in ids if i not in used) if used else []
+    if spare:
+        runs2, start2 = [], spare[0]
+        for a, b in zip(spare, spare[1:] + [None]):
+            if b != a + 1: runs2.append((start2, a)); start2 = b
+        print("spare      %d definitions no category can ask for: %s"
+              % (len(spare), ", ".join("%d" % a if a == b else "%d-%d" % (a, b) for a, b in runs2)))
+
     ids.sort()
     runs, start = [], ids[0] if ids else 0
     for a, b in zip(ids, ids[1:] + [None]):

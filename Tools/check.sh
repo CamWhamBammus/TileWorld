@@ -48,7 +48,7 @@ fi
 # range an editor tool writes that has no assets behind it. The reef and the fill blocks collided
 # over ids 95 and 96 once and the fills have had to move twice since.
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/ids.py" ]; then
-  python3 "$HERE/ids.py" | grep -Ev "^[0-9]+ definitions" || true
+  python3 "$HERE/ids.py" | grep -Ev "^([0-9]+ definitions|spare )" || true
 fi
 
 # And the numbers written down in both languages: where a tile's top is, how deep its body goes,
