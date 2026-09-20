@@ -43,3 +43,10 @@ echo "compiles clean (checked)"
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/palette_add.py" ]; then
   python3 "$HERE/palette_add.py" check | grep -Ev "^shared " || true
 fi
+
+# And the tile ids: a definition with no library entry, two definitions with the same number, or a
+# range an editor tool writes that has no assets behind it. The reef and the fill blocks collided
+# over ids 95 and 96 once and the fills have had to move twice since.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/ids.py" ]; then
+  python3 "$HERE/ids.py" | grep -Ev "^[0-9]+ definitions" || true
+fi
