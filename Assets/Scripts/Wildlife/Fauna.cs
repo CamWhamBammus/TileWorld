@@ -840,6 +840,22 @@ public static class Fauna
         {
             Debug.LogError("[Fauna] " + named + " kinds are named but " + kinds.Length
                 + " are described. Every kind in FaunaKind needs its entry, in the same order.");
+            return;
+        }
+
+        // "In the same order" is the part that matters and the part this did not check. The
+        // landmarks had exactly this guard, the counts matched the whole time the order was three
+        // apart, and every structure in the world was built by the wrong builder for days. Here it
+        // would be every animal: a wolf on a rabbit's gait in a rabbit's country under a heron's
+        // name. The names are lowercase single words that match their enum members exactly.
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            if (!string.Equals(kinds[i].Traits.Name, ((FaunaKind)i).ToString(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.LogError("[Fauna] kinds[" + i + "] is \"" + kinds[i].Traits.Name + "\" but the enum says "
+                    + (FaunaKind)i + ". The two lists are paired by position and have slid apart, so every "
+                    + "animal from here down has another one's traits, gait, voice and country.");
+            }
         }
     }
 
