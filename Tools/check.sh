@@ -50,3 +50,9 @@ fi
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/ids.py" ]; then
   python3 "$HERE/ids.py" | grep -Ev "^[0-9]+ definitions" || true
 fi
+
+# And the numbers written down in both languages: where a tile's top is, how deep its body goes,
+# how wide it is. The Blender scripts decide those and the game assumes them.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/shapes.py" ]; then
+  python3 "$HERE/shapes.py" | grep -Ev "^[0-9]+ shapes" || true
+fi
