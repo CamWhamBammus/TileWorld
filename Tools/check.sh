@@ -37,3 +37,9 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 echo "compiles clean (checked)"
+
+# And the things the compiler cannot see: a colour painted over a swatch the building kit reads,
+# or a swatch list that has slid out of order. Both have happened and neither errors anywhere.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/palette_add.py" ]; then
+  python3 "$HERE/palette_add.py" check | grep -Ev "^shared " || true
+fi
