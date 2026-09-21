@@ -19,6 +19,16 @@ public class SunGlow : MonoBehaviour
     private Transform[] ghosts;
     private Material corePaint, haloPaint;
     private Material[] ghostPaints;
+    // Three lists of the same ghosts, paired by index. A static constructor rather than a line in
+    // Awake: Awake gives up early when the glow material is missing, which is exactly the build
+    // where a quiet mistake would go unnoticed longest.
+    static SunGlow()
+    {
+        if (GhostSize.Length != GhostAt.Length || GhostTint.Length != GhostAt.Length)
+            Debug.LogError("[SunGlow] " + GhostAt.Length + " ghosts placed, " + GhostSize.Length
+                + " sized, " + GhostTint.Length + " tinted. They are paired by index.");
+    }
+
     private static readonly float[] GhostAt = { 0.32f, 0.58f, 0.85f, 1.35f };
     private static readonly float[] GhostSize = { 0.05f, 0.03f, 0.08f, 0.045f };
     private static readonly Color[] GhostTint = { new Color(1f, 0.8f, 0.55f), new Color(0.6f, 1f, 0.7f), new Color(0.7f, 0.75f, 1f), new Color(1f, 0.7f, 0.9f) };
