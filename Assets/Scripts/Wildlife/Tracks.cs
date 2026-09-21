@@ -92,7 +92,18 @@ public class Tracks : MonoBehaviour
         paints[Sort.Trail] = Paint.Flat(new Color(0.38f, 0.32f, 0.20f));
         paints[Sort.Ring] = Paint.Flat(new Color(0.80f, 0.89f, 0.95f));
 
-        foreach (Sort s in System.Enum.GetValues(typeof(Sort))) batches[s] = new List<Matrix4x4>(256);
+        // The batches are built from the enum and the paints are written out by hand above, and the
+        // draw loop pairs them by key. A sort with no paint throws the first time a mark of that
+        // sort is left, which is wherever that animal happens to be. Checked in the same loop that
+        // makes the batches, so there is one place to forget rather than two.
+        foreach (Sort s in System.Enum.GetValues(typeof(Sort)))
+        {
+            batches[s] = new List<Matrix4x4>(256);
+
+            if (!paints.ContainsKey(s))
+                Debug.LogError("[Tracks] no paint for " + s + ". The draw loop pairs paints to batches "
+                    + "by key, so the first mark of this sort left anywhere will throw.");
+        }
     }
 
     private void OnDestroy() { if (instance == this) instance = null; }
