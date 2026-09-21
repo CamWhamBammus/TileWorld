@@ -31,6 +31,9 @@ public class Motes : MonoBehaviour
     // left this at five, so every spindrift mote threw on the frame it was drawn -- in a country
     // with no spindrift in it, because the exception came from the shared draw loop.
     private readonly List<Matrix4x4>[] batches = new List<Matrix4x4>[6];
+    /// <summary>How many of the tints are leaves, which decides both their colour and their mesh.</summary>
+    private const int LeafTints = 3;
+
     private Material[] paints;
     private Mesh leaf, lump;
     private ChunkManager world;
@@ -133,7 +136,7 @@ public class Motes : MonoBehaviour
                 case Kind.Leaves:
                     m.At = new Vector3(at.x, ground + Random.Range(1.5f, 9f), at.z);
                     m.Vel = new Vector3(0f, -Random.Range(0.25f, 0.45f), 0f);
-                    m.Size = Random.Range(0.12f, 0.2f); m.Lasts = Random.Range(8f, 16f); m.Tint = Random.Range(0, 3);
+                    m.Size = Random.Range(0.12f, 0.2f); m.Lasts = Random.Range(8f, 16f); m.Tint = Random.Range(0, LeafTints);
                     break;
                 case Kind.Seeds:
                     m.At = new Vector3(at.x, ground + Random.Range(0.4f, 4f), at.z);
@@ -180,7 +183,6 @@ public class Motes : MonoBehaviour
             Quaternion turn = m.Kind == Kind.Leaves
                 ? Quaternion.Euler(t * 70f + m.Phase * 50f, t * 40f + m.Phase * 90f, Mathf.Sin(t * 2f + m.Phase) * 40f)
                 : Quaternion.Euler(m.Phase * 57f, t * 30f, 0f);
-            var mesh = m.Kind == Kind.Leaves ? leaf : lump;
             batches[m.Tint].Add(Matrix4x4.TRS(m.At, turn, m.Kind == Kind.Leaves ? new Vector3(size, size * 0.6f, size * 0.15f) : Vector3.one * size));
         }
 
@@ -188,7 +190,7 @@ public class Motes : MonoBehaviour
         {
             if (batches[b].Count == 0 || paints[b] == null) continue;
             var rp = new RenderParams(paints[b]) { shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off, receiveShadows = false };
-            Graphics.RenderMeshInstanced(rp, b < 3 ? leaf : lump, 0, batches[b], batches[b].Count, 0);
+            Graphics.RenderMeshInstanced(rp, b < LeafTints ? leaf : lump, 0, batches[b], batches[b].Count, 0);
         }
     }
 
