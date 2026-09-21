@@ -35,6 +35,9 @@ public class FieldGuideScreen : MonoBehaviour
     private RawImage[] thumbs;
     private TMP_Text[] thumbNames;
     private GameObject strip;
+    /// <summary>How many plates the strip along the page can show.</summary>
+    private const int PlateSlots = 6;
+
     private RawImage[] plateThumbs;
     private TMP_Text[] plateNames;
     private GameObject contents;
@@ -471,9 +474,23 @@ public class FieldGuideScreen : MonoBehaviour
         strip.transform.SetParent(cardGo.transform, false);
         var stripRect = strip.AddComponent<RectTransform>();
         stripRect.anchorMin = Vector2.zero; stripRect.anchorMax = Vector2.one; stripRect.offsetMin = Vector2.zero; stripRect.offsetMax = Vector2.zero;
-        plateThumbs = new RawImage[6];
-        plateNames = new TMP_Text[6];
-        for (int i = 0; i < 6; i++)
+        plateThumbs = new RawImage[PlateSlots];
+        plateNames = new TMP_Text[PlateSlots];
+
+        // The strip holds six and the longest creature has exactly six plates, so there is no
+        // headroom at all. The row above is laid out defensively; the row below it is laid out by
+        // the plate list's own length and would throw the moment a seventh was added -- on the
+        // page of whichever animal got it, not where the plate was written.
+        foreach (FaunaKind k in System.Enum.GetValues(typeof(FaunaKind)))
+        {
+            int many = Plates.For(k).Length;
+
+            if (many > PlateSlots)
+                Debug.LogError("[FieldGuide] " + k + " has " + many + " plates but the strip holds "
+                    + PlateSlots + "; opening its page will throw.");
+        }
+
+        for (int i = 0; i < PlateSlots; i++)
         {
             var thumbGo = new GameObject("Plate " + i);
             thumbGo.transform.SetParent(strip.transform, false);
