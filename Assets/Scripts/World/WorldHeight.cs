@@ -64,7 +64,11 @@ public static class WorldHeight
     private const float SeaFloorDrop = 2.0f;
 
     /// <summary>The height the land is at when the water's edge is there.</summary>
-    public const float ShoreHeight = 4.5f;
+    // The same 4.5 as WaterSurface.DepthAboveBase, and it has to be: this is the height the land
+    // is at where the water's edge falls, which is only true because that is how deep the water is.
+    // Taken from there rather than typed again, so the two cannot part. WaterSurface.Level is a
+    // property, not a const, so there is no cycle.
+    public const float ShoreHeight = WaterSurface.DepthAboveBase;
 
     /// <summary>Terrain height above the base plane, in world units.</summary>
     public static float HeightAt(int tileX, int tileZ, int worldSeed)
