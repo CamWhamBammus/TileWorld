@@ -50,6 +50,22 @@ public static class KitIndex
             (Kit.Swatch.OldWood,   new Color(0.44f, 0.38f, 0.30f)),
         };
 
+        // Every swatch has to be in the table. A missing one leaves Kit.At returning the middle of
+        // the sheet, which is a colour, so the structure still builds and just comes out wrong. A
+        // length test would not catch it either: naming one swatch twice and another not at all
+        // still gives twenty-two entries.
+        var covered = new System.Collections.Generic.HashSet<Kit.Swatch>();
+
+        foreach (var (swatch, _) in wanted)
+            if (!covered.Add(swatch)) Debug.LogError("[KitIndex] " + swatch + " is given a colour twice.");
+
+        foreach (Kit.Swatch swatch in System.Enum.GetValues(typeof(Kit.Swatch)))
+            if (!covered.Contains(swatch))
+                Debug.LogError("[KitIndex] " + swatch + " has no colour here, so Kit.At would paint it "
+                    + "from the middle of the sheet and the building would look built.");
+
+        if (covered.Count != System.Enum.GetValues(typeof(Kit.Swatch)).Length) return;
+
         asset.Where = new Vector2[wanted.Length];
         var pixels = palette.GetPixels32();
         int w = palette.width;
