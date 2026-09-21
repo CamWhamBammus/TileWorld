@@ -81,6 +81,16 @@ def check():
     swatches = kit_swatches()
     bad = 0
 
+    # The list of swatch names here is a third copy of one that lives in Kit.cs and in Kit.asset.
+    # It is only used to say which swatch is wrong, but a stale copy would name the wrong one.
+    named = re.search(r"enum Swatch \{(.*?)\}", open(os.path.join(HERE, "..", "Assets", "Scripts",
+                                                                   "Landmarks", "Kit.cs")).read())
+    if named:
+        count = len([w for w in named.group(1).split(",") if w.strip()])
+        if count != len(SWATCHES):
+            print("WRONG  Kit.cs names %d swatches, this script lists %d" % (count, len(SWATCHES)))
+            bad += 1
+
     # A kit swatch sharing a cell with a palette colour is not wrong in itself -- the kit's snow
     # was deliberately pointed at snow1 so that a drift on a roof is the same white as a drift on
     # the ground. It is worth printing, because it is only right when it is on purpose.
