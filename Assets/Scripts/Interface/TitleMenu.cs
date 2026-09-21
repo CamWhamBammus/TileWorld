@@ -129,6 +129,20 @@ public class TitleMenu : MonoBehaviour
     private int dayLength = 1;        // short, ordinary, long
     private TMP_Text weatherLabel, cycleLabel, startLabel, lengthLabel, animalsLabel, ruinsLabel;
 
+    // Four lists, two pairs, each pair read by the same index: the name is shown and the value is
+    // used. The cycle buttons step one array's length and index the other, so a pair of different
+    // lengths shows a time that is not the time the world starts at.
+    static TitleMenu()
+    {
+        if (StartHours.Length != StartNames.Length)
+            Debug.LogError("[Title] " + StartNames.Length + " start times are named but " + StartHours.Length
+                + " have an hour. They are read by the same index.");
+
+        if (LengthMinutes.Length != LengthNames.Length)
+            Debug.LogError("[Title] " + LengthNames.Length + " day lengths are named but " + LengthMinutes.Length
+                + " have a value. They are read by the same index.");
+    }
+
     private static readonly string[] StartNames = { "dawn", "noon", "dusk", "night" };
     private static readonly float[] StartHours = { 0.24f, 0.50f, 0.74f, 0.95f };
     private static readonly string[] LengthNames = { "10 minutes", "20 minutes", "40 minutes" };
@@ -186,7 +200,10 @@ public class TitleMenu : MonoBehaviour
         {
             // back from a preview: the new page as it was left, over the seed's own country
             weather = stash.Weather; dayCycle = stash.DayCycle; animals = stash.Animals; ruins = stash.Ruins;
-            startAt = stash.StartAt; dayLength = stash.DayLength;
+            // Clamped, because the stash outlives the lists. One written when there were four
+            // start times and read after there are three indexes past the end of both arrays.
+            startAt = Mathf.Clamp(stash.StartAt, 0, StartNames.Length - 1);
+            dayLength = Mathf.Clamp(stash.DayLength, 0, LengthNames.Length - 1);
             ShowNew();
             nameField.text = stash.Name; seedField.text = stash.SeedText;
             stash = null;
