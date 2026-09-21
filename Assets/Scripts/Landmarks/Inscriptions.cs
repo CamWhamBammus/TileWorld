@@ -70,6 +70,16 @@ public static class Inscriptions
         "Something written round the idol's base in a script nobody in {0} can read."
     };
 
+    /// <summary>
+    /// A kind with no lines of its own read the watch's, which is a sentence about a tower and
+    /// reads as written for wherever you are standing.
+    /// </summary>
+    private static string[] NoLines(LandmarkKind kind)
+    {
+        Debug.LogError("[Inscriptions] no lines for " + kind + ", reading the watch's.");
+        return WatchLines;
+    }
+
     private static readonly string[] TrapLines =
     {
         "Cut into the landward stake: \"{0}\". Below it, a depth in feet.",
@@ -274,7 +284,8 @@ public static class Inscriptions
             LandmarkKind.Snare => SnareLines,
             LandmarkKind.Waymark => WaymarkLines,
             LandmarkKind.BrokenCart => BrokenCartLines,
-            _ => WatchLines
+            LandmarkKind.ForestersWatch => WatchLines,
+            _ => NoLines(kind)
         };
 
         int hash = Hash(chunk.x, chunk.y, worldSeed ^ 0x51F3);

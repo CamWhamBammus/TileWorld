@@ -99,8 +99,14 @@ public static partial class LandmarkBuilder
             case LandmarkKind.Snare: Snare(b); break;
             case LandmarkKind.Waymark: Waymark(b); break;
             case LandmarkKind.BrokenCart: Cart(b); break;
-            default:
             case LandmarkKind.ForestersWatch: Watch(b); break;
+            default:
+                // A kind with no builder was quietly given the watch's, so a new structure would
+                // appear as a tower in the wrong country and read as a placement bug.
+                Debug.LogError("[LandmarkBuilder] no builder for " + b.At.Kind + ", building the "
+                    + "Forester's Watch instead. It will look like a tower in the wrong place.");
+                Watch(b);
+                break;
         }
 
         return root;
