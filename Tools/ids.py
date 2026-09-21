@@ -98,6 +98,59 @@ def blend_pairs():
             bad += 1
     return bad
 
+# The pack's own bands, which we import but never ask for: its five grass bands and its stone.
+# They stay in the library because the definitions are cheap and removing them renumbers nothing.
+KNOWN_SPARE = set(range(0, 25)) | set(range(30, 35))
+
+def category_bases(spare):
+    """The four numbers every editor tool and the chunk have to agree on, and never say out loud.
+
+    A tool writes its ids as FirstSomethingId + series * Variants + variant. The chunk reads them
+    back as category * VariantsPerCategory + variant. So each tool's Variants has to be the chunk's
+    VariantsPerCategory, each FirstId has to land on a category boundary, and no category may sit
+    past the end of the table. Set Variants to 6 in one tool and its second series lands on top of
+    the next tool's first, which is how the reef and the fill blocks collided.
+    """
+    chunk = open(os.path.join(PROJECT, "Assets", "Scripts", "World", "Chunk.cs")).read()
+    per = re.search(r"VariantsPerCategory = (\d+)", chunk)
+    total = re.search(r"Categories = (\d+)", chunk)
+    if not per: return 0
+    step = int(per.group(1))
+    bad = 0
+
+    for path in sorted(glob.glob(os.path.join(PROJECT, "Assets", "Editor", "*.cs"))):
+        text = open(path).read()
+        tool = os.path.basename(path)
+        width = re.search(r"public const int [^;]*?(?:Variants|Steps) = (\d+)", text)
+        if width and int(width.group(1)) != step:
+            print("DISAGREE   %s makes %s tiles a series but Chunk asks for %d at a time"
+                  % (tool, width.group(1), step)); bad += 1
+        for name, first in re.findall(r"public const int (?:\w+ = \d+, )?(\w*First\w*Id) = (\d+)", text):
+            if int(first) % step:
+                print("DISAGREE   %s says %s = %s, which is not the start of a band of %d"
+                      % (tool, name, first, step)); bad += 1
+
+    if total:
+        for name, value in re.findall(r"(\w+Category) = (\d+)", chunk):
+            if int(value) >= int(total.group(1)):
+                print("DISAGREE   Chunk.%s = %s but there are only %s categories"
+                      % (name, value, total.group(1))); bad += 1
+
+    # the fill blocks under cliffs, named twice
+    fill = os.path.join(PROJECT, "Assets", "Editor", "FillSet.cs")
+    if os.path.exists(fill):
+        theirs = dict(re.findall(r"(\w+)Id = (\d+)", open(fill).read()))
+        for name, value in re.findall(r"Fill(\w+)Id = (\d+)", chunk):
+            if name in theirs and theirs[name] != value:
+                print("DISAGREE   FillSet.cs builds the %s block as %s but Chunk asks for %s"
+                      % (name.lower(), theirs[name], value)); bad += 1
+
+    loose = sorted(i for i in spare if i not in KNOWN_SPARE)
+    if loose:
+        print("DISAGREE   %s were imported but no category can ask for them"
+              % ", ".join(str(i) for i in loose)); bad += 1
+    return bad
+
 def main():
     defs = definitions()
     ids = [i for i, _, _ in defs]
@@ -145,6 +198,7 @@ def main():
               % (len(spare), ", ".join("%d" % a if a == b else "%d-%d" % (a, b) for a, b in runs2)))
 
     bad += blend_pairs()
+    bad += category_bases(spare)
 
     ids.sort()
     runs, start = [], ids[0] if ids else 0
