@@ -24,7 +24,20 @@ public class Kit : ScriptableObject
 
     public static Kit Get()
     {
-        if (loaded == null) loaded = Resources.Load<Kit>("Kit");
+        if (loaded == null)
+        {
+            loaded = Resources.Load<Kit>("Kit");
+
+            // The asset is written by an editor tool and read at runtime, so it can be older than
+            // the enum it is meant to match. Nobody has to have done anything wrong today for this
+            // to be short: adding a swatch and not re-running the tool is enough.
+            int named = System.Enum.GetValues(typeof(Swatch)).Length;
+
+            if (loaded != null && loaded.Where.Length != named)
+                Debug.LogError("[Kit] the asset carries " + loaded.Where.Length + " swatches but "
+                    + named + " are named. Run Tools > Tile World > Index the kit's colours; until "
+                    + "then everything past " + loaded.Where.Length + " paints from the middle of the sheet.");
+        }
         return loaded;
     }
 
