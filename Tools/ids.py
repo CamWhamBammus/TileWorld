@@ -44,6 +44,60 @@ def ranges():
             out.setdefault(os.path.basename(path), []).append((pair.group(3), int(pair.group(4)), 1))
     return out
 
+def blend_pairs():
+    """The mixed-ground pair order, which is written down in four places and read as one.
+
+    blend_tiles.py builds the tiles and names the files; BlendSet.cs and BlendDrySet.cs import them
+    in their own order; Chunk.cs maps a pair index to a category with a hand-written table. Nothing
+    pairs those up, and the index formula in Chunk trusts all three silently.
+    """
+    chunk = open(os.path.join(PROJECT, "Assets", "Scripts", "World", "Chunk.cs")).read()
+    table = re.search(r"BlendCategory\s*=\s*\{([^}]*)\}", chunk)
+    per = re.search(r"VariantsPerCategory = (\d+)", chunk)
+    if not table or not per: return 0
+    step = int(per.group(1))
+    categories = [int(n) for n in re.findall(r"\b(\d+)\b", re.sub(r"//[^\n]*", "", table.group(1)))]
+
+    order = re.search(r"ORDER = \[([^\]]*)\]", open(os.path.join(HERE, "blend_tiles.py")).read())
+    if not order: return 0
+    families = [w.strip().strip("\"'") for w in order.group(1).split(",") if w.strip()]
+    pairs = [(a, b) for i, a in enumerate(families) for b in families[i + 1:]]
+
+    if len(pairs) != len(categories):
+        print("DISAGREE   blend_tiles.py makes %d pairs but Chunk.BlendCategory has %d entries"
+              % (len(pairs), len(categories)))
+        return 1
+
+    # what id each series actually got, from the editor tools' own generated names
+    names = {}
+    for tool in ("BlendSet.cs", "BlendDrySet.cs"):
+        path = os.path.join(PROJECT, "Assets", "Editor", tool)
+        if not os.path.exists(path): continue
+        text = open(path).read()
+        first = re.search(r"First\w*Id = (\d+)", text)
+        listed = re.search(r"Order = \{([^}]*)\}", text)
+        steps = re.search(r"(?:Variants|Steps) = (\d+)", text)
+        if not (first and listed and steps): continue
+        those = [w.strip().strip('"') for w in listed.group(1).split(",") if w.strip()]
+        at = int(first.group(1)); width = int(steps.group(1))
+        if tool == "BlendSet.cs":
+            for i, a in enumerate(those):
+                for b in those[i + 1:]:
+                    names[(a.lower(), b.lower())] = at; at += width
+        else:
+            for a in those:
+                names[tuple(sorted((a.lower(), "dry")))] = at; at += width
+
+    bad = 0
+    for pair, category in zip(pairs, categories):
+        key = tuple(sorted(pair)) if tuple(sorted(pair)) in names else pair
+        if key not in names: continue
+        if names[key] != category * step:
+            print("DISAGREE   %s-%s is category %d (ids from %d) but its tiles were imported at %d"
+                  % (pair[0], pair[1], category, category * step, names[key]))
+            bad += 1
+    return bad
+
 def main():
     defs = definitions()
     ids = [i for i, _, _ in defs]
@@ -89,6 +143,8 @@ def main():
             if b != a + 1: runs2.append((start2, a)); start2 = b
         print("spare      %d definitions no category can ask for: %s"
               % (len(spare), ", ".join("%d" % a if a == b else "%d-%d" % (a, b) for a, b in runs2)))
+
+    bad += blend_pairs()
 
     ids.sort()
     runs, start = [], ids[0] if ids else 0
