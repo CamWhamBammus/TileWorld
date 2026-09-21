@@ -1083,6 +1083,65 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Thirteen more of the same, found on purpose
+
+The landmark bug was found by accident. So the next pass went looking for the shape of it on
+purpose: every place in the game where two things have to agree and nothing says so. Thirteen
+turned up. One was already broken.
+
+The one that was broken: the field guide draws a creature's plates into six fixed slots, and one
+creature had been given more than six. The seventh was written and never drawn, so the page
+quietly told you less than the game knew. The guide now says so at load, and the count is written
+once instead of implied by the page.
+
+The rest were all live traps rather than live bugs, and they are all the same sentence: a number
+in one file that another file assumes.
+
+- The **sun's ghosts** are three lists -- where each sits, how big it is, what colour it takes --
+  paired by index, and a fourth ghost would have been drawn at the third one's size.
+- **How many tints leaves come in** was a literal in two places; the spindrift crash was exactly
+  this, one file over.
+- **The waterline** was typed in two files as 4.5. One of them is the sea and the other is the
+  shore, and they are the same line.
+- **Every building kit swatch** must be given a colour, and only one; the palette tool now checks
+  its own copy of that list against the enum it is meant to mirror, which is the copy that slid
+  last time.
+- **The kit asset** is built once and read for ever, so it now says when it is older than the list
+  of swatches it holds rather than handing back a colour from the wrong slot.
+- **Every kind of mark** in the snow must have a paint, **every structure** must have a builder and
+  words of its own -- both used to fall through to the watchtower's, so a new landmark would have
+  silently been a watchtower.
+- **The title screen's settings** are two more pairs of lists read by position, and a saved page
+  number from an older build is now clamped rather than trusted.
+- **The animal lists**, which had a length guard from the last round, are checked for order too.
+
+None of these were wrong on the day they were written. They are all the same failure waiting: the
+second file cannot tell that the first one moved, and neither of them will error.
+
+### What the tile numbers have to agree on
+
+`Tools/ids.py` grew two checks in the same pass, both about the arithmetic that turns a category
+into an id.
+
+The **mixed-ground pair order** is written down four times. `blend_tiles.py` builds the tiles and
+names the files, `BlendSet.cs` and `BlendDrySet.cs` import them in their own order, and `Chunk.cs`
+maps a pair to a category with a hand-written table. Getting sand-grass and sand-dark the wrong way
+round there puts the wrong mixed tile on every one of those borders, and nothing anywhere would say
+so -- both are mixed ground and both look like ground. The check rebuilds the pair list from the
+Blender script, works out the id each pair was actually imported at, and compares. Swapping two
+entries on purpose printed both sides of the swap.
+
+The **id bands** are the rest of that arithmetic. A tool writes its ids as
+`FirstSomethingId + series * Variants + variant`; the chunk reads them back as
+`category * VariantsPerCategory + variant`. So every tool's `Variants` has to be the chunk's
+`VariantsPerCategory`, every `FirstId` has to land on a band boundary, no category may sit past the
+end of the table, and the two fill blocks have to carry the same numbers in the tool that builds
+them and the chunk that asks for them. Set `Variants` to six in one tool and its second series
+lands on top of the next tool's first -- which is how the reef and the fill blocks collided in the
+first place. All four arms were proved by breaking each one in turn.
+
+Both fail `check.sh`, so they run before every build and every probe.
+
 ### Three things the compiler cannot see, now checked on every build
 
 Two lists paired by position slid apart and cost days. The lesson was that a count is not an
