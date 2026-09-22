@@ -84,8 +84,17 @@ public static class Regions
     /// </summary>
     private const float Fray = 13f;
 
-    /// <summary>How wide the band of mixed ground either side of a border is, in tiles.</summary>
-    private const float Blend = 8f;
+    /// <summary>
+    /// How wide the band of mixed ground either side of a border is, in tiles. The same width as
+    /// the fray, and taken from it rather than typed again: the two describe one thing, which is
+    /// how wide a border is. They were thirteen and eight, so the outer five tiles of every
+    /// border in the world were handed across the line by the fray and then laid as the other
+    /// country's own ground with nothing between them and the ground they sat in -- a speck of
+    /// forest floor in open sand with a hard edge round it, measured at one tile in three hundred
+    /// and fifty of the whole world. It also makes the join twice as long to walk, which is the
+    /// point: a country should run into the next one over fifty metres and not over thirty.
+    /// </summary>
+    private const float Blend = Fray;
 
     /// <summary>Tiles across one region.</summary>
     private const int TilesAcross = ChunksAcross * WorldGrid.TilesPerChunk;
