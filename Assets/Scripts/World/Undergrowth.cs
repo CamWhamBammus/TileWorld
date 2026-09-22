@@ -436,7 +436,14 @@ public class Undergrowth : MonoBehaviour
             // Snow covers what grows under it -- but a snowfield with nothing
             // standing in it at all is a white sheet, so the few things that
             // belong there are let through.
-            if (character != Regions.Character.Snow && SnowCover.IsSnowy(gx, gz, seed)) continue;
+            // The high country too, and for a better reason: a peak is a peak because it is
+            // snowy, so this threw the alpine table away on precisely the ground it was
+            // written for. Nearly half of every summit in the world was bare white and bare
+            // rock with not one thing standing on it. The treeline rule below still thins the
+            // krummholz out through the same band, so what is left up there is cushion plants,
+            // the blocks the ice dropped, and the odd boulder, which is what is up there.
+            if (character != Regions.Character.Snow && character != Regions.Character.Peaks
+                && SnowCover.IsSnowy(gx, gz, seed)) continue;
 
             // nor under a structure: a tree up through the platform is what
             // the old ruins had
