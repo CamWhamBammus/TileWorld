@@ -110,12 +110,18 @@ public class _Probe : MonoBehaviour
                 if (Regions.CharacterAtTile(x, z, seed, true) == Regions.CharacterAtTile(x, z, seed, false)) continue;
 
                 handed++;
-                if (Regions.Border(x, z, seed, out _) <= 0f) unmixed++;
+
+                // The ones that show: a tile handed across a line where the two countries lay
+                // different families of ground, so a speck of one sits in the other and the
+                // eye finds it. Where the families match there is nothing to mix and nothing
+                // to see.
+                if (Chunk.FamilyNameOf(Regions.CharacterAtTile(x, z, seed, true))
+                    != Chunk.FamilyNameOf(Regions.CharacterAtTile(x, z, seed, false))) unmixed++;
             }
             yield return null;
         }
 
-        Mark(string.Format("FRAY  {0} tiles of {1} are handed across a border ({2:F2}%), and {3} of those ({4:F1}% of them) lie outside the band the mixed ground reaches",
+        Mark(string.Format("FRAY  {0} tiles of {1} are handed across a border ({2:F2}%), and {3} of those ({4:F1}% of them) carry a different family of ground from the one they are standing in",
             handed, walked, 100.0 * handed / System.Math.Max(1, walked), unmixed, 100.0 * unmixed / System.Math.Max(1, handed)));
         Mark("done");
     }

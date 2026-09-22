@@ -474,16 +474,31 @@ public class Chunk
             if (category != VergeCategory && !CarriesOwnEdge(category))
             {
                 float near = Regions.Border(gx, gz, worldSeed, out var over);
+
+                // A tile the fray has handed across the line is standing in one country's
+                // ground carrying the other's, and it was the one tile in the world that got
+                // no mixing at all. The border asks what lies over the line and hands back the
+                // country the tile has just joined, so the tile agreed with itself and was
+                // laid plain: a speck of forest floor out in open sand with a hard edge round
+                // every side of it, which is what the fray looks like close to. It is asked
+                // instead what it is standing in, and mixed toward that -- and it is mixed all
+                // the way to the middle of the series whatever the distance, because a speck
+                // with the other ground on all four sides is not part way through a border,
+                // it is the whole of one.
+                var standing = Regions.CharacterAtTile(gx, gz, worldSeed, false);
+                bool handed = standing != character;
+                if (handed) near = 1f;
+
                 if (near > 0f)
                 {
                     int mine = FamilyOfGround(category);
-                    int theirs = FamilyOfCountry(over);
+                    int theirs = FamilyOfCountry(handed ? standing : over);
 
                     // Under water, the country over the border is read for what it lays on its
                     // sea bed rather than for what it lays in the air. A lake in a meadow is
                     // still mud at the bottom, and blending toward the meadow's own family put
                     // turf and flowers down there, a foot under the surface.
-                    if (submerged) theirs = FamilyUnderWater(over);
+                    if (submerged) theirs = FamilyUnderWater(handed ? standing : over);
 
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
