@@ -1086,6 +1086,105 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### The countries, measured against each other again
+
+Two tools were built before anything was changed, because the last round of country tuning was
+done by looking, and looking does not tell you that a fifth of the world is one thing.
+
+`Tools/probe/World.cs.txt` already took a census of what the world is made of. The new one,
+**`Tools/probe/Adjacency.cs.txt`**, counts the joins instead: which countries actually touch,
+how often, and whether the ground mixes where they do. Over six seeds and ninety-two thousand
+joins, all ninety-one possible pairs occur. Fifteen of them lay the same family of ground on both
+sides and so get no mixed tile -- twelve and a half percent of every border in the world. Most of
+those are right, because the two sides lay the same tiles: hills against meadow is one ground
+meeting itself. Three are not: the peaks against the barrens are both rock out of different tile
+sets, and the five countries that all lay the dark floor -- wood, jungle, mushroom wood, dead wood,
+reeds -- meet each other with nothing between. That stands as a known gap; the fray interlocks
+them, which is something, but it is not the graded middle the other borders get.
+
+What the census said, and what was done about it:
+
+- **The peaks were a fifth of the world and the hills a twentieth**, which is upside down: the
+  summits are what you climb toward and there was nowhere to climb from. Snow alone was enough to
+  be named for your summits, and any high shoulder carries some. A region has to be properly snowy
+  *and* properly high now; the rest goes to the downs, and is sent there rather than dropped
+  through the rest of the list, because below that point the sand takes anything low and dry and a
+  snowfield was coming out as desert. Peaks 20.1% to 8.2%, hills 5.9% to 17.7%, and not one other
+  country moved by a hundredth of a percent.
+- **No wood in the world could stand above half height.** The forest's ceiling was the hills'
+  floor, so the highest wood on any seed was at relief 0.44 exactly, and the unsnowy upland above
+  it -- well below the snowline, ground a wood would hold -- came out bare downs purely because the
+  forest's test is asked second. They share that band on a coin now. Forest 10.0% to 13.2%.
+- **The downs had the emptiest table in the game.** They fell through to `ordinary`, which is the
+  thinnest planting in the world at 0.168 against the forest's 0.285. That was tolerable at a
+  twentieth of the world and not at a fifth. They have a table of their own now, out of meshes that
+  already existed: fewer and shorter trees than a wood, and the mountain tussock and loose stone
+  that were built for the summits, which are the right things on a high shoulder below them.
+  2986 things standing to 4049.
+- **Half of every summit was bare because it was snowy.** The rule that stops things growing under
+  snow let the snowfields through -- a white sheet with nothing in it is not a snowfield -- and did
+  not let the peaks through, although a peak is a peak *because* it is snowy. So the alpine table
+  was thrown away on precisely the ground it was written for, which is the same mistake the peaks
+  were fixed for once already, one rule over. 3334 things standing to 4850. The treeline still
+  thins the krummholz out through the same band, so what is up there is cushion plants, the blocks
+  the ice dropped, and the odd boulder.
+
+### The tiles a border frays across
+
+A border is frayed: tiles within thirteen of the line are handed across it by a noise field, so
+the two countries interlock in fingers instead of meeting on a line. A border is also mixed: tiles
+within eight of the line take a graded tile between the two families of ground.
+
+A tile that has been handed across got neither. `Regions.Border` tells a tile which country lies
+over the nearest line, and for a handed tile that is the country it has just joined -- so the tile
+agreed with itself, and was laid plain. It is the one tile in the world that most needs the mixed
+ground: a speck of forest floor out in open sand with a hard edge on all four sides, which is what
+the fray looks like from close to. Eight and a half percent of the world is handed across a border,
+and seven and a half percent of the world -- one tile in thirteen -- was a handed tile carrying a
+different family of ground from the one it was standing in.
+
+It is asked what it is *standing in* now, and mixed toward that, all the way to the middle of the
+series whatever the distance from the line: a speck with the other ground on every side is not part
+way through a border, it is the whole of one. The interiors are untouched -- the sweep reports the
+same ground shares and the same frame times in all fourteen countries, because no tile in the
+middle of a country is frayed.
+
+**A wrong turn worth recording.** The first attempt at this set `Blend` to the same thirteen as
+`Fray`, on the theory that the two are one number written twice. They are not: the fray hands
+individual tiles across, the mixing decides how much of the ground either side is replaced, and a
+band of twelve had already been measured once and put back because it turned a third of the world
+into mixed ground and pushed the real floors, with their logs and ferns and mushrooms, well back
+from every border. Worse, it would not have fixed anything -- a handed tile gets no mixed ground at
+*any* distance, for the reason above, so widening the band only widens it on the tiles that were
+already being mixed. It was reverted, and the constant now carries the reason it is not the fray.
+
+### Two more numbers that had to be whole
+
+- **A hash has to still have bits where the code reaches for them.** Everything scattered in the
+  world -- where a plant stands off the middle of its tile, which way it faces, how tall it is --
+  is one hash with a different slice taken for each question, written `(roll >> 23) % 1000`. Shift
+  twenty-three of a thirty-two bit hash and nine bits are left, which is 511, so the `% 1000` does
+  nothing and the answer can never be more than half of what the code asks for. Every plant in the
+  world stood between nought and seven tenths of a metre to one side of its tile and never once on
+  the other: a field planted in rows, which is exactly what the comment above the line says it is
+  preventing. The parchment's stains had the same thing and could only ever be small ones. Both
+  have their own number now, and **`Tools/bits.py`** runs in `check.sh` and says when a slice
+  cannot reach the range it is asked for, or has so little headroom that the low values come up
+  oftener than the high ones.
+- **A five-step shore was laid on four rungs.** The verge grades sand into turf over five tiles,
+  chosen by height above the sand line -- but the ground is terraced to a quarter of a metre and
+  `VergeHeight` was one metre, which is four rungs. Five tiles on four rungs has to skip one, and a
+  fifth of every pair of neighbouring verge tiles a terrace apart jumped two steps of the grade at
+  once. It is five terraces now, and tied to `WorldHeight.StepHeight` rather than typed as a
+  number, so it cannot be retuned back to one that does not divide.
+
+### A rule that was written twice and had parted
+
+The chunk decides a tile is too steep to plant by the steepest rise to a neighbour; the undergrowth
+decided the same thing by looking east and nowhere else. So a face running north to south read as
+flat to the undergrowth while the chunk under it was already laying broken rock, and trees grew
+sideways out of a cliff on one bearing and not the other. The undergrowth asks the chunk now.
+
 ### Thirteen more of the same, found on purpose
 
 The landmark bug was found by accident. So the next pass went looking for the shape of it on
