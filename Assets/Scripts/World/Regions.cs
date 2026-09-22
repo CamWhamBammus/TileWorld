@@ -373,7 +373,16 @@ public static class Regions
         // biome, it is a rumour.
         if (relief < 0.52f && wetShare < 0.16f
             && Hash(cell.x, cell.y, worldSeed + 3391) % 2 == 0) return Character.Desert;
-        if (relief > 0.44f) return Character.Hills;
+        // The forest's floor was the hills' ceiling, so no wood could stand on high ground at
+        // all: the highest wood in any world was at relief 0.44 exactly, and the unsnowy upland
+        // above it came out bare downs purely because the forest's test is asked second. That
+        // band sits well below the snowline, which starts at 0.62, so it is ground a wood would
+        // hold. They share it now. Nothing downstream needed changing: the undergrowth already
+        // thins its trees out through the snowline band, so an upland wood ends where a wood
+        // ends and not where a threshold does.
+        if (relief > 0.44f)
+            return Hash(cell.x, cell.y, worldSeed + 6607) % 2 == 0 ? Character.Forest : Character.Hills;
+
         if (relief > 0.22f) return Character.Forest;
 
         return Character.Lowland;
