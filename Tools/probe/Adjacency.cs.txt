@@ -94,6 +94,29 @@ public class _Probe : MonoBehaviour
 
         Mark(string.Format("{0} of {1} pairs lay the same family and so get no mixed ground: {2:F1}% of every border in the world",
             hard, met.Count, 100.0 * hardJoins / System.Math.Max(1, joins)));
+
+        // And the other hole: a border is frayed over one width and mixed over another. A tile
+        // handed to the country across the line, but lying further out than the mixing reaches,
+        // is laid as that country's own ground with nothing at all between it and the ground it
+        // is standing in -- a speck of forest floor in open sand with a hard edge round it.
+        long handed = 0, unmixed = 0, walked = 0;
+
+        foreach (int seed in seeds)
+        {
+            for (int z = -reach; z <= reach; z += step)
+            for (int x = -reach; x <= reach; x += step)
+            {
+                walked++;
+                if (Regions.CharacterAtTile(x, z, seed, true) == Regions.CharacterAtTile(x, z, seed, false)) continue;
+
+                handed++;
+                if (Regions.Border(x, z, seed, out _) <= 0f) unmixed++;
+            }
+            yield return null;
+        }
+
+        Mark(string.Format("FRAY  {0} tiles of {1} are handed across a border ({2:F2}%), and {3} of those ({4:F1}% of them) lie outside the band the mixed ground reaches",
+            handed, walked, 100.0 * handed / System.Math.Max(1, walked), unmixed, 100.0 * unmixed / System.Math.Max(1, handed)));
         Mark("done");
     }
 }
