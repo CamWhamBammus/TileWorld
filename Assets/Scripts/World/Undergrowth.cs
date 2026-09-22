@@ -498,9 +498,16 @@ public class Undergrowth : MonoBehaviour
             float tall = Mathf.Lerp(sort.Low, sort.High, ((roll >> 17) % 100) / 100f);
             float size = tall / sprout.Size;
 
-            // Off the middle of the tile, or they stand in rows like a crop.
-            float acrossX = ((roll >> 13) % 1000) / 1000f - 0.5f;
-            float acrossZ = ((roll >> 23) % 1000) / 1000f - 0.5f;
+            // Off the middle of the tile, or they stand in rows like a crop -- which is what
+            // they were doing. Both offsets came out of the top of the same number the size,
+            // the turn, the kind and the treeline test had already taken slices from, and by
+            // the time the second one was cut there were nine bits left. Nine bits is 511, the
+            // % 1000 did nothing, and so every plant in the world stood between nought and
+            // seven tenths of a metre toward -Z of its tile and never once on the other side.
+            // Rows, in exactly the way the line above says it is preventing. Its own number now.
+            uint spread = Hash(gx, gz, seed + 2939);
+            float acrossX = ((spread >> 2) % 1000) / 1000f - 0.5f;
+            float acrossZ = ((spread >> 14) % 1000) / 1000f - 0.5f;
 
             // A model that reaches a full tile-half below its own origin was
             // drawn to stand in the tile rather than on it -- the trees and the

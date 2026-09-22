@@ -38,10 +38,15 @@ public static class ParchmentPanel
         {
             int h = (i * 73856093) ^ (width * 19349663) ^ (height * 83492791);
 
+            // How big a stain is came off the top of the same number its position did, and
+            // there were eight bits left up there: it could reach 255 of the 1000 it asks for,
+            // so every mark on every sheet was one of the small ones. Its own number now.
+            int fat = (i * 50331653) ^ (width * 12582917) ^ (height * 3145739);
+
             stains[i] = new Vector3(
                 Mathf.Abs((h >> 3) % 1000) / 1000f * width,
                 Mathf.Abs((h >> 13) % 1000) / 1000f * height,
-                Mathf.Lerp(width * 0.05f, width * 0.16f, Mathf.Abs((h >> 23) % 1000) / 1000f));
+                Mathf.Lerp(width * 0.05f, width * 0.16f, Mathf.Abs((fat >> 7) % 1000) / 1000f));
         }
 
         for (int y = 0; y < height; y++)

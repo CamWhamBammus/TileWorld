@@ -54,6 +54,13 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/ids.py" ]; then
   CHECKS="$CHECKS$(python3 "$HERE/ids.py" | grep -Ev "^([0-9]+ definitions|spare |[0-9]+ problems)")"
 fi
 
+# And whether a hash still has bits where the code reaches for them. Two places took a slice
+# from too far up one and could only ever reach half its range: every plant in the world stood
+# on one side of its tile, in rows.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/bits.py" ]; then
+  CHECKS="$CHECKS$(python3 "$HERE/bits.py" | grep -Ev "^[0-9]+ slices")"
+fi
+
 # And the numbers written down in both languages: where a tile's top is, how deep its body goes,
 # how wide it is. The Blender scripts decide those and the game assumes them.
 if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/shapes.py" ]; then
