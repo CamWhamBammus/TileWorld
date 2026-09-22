@@ -1,0 +1,99 @@
+// Which countries actually meet, and whether the ground mixes where they do.
+//
+// The mixed ground covers a border only when the two sides lay different FAMILIES of ground.
+// Five countries -- forest, jungle, fungal, dead wood, reeds -- all lay the dark family, out of
+// five different tile sets, so a border between any two of them mixes nothing. The same goes for
+// the peaks against the barrens, both rock. This counts every border in the world, says which
+// pairs are common enough to matter, and marks the ones where the ground changes without mixing.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        AudioListener.volume = 0f; AudioListener.pause = true;   // a probe runs beside whatever else is going on and must not be heard
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+
+        int[] seeds = { 5, 24, 1, 4, 7, 12 };
+        const int reach = 620, step = 2;
+
+        var met = new SortedDictionary<string, long>();
+        long joins = 0;
+
+        foreach (int seed in seeds)
+        {
+            // The line rather than the scatter: a frayed border hands single tiles back and
+            // forth, and counting those would say every pair meets a hundred times as often
+            // as it does. This asks where the border itself runs.
+            for (int z = -reach; z <= reach; z += step)
+            for (int x = -reach; x <= reach; x += step)
+            {
+                var here = Regions.CharacterAtTile(x, z, seed, false);
+                for (int side = 0; side < 2; side++)
+                {
+                    var there = side == 0
+                        ? Regions.CharacterAtTile(x + step, z, seed, false)
+                        : Regions.CharacterAtTile(x, z + step, seed, false);
+
+                    if (there == here) continue;
+
+                    string a = here.ToString(), b = there.ToString();
+                    string key = string.CompareOrdinal(a, b) < 0 ? a + " | " + b : b + " | " + a;
+
+                    met.TryGetValue(key, out long had);
+                    met[key] = had + 1;
+                    joins++;
+                }
+            }
+            yield return null;
+        }
+
+        Mark("ADJACENCY " + seeds.Length + " seeds, " + joins + " joins over " + (reach * 2) + " square, " + met.Count + " pairs of the 91 possible");
+
+        // Sorted by how often you would walk over one, since a pair that happens twice in a
+        // world is not worth a tile set and one that happens constantly is.
+        var order = new List<KeyValuePair<string, long>>(met);
+        order.Sort((p, q) => q.Value.CompareTo(p.Value));
+
+        int hard = 0;
+        long hardJoins = 0;
+        foreach (var pair in order)
+        {
+            int bar = pair.Key.IndexOf('|');
+            var a = (Regions.Character)System.Enum.Parse(typeof(Regions.Character), pair.Key.Substring(0, bar).Trim());
+            var b = (Regions.Character)System.Enum.Parse(typeof(Regions.Character), pair.Key.Substring(bar + 1).Trim());
+
+            string fa = Chunk.FamilyNameOf(a), fb = Chunk.FamilyNameOf(b);
+            bool mixes = fa != fb;
+            if (!mixes) { hard++; hardJoins += pair.Value; }
+
+            Mark(string.Format("  {0,-22} {1,5:F2}% of joins | {2,-5} against {3,-5} | {4}",
+                pair.Key, 100.0 * pair.Value / System.Math.Max(1, joins), fa, fb,
+                mixes ? "mixes" : "NO MIXING, both lay " + fa));
+        }
+
+        Mark(string.Format("{0} of {1} pairs lay the same family and so get no mixed ground: {2:F1}% of every border in the world",
+            hard, met.Count, 100.0 * hardJoins / System.Math.Max(1, joins)));
+        Mark("done");
+    }
+}

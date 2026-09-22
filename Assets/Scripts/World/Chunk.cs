@@ -111,6 +111,26 @@ public class Chunk
     }
 
     /// <summary>What the country over the border mostly lays, taken from its character alone.</summary>
+    /// <summary>
+    /// The name of the ground a country lays, for anything measuring the world from outside it.
+    /// Two countries whose families match get no mixed ground at their border, because there is
+    /// nothing to mix -- which is right when they lay the same tiles and wrong when they do not,
+    /// and that is the difference this is here to let a probe count.
+    /// </summary>
+    public static string FamilyNameOf(Regions.Character who)
+    {
+        switch (FamilyOfCountry(who))
+        {
+            case Sand: return "sand";
+            case Grass: return "grass";
+            case Dark: return "dark";
+            case Rock: return "rock";
+            case White: return "snow";
+            case Dry: return "dry";
+            default: return "none";
+        }
+    }
+
     private static int FamilyOfCountry(Regions.Character who)
     {
         switch (who)
