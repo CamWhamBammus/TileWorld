@@ -30,7 +30,15 @@ public class Chunk
     /// in a band above the sand, it turns a line into a thinning.
     /// </summary>
     private const int VergeCategory = 22;
-    private const float VergeHeight = 1.0f;
+
+    /// <summary>
+    /// How much height the verge series is spread over. Five terraces, and it has to be a whole
+    /// number of them: the ground is terraced to WorldHeight.StepHeight and the series has five
+    /// steps, so at a metre -- four terraces -- five tiles were being fitted onto four rungs and
+    /// one rung of the grade had to be skipped. Walking up a shore, a fifth of every pair of
+    /// neighbouring verge tiles a terrace apart jumped two steps of the series at once.
+    /// </summary>
+    private const float VergeHeight = 5 * WorldHeight.StepHeight;
 
     /// <summary>
     /// The mixed ground where two countries meet. A tile for every pair of countries would be
@@ -376,7 +384,8 @@ public class Chunk
                 category = BeachCategory;
             }
             // And above the sand, the verge: the same shore thinning into whatever grows
-            // behind it over about two metres of height, rather than stopping dead.
+            // behind it over five terraces of height, one per step of the series, rather than
+            // stopping dead.
             else if (-underBy < sandLine + VergeHeight && !underSnow && !stone && !desert
                      && WaterSurface.BodyAt(gx, gz, worldSeed) == WaterSurface.Body.Beach)
             {

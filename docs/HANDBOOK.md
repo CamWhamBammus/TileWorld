@@ -1041,8 +1041,11 @@ short there.
 **The verge.** New tiles, definitions 110 to 114, and they are a series rather than variants:
 0 is sand with a tuft in it, 4 is turf with sand showing through. `Chunk` chooses the variant by
 how far above the sand line the tile is, not by a hash, so a shore lays 0 upward and thins from
-one ground into the other. `VergeHeight` is a metre; wider and the whole series lands on the
-few tiles a steep shore has, all of them variant 0.
+one ground into the other. `VergeHeight` is five terraces of `WorldHeight.StepHeight`, which is
+1.25 m: it has to be a whole number of them, because the ground is terraced and a five-step series
+on four rungs has to skip one. It was a metre, and a fifth of every pair of neighbouring verge
+tiles one terrace apart jumped two steps of the grade at once. Not wider than that, though --
+wider and the whole series lands on the few tiles a steep shore has, all of them variant 0.
 
 **The mixed ground.** The seam between any one pair of tiles is still a seam, since a tile is
 instanced and cannot know what is beside it. What can be done is to put ground between them
