@@ -310,7 +310,16 @@ public static class Regions
             return relief < 0.30f && snowShare <= 0f && deepShare > 0.10f
                 && Hash(cell.x, cell.y, worldSeed + 5309) % 4 == 0
                  ? Character.Reef : Character.Water;
-        if (snowShare > 0.16f) return Character.Peaks;
+        // A fifth of the world was peaks and a twentieth was hills, which is upside down: the
+        // summits are what you climb toward and there was nowhere to climb up from. Snow alone
+        // is not a mountain -- any high shoulder carries some -- so a region now has to be
+        // properly snowy and properly high before it is named for its summits, and the rest of
+        // the snowy ground is downs with white on the tops, which is what hills are.
+        // Sent straight to hills rather than dropped through the rest of the list: below this
+        // the sand takes anything under relief 0.52 that is dry, and a snowfield was coming
+        // out as desert.
+        if (snowShare > 0.16f)
+            return snowShare > 0.34f && relief > 0.52f ? Character.Peaks : Character.Hills;
 
         // The fungus is asked before the sand. Both want low ground and the
         // sand will take a great deal of it, so asked the other way round the
