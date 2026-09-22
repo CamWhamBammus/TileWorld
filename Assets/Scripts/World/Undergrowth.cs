@@ -470,9 +470,12 @@ public class Undergrowth : MonoBehaviour
 
             if (chosen < 0) continue;
 
-            // steep ground has nothing to hold them
-            float slope = Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, seed) - WorldHeight.SurfaceY(gx, gz, seed));
-            if (slope > 0.9f) continue;
+            // Steep ground has nothing to hold them. Asked of the chunk, which lays scree on
+            // the same faces, rather than worked out again here: this looked at the tile to the
+            // east and nothing else, so a face running north to south read as flat and kept its
+            // full planting while the chunk under it was already laying broken rock. Trees grew
+            // sideways out of a cliff on one bearing and not the other.
+            if (Chunk.SlopeAt(gx, gz, seed) > 0.9f) continue;
 
             var sprout = every[chosen];
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;

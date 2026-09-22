@@ -570,8 +570,11 @@ public class Chunk
     private int chunkIndexX() { return Index.x; }
     private int chunkIndexZ() { return Index.y; }
 
-    /// <summary>Steepest rise to a neighbouring tile.</summary>
-    private static float SlopeAt(int gx, int gz, int worldSeed)
+    /// <summary>
+    /// Steepest rise to a neighbouring tile. Public because the undergrowth asks the same
+    /// question and was asking it of one neighbour only -- see the note where it calls this.
+    /// </summary>
+    public static float SlopeAt(int gx, int gz, int worldSeed)
     {
         float h = WorldHeight.SurfaceY(gx, gz, worldSeed);
 
