@@ -38,7 +38,7 @@ public class Undergrowth : MonoBehaviour
     private bool ready;
 
     private Flora.Sprout[] every;
-    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle, peaks, savanna;
+    private Planting[] fungal, desert, stone, dead, reed, snow, forest, ordinary, shore, jungle, peaks, savanna, hills;
 
     private readonly Dictionary<Vector2Int, Patch> patches = new Dictionary<Vector2Int, Patch>();
     private readonly List<Vector2Int> stale = new List<Vector2Int>();
@@ -223,6 +223,16 @@ public class Undergrowth : MonoBehaviour
         // the open country's trees stood on the pack's grass tiles, four of every twenty-five; now
         // that the grass is our own and carries none, they are planted here at about that rate
         ordinary = new[] { With(forestTrees, 0.13f), With(pines, 0.02f), With(mushrooms, 0.006f), With(boulders, 0.012f) };
+        // The downs. They fell through to the ordinary table, which is the thinnest in the game
+        // at 0.168 against the forest's 0.285, and that was tolerable while the hills were a
+        // twentieth of the world. They are a fifth of it now, so the emptiest table in the game
+        // was covering the largest country in it -- the same mistake the peaks were fixed for,
+        // three tables up. Nothing new is modelled: the mountain tussock and the loose stone
+        // were built for the summits and are the right things on a high shoulder below them,
+        // and the trees thin out and shorten rather than disappearing, which is what a wood
+        // does as the ground rises.
+        hills = new[] { With(pines, 0.05f), With(forestTrees, 0.06f), With(alpineStones, 0.03f),
+                        With(boulders, 0.05f), With(alpinePlants, 0.10f) };
 
         flora.Paint.enableInstancing = true;
 
@@ -343,6 +353,7 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Reef => shore,
                 Regions.Character.Jungle => jungle,
                 Regions.Character.Peaks => peaks,
+                Regions.Character.Hills => hills,
                 Regions.Character.Savanna => savanna,
                 _ => ordinary
             };
