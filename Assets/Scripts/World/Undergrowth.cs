@@ -15,8 +15,27 @@ using UnityEngine;
 /// </summary>
 public class Undergrowth : MonoBehaviour
 {
-    [Tooltip("How far out, in chunks, the small things are worth drawing.")]
+    [Tooltip("How far out, in chunks, the small things are worth drawing. A floor: the world's own view radius wins when it is further.")]
     [SerializeField] private int reach = 4;
+
+    /// <summary>
+    /// How far out the small things are actually being drawn this frame, which is the field
+    /// above or the world's view radius, whichever is further. The terrain's radius is a
+    /// setting the player changes from the pause menu and the title screen, and this did not
+    /// follow it: at the widest setting the ground was drawn to two hundred and forty metres
+    /// and everything standing on it stopped at a hundred and twenty. The landmarks already
+    /// did this properly and are where the shape of it is taken from.
+    /// </summary>
+    private int span;
+
+    /// <summary>
+    /// How many chunks may be planted in one frame. The whole ring was sown at once, so walking
+    /// into a world stopped it for the best part of a second while every plant in sight was
+    /// worked out -- and following the view radius makes the widest ring two hundred and
+    /// eighty-nine chunks instead of eighty-one, which would have made that four times worse.
+    /// Nearest first, so what is planted first is what you are standing in.
+    /// </summary>
+    private const int SowPerFrame = 6;
 
     /// <summary>One sort of thing, and how much of it a region carries.</summary>
     private struct Planting
@@ -261,14 +280,24 @@ public class Undergrowth : MonoBehaviour
 
         Vector2Int here = WorldGrid.WorldToChunk(player.position);
 
-        for (int dx = -reach; dx <= reach; dx++)
-        for (int dz = -reach; dz <= reach; dz++)
+        span = Mathf.Max(reach, world != null ? world.ViewRadius : reach);
+
+        // Ring by ring outward, so the budget is spent on the ground underfoot before the
+        // ground at the edge of sight.
+        int budget = SowPerFrame;
+
+        for (int ring = 0; ring <= span && budget > 0; ring++)
+        for (int dx = -ring; dx <= ring && budget > 0; dx++)
+        for (int dz = -ring; dz <= ring && budget > 0; dz++)
         {
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != ring) continue;   // only the ring itself
+
             var index = new Vector2Int(here.x + dx, here.y + dz);
 
             if (!patches.ContainsKey(index))
             {
                 patches[index] = Sow(index);
+                budget--;
                 shifted = true;
             }
         }
@@ -279,7 +308,7 @@ public class Undergrowth : MonoBehaviour
         {
             Vector2Int away = pair.Key - here;
 
-            if (Mathf.Max(Mathf.Abs(away.x), Mathf.Abs(away.y)) > reach + 1) stale.Add(pair.Key);
+            if (Mathf.Max(Mathf.Abs(away.x), Mathf.Abs(away.y)) > span + 1) stale.Add(pair.Key);
         }
 
         foreach (var key in stale) patches.Remove(key);
@@ -633,7 +662,7 @@ public class Undergrowth : MonoBehaviour
     private void Draw()
     {
         if (gathered == null) return;
-        look.worldBounds = new Bounds(player.position, Vector3.one * (WorldGrid.ChunkWorldSize * (reach * 2 + 2)));
+        look.worldBounds = new Bounds(player.position, Vector3.one * (WorldGrid.ChunkWorldSize * (span * 2 + 2)));
 
         // A fresh split when the plants changed, the player has walked a
         // few metres, or a while has passed: a few metres of drift in what
