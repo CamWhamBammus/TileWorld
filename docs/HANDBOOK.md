@@ -370,7 +370,16 @@ from the placement seed, with a rare kept place, is the obvious next step.
 
 Densities are tuned by `Chance` against a count: the tour probe reports how
 many of each kind lie within forty chunks of the player, and a kind with a
-small footprint in common country needs a small chance (the cairn is 6).
+small footprint in common country needs a small chance.
+
+`Chance` is a rate *inside* a country, so how many of a kind stand in a world
+is the chance times that country's share of it. Move a country's share and
+every chance set for that country is wrong by the same factor, and nothing
+says so. That is what happened when the peaks went from a fifth of the world
+to a twelfth and the downs went the other way: the summit cairns thinned to
+two fifths of what they were tuned for and the hilltop beacons came out three
+times as thick, both from a rebalance that never touched this file. They are
+15 and 2 now.
 
 To add a kind: add it to `LandmarkKind` and `kinds[]` in the same order; a
 `case` in `LandmarkBuilder.Build` and a method that builds it with a

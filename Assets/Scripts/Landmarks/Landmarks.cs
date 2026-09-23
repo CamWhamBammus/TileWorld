@@ -76,6 +76,11 @@ public static class Landmarks
         // Out of a hundred chunks of its country that could take it, how many
         // do. Each has its own: a desert is common and level, and at one rate
         // for all there were fifteen gates to a watch.
+        //
+        // It is a rate INSIDE a country, so how many of a kind stand in a world is this times
+        // that country's share of it. Move a country's share and every chance set for it is
+        // wrong by the same factor, silently -- which is what happened when the peaks and the
+        // downs were rebalanced and the two kinds that live in them did not move.
         public int Chance;
 
         // A small find rather than a ruin: placed by Finds, not here.
@@ -159,12 +164,17 @@ public static class Landmarks
                    Where = "in the dead woods, the burner's clamps and the wood cut for them",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.0f },
 
-        new Kind { Chance = 6, Name = "Hilltop Beacon", Country = Regions.Character.Hills, Site = Site.Level,
+        // The downs went from a twentieth of the world to about a seventh, so a beacon at 6
+        // came out three times as thick as the 6 was chosen for. 5.9 x 6 / 14.5 is 2.4, and of
+        // the two whole numbers either side, 2 lands nearer the count this was tuned to.
+        new Kind { Chance = 2, Name = "Hilltop Beacon", Country = Regions.Character.Hills, Site = Site.Level,
                    SurveyRadius = 6, SurveyHeight = 2.2f, LabelHeight = 16f,
                    Where = "on the hills, a stone tower with a fire kept burning on its top",
                    Behind = 5, Ahead = 5, Aside = 4, CoreHalf = 2, CoreVariation = 0.51f, ApronVariation = 1.2f },
 
-        new Kind { Chance = 6, Name = "Summit Cairn", Country = Regions.Character.Peaks, Site = Site.Level,
+        // And the peaks went from a fifth of the world to a twelfth the same day, so the cairns
+        // thinned to two fifths of what they were meant to be. 20.1 x 6 / 8.2 is 14.7.
+        new Kind { Chance = 15, Name = "Summit Cairn", Country = Regions.Character.Peaks, Site = Site.Level,
                    SurveyRadius = 7, SurveyHeight = 0f, LabelHeight = 5f,
                    Where = "on a peak, a great cairn with a banner over it",
                    Behind = 3, Ahead = 4, Aside = 3, CoreHalf = 1, CoreVariation = 0.51f, ApronVariation = 1.6f },
