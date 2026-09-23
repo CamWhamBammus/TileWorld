@@ -592,6 +592,17 @@ public class Chunk
                     // turf and flowers down there, a foot under the surface.
                     if (submerged) theirs = FamilyUnderWater(handed ? standing : over);
 
+                    // And above the water a sea lays grass only above its own strand. Where the
+                    // strand and the verge stop is a height over the waterline, and this tile's
+                    // height is that same height, so for as long as it is low enough to be
+                    // standing on one, the country over the line is still sand. Moving the seas
+                    // to the grass family fixed the ground two hundred metres inland of them and
+                    // broke it at the water's edge: the strand grew turf and flowers wherever
+                    // one sea's cell met another's, and the last eight tiles of a desert before
+                    // a beach graded into meadow.
+                    // An else, not a second if: on a deep floor the sea bed's answer has to win.
+                    else if (Regions.Sea(handed ? standing : over) && -underBy < sandLine + VergeHeight) theirs = Sand;
+
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
                         int low = Mathf.Min(mine, theirs), high = Mathf.Max(mine, theirs);
