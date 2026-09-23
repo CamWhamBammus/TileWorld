@@ -87,7 +87,7 @@ public class Chunk
         switch (category)
         {
             case ForestCategory: case MarshCategory: case FungalCategory:
-            case DeadCategory: case JungleCategory: return Dark;
+            case JungleCategory: return Dark;
             // These fell through into the savanna's case together, so every meadow tile called
             // itself Dry while the country over the border called itself Grass. The Grass
             // family was produced by no ground at all, and the two sides of a meadow border
@@ -95,7 +95,16 @@ public class Chunk
             case PaleGrassCategory: case LightGrassCategory: case DarkGrassCategory: return Grass;
             case SavannaCategory: return Dry;
             case BeachCategory: case DesertCategory: return Sand;
-            case StoneCategory: case BareSteepCategory: case PeakCategory: return Rock;
+            // The dead wood's floor is grey ash and charred wood, and it was filed with the four
+            // brown floors because it is a wood. Sampled off the sheet, ash is (119,115,111) and
+            // the barrens' stone is (127,123,116) -- twelve apart -- while the forest floor,
+            // the jungle's, the marsh's and the fungal loam are eighty to a hundred and eleven
+            // away from it. So every border a dead wood had was drawn wrong: against the barrens
+            // it laid a warm brown seam down the middle of two greys, and against the four
+            // browns, which are the joins that actually show a step, it laid nothing at all
+            // because they were the same family. It is rock.
+            case StoneCategory: case BareSteepCategory: case PeakCategory:
+            case DeadCategory: return Rock;
             case SnowCategory: return White;
             default: return -1;
         }
@@ -146,8 +155,7 @@ public class Chunk
             case Regions.Character.Lowland: case Regions.Character.Hills: return Grass;
             case Regions.Character.Savanna: return Dry;
             case Regions.Character.Forest: case Regions.Character.Jungle:
-            case Regions.Character.Fungal: case Regions.Character.Dead:
-            case Regions.Character.Reed: return Dark;
+            case Regions.Character.Fungal: case Regions.Character.Reed: return Dark;
             // The sea's countries lay grass, not sand. A region is named for its water at a
             // fifth of it under water, so four fifths of one is dry ground, and on that dry
             // ground a Water or a Reef matches no branch in the chooser and comes out as the
@@ -163,7 +171,9 @@ public class Chunk
             case Regions.Character.Water: case Regions.Character.Reef: return Grass;
             case Regions.Character.Desert: return Sand;
             case Regions.Character.Snow: return White;
-            case Regions.Character.Stone: case Regions.Character.Peaks: return Rock;
+            // Ash is grey, whatever grew out of it once. See FamilyOfGround above.
+            case Regions.Character.Stone: case Regions.Character.Peaks:
+            case Regions.Character.Dead: return Rock;
             default: return -1;
         }
     }
