@@ -72,6 +72,13 @@ public class Chunk
     /// contiguous. The order here is the order the pairs come out of the two nested loops over
     /// the families, which is also the order Tools/blend_tiles.py builds them in.
     /// </summary>
+    /// <summary>
+    /// Where each of the five beach tiles goes when it is under water, since two of them carry
+    /// dune grass and nothing grows on a sea floor. The two marram tiles fall back on the plain
+    /// sand and the wet patch either side of them, so the weighting the pick gave them is kept.
+    /// </summary>
+    private static readonly int[] BareBeach = { 0, 0, 2, 3, 3 };
+
     private static readonly int[] BlendCategory =
     {
         23, 24, 25, 26, 34,      // sand with grass, dark, rock, snow, dry
@@ -584,11 +591,16 @@ public class Chunk
                 }
             }
 
-            int variant = forced >= 0 ? forced : Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
+            int variant = forced >= 0 ? forced : PickVariant(category, gx, gz, worldSeed);
 
-            // under the water the beach is bare sand: no dune grass on a lake bed. Of the five
-            // beach tiles the first, third and fourth carry none.
-            if (category == BeachCategory && submerged) variant = new[] { 0, 2, 3 }[variant % 3];
+            // Under the water the beach is bare sand: no dune grass on a sea bed. Of the five
+            // beach tiles the first, third and fourth carry none. Only a sea gets here -- a lake
+            // or a pond is laid as mud further up, before this branch is reached.
+            // Written out one variant at a time rather than as `variant % 3`, which cannot come
+            // out even and was giving the driftwood plank two fifths of every shallow sea floor
+            // in the world and the starfish one fifth. With the pick weighted it would have been
+            // worse: the modulo folds the two marram tiles onto the driftwood.
+            if (category == BeachCategory && submerged) variant = BareBeach[variant];
 
             int id = category * VariantsPerCategory + variant;
 
@@ -676,6 +688,66 @@ public class Chunk
                       Mathf.Abs(WorldHeight.SurfaceY(gx - 1, gz, worldSeed) - h)),
             Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(gx, gz + 1, worldSeed) - h),
                       Mathf.Abs(WorldHeight.SurfaceY(gx, gz - 1, worldSeed) - h)));
+    }
+
+    /// <summary>
+    /// Which of a set's five carry a big thing standing on them -- a fallen log, a stump, a
+    /// boulder, an erratic, a ring of toadstools -- one bit per variant. The variant is a flat
+    /// hash, so each of the five is laid on a fifth of its country, and a set with three of them
+    /// is a floor littered with logs rather than a floor with the odd log on it. The forest has
+    /// three: a log, a stump and a mossy boulder on three of its five, which is three fifths of
+    /// every wood in the world. It is the mistake the termite mound was taken off a savanna tile
+    /// for, and the note about it is still at the top of Tools/savanna_tiles.py.
+    ///
+    /// The dead woods, the barrens and the snowfields are left out on purpose. The first two are
+    /// made of the thing -- a dead wood is charred stumps and bones -- and the undergrowth plants
+    /// the barrens' boulders at a third of its tiles anyway.
+    /// </summary>
+    private static int FeatureVariants(int category)
+    {
+        switch (category)
+        {
+            case ForestCategory:    return (1 << 2) | (1 << 3) | (1 << 4);  // log, stump, mossy boulder
+            case JungleCategory:    return (1 << 1) | (1 << 2);             // buttress roots, rotten log
+            case FungalCategory:    return (1 << 1) | (1 << 4);             // fairy ring, rotten log
+            case MarshCategory:     return 1 << 3;                          // half-sunk log
+            case PeakCategory:      return 1 << 4;                          // erratic -- and one is planted too
+            case DesertCategory:    return 1 << 2;                          // sandstone block
+            case BeachCategory:     return (1 << 2) | (1 << 4);             // driftwood, sandstone
+            case BareSteepCategory: return 1 << 2;                          // boulder in the scree
+            case DarkGrassCategory: case LightGrassCategory: case PaleGrassCategory:
+                                    return 1 << 2;                          // the lichened rock
+            default: return 0;
+        }
+    }
+
+    /// <summary>
+    /// One against four, so a tile with a feature on it is one in eleven where a set has three
+    /// of them and one in seventeen where it has one. All five stay reachable, which matters:
+    /// Tools/ids.py checks that nothing in the library is unreachable.
+    /// </summary>
+    private const int FeatureWeight = 1, PlainWeight = 4;
+
+    /// <summary>Which of a set's five to lay, with the ones carrying a feature made rarer.</summary>
+    private static int PickVariant(int category, int gx, int gz, int worldSeed)
+    {
+        int mask = FeatureVariants(category);
+
+        if (mask == 0) return Hash2D(gx, gz, worldSeed) % VariantsPerCategory;
+
+        int total = 0;
+        for (int v = 0; v < VariantsPerCategory; v++)
+            total += (mask & (1 << v)) != 0 ? FeatureWeight : PlainWeight;
+
+        int roll = Hash2D(gx, gz, worldSeed) % total;
+
+        for (int v = 0; v < VariantsPerCategory; v++)
+        {
+            roll -= (mask & (1 << v)) != 0 ? FeatureWeight : PlainWeight;
+            if (roll < 0) return v;
+        }
+
+        return VariantsPerCategory - 1;
     }
 
     private static int Hash2D(int x, int y, int seed)
