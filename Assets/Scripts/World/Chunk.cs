@@ -215,9 +215,34 @@ public class Chunk
     /// The noise is recomputed rather than passed in, because the only other copy of it is a local
     /// inside the tile loop. Two Perlin lookups; the planting already does several per tile.
     /// </summary>
+    /// <summary>
+    /// Where the chunk's own noise starts for a world. Perlin mirrors about nought, so the
+    /// sampled ground is pushed well clear of the axes; written once because three places used
+    /// to carry the same two constants and any one of them drifting would have put a tile's
+    /// edge somewhere different from the edge everything else was drawing.
+    /// </summary>
+    private static float NoiseOrigin(int worldSeed) => 1000f + (worldSeed % 1000) * 7.31f;
+
+    /// <summary>
+    /// Whether the ground here is steep enough that the chunk lays broken rock on it instead of
+    /// whatever the country grows. The undergrowth has to ask the same question -- it had a bar
+    /// of its own at 0.9 of a metre against this one's 0.744, so on every rise between the two
+    /// the chunk laid scree and the undergrowth planted a full-grown tree in it.
+    /// </summary>
+    public static bool TooSteepToHold(int gx, int gz, int worldSeed)
+    {
+        float o = NoiseOrigin(worldSeed);
+        float ripple = Mathf.PerlinNoise(o + 311f + gx * EdgeNoiseScale, o + 311f + gz * EdgeNoiseScale) - 0.5f;
+
+        return TooSteepToHold(Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / 1.2f), ripple);
+    }
+
+    /// <summary>The same, for the tile loop, which has both of these to hand already.</summary>
+    private static bool TooSteepToHold(float steep, float ripple) => steep > SteepFraction + ripple * SteepWander;
+
     public static float ReefLineAt(int tileX, int tileZ, int seed)
     {
-        float o = 1000f + (seed % 1000) * 7.31f;
+        float o = NoiseOrigin(seed);
 
         return ReefDepth + (Mathf.PerlinNoise(o + 311f + tileX * EdgeNoiseScale,
                                               o + 311f + tileZ * EdgeNoiseScale) - 0.5f) * ReefWander;
@@ -301,7 +326,7 @@ public class Chunk
     {
         // Perlin noise mirrors around 0, so a fixed offset keeps the sampled
         // region firmly positive and stops the world repeating across the axes.
-        float offset = 1000f + (worldSeed % 1000) * 7.31f;
+        float offset = NoiseOrigin(worldSeed);
 
         var buckets = new Dictionary<int, List<Matrix4x4>>();
 
@@ -445,7 +470,7 @@ public class Chunk
             {
                 category = MarshCategory;
             }
-            else if (steep > SteepFraction + ripple * SteepWander)
+            else if (TooSteepToHold(steep, ripple))
             {
                 category = BareSteepCategory;       // scree on the steep faces
             }

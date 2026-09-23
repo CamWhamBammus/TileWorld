@@ -517,12 +517,13 @@ public class Undergrowth : MonoBehaviour
 
             if (chosen < 0) continue;
 
-            // Steep ground has nothing to hold them. Asked of the chunk, which lays scree on
-            // the same faces, rather than worked out again here: this looked at the tile to the
-            // east and nothing else, so a face running north to south read as flat and kept its
-            // full planting while the chunk under it was already laying broken rock. Trees grew
-            // sideways out of a cliff on one bearing and not the other.
-            if (Chunk.SlopeAt(gx, gz, seed) > 0.9f) continue;
+            // Steep ground has nothing to hold them, and the chunk is asked where that starts
+            // rather than a second bar being kept here. It looked at the tile to the east and
+            // nothing else, so a face running north to south read as flat and kept its full
+            // planting while the chunk under it was already laying broken rock -- and even once
+            // that was fixed, its bar was nine tenths of a metre against the chunk's 0.744, so
+            // on every rise between the two the ground was scree with a full-grown tree in it.
+            if (Chunk.TooSteepToHold(gx, gz, seed)) continue;
 
             var sprout = every[chosen];
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
