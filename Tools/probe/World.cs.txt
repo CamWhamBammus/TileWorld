@@ -59,10 +59,12 @@ public class _Probe : MonoBehaviour
                     t.Relief += WorldHeight.HeightAt(x, z, seed) / WorldHeight.MaxRelief;
                     if (WaterSurface.IsUnderwater(x, z, seed)) t.Wet++;
                     if (SnowCover.IsSnowy(x, z, seed)) t.Snowy++;
-                    float here = WorldHeight.SurfaceY(x, z, seed);
-                    float rise = Mathf.Max(
-                        Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(x + 1, z, seed) - here), Mathf.Abs(WorldHeight.SurfaceY(x - 1, z, seed) - here)),
-                        Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(x, z + 1, seed) - here), Mathf.Abs(WorldHeight.SurfaceY(x, z - 1, seed) - here)));
+                    // Asked of the chunk rather than worked out again here. This probe had the
+                    // four-way measure from the day it was written and the chunk had a two-way
+                    // one, so the census had been reporting a quarter more scree than the world
+                    // was actually laying, and reporting it as "the ground Chunk would call
+                    // steep". They are one function now.
+                    float rise = Chunk.SlopeAt(x, z, seed);
                     if (rise > 0.5f) t.Steep++;
                     // the ground Chunk would call steep enough for scree: steep = rise / 1.2
                     // compared against SteepFraction, which is 0.62, so a rise over 0.744

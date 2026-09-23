@@ -614,9 +614,19 @@ public class Chunk
     {
         float h = WorldHeight.SurfaceY(gx, gz, worldSeed);
 
+        // All four, not the two on the high side. Of the pair of tiles flanking a riser only
+        // the one to the west or the south could see it, so the scree and the desert's outcrops
+        // were laid one tile off the step: on a face rising east the broken rock came out on
+        // the flat at its foot, on one falling east on the flat at its top, and the other end of
+        // the face was left bare either way. The same shape of mistake the undergrowth had, one
+        // step smaller. The ground is terraced and every tile top is level, so the steepness is
+        // on the riser between two tiles and neither tread alone is the face: both of them get
+        // it now, which is why this widens the bands as well as moving them.
         return Mathf.Max(
-            Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, worldSeed) - h),
-            Mathf.Abs(WorldHeight.SurfaceY(gx, gz + 1, worldSeed) - h));
+            Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, worldSeed) - h),
+                      Mathf.Abs(WorldHeight.SurfaceY(gx - 1, gz, worldSeed) - h)),
+            Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(gx, gz + 1, worldSeed) - h),
+                      Mathf.Abs(WorldHeight.SurfaceY(gx, gz - 1, worldSeed) - h)));
     }
 
     private static int Hash2D(int x, int y, int seed)
