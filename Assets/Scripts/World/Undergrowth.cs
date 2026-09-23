@@ -482,7 +482,16 @@ public class Undergrowth : MonoBehaviour
             // rock with not one thing standing on it. The treeline rule below still thins the
             // krummholz out through the same band, so what is left up there is cushion plants,
             // the blocks the ice dropped, and the odd boulder, which is what is up there.
+            // The downs as well, and for the same reason one commit later: when the summits and
+            // the downs were rebalanced, every snowy region that was not properly high became
+            // hills -- white tops are most of why those regions are hills at all -- and this
+            // gate still named only the snowfields and the peaks. So the one part of a downland
+            // that the country is named for carried nothing. Their table is built out of the
+            // same mountain tussock and loose stone the summits use, which is what belongs on a
+            // white shoulder, and the treeline below still takes their pines away through the
+            // band, so a top keeps the low things and loses the tall ones.
             if (character != Regions.Character.Snow && character != Regions.Character.Peaks
+                && character != Regions.Character.Hills
                 && SnowCover.IsSnowy(gx, gz, seed)) continue;
 
             // nor under a structure: a tree up through the platform is what

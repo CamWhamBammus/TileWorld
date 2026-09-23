@@ -80,7 +80,11 @@ public class Motes : MonoBehaviour
     {
         var kind = KindFor(c);
 
-        if (c == Regions.Character.Peaks && SnowCover.CoverAt(tileX, tileZ, seed) > 0.5f) return Kind.Spindrift;
+        // The downs get the same treatment for a smaller reason: seed heads are the right thing
+        // blowing over grass and the wrong thing blowing off a drift, and the snowy tops are
+        // what made those regions downs rather than meadow in the first place.
+        if ((c == Regions.Character.Peaks || c == Regions.Character.Hills)
+            && SnowCover.CoverAt(tileX, tileZ, seed) > 0.5f) return Kind.Spindrift;
 
         return kind;
     }
