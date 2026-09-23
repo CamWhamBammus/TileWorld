@@ -98,6 +98,65 @@ public static class Regions
     private const int TilesAcross = ChunksAcross * WorldGrid.TilesPerChunk;
 
     /// <summary>
+    /// Where a tile stands in relation to the nearest border: the cell it falls in before any
+    /// fray, how far the nearest edge of that cell is in tiles, and the cell over that edge.
+    /// False when the nearest edge is further off than <paramref name="band"/>, and then only
+    /// <paramref name="cell"/> means anything.
+    ///
+    /// Both the fray and the mixed ground ask this, and each used to work it out for itself in
+    /// the same dozen lines -- including which of the two edges is the near one, which has to be
+    /// the same answer in both or the fray hands a tile to one country while the ground mixes it
+    /// toward another. Asking with a band of nought is how to get the cell alone, and costs
+    /// nothing more than the two lookups the wander needs.
+    /// </summary>
+    private static bool Nearest(int tileX, int tileZ, int worldSeed, float band,
+                                out Vector2Int cell, out Vector2Int over, out float near)
+    {
+        float o = 3000f + (worldSeed % 733) * 2.13f;
+        const float scale = 1f / 38f;
+
+        float wx = tileX + (Mathf.PerlinNoise(o + tileX * scale, o + tileZ * scale) - 0.5f) * 2f * Wander;
+        float wz = tileZ + (Mathf.PerlinNoise(o + 77f + tileX * scale, o + 77f + tileZ * scale) - 0.5f) * 2f * Wander;
+
+        int cx = Mathf.FloorToInt(wx / TilesAcross);
+        int cz = Mathf.FloorToInt(wz / TilesAcross);
+
+        cell = new Vector2Int(cx, cz);
+        over = cell;
+
+        // how far into the cell the moved tile lies, and so how near an edge
+        float inX = wx - cx * TilesAcross;
+        float inZ = wz - cz * TilesAcross;
+
+        float toX = Mathf.Min(inX, TilesAcross - inX);
+        float toZ = Mathf.Min(inZ, TilesAcross - inZ);
+
+        near = Mathf.Min(toX, toZ);
+
+        if (near >= band) return false;
+
+        // Which of the two edges is the near one, leaned one way or the other by a slow noise.
+        // Compared plainly, toX against toZ draws a line at forty-five degrees out of every cell
+        // corner along which the country over the border changes from one to the other, and the
+        // ground on the two sides of it steps from half one country's floor to half a different
+        // country's in a single tile. Four of those rays meet at every corner in the world, and
+        // they were the only hard edges left in a border system that frays everything else.
+        // Six tiles of lean makes them interlock instead.
+        //
+        // Taken after `near`, which is the smaller of the two whichever edge wins, so the width
+        // of the band does not move with the lean; and taken here rather than in each caller,
+        // because two copies of this expression that drifted apart would put the fray and the
+        // mixed ground on different sides of the same corner.
+        float lean = (Mathf.PerlinNoise(o + 611f + tileX * 0.05f, o + 611f + tileZ * 0.05f) - 0.5f) * 6f;
+
+        over = toX <= toZ + lean
+            ? new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz)
+            : new Vector2Int(cx, inZ < TilesAcross - inZ ? cz - 1 : cz + 1);
+
+        return true;
+    }
+
+    /// <summary>
     /// The cell a tile belongs to. Not simply the one it sits in: a region's
     /// borders were the edges of its cell, dead straight for a hundred and
     /// twenty tiles, and a snowfield ending on a ruled line looks like a map
@@ -113,28 +172,8 @@ public static class Regions
     /// </summary>
     public static Vector2Int CellOfTile(int tileX, int tileZ, int worldSeed, bool fray)
     {
-        float o = 3000f + (worldSeed % 733) * 2.13f;
-        const float scale = 1f / 38f;
-
-        float wx = tileX + (Mathf.PerlinNoise(o + tileX * scale, o + tileZ * scale) - 0.5f) * 2f * Wander;
-        float wz = tileZ + (Mathf.PerlinNoise(o + 77f + tileX * scale, o + 77f + tileZ * scale) - 0.5f) * 2f * Wander;
-
-        int cx = Mathf.FloorToInt(wx / TilesAcross);
-        int cz = Mathf.FloorToInt(wz / TilesAcross);
-
-        if (!fray) return new Vector2Int(cx, cz);
-
-        // how far into the cell the moved tile lies, and so how near an edge
-        float inX = wx - cx * TilesAcross;
-        float inZ = wz - cz * TilesAcross;
-
-        float toX = Mathf.Min(inX, TilesAcross - inX);
-        float toZ = Mathf.Min(inZ, TilesAcross - inZ);
-
-        bool acrossX = toX <= toZ;
-        float near = acrossX ? toX : toZ;
-
-        if (near >= Fray) return new Vector2Int(cx, cz);
+        if (!Nearest(tileX, tileZ, worldSeed, fray ? Fray : 0f, out var cell, out var over, out float near))
+            return cell;
 
         // Half the tiles on the line itself, none at the edge of the band -- eased, so the
         // change is slow at both ends of the band rather than a straight ramp.
@@ -148,6 +187,7 @@ public static class Regions
         // fingers instead, so the two grounds interlock the way they do on the way out of a
         // wood. A little of the hash is kept in so the fingers have ragged edges.
         // Two scales of it, so the fingers have fingers of their own.
+        float o = 3000f + (worldSeed % 733) * 2.13f;
         float grain = Mathf.PerlinNoise(o + 411f + tileX * 0.075f, o + 411f + tileZ * 0.075f) * 0.68f
                     + Mathf.PerlinNoise(o + 913f + tileX * 0.21f, o + 913f + tileZ * 0.21f) * 0.32f;
         grain = Mathf.Clamp01((grain - 0.5f) * 2.4f + 0.5f);
@@ -157,11 +197,7 @@ public static class Regions
         // and pepper. The mix gives patches that interlock and fray into each other.
         float roll = grain * 0.56f + ((uint)Hash(tileX, tileZ, worldSeed + 5557) % 1000) / 1000f * 0.44f;
 
-        if (roll >= chance) return new Vector2Int(cx, cz);
-
-        if (acrossX) return new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz);
-
-        return new Vector2Int(cx, inZ < TilesAcross - inZ ? cz - 1 : cz + 1);
+        return roll >= chance ? cell : over;
     }
 
     /// <summary>
@@ -169,39 +205,16 @@ public static class Regions
     /// lies: nought at the outer edge of the band and one on the line itself. Nought means
     /// there is no border within reach, and <paramref name="other"/> is then meaningless.
     ///
-    /// This repeats the wander that <see cref="CellOfTile"/> does, two noise lookups, rather
-    /// than returning it from there: the ground asks this once per tile and the cell it lands
-    /// in is remembered, so the cost is the noise and nothing else.
+    /// Both this and <see cref="CellOfTile"/> ask <see cref="Nearest"/>, so the two cannot
+    /// disagree about which edge a tile is near or what lies over it.
     /// </summary>
     public static float Border(int tileX, int tileZ, int worldSeed, out Character other)
     {
         other = Character.Lowland;
 
-        float o = 3000f + (worldSeed % 733) * 2.13f;
-        const float scale = 1f / 38f;
+        if (!Nearest(tileX, tileZ, worldSeed, Blend, out _, out var over, out float near)) return 0f;
 
-        float wx = tileX + (Mathf.PerlinNoise(o + tileX * scale, o + tileZ * scale) - 0.5f) * 2f * Wander;
-        float wz = tileZ + (Mathf.PerlinNoise(o + 77f + tileX * scale, o + 77f + tileZ * scale) - 0.5f) * 2f * Wander;
-
-        int cx = Mathf.FloorToInt(wx / TilesAcross);
-        int cz = Mathf.FloorToInt(wz / TilesAcross);
-
-        float inX = wx - cx * TilesAcross;
-        float inZ = wz - cz * TilesAcross;
-
-        float toX = Mathf.Min(inX, TilesAcross - inX);
-        float toZ = Mathf.Min(inZ, TilesAcross - inZ);
-
-        bool acrossX = toX <= toZ;
-        float near = acrossX ? toX : toZ;
-
-        if (near >= Blend) return 0f;
-
-        var neighbour = acrossX
-            ? new Vector2Int(inX < TilesAcross - inX ? cx - 1 : cx + 1, cz)
-            : new Vector2Int(cx, inZ < TilesAcross - inZ ? cz - 1 : cz + 1);
-
-        other = CharacterOfCell(neighbour, worldSeed);
+        other = CharacterOfCell(over, worldSeed);
 
         return 1f - near / Blend;
     }
