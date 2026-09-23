@@ -492,7 +492,7 @@ public class Undergrowth : MonoBehaviour
             // A beach is bare. The sand above the waterline is ground the
             // trees have not taken, and a wood marching right down into the
             // lake is what it looked like before.
-            bool beach = WorldHeight.SurfaceY(gx, gz, seed) - WaterSurface.Level < 0.7f
+            bool beach = WorldHeight.SurfaceY(gx, gz, seed) - WaterSurface.Level < Chunk.SandLineAt(gx, gz, seed)
                       && character != Regions.Character.Desert;
 
             uint roll = Hash(gx, gz, seed + 5153);

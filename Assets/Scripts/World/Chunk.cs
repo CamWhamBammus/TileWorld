@@ -267,6 +267,21 @@ public class Chunk
 
     /// <summary>And how far above the water the sand carries on up the shore.</summary>
     private const float BeachHeight = 0.7f;
+
+    /// <summary>
+    /// How far above the water the sand runs up the shore HERE: the constant above plus the
+    /// wander that stops it drawing a contour round every island. The height was written down
+    /// in three places and only this one wandered, so the wash -- the white breaking line, the
+    /// loudest thing on any coast -- was still stopping at a dead level 0.7 all the way round.
+    /// The contour that was taken off the sand was still being drawn in foam. Everything asks
+    /// this now, the way everything asks ReefLineAt where the coral starts.
+    /// </summary>
+    public static float SandLineAt(int tileX, int tileZ, int seed)
+    {
+        float o = NoiseOrigin(seed);
+
+        return BeachHeight + (Mathf.PerlinNoise(o + 133f + tileX * 0.07f, o + 133f + tileZ * 0.07f) - 0.5f) * 0.9f;
+    }
     private const float BlendNoiseScale = 0.09f;
     private const float BlendWeight = 0.22f;
 
@@ -399,7 +414,7 @@ public class Chunk
             bool submerged = WaterSurface.IsUnderwater(gx, gz, worldSeed);
 
             // Where the sand stops, this tile. Wandering, so no contour shows.
-            float sandLine = BeachHeight + (Mathf.PerlinNoise(offset + 133f + gx * 0.07f, offset + 133f + gz * 0.07f) - 0.5f) * 0.9f;
+            float sandLine = SandLineAt(gx, gz, worldSeed);
 
             // A tile whose variant is decided by where it is rather than by a hash.
             int forced = -1;

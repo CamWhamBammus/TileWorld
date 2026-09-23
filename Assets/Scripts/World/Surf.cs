@@ -10,7 +10,6 @@ using UnityEngine;
 /// </summary>
 public static class Surf
 {
-    private const float StrandHeight = 0.7f;    // how far above the water the sand still counts as beach, the same as the tiles'
     private const int Reach = 5;                 // tiles of sand the wash can reach
     private const int Out = 5;                   // tiles of shallows it starts from
     private const int Cut = 3;                   // each tile cut this many across, so a crest rolls rather than steps
@@ -19,7 +18,11 @@ public static class Surf
     public static bool IsStrand(int tileX, int tileZ, int seed)
     {
         if (WaterSurface.IsUnderwater(tileX, tileZ, seed)) return false;
-        if (WorldHeight.SurfaceY(tileX, tileZ, seed) - WaterSurface.Level > StrandHeight) return false;
+        // Where the sand stops, asked of the chunk. This was a flat 0.7 while the chunk's own
+        // line wandered between 0.25 and 1.15, so on half of every coast the wave ran up over
+        // ground the sand had already given up and on the other half it stopped short of real
+        // beach, with the back of the foam ruled along a contour.
+        if (WorldHeight.SurfaceY(tileX, tileZ, seed) - WaterSurface.Level > Chunk.SandLineAt(tileX, tileZ, seed)) return false;
         return Regions.Sea(Regions.CharacterAtTile(tileX, tileZ, seed, false));
     }
 
