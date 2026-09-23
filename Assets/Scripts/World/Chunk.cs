@@ -148,8 +148,20 @@ public class Chunk
             case Regions.Character.Forest: case Regions.Character.Jungle:
             case Regions.Character.Fungal: case Regions.Character.Dead:
             case Regions.Character.Reed: return Dark;
-            case Regions.Character.Desert: case Regions.Character.Water:
-            case Regions.Character.Reef: return Sand;
+            // The sea's countries lay grass, not sand. A region is named for its water at a
+            // fifth of it under water, so four fifths of one is dry ground, and on that dry
+            // ground a Water or a Reef matches no branch in the chooser and comes out as the
+            // grass bands like any meadow. The sand it does lay is the strand, which is decided
+            // by height above the waterline and not by the country at all. So a neighbour was
+            // blending toward sand along a border that might be two hundred metres inland of
+            // any water -- shells and dune grass strewn through a meadow -- while the tile the
+            // other side of the line found grass on both sides of it and laid nothing. Worse
+            // where a wood is across the line: the wood took the sand-into-dark series and the
+            // water's own ground took the grass-into-dark one, so the two sides walked along
+            // different series and met each other instead of meeting in the middle.
+            // The sea bed is not affected: under water this is asked of FamilyUnderWater.
+            case Regions.Character.Water: case Regions.Character.Reef: return Grass;
+            case Regions.Character.Desert: return Sand;
             case Regions.Character.Snow: return White;
             case Regions.Character.Stone: case Regions.Character.Peaks: return Rock;
             default: return -1;
