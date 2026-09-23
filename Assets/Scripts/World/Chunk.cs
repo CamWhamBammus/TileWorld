@@ -515,7 +515,21 @@ public class Chunk
                 {
                     int low = Mathf.Min(mine, White), high = Mathf.Max(mine, White);
                     category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
-                    float toward = mine == low ? cover * 0.5f : 1f - cover * 0.5f;
+                    // Not halved the way the border below is. There the tile over the line is
+                    // walking toward the same middle and the two meet at the half-way tile;
+                    // here the thing on the other side is a plain snow tile and is not walking
+                    // anywhere, so a tile in the band has to cover the whole series. Halved, the
+                    // most snow any tile at any snowline in the world could show was half of it
+                    // -- and it was showing half at the top of the band, among tiles that were
+                    // all white. The snow-heavy end of all five snow series was never laid.
+                    float toward = mine == low ? cover : 1f - cover;
+
+                    // And jittered, for the same reason the border below is: cover is a smooth
+                    // function of height, so without this every tile at one height picks the
+                    // same one of the five and the band comes out as two rings drawn round the
+                    // mountain. Its own salt, so a tile that goes through both blocks is not
+                    // moved the same way twice.
+                    toward += (Hash2D(gx, gz, worldSeed + 619) % 1000) / 1000f * 0.30f - 0.15f;
                     forced = Mathf.Clamp(Mathf.RoundToInt(toward * (VariantsPerCategory - 1)), 0, VariantsPerCategory - 1);
                 }
             }
