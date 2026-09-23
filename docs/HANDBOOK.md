@@ -1095,6 +1095,123 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### What was wrong at the joins, and inside them
+
+The adjacency census said which countries meet. The next pass asked what the ground actually does
+where they do, and found that most of the faults were not at the borders at all but in the rules
+either side of them.
+
+**A sea's dry ground is grass.** A region is named for its water at a fifth of it under water, so
+four fifths of a sea is dry land -- and on that dry land a Water or a Reef matches no branch in the
+chooser and comes out as the grass bands, like any meadow. It was filed under the sand family all
+the same. So a neighbour blended toward sand along a border that could be two hundred metres inland
+of any water, strewing shells and dune grass through a meadow, while the tile on the other side of
+the line found grass on both sides of itself and laid nothing. Worse where a wood was across the
+line: the wood took the sand-into-dark series and the water's own ground took the grass-into-dark
+one, so the two sides walked along different series and met each other instead of meeting in the
+middle -- the same failure the meadow grasses had when they were unreachable.
+
+That overshot at the water's edge, where a sea really does lay sand, and it took a second change
+to put right: for as long as a tile is low enough to be standing on a strand or its verge, the
+country over the line is still sand. Without it a beach that straddled a cell boundary grew turf
+and flowers down the middle, and the last eight tiles of a desert before a beach graded into
+meadow.
+
+**A dead wood's floor is ash, and ash is grey.** Five countries were filed under the dark family.
+Sampled off the sheet, four of them are brown -- forest 104,74,44, jungle 76,57,37, marsh 72,61,46,
+fungal loam 58,44,52 -- and the dead woods' ash is 119,115,111, which is twelve away from the
+barrens' own stone and eighty to a hundred and eleven from every one of the browns. So every border
+a dead wood had was drawn wrong in both directions at once. Against the barrens, where the two
+grounds are the same grey, it laid a warm brown seam down the middle of the join; against the four
+brown floors, which are the joins that actually show a step, it laid nothing at all, because they
+counted as the same family. Moving it to rock fixes both: it grades into rock where it meets rock-
+coloured country, into the brown floors where it meets brown ones, and meets the barrens and the
+peaks with nothing between, because there is nothing to put there.
+
+**Four rays of hard edge met at every corner in the world.** A tile decides which border it is near
+by comparing its distance to the two edges of its cell, `toX <= toZ`. That draws a line at forty-
+five degrees out of every cell corner along which the country over the border changes from one to
+the other, and the ground steps from half one country's floor to half a different country's in a
+single tile. Four of those rays meet at every corner. They were the only hard edges left in a
+border system that frays everything else. The comparison is leaned one way or the other by a slow
+noise now, six tiles of slack, so they interlock.
+
+The same pass removed the reason they could ever have parted: the fray and the mixed ground each
+worked the border out for itself, in the same dozen lines twice, and now both ask one function.
+Two copies of that comparison drifting apart would have put the fray and the mixing on opposite
+sides of the same corner.
+
+**No snowline in the world ever showed more than half snow.** The snowline block was copied from
+the border block below it, and the halving that is right for a border is wrong for a snowline.
+At a border both sides walk toward the same middle tile and stop there; at a snowline the thing on
+the other side is a plain snow tile and is not walking anywhere, so a bare tile in the band has to
+cover the whole series. Halved, `toward` could never pass a half, so the snow-heavy end of all five
+snow series was never laid anywhere -- and at the top of the band, among tiles that were all white,
+the ones the hash left bare were still showing half their own green ground. The jitter had been
+dropped in the copy too, so every tile at one height picked the same one of the five and the band
+came out as two rings drawn round the mountain. Counted in nine chunks of a peaks region afterwards:
+fifty-six tiles on the two steps that had never been laid at all.
+
+### Three fifths of every wood was a log
+
+The variant of a ground set is picked by a flat hash, so each of its five is laid on a fifth of its
+country. Several of the Blender scripts put a big thing on a tile -- the forest has a fallen log on
+one, a stump on another and a mossy boulder on a third. Three of five is three fifths of every wood
+in the world carrying a log, a stump or a boulder on a two-metre tile, which is not a floor with
+the odd log on it, it is a floor littered with them. It is the mistake the termite mound was taken
+off a savanna tile for, and the note about it is still at the top of `savanna_tiles.py`.
+
+`Chunk.FeatureVariants` marks which of a set's five carry a feature and `PickVariant` weights them
+one against four. The forest floor's three go from a fifth each to one in eleven -- measured in nine
+chunks of a wood, 60% of the floor to 27%. All five stay reachable, which `Tools/ids.py` requires.
+The dead woods, the barrens and the snowfields are deliberately left out: the first two are made of
+the thing, and the undergrowth plants the barrens' boulders on a third of its tiles anyway.
+
+The submerged beach went with it. Of the five beach tiles two carry dune grass, which does not grow
+on a sea floor, and the five were being folded onto the other three with `variant % 3` -- which
+cannot come out even. It was giving the driftwood plank two fifths of every shallow sea floor in
+the world and the starfish one fifth. It is a written-out map now, and with the variant weighted the
+modulo would have been worse still: it folds both marram tiles onto the driftwood.
+
+### Rules that had quietly parted
+
+- **Scree was laid one tile off the step it belongs to.** `SlopeAt` read the two neighbours on the
+  high side only, so of the pair of tiles flanking a riser only the one to the west or the south
+  could see it: on a face rising east the broken rock came out on the flat at its foot, on one
+  falling east on the flat at its top, and the far end of the face was bare either way. All four
+  now. The census probe had been using the four-way measure since the day it was written, and
+  calling it "the ground Chunk would call steep", so it had been over-reporting scree the whole
+  time; it asks the chunk now.
+- **The ground was broken rock and had a full-grown tree standing in it.** The undergrowth kept a
+  steepness bar of its own at nine tenths of a metre against the chunk's 0.744, so on every rise
+  between the two the chunk laid scree and the undergrowth planted a tree in it. One function, two
+  callers.
+- **The wash still drew the contour the sand had stopped drawing.** How far the sand runs up a
+  shore was written in three places and only one of them wandered. The wander was added on purpose,
+  because sand that stops at one height draws a contour round every island and the eye finds a line
+  like that at any distance -- and the wash, the white breaking line and the loudest thing on any
+  coast, was still stopping at a dead level 0.7 all the way round. On half of every shore the wave
+  ran over ground the sand had already given up; on the other half it stopped short of real beach.
+  `Chunk.SandLineAt` now answers for all three.
+- **What grows stopped halfway to where the ground was drawn.** The undergrowth's reach was a fixed
+  four chunks while the terrain follows a view distance the player sets. At the widest setting the
+  ground was drawn to two hundred and forty metres and everything standing on it stopped at a
+  hundred and twenty. It follows the setting now, and plants at most six chunks a frame, nearest
+  first, because the whole ring used to be sown in one.
+- **The cairns and the beacons never heard the peaks and the downs had swapped.** A landmark's
+  `Chance` is a rate inside a country, so how many of a kind stand in a world is the chance times
+  that country's share of it. Rebalancing the peaks and the downs moved both shares by a factor of
+  two and a half and nothing in the landmarks file changed, so the summit cairns thinned to two
+  fifths of what they were tuned for and the hilltop beacons came out three times as thick. 15 and
+  2 now, and the field says what it is a rate *of*. The tour probe afterwards counts seven cairns
+  within forty chunks against one beacon expected by the same arithmetic -- the ratio the two
+  chances were set to -- and the window is too small to settle 2 against 3 on its own.
+- **The downs are named for their white tops and nothing stood on them.** The rule that stops things
+  growing under snow was taught about the summits and not about the downs -- which had just
+  absorbed every snowy region that was not properly high, so the one part of a downland the country
+  is named for carried nothing at all. Their seed heads were blowing off the drifts, too; it is
+  spindrift up there now, as it is on a summit.
+
 ### The countries, measured against each other again
 
 Two tools were built before anything was changed, because the last round of country tuning was
