@@ -550,6 +550,19 @@ public class Undergrowth : MonoBehaviour
             // the wood ended. They thin out through the same band the snow arrives in now.
             if (sort.High > 2.2f)
             {
+                // The downs are let through the snow gate above so their white tops are not bare,
+                // and that let their trees through with them. The thinning below goes by how far
+                // through the band a tile is, and a tile is snowy with that same fraction off a
+                // different hash, so on a top at a third cover seven broadleaves in ten were left
+                // standing in the drift -- and neither the pines nor the wood's own trees is a
+                // snow model. The tussock, the loose stone and the boulders are what the gate
+                // was opened for, and they stay.
+                // SnowByHeight rather than IsSnowy: nothing on this path is under water and the
+                // character is not Snow, so the two agree, and it saves a region lookup in a loop
+                // that runs two hundred and twenty-five times a chunk.
+                if (character == Regions.Character.Hills
+                    && SnowCover.SnowByHeight(gx, gz, seed)) continue;
+
                 float through = SnowCover.CoverAt(gx, gz, seed);
                 if (through >= 1f) continue;
                 if (through > 0f && (roll >> 7) % 1000 < through * 1000f) continue;
