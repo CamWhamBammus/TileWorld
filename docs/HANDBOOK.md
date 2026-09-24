@@ -1101,6 +1101,88 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Four grounds that could not be reached
+
+A tile chooser is a chain of `else if`, and a chain has an order. Four things in it were
+unreachable, and none of them errors, because an unreachable branch still lays a tile.
+
+**Every crag above the snowline was a flat white block.** The snowy branch sat five above the
+steep test, so a tile that was snowy was a snow tile and nothing else: not a crag on a summit, not
+the white shoulder of a downland, and not one tile of the snow country, which is named among the
+countries that scree and could never reach the test to use it. The undergrowth already treated
+those tiles as scree and planted nothing on them; only the ground refused to say why they were
+bare. They are scoured now -- the wind takes the snow off a face too steep to hold it and the rock
+under it shows, which is most of what gives a summit a shape. No new tiles: the rock-into-snow
+series already runs along every snowline, and its low end is rock with snow caught in the ledges.
+Counted in nine chunks of a peaks region, forty-five white tiles became rock.
+
+**The mushroom wood worked out its own damp and threw it away.** A flat 0.20 came off the ground's
+reading in a fungal country -- "read as lower and wetter than it is" -- and it had two readers when
+it was written: the grass band, because the mushroom woods then stood on the darkest grass, and the
+marsh line below. Giving them a floor of their own put their branch above both, and the subtraction
+had moved no tile on any seed since. The country came out loam to its border. It is asked in the
+branch itself now, against a line of its own, so the hollows between the caps are the wet mud a
+mushroom wood grows out of. Tuned on the probe rather than guessed: at 0.16 the mud was one tile in
+a hundred and did not read, at 0.28 it was one in six and had become the country's main ground; at
+0.25 the floor is 91% loam and the rest is hollows.
+
+**Every patch of scree had a hard rim the whole way round.** Scree is laid where the slope passes a
+threshold -- a line of slope inside one country, so the mixed ground, which only covers borders
+between countries, never saw it. The largest colour step of the four such lines: scree is
+(139,131,118) and it meets the meadow grasses at (102,152,63).
+
+The first attempt graded the ground *below* the line and was measured and thrown away. Because the
+terrain is terraced the slope only ever takes six values, so "one class below the line" is not the
+tile against the scree, it is every tile in the country with a half-metre step near it: half the
+downs, a fifth of the meadows and a fifth of the woods turned to mixed ground -- the same cost that
+had a blend band of twelve reverted years of notes ago. What ships instead moves only the scree's
+own outer rung, thinned by a hash the way the snowline is thinned, so half of it stays scree and
+half becomes ground mixed toward rock and the two interlock. The country's own floor is untouched:
+the downs go from 24% mixed to 30%, the meadow and the wood do not move at all.
+
+**A band of bare ground ran round the world at the water's height.** The rule that keeps tall
+things off a strand was the chunk's own sand test with its last clause dropped -- the height, but
+not the requirement that the water be a sea. So it was a band of elevation that ran round the whole
+world. A tarn in a wood had a ring of treeless forest floor round it, and flat low ground with no
+water anywhere in sight lost its trees along the waterline's height. With the clause put back, the
+plains gained a tenth of everything standing on them and the woods, the reedbeds and the snowfields
+about a twelfth each.
+
+### The sea bed, and the tiles that were laid a quarter too often
+
+- **The sea bed's grade skipped a step every eighth tile.** The same rung arithmetic the shore
+  verge had: the band was 0.9 m across against a terrace of 0.25, which is three and three fifths
+  rungs carrying a five-step series. Five rungs now, and floored over five rather than rounded over
+  four -- rounding gave the two ends of the series half the depth-width of the middle three, so
+  pure sand and pure rock were the rarest tiles in a grade that exists to run from one to the
+  other. The middle of the band does not move, so the depth at which a bed reads half sand and half
+  rock is exactly where it was.
+- **The scree probe was measuring a rule nobody uses.** It kept its own copy of the slope test --
+  two neighbours rather than four, and the threshold typed again without its wander -- so its
+  counts, which the handbook quoted, were of a rule nothing in the game ran. It asks the chunk now.
+
+### What the last round broke
+
+Three of the twelve changes before this one had consequences nobody chased.
+
+- **The downs were standing full-grown broadleaves in the drifts.** Letting the hills' table through
+  the snow gate let their trees through with it. The treeline thins tall things by how far through
+  the snow band a tile is, and a tile is snowy with that same fraction off a different hash, so on a
+  white top at a third cover seven broadleaves in ten were left standing in the snow -- and neither
+  the pines nor the wood's own trees is a snow model. The tussock, the loose stone and the boulders
+  are what the gate was opened for and they stay; the tall things go.
+- **Green leaves drifted down through a wood that is ash.** Moving the dead woods to the rock family
+  did not move them in `Motes`, which still filed them with the forest and the jungle and dropped
+  green, brown and yellow leaves through them -- off trees that are not there, since the snags are
+  bare tubes. They get their own grey ash now, which lifts and settles the way dust does.
+- **The wood's mushrooms and boulders were cut for a floor that has halved since.** Weighting the
+  feature variants one against four took the forest floor from three fifths features to a little
+  over a quarter -- and the wood's only mushroom tile is one of those features, and so is its mossy
+  boulder. The planted shares, which were explicitly cut against the old rate, were not touched, so
+  a wood lost about half its mushrooms and half its boulders in one commit. Both shares are back
+  about where they stood before the floor carried any. The small pebbles are on three of the five
+  variants and barely moved, so only those two needed it.
+
 ### What was wrong at the joins, and inside them
 
 The adjacency census said which countries meet. The next pass asked what the ground actually does
