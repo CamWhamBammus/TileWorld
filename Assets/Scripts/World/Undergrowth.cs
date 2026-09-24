@@ -238,7 +238,14 @@ public class Undergrowth : MonoBehaviour
         // rather than only whatever the tiles happen to carry.
         // the forest stands mostly on its own trees now, over a floor that carries its own
         // mushrooms and stones; the pack's trees and the pines are kept for variety
-        forest = new[] { With(forestTrees, 0.21f), With(pines, 0.03f), With(mushrooms, 0.015f), With(boulders, 0.03f) };
+        // The floor's share of that was halved when the feature variants were weighted one
+        // against four -- three fifths of a wood's floor to a little over a quarter. The wood's
+        // only mushroom tile is one of those features and so is its mossy boulder, so both went
+        // from a fifth of every tile to one in eleven, while these two shares, which were cut
+        // against the old rate, stayed where they were. They go back about to where they stood
+        // before there was a floor to share the work. The small pebbles are on three of the five
+        // and barely moved, so only these two needed it.
+        forest = new[] { With(forestTrees, 0.21f), With(pines, 0.03f), With(mushrooms, 0.03f), With(boulders, 0.05f) };
         // the open country's trees stood on the pack's grass tiles, four of every twenty-five; now
         // that the grass is our own and carries none, they are planted here at about that rate
         ordinary = new[] { With(forestTrees, 0.13f), With(pines, 0.02f), With(mushrooms, 0.006f), With(boulders, 0.012f) };
