@@ -221,6 +221,21 @@ public class Chunk
     private const float TreelineFraction = 0.72f;
     private const float SteepFraction = 0.62f;
 
+    /// <summary>The rise between two tile tops that counts as fully steep. Written once: the
+    /// number appeared in the tile loop and in TooSteepToHold, and it is one rule.</summary>
+    private const float SlopeSpan = 1.2f;
+
+    /// <summary>
+    /// How much of the slope range the ground takes to turn into scree: one terrace, and it
+    /// cannot be a free number. The ground is terraced to WorldHeight.StepHeight and the slope is
+    /// the difference between two tile tops, so it is not continuous -- it only ever takes the
+    /// six values 0, 0.21, 0.42, 0.63, 0.83 and 1. A band narrower than one of those steps
+    /// catches whichever single value happens to fall inside it and is empty everywhere else.
+    /// One step wide catches exactly the class below the line wherever the wander has put it,
+    /// which is the tile that actually stands against the scree.
+    /// </summary>
+    private const float ScreeBand = WorldHeight.StepHeight / SlopeSpan;
+
     /// <summary>How steep the sand and the straw have to get before rock shows through.</summary>
     private const float DryOutcrop = 0.30f;
     private const float MarshFraction = 0.10f;
@@ -263,11 +278,14 @@ public class Chunk
         float o = NoiseOrigin(worldSeed);
         float ripple = Mathf.PerlinNoise(o + 311f + gx * EdgeNoiseScale, o + 311f + gz * EdgeNoiseScale) - 0.5f;
 
-        return TooSteepToHold(Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / 1.2f), ripple);
+        return TooSteepToHold(Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / SlopeSpan), ripple);
     }
 
+    /// <summary>Where the scree starts here: the threshold, with the wander that breaks its line up.</summary>
+    private static float ScreeLine(float ripple) => SteepFraction + ripple * SteepWander;
+
     /// <summary>The same, for the tile loop, which has both of these to hand already.</summary>
-    private static bool TooSteepToHold(float steep, float ripple) => steep > SteepFraction + ripple * SteepWander;
+    private static bool TooSteepToHold(float steep, float ripple) => steep > ScreeLine(ripple);
 
     public static float ReefLineAt(int tileX, int tileZ, int seed)
     {
@@ -403,9 +421,18 @@ public class Chunk
             // reedbeds both stand on it.
             bool sodden = character == Regions.Character.Reed;   // the dead woods have a floor of their own now
 
+            // Which countries send their steep faces to scree: what is left after the branches
+            // above the scree test have taken theirs. The sand and the straw take an outcrop at
+            // DryOutcrop instead, the jungle and the two dark woods keep their own floor on any
+            // slope, a barrens is rock already, and a reedbed is not hillside.
+            bool screes = !fungal && !desert && !stone && !sodden
+                       && character != Regions.Character.Dead
+                       && character != Regions.Character.Jungle
+                       && character != Regions.Character.Savanna;
+
             // Height and steepness decide the ground; noise only softens the edge.
             float relief = Mathf.Clamp01(WorldHeight.HeightAt(gx, gz, worldSeed) / WorldHeight.MaxRelief);
-            float steep = Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / 1.2f);
+            float steep = Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / SlopeSpan);
 
             float wobble = Mathf.PerlinNoise(offset + gx * BlendNoiseScale, offset + gz * BlendNoiseScale) - 0.5f;
             float bare = Mathf.Clamp01(relief + steep * 0.30f + wobble * BlendWeight);
@@ -630,6 +657,43 @@ public class Chunk
                         toward += (Hash2D(gx, gz, worldSeed + 313) % 1000) / 1000f * 0.30f - 0.15f;
                         forced = Mathf.Clamp(Mathf.RoundToInt(toward * (VariantsPerCategory - 1)), 0, VariantsPerCategory - 1);
                     }
+                }
+            }
+
+            // The scree's outer edge, which was the last hard rim left in the ground. Scree is
+            // laid where the slope passes SteepFraction -- a line of slope inside one country, so
+            // the mixed ground, which only covers borders between countries, never saw it, and a
+            // patch of broken rock met the turf round it on a hard edge the whole way round. The
+            // same fault the snowline and the reef's fringe had, and the largest colour step of
+            // the four: scree is (139,131,118) and it meets the meadow grasses at (102,152,63).
+            //
+            // It is the shallowest scree that changes, not the ground below it. Grading the
+            // ground instead was tried and measured first: because the terrain is terraced the
+            // slope only takes six values, so "one class below the line" is not the tile against
+            // the scree, it is every tile in the country with a half-metre step anywhere near it
+            // -- half of the downs, a fifth of the meadows and a fifth of the woods turned to
+            // mixed ground, which is the same cost that had a blend band of twelve reverted.
+            // This way only the scree's own outer rung moves, so a patch fades out at its edge
+            // and the country's own floor is untouched.
+            if (screes && !submerged && category == BareSteepCategory)
+            {
+                // What the country would have laid here if the slope had not taken it.
+                int theirs = FamilyOfCountry(character);
+
+                // Thinned with a hash rather than taken whole, and for the reason the snowline
+                // is: the ground is terraced, so the slope only ever takes six values, and every
+                // band drawn on it is all or nothing -- taking the shallowest rung outright left
+                // a downland with no scree in it at all. Half of that rung, chosen by hash,
+                // interlocks with the other half and gives the patch a ragged edge instead of a
+                // ring, which is what SnowByHeight does one field over.
+                if (steep <= ScreeLine(ripple) + ScreeBand && (theirs == Grass || theirs == Dark)
+                    && Hash2D(gx, gz, worldSeed + 617) % 2 == 0)
+                {
+                    category = BlendCategory[theirs * (2 * Families - 1 - theirs) / 2 + (Rock - theirs - 1)];
+
+                    // Well toward the rock end: this is scree with the ground showing through it,
+                    // not ground with stones in it. A step either way, so the rim is not uniform.
+                    forced = 3 + Hash2D(gx, gz, worldSeed + 881) % 2;
                 }
             }
 
