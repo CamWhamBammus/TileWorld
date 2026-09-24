@@ -10,7 +10,7 @@ using UnityEngine;
 /// </summary>
 public class Motes : MonoBehaviour
 {
-    public enum Kind { None, Leaves, Seeds, Dust, Spindrift }
+    public enum Kind { None, Leaves, Seeds, Dust, Spindrift, Ash }
 
     private struct Mote
     {
@@ -30,7 +30,7 @@ public class Motes : MonoBehaviour
     // One batch per paint, and the paints are the tints. Adding spindrift added a sixth tint and
     // left this at five, so every spindrift mote threw on the frame it was drawn -- in a country
     // with no spindrift in it, because the exception came from the shared draw loop.
-    private readonly List<Matrix4x4>[] batches = new List<Matrix4x4>[6];
+    private readonly List<Matrix4x4>[] batches = new List<Matrix4x4>[7];
     /// <summary>How many of the tints are leaves, which decides both their colour and their mesh.</summary>
     private const int LeafTints = 3;
 
@@ -57,7 +57,8 @@ public class Motes : MonoBehaviour
             Paint.Flat(new Color(0.78f, 0.64f, 0.26f)),   // leaf, yellow
             Paint.Flat(new Color(0.94f, 0.92f, 0.84f)),   // seed
             Paint.Flat(new Color(0.80f, 0.72f, 0.55f)),   // dust
-            Paint.Flat(new Color(0.93f, 0.95f, 0.98f))    // spindrift, off the top of the snow
+            Paint.Flat(new Color(0.93f, 0.95f, 0.98f)),   // spindrift, off the top of the snow
+            Paint.Flat(new Color(0.55f, 0.53f, 0.51f))    // ash, off a burnt floor
         };
         // The batches and the paints are the same list twice and are paired by index, which is
         // exactly how the landmark kinds and their enum slid apart. Say so rather than throwing
@@ -91,8 +92,12 @@ public class Motes : MonoBehaviour
 
     private static Kind KindFor(Regions.Character c) => c switch
     {
-        Regions.Character.Forest or Regions.Character.Fungal or Regions.Character.Dead
+        Regions.Character.Forest or Regions.Character.Fungal
             or Regions.Character.Jungle => Kind.Leaves,
+        // A dead wood's floor is grey ash, which is why its ground was moved to the rock family.
+        // Nothing standing in one has a leaf on it -- the snags are bare tubes and nothing else
+        // -- so green and yellow leaves were drifting down off trees that are not there.
+        Regions.Character.Dead => Kind.Ash,
         Regions.Character.Lowland or Regions.Character.Hills or Regions.Character.Reed
             or Regions.Character.Water or Regions.Character.Reef => Kind.Seeds,
         Regions.Character.Desert or Regions.Character.Stone
@@ -151,6 +156,12 @@ public class Motes : MonoBehaviour
                     m.At = new Vector3(at.x, ground + Random.Range(0.05f, 1.1f), at.z);
                     m.Vel = new Vector3(0f, Random.Range(-0.02f, 0.06f), 0f);
                     m.Size = Random.Range(0.03f, 0.05f); m.Lasts = Random.Range(3f, 7f); m.Tint = 5;
+                    break;
+                // Ash lifts the way dust does and settles as slowly; only the colour is its own.
+                case Kind.Ash:
+                    m.At = new Vector3(at.x, ground + Random.Range(0.1f, 1.8f), at.z);
+                    m.Vel = new Vector3(0f, Random.Range(-0.03f, 0.04f), 0f);
+                    m.Size = Random.Range(0.035f, 0.07f); m.Lasts = Random.Range(5f, 10f); m.Tint = 6;
                     break;
                 default:
                     m.At = new Vector3(at.x, ground + Random.Range(0.1f, 1.6f), at.z);
