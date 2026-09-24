@@ -81,15 +81,15 @@ public class _Probe : MonoBehaviour
                 for (int j = 0; j < WorldGrid.TilesPerChunk; j++)
                 {
                     int gx = c.x * WorldGrid.TilesPerChunk + i, gz = c.y * WorldGrid.TilesPerChunk + j;
-                    float h = WorldHeight.SurfaceY(gx, gz, seed);
-                    float slope = Mathf.Max(Mathf.Abs(WorldHeight.SurfaceY(gx + 1, gz, seed) - h),
-                                            Mathf.Abs(WorldHeight.SurfaceY(gx, gz + 1, seed) - h));
                     tiles++;
-                    if (slope / 1.2f > 0.62f) steep++;
+                    // Asked of the chunk. This kept its own copy of the rule -- two neighbours
+                    // rather than four, and the threshold typed again without the wander -- so
+                    // it was reporting how much ground a rule nobody uses would call steep.
+                    if (Chunk.TooSteepToHold(gx, gz, seed)) steep++;
                 }
             }
 
-            int laid = 0, all = 0;
+            int laid = 0, all = 0, rim = 0;
             for (int dx = -1; dx <= 1; dx++)
             for (int dz = -1; dz <= 1; dz++)
             {
@@ -98,10 +98,14 @@ public class _Probe : MonoBehaviour
                 {
                     all += pair.Value.Length;
                     if (pair.Key >= 75 && pair.Key <= 79) laid += pair.Value.Length;
+                    // the mixed ground between a country's own floor and rock: grass-with-rock
+                    // is 140 to 144 and dark-with-rock is 150 to 154
+                    if ((pair.Key >= 140 && pair.Key <= 144) || (pair.Key >= 150 && pair.Key <= 154))
+                        rim += pair.Value.Length;
                 }
             }
-            Mark(string.Format("SCREE in {0} at {1}: {2} tiles, {3} steep enough ({4:F1}%), {5} laid as scree ({6:F1}% of {7} drawn)",
-                want, player.position.ToString("F0"), tiles, steep, 100f * steep / Mathf.Max(1, tiles), laid, 100f * laid / Mathf.Max(1, all), all));
+            Mark(string.Format("SCREE in {0} at {1}: {2} tiles, {3} steep enough ({4:F1}%), {5} laid as scree ({6:F1}% of {7} drawn) | {8} tiles of ground mixed toward rock round it",
+                want, player.position.ToString("F0"), tiles, steep, 100f * steep / Mathf.Max(1, tiles), laid, 100f * laid / Mathf.Max(1, all), all, rim));
         }
         Mark("done");
         WorldLibrary.Delete(save.id);
