@@ -505,11 +505,21 @@ public class Undergrowth : MonoBehaviour
             // the old ruins had
             if (Landmarks.Occupies(gx, gz, seed)) continue;
 
-            // A beach is bare. The sand above the waterline is ground the
-            // trees have not taken, and a wood marching right down into the
-            // lake is what it looked like before.
+            // A beach is bare. The sand above the waterline is ground the trees have not taken,
+            // and a wood marching right down into the water is what it looked like before -- but
+            // only on an open shore. This was the chunk's own sand test with its last clause
+            // dropped, so it had become a band of height that ran round the whole world: the
+            // chunk lays sand, the verge and the strand's family at that height only where the
+            // water is a sea, and the wash asks the same question. Without it a tarn in a wood
+            // had a ring of treeless forest floor round it, and flat low ground with no water
+            // anywhere in sight lost its trees along the water's elevation.
+            // The sea test is asked last, because the height test is already to hand and almost
+            // always answers no; and it is asked of the unfrayed cell, the way the chunk asks
+            // it, so the desert clause stays -- a tile the fray hands from a sea to a desert
+            // should keep its palms.
             bool beach = WorldHeight.SurfaceY(gx, gz, seed) - WaterSurface.Level < Chunk.SandLineAt(gx, gz, seed)
-                      && character != Regions.Character.Desert;
+                      && character != Regions.Character.Desert
+                      && Regions.Sea(Regions.CharacterAtTile(gx, gz, seed, false));
 
             uint roll = Hash(gx, gz, seed + 5153);
 
