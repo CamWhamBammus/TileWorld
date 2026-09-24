@@ -100,6 +100,15 @@ public class Chunk
         38                       // snow with dry
     };
 
+    /// <summary>
+    /// The rock-into-snow series -- category 32, ids 160 to 164. Written as the pair formula
+    /// rather than as 32, so it cannot part from BlendCategory or from the order the Blender
+    /// script builds the pairs in. Declared below BlendCategory because a static field
+    /// initialiser runs in the order it is written.
+    /// </summary>
+    private static readonly int RockSnowCategory =
+        BlendCategory[Rock * (2 * Families - 1 - Rock) / 2 + (White - Rock - 1)];
+
     /// <summary>Which of the six a laid ground belongs to, or -1 for one that does not mix.</summary>
     private static int FamilyOfGround(int category)
     {
@@ -507,7 +516,23 @@ public class Chunk
             }
             else if (SnowCover.IsSnowy(gx, gz, worldSeed))
             {
-                category = SnowCategory;            // the snowfields, and any summit above the snowline
+                // Snow does not lie on a face too steep to hold it: the wind scours it and the
+                // rock under it shows through, which is most of what gives a summit a shape at
+                // all. This branch sat five above the steep test, so nothing above the snowline
+                // anywhere in the world could be broken rock -- not a crag on a summit, not the
+                // white shoulder of a downland, and not one tile of the snow country, which is
+                // named among the countries that scree and could never reach the test to use it.
+                // Every cliff above the snowline was the same flat white block as the drift
+                // lying beside it.
+                // No new tiles: the rock-into-snow series already runs along every snowline,
+                // where the block further down puts a bare rock tile into it, and its low end is
+                // rock with snow caught in the ledges, which is what a scoured face looks like.
+                if (TooSteepToHold(steep, ripple))
+                {
+                    category = RockSnowCategory;
+                    forced = Hash2D(gx, gz, worldSeed + 823) % 2;   // 0 or 1 -- the rock end of the five
+                }
+                else category = SnowCategory;       // the snowfields, and any summit above the snowline
             }
             else if (fungal)
             {
@@ -757,7 +782,10 @@ public class Chunk
             float drop = WorldHeight.TileYOffset(gx, gz, worldSeed) - lowest;
             if (drop > FillDepth)
             {
-                int fillId = category == StoneCategory || category == BareSteepCategory || category == SnowCategory ? FillRockId : FillEarthId;
+                // A scoured face is rock under its top as much as the scree is, and a crag is
+                // exactly where a drop deep enough to need filling happens.
+                int fillId = category == StoneCategory || category == BareSteepCategory
+                          || category == SnowCategory || category == RockSnowCategory ? FillRockId : FillEarthId;
                 if (!buckets.TryGetValue(fillId, out var fills)) { fills = new List<Matrix4x4>(); buckets[fillId] = fills; }
                 for (int k = 1; k * FillDepth < drop; k++)
                     fills.Add(Matrix4x4.TRS(position - Vector3.up * (FillDepth * k), Quaternion.identity, Vector3.one));

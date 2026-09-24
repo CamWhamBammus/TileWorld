@@ -880,6 +880,11 @@ same nine chunks, how many tiles the slope rule would take and how many were act
 the hills: 407 of 2025 steep enough, 162 laid. The rule is fine. The earlier reading was a flat
 shoulder, and a probe that stands in one spot says nothing about a country.
 
+Those two counts are stale and should not be quoted. The probe kept a copy of the slope rule --
+two neighbours rather than four, and the threshold typed again without its wander -- so it was
+measuring a rule nothing in the game used. It asks `Chunk.TooSteepToHold` now. The same nine
+chunks read 385 steep enough and 240 laid.
+
 The same probe pointed at the sand found the opposite. The desert and the plain used to take
 every tile including the steep ones -- deliberately, because scree through a desert reads as a
 patch of somewhere else -- and that left twelve percent of the world with one ground and no
@@ -1020,7 +1025,8 @@ which is what a treeline is.
 `Assets/Editor/PeakSet.cs` (`PeakSet.Batch`) makes the tiles definitions 105 to
 109 and fills `Krummholz`, `AlpinePlants` and `AlpineStones`. The tile branch in
 `Chunk` sits *after* the steep test, so the steep faces stay scree, which was
-already right. `Tools/probe/Peaks.cs.txt` walks to one -- and has to walk into
+already right -- though only below the snowline, because the snowy branch sat
+five above the steep test and took them all first. See the scoured faces below. `Tools/probe/Peaks.cs.txt` walks to one -- and has to walk into
 the middle of it, since a ring search out from the origin finds the border by
 definition and the first cut reported a region that was half lowland grass.
 Seed 5, the Iron Heights: 77% of nine chunks the peaks' own ground, 2762 things
