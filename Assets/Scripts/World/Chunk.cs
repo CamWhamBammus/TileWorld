@@ -58,8 +58,20 @@ public class Chunk
     // there to soften and the two fight each other.
     private const float ReefVergeBand = 0.75f;
 
-    /// <summary>Half the depth over which an open sea's bed turns from sand to rock.</summary>
-    private const float BedBand = 0.45f;
+    /// <summary>
+    /// Half the depth over which an open sea's bed turns from sand to rock. Two and a half
+    /// terraces, so the whole band is five of them: one rung of depth for each step of the
+    /// series. It has to be a whole number of rungs for the same reason the shore verge does.
+    /// The ground is terraced, so a depth is an exact multiple of WorldHeight.StepHeight, and a
+    /// band of 0.9 was three and three fifths rungs carrying five steps: an eighth of every pair
+    /// of neighbouring bed tiles one rung apart jumped two steps of the grade at once.
+    /// The middle of the band does not move -- it is still DeepWater either way -- so the depth
+    /// at which the bed reads half sand and half rock is unchanged. What moves is the ends: the
+    /// pure sand runs seventeen centimetres less far out and the pure rock starts seventeen
+    /// further down, on a bed you are looking at through water the depth shader keeps at 0.72
+    /// alpha on purpose, "which is worth seeing, so the water is let go a little".
+    /// </summary>
+    private const float BedBand = 2.5f * WorldHeight.StepHeight;
 
     private const int SavannaCategory = 33;    // dry grassland: straw over red earth, worn patches, tussock, bone
     private const int Families = 6;
@@ -310,7 +322,11 @@ public class Chunk
         if (over >= BedBand) return StoneCategory;
         if (over <= -BedBand) return BeachCategory;
 
-        forced = Mathf.Clamp(Mathf.RoundToInt((over + BedBand) / (2f * BedBand) * (VariantsPerCategory - 1)),
+        // Floored over five, not rounded over four: rounding gives the two ends of the series
+        // half the depth-width of the middle three, so pure sand and pure rock were the rarest
+        // tiles in a grade that exists to run from one to the other. The shore verge has done it
+        // this way since it was built.
+        forced = Mathf.Clamp(Mathf.FloorToInt((over + BedBand) / (2f * BedBand) * VariantsPerCategory),
                              0, VariantsPerCategory - 1);
 
         return BlendCategory[Sand * (2 * Families - 1 - Sand) / 2 + (Rock - Sand - 1)];
