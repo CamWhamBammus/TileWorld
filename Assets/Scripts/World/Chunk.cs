@@ -249,6 +249,16 @@ public class Chunk
     private const float DryOutcrop = 0.30f;
     private const float MarshFraction = 0.10f;
 
+    /// <summary>
+    /// How low the ground in a mushroom wood reads before it comes out wet mud rather than loam.
+    /// Its own number rather than the marsh line above: that one is measured against meadows,
+    /// and widening it there would flood every low flat in the world at once.
+    /// Measured with Tools/probe/Dark.cs.txt over nine chunks of a mushroom wood: at 0.16 the mud
+    /// was one tile in a hundred and did not read, at 0.28 it was one in six and had become the
+    /// country's main ground. At 0.25 the floor is 91% loam and the rest is hollows.
+    /// </summary>
+    private const float FungalWet = 0.25f;
+
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
     private const float DeepWater = 1.6f;
 
@@ -453,10 +463,6 @@ public class Chunk
             // ground along a circle. A finer noise on the threshold itself is all they need.
             float ripple = Mathf.PerlinNoise(offset + 311f + gx * EdgeNoiseScale, offset + 311f + gz * EdgeNoiseScale) - 0.5f;
 
-            // Fungus keeps to the dark and the damp, so the ground under it is
-            // read as lower and wetter than it is and comes out darker for it.
-            if (fungal) bare = Mathf.Clamp01(bare - 0.20f);
-
             int band = Mathf.Clamp(Mathf.FloorToInt(bare * ShadeByHeight.Length), 0, ShadeByHeight.Length - 1);
             int category = ShadeByHeight[band];
 
@@ -536,7 +542,17 @@ public class Chunk
             }
             else if (fungal)
             {
-                category = FungalCategory;
+                // The damp this country is named for. A flat 0.20 used to come off `bare` above
+                // -- "read as lower and wetter than it is" -- and it had two readers when it was
+                // written: the grass band, because the mushroom woods then stood on the darkest
+                // grass, and the marsh line further down. Giving them a floor of their own put
+                // this branch above both, and the subtraction has moved no tile on any seed
+                // since; the country came out loam to its border. Asked here instead, so the
+                // hollows between the caps are the wet mud a mushroom wood grows out of.
+                // No new tiles, and no border moves: FamilyOfGround answers Dark for the marsh
+                // and the loam alike, so the neighbours pick the same series either way. What
+                // stands here does not change either -- the planting reads the character.
+                category = bare < FungalWet ? MarshCategory : FungalCategory;
             }
             else if (character == Regions.Character.Dead)
             {
