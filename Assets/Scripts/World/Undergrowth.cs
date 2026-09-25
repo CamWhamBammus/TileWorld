@@ -365,8 +365,15 @@ public class Undergrowth : MonoBehaviour
         for (int i = 0; i < instance.every.Length && i < instance.gathered.Length; i++)
         {
             if (instance.gathered[i] == null) continue;
-            foreach (var m in instance.gathered[i])
+
+            // Up to the count, not over the whole array. A kind's array is sized to the next
+            // power of two and kept, so the slots past the count still hold matrices from
+            // wherever the player used to be -- and the light shafts hang off whatever this
+            // returns, so one could anchor to a trunk a hundred metres behind.
+            for (int j = 0; j < instance.counts[i] && j < instance.gathered[i].Length; j++)
             {
+                var m = instance.gathered[i][j];
+
                 // the y column's length is the scale; lossyScale asserts the
                 // matrix is a proper TRS, which a planted one need not be,
                 // and did so eighty thousand times in a minute of rain
