@@ -770,6 +770,38 @@ public class Chunk
                 }
             }
 
+            // The same rim for the dry countries' outcrop, which is the other line of slope drawn
+            // inside one country. Two faults at once. The rim: stone is (127,123,116) and it met
+            // the desert's sand and the plain's straw with nothing between, the fault the scree
+            // had one change ago, and the flag above names these two as the countries its rim
+            // does not cover. And the wander: the ground is terraced, so the slope only ever
+            // reads 0, 0.21, 0.42, 0.63, 0.83 or 1, and DryOutcrop at 0.30 with the wander at
+            // 0.14 spans 0.23 to 0.37 -- a band holding none of the six. The ripple could not
+            // move one tile in the world, and the outcrop's edge was a ruled contour drawn on
+            // "a half-metre step to a neighbour". The scree's own band, 0.55 to 0.69, does hold
+            // 0.63, which is why its wander works and this one did not.
+            // Half the outer rung by hash breaks both at once, the way the scree's rim does.
+            // No new tiles: sand into rock is already laid on every sea bed, and rock into dry
+            // already runs along every border a plain has with a barrens.
+            if ((desert || character == Regions.Character.Savanna) && !submerged
+                && category == StoneCategory
+                && steep <= DryOutcrop + ripple * SteepWander + ScreeBand
+                && Hash2D(gx, gz, worldSeed + 617) % 2 == 0)
+            {
+                // What the country would have laid here if the slope had not taken it, asked of
+                // the same table the borders ask so the two cannot answer differently.
+                int theirs = FamilyOfCountry(character);
+                int low = Mathf.Min(theirs, Rock), high = Mathf.Max(theirs, Rock);
+                category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
+
+                // Well toward the rock end, whichever end of the series that is: the sand runs
+                // into the rock and the rock runs into the straw. A step either way on a hash,
+                // so the rim is not one uniform ring.
+                forced = Rock == high
+                    ? 3 + Hash2D(gx, gz, worldSeed + 881) % 2
+                    : 1 - Hash2D(gx, gz, worldSeed + 881) % 2;
+            }
+
             int variant = forced >= 0 ? forced : PickVariant(category, gx, gz, worldSeed);
 
             // Under the water the beach is bare sand: no dune grass on a sea bed. Of the five
