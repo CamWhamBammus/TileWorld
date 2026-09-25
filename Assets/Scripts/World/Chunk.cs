@@ -268,6 +268,21 @@ public class Chunk
     /// </summary>
     private const float FungalWet = 0.25f;
 
+    /// <summary>Which of the jungle floor's five is the pool of standing water.</summary>
+    private const int JunglePool = 4;
+
+    /// <summary>
+    /// How low the ground in a jungle reads before the water stands on it. Its own number, the
+    /// way the mushroom wood's is, and landed off the probe rather than guessed: over nine chunks
+    /// of a jungle the pool went from three tiles in ten to four in a hundred at 0.16, which is
+    /// not a jungle any more -- its own Blender script says a jungle floor is half made of
+    /// standing water -- and to eleven in a hundred at 0.20, which is water you walk round.
+    /// Absolute, not local, the same limitation the mushroom wood's line has: a jungle cell that
+    /// sits high in the range keeps fewer pools and a low one keeps more, which is right for the
+    /// world and wrong for any one cell.
+    /// </summary>
+    private const float JungleWet = 0.20f;
+
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
     private const float DeepWater = 1.6f;
 
@@ -598,6 +613,25 @@ public class Chunk
                 // all of it, steep faces included: scree through a jungle
                 // reads as a patch of somewhere else, the same as in the sand
                 category = JungleCategory;
+
+                // Where the water stands. The fifth of this floor is a pool, and it is one of
+                // the three full-weight variants, so getting on for three tiles in ten of every
+                // jungle in the world was standing water laid by a flat hash -- as likely on the
+                // crown of a rise as in the hollow beside it. It is not a subtle tile: algae and
+                // puddle green on a floor of brown humus, a metre across on a two-metre block,
+                // and the ground is terraced, so the rise it sat on was drawn for the eye. The
+                // mushroom wood had this exact fault one country over. The jungle needs no new
+                // category at all, because the pool is already one of its own five: no tile is
+                // new, no family changes, and the border, the snowline and the planting read
+                // what they read before.
+                // Folded onto both plain floors rather than onto the litter alone -- all to one
+                // and that tile would be over half the country, which is what weighting the
+                // features was done to get away from. Its own salt, so a tile that goes through
+                // this and the jitter below is not moved by the same hash twice.
+                int pick = PickVariant(JungleCategory, gx, gz, worldSeed);
+                forced = pick == JunglePool && bare >= JungleWet
+                    ? (Hash2D(gx, gz, worldSeed + 149) % 2 == 0 ? 0 : 3)
+                    : pick;
             }
             else if (character == Regions.Character.Savanna || desert)
             {
