@@ -539,7 +539,8 @@ public class Chunk
                 float up = (-underBy - sandLine) / VergeHeight;
                 forced = Mathf.Clamp(Mathf.FloorToInt(up * VariantsPerCategory), 0, VariantsPerCategory - 1);
             }
-            else if (SnowCover.IsSnowy(gx, gz, worldSeed))
+            else if ((TooSteepToHold(steep, ripple) && relief > SnowCover.SnowlineFraction)
+                     || SnowCover.IsSnowy(gx, gz, worldSeed))
             {
                 // Snow does not lie on a face too steep to hold it: the wind scours it and the
                 // rock under it shows through, which is most of what gives a summit a shape at
@@ -552,6 +553,15 @@ public class Chunk
                 // No new tiles: the rock-into-snow series already runs along every snowline,
                 // where the block further down puts a bare rock tile into it, and its low end is
                 // rock with snow caught in the ledges, which is what a scoured face looks like.
+                //
+                // Asked of every steep tile above the snowline, not only the ones the thinning
+                // hash happened to call snowy. Taking only those, the nine tiles in ten the hash
+                // left bare fell through to plain scree instead -- and the snowline block below
+                // then graded them toward the SNOW end of this same series. So one face at one
+                // altitude had the two rules pulling opposite ways a tile apart: some of it rock
+                // with snow in the ledges, the rest of it snow with rock showing through.
+                // The steep test is cheap and goes first, so a crag no longer pays for the
+                // snowy lookup at all.
                 if (TooSteepToHold(steep, ripple))
                 {
                     category = RockSnowCategory;
