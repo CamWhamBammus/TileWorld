@@ -24,6 +24,33 @@ public class ChunkManager : MonoBehaviour
     [Tooltip("New chunks built per frame once the world is running. Crossing a border needs a whole ring of them, which is enough work to show as a stutter if it all happens at once.")]
     [SerializeField, Range(1, 32)] private int chunksPerFrame = 4;
 
+    /// <summary>
+    /// An overlay patch waiting to be built: the water, the ice and its cracks and drifts, the
+    /// wash, the foam, the snow. Everything else that builds on first sight is budgeted -- the
+    /// ground four chunks a frame, the landmarks three, the undergrowth six -- and these were
+    /// not: every refresh walked the whole square seven times over and built a mesh for every
+    /// index it did not already hold, in that one frame. Entering a world is seven times eighty
+    /// one of them, and at the title, where the view radius is at its widest and the world is
+    /// the backdrop behind the menu, seven times two hundred and eighty nine. A wash sheet
+    /// alone searches out five tiles from every strand tile it finds.
+    /// </summary>
+    private struct Patch
+    {
+        public Dictionary<Vector2Int, GameObject> Patches;
+        public Transform Root;
+        public Material Paint;
+        public System.Func<Vector2Int, int, Mesh> Build;
+        public string Label;
+        public Vector2Int Index;
+    }
+
+    private readonly List<Patch> patchQueue = new List<Patch>();
+    private int patchCursor;
+
+    /// <summary>How many overlay patches may be built in one frame. Higher than the ground's
+    /// four because most of them come out empty and cost almost nothing.</summary>
+    private const int PatchesPerFrame = 24;
+
     [Tooltip("Same seed, same world. Leave at 0 for a different world each run.")]
     [SerializeField] private int worldSeed = 0;
 
@@ -293,6 +320,7 @@ public class ChunkManager : MonoBehaviour
 
         RefreshVisibleChunks(force: false);
         BuildPending();
+        BuildQueuedPatches();
 
         if (batchesDirty)
         {
@@ -323,6 +351,11 @@ public class ChunkManager : MonoBehaviour
 
         visibleChunks.Clear();
         pending.Clear();
+
+        // Cleared here and refilled below, so a patch queued by the last refresh and evicted by
+        // this one is not built afterwards and left standing outside the view for ever.
+        patchQueue.Clear();
+        patchCursor = 0;
 
         for (int dx = -viewRadius; dx <= viewRadius; dx++)
         for (int dz = -viewRadius; dz <= viewRadius; dz++)
@@ -367,18 +400,27 @@ public class ChunkManager : MonoBehaviour
 
         if (water)
         {
-            RefreshOverlay(waterPatches, waterScratch, waterRoot, waterMaterial, WaterSurface.BuildMesh, "Water");
-            RefreshOverlay(icePatches, iceScratch, iceRoot, iceMaterial, WaterSurface.BuildIceMesh, "Ice");
-            RefreshOverlay(crackPatches, crackScratch, crackRoot, crackMaterial, WaterSurface.BuildIceCrackMesh, "Cracks");
-            RefreshOverlay(driftPatches, driftScratch, driftRoot, driftMaterial, WaterSurface.BuildIceDriftMesh, "Drifts");
-            if (washMaterial != null) RefreshOverlay(washPatches, washScratch, washRoot, washMaterial, Surf.BuildWashMesh, "Wash");
-            if (foamMaterial != null) RefreshOverlay(foamPatches, foamScratch, foamRoot, foamMaterial, Surf.BuildFoamMesh, "Foam");
+            QueueOverlay(waterPatches, waterScratch, waterRoot, waterMaterial, WaterSurface.BuildMesh, "Water");
+            QueueOverlay(icePatches, iceScratch, iceRoot, iceMaterial, WaterSurface.BuildIceMesh, "Ice");
+            QueueOverlay(crackPatches, crackScratch, crackRoot, crackMaterial, WaterSurface.BuildIceCrackMesh, "Cracks");
+            QueueOverlay(driftPatches, driftScratch, driftRoot, driftMaterial, WaterSurface.BuildIceDriftMesh, "Drifts");
+            if (washMaterial != null) QueueOverlay(washPatches, washScratch, washRoot, washMaterial, Surf.BuildWashMesh, "Wash");
+            if (foamMaterial != null) QueueOverlay(foamPatches, foamScratch, foamRoot, foamMaterial, Surf.BuildFoamMesh, "Foam");
         }
 
         if (snow)
         {
-            RefreshOverlay(snowPatches, snowScratch, snowRoot, snowMaterial, SnowCover.BuildMesh, "Snow");
+            QueueOverlay(snowPatches, snowScratch, snowRoot, snowMaterial, SnowCover.BuildMesh, "Snow");
         }
+
+        // Nearest first, the same as the ground, so the water under your feet arrives before the
+        // water at the edge of sight.
+        patchQueue.Sort((a, b) =>
+        {
+            int da = Mathf.Abs(a.Index.x - playerChunk.x) + Mathf.Abs(a.Index.y - playerChunk.y);
+            int db = Mathf.Abs(b.Index.x - playerChunk.x) + Mathf.Abs(b.Index.y - playerChunk.y);
+            return da.CompareTo(db);
+        });
 
         if (debugMode && logEveryFrame)
         {
@@ -872,7 +914,9 @@ public class ChunkManager : MonoBehaviour
     /// Builds a mesh overlay for the chunks in view and drops it with them.
     /// Water and snow are the same job with a different mesh, so they share it.
     /// </summary>
-    private void RefreshOverlay(Dictionary<Vector2Int, GameObject> patches, List<Vector2Int> scratch,
+    /// <summary>Puts every patch of one overlay that is missing on the queue, then evicts the
+    /// ones that have gone out of range. The building is done a few at a time from Update.</summary>
+    private void QueueOverlay(Dictionary<Vector2Int, GameObject> patches, List<Vector2Int> scratch,
         Transform root, Material material, System.Func<Vector2Int, int, Mesh> build, string label)
     {
         for (int dx = -viewRadius; dx <= viewRadius; dx++)
@@ -882,21 +926,11 @@ public class ChunkManager : MonoBehaviour
 
             if (patches.ContainsKey(index)) continue;
 
-            var mesh = build(index, worldSeed);
-
-            // A chunk with none still gets an entry, so it is not rebuilt
-            // every time the player crosses a border.
-            var go = new GameObject(label + " " + index);
-            go.transform.SetParent(root, worldPositionStays: true);
-            go.transform.position = new Vector3(index.x * WorldGrid.ChunkWorldSize, 0f, index.y * WorldGrid.ChunkWorldSize);
-
-            if (mesh != null)
+            patchQueue.Add(new Patch
             {
-                go.AddComponent<MeshFilter>().sharedMesh = mesh;
-                go.AddComponent<MeshRenderer>().sharedMaterial = material;
-            }
-
-            patches.Add(index, go);
+                Patches = patches, Root = root, Paint = material,
+                Build = build, Label = label, Index = index
+            });
         }
 
         scratch.Clear();
@@ -920,6 +954,40 @@ public class ChunkManager : MonoBehaviour
             if (filter != null && filter.sharedMesh != null) Destroy(filter.sharedMesh);
 
             Destroy(go);
+        }
+    }
+
+    /// <summary>Builds a few of the queued overlay patches. Called once a frame.</summary>
+    private void BuildQueuedPatches()
+    {
+        int made = 0;
+
+        while (patchCursor < patchQueue.Count && made < PatchesPerFrame)
+        {
+            var patch = patchQueue[patchCursor++];
+
+            // An index can be queued by one refresh and still be waiting when the next one
+            // queues it again.
+            if (patch.Patches.ContainsKey(patch.Index)) continue;
+
+            var mesh = patch.Build(patch.Index, worldSeed);
+
+            // A chunk with none still gets an entry, so it is not rebuilt every time the player
+            // crosses a border -- which matters most for the snow, whose mesh is always null now
+            // that the ground carries its own snow tiles.
+            var go = new GameObject(patch.Label + " " + patch.Index);
+            go.transform.SetParent(patch.Root, worldPositionStays: true);
+            go.transform.position = new Vector3(patch.Index.x * WorldGrid.ChunkWorldSize, 0f,
+                                                patch.Index.y * WorldGrid.ChunkWorldSize);
+
+            if (mesh != null)
+            {
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                go.AddComponent<MeshRenderer>().sharedMaterial = patch.Paint;
+            }
+
+            patch.Patches.Add(patch.Index, go);
+            made++;
         }
     }
 
