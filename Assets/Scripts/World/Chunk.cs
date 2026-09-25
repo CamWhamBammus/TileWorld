@@ -596,7 +596,21 @@ public class Chunk
                 // No new tiles, and no border moves: FamilyOfGround answers Dark for the marsh
                 // and the loam alike, so the neighbours pick the same series either way. What
                 // stands here does not change either -- the planting reads the character.
-                category = bare < FungalWet ? MarshCategory : FungalCategory;
+                if (bare < FungalWet)
+                {
+                    // The marsh set is a reedbed: all five of its tiles plant sedge, blades a
+                    // third to a half of a metre tall in a green of (98,130,88), standing out of
+                    // a wood whose loam is (58,44,52). Variant 2 is the one that is mostly mud
+                    // and wet stone -- two small clumps where the others carry three to five --
+                    // so a hollow takes that. The half-sunk log of variant 3 is kept to about the
+                    // one tile in six the feature weighting would have given it: a log in a
+                    // hollow is right, a floor of logs is the mistake the termite mound was taken
+                    // off a savanna tile for. All five marsh variants stay reachable -- the
+                    // reedbeds, the low flats and every lake and pond bed still pick theirs.
+                    category = MarshCategory;
+                    forced = Hash2D(gx, gz, worldSeed + 457) % 6 == 0 ? 3 : 2;
+                }
+                else category = FungalCategory;
             }
             else if (character == Regions.Character.Dead)
             {
