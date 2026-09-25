@@ -403,7 +403,12 @@ public class Undergrowth : MonoBehaviour
 
                 // Nothing green stands in a frozen lake. A snowfield's water
                 // is left bare, the same reason its shore has no sand.
-                if (character == Regions.Character.Snow) continue;
+                // Asked of the UNFRAYED border, because that is what the ice sheet itself is
+                // drawn on -- so a lake lying across the line is frozen up to a line and not in
+                // a speckle. Asked of the frayed one, every tile the fray handed out of the snow
+                // grew a reed a metre and a half up through the ice, and every tile it handed in
+                // lost the reeds it should have had in open water.
+                if (Regions.CharacterAtTile(gx, gz, seed, false) == Regions.Character.Snow) continue;
 
                 // A reef grows its coral out of the floor. It is planted by
                 // how deep the water is and never allowed to reach the top of

@@ -426,6 +426,11 @@ public class Chunk
             // change where the border is and not where the chunk ends.
             var character = Regions.CharacterAtTile(gx, gz, worldSeed);
 
+            // And the same without the fray, which is what the ice sheet and the water's own
+            // body are decided on: a lake lying across a border has to be frozen up to a line
+            // and not in a speckle. Taken once here rather than again where the mixing wants it.
+            var standing = Regions.CharacterAtTile(gx, gz, worldSeed, false);
+
             bool fungal = character == Regions.Character.Fungal;
             bool desert = character == Regions.Character.Desert;
             bool stone = character == Regions.Character.Stone;
@@ -493,7 +498,9 @@ public class Chunk
                 // A reef is the whole floor of its sea, deep water and all:
                 // asked after the depth it would only be the sandy fringe, and
                 // coral in ankle-deep water reads as a flooded field.
-                category = underSnow ? StoneCategory
+                // Stone under the ice, and the ice is the unfrayed border's business: the bed
+                // and the sheet over it were being decided by two different questions.
+                category = standing == Regions.Character.Snow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
                          : character == Regions.Character.Reef && underBy >= ReefLineAt(gx, gz, worldSeed)
                              ? ReefOrVerge(underBy - ReefLineAt(gx, gz, worldSeed), ref forced)
@@ -661,7 +668,6 @@ public class Chunk
                 // the way to the middle of the series whatever the distance, because a speck
                 // with the other ground on all four sides is not part way through a border,
                 // it is the whole of one.
-                var standing = Regions.CharacterAtTile(gx, gz, worldSeed, false);
                 bool handed = standing != character;
                 if (handed) near = 1f;
 
