@@ -155,8 +155,13 @@ tile definitions), `FloraIndex` (`Resources/Flora.asset`), `StructureIndex`
 planted, where structures are and which way they face: all pure functions of
 `(position, seed)`. Nothing about the world is saved but what the player did.
 A chunk can be asked about before it is ever loaded. Where a function is
-expensive it is cached (`Regions.CharacterAt`, `Landmarks.In`), keyed on the
-seed, and the cache is cleared when the seed changes.
+expensive it is cached (`WorldHeight.HeightAt`, `Regions.CharacterAt`,
+`Landmarks.In`), keyed on the seed, and the cache stops being believed when the
+seed changes. The height's table is a direct-mapped 256 by 256 tile window --
+512 metres, wider than the view at its furthest setting -- with the tile
+compared exactly, so a tile from outside the window takes a slot and the tile it
+displaced misses rather than reading somebody else's height. Proved by the
+census: six seeds and 2.3 million tiles came back to the hundredth of a percent.
 
 **Systems spawn themselves.** Runtime systems use
 `[RuntimeInitializeOnLoadMethod(AfterSceneLoad)]` and `SceneSystems` re-runs

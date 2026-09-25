@@ -2,9 +2,11 @@ using UnityEngine;
 
 /// <summary>
 /// The shape of the land: continents of plains, ridged mountain ranges, and
-/// the valleys between them. A pure function of tile coordinates — no state,
-/// no storage — so any system can ask how high the ground is anywhere and get
-/// the same answer, including across chunk borders.
+/// the valleys between them. A pure function of tile coordinates, so any system
+/// can ask how high the ground is anywhere and get the same answer, including
+/// across chunk borders. The answers are kept in a small table -- see HeightAt --
+/// but nothing is stored about a world: ask for a height twice and it is worked
+/// out once, ask for it a year later on the same seed and it is the same number.
 ///
 /// What limits the terrain is the player's CharacterController slope limit
 /// (45 degrees), not its step offset: the collision surface ramps between tile
@@ -70,8 +72,57 @@ public static class WorldHeight
     // property, not a const, so there is no cycle.
     public const float ShoreHeight = WaterSurface.DepthAboveBase;
 
+    // A pure function, but not a cheap one: nine Perlin samples, and nearly everything in the
+    // world funnels into it. Arriving somewhere builds every chunk in view, then the colliders
+    // and the overlays over the same ground, and the wash's ring searches re-ask the same tiles
+    // for every tile in a chunk -- one strand tile can cost a hundred and sixty-eight asks on
+    // its own. Regions keeps its characters for exactly this reason, and working one of those
+    // out is four hundred calls to this.
+    //
+    // Direct-mapped on the low bits of the two coordinates: a 256 by 256 tile window, which is
+    // 512 metres, wider than the whole view at the furthest setting, so arriving somewhere never
+    // collides with itself. The key is compared exactly, so a tile from outside the window takes
+    // the slot and the tile it displaced simply misses -- it can never read the wrong height.
+    private const int CacheSize = 1 << 16;
+    private static readonly long[] cacheKey = new long[CacheSize];
+    private static readonly float[] cacheValue = new float[CacheSize];
+    private static readonly int[] cacheStamp = new int[CacheSize];
+    private static int stamp;            // slots start at nought, so nothing is live until a seed is asked for
+    private static int stampedFor;
+
     /// <summary>Terrain height above the base plane, in world units.</summary>
     public static float HeightAt(int tileX, int tileZ, int worldSeed)
+    {
+        if (stamp == 0 || stampedFor != worldSeed)
+        {
+            // A new world does not wipe the table, it stops believing it: the old slots fail the
+            // stamp and are written over as they are asked for. This happens at least once a
+            // session -- the title draws its backdrop on a seed of its own.
+            stamp++;
+
+            // And if the stamp ever came round to nought again, a slot left from two billion
+            // worlds ago would look live. It cannot happen in a session; it costs nothing to
+            // make sure it cannot happen at all.
+            if (stamp == 0) { System.Array.Clear(cacheStamp, 0, CacheSize); stamp = 1; }
+
+            stampedFor = worldSeed;
+        }
+
+        long key = ((long)tileX << 32) ^ (uint)tileZ;
+        int slot = ((tileX & 255) << 8) | (tileZ & 255);
+
+        if (cacheStamp[slot] == stamp && cacheKey[slot] == key) return cacheValue[slot];
+
+        float height = Compute(tileX, tileZ, worldSeed);
+
+        cacheStamp[slot] = stamp;
+        cacheKey[slot] = key;
+        cacheValue[slot] = height;
+
+        return height;
+    }
+
+    private static float Compute(int tileX, int tileZ, int worldSeed)
     {
         float o = 500f + (worldSeed % 977) * 3.77f;
 
