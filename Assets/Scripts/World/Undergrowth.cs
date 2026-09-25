@@ -29,6 +29,19 @@ public class Undergrowth : MonoBehaviour
     private int span;
 
     /// <summary>
+    /// Frames since the last gather. Sowing is budgeted at six chunks a frame, so the widest
+    /// ring takes forty-nine frames to fill -- and every one of those frames marked the ground
+    /// changed, which meant a full gather and a full split on each of them: every patch in sight
+    /// walked for every kind of thing that grows, and every instance copied, forty-nine times
+    /// over. That is the one-frame stall the budget was added to remove, spread out rather than
+    /// removed. Gathered when the ring is caught up, and now and then while it is still filling.
+    /// </summary>
+    private int sinceGather;
+
+    /// <summary>How often to gather anyway while the ring is still filling, in frames.</summary>
+    private const int GatherEvery = 8;
+
+    /// <summary>
     /// How many chunks may be planted in one frame. The whole ring was sown at once, so walking
     /// into a world stopped it for the best part of a second while every plant in sight was
     /// worked out -- and following the view radius makes the widest ring two hundred and
@@ -322,7 +335,16 @@ public class Undergrowth : MonoBehaviour
 
         if (stale.Count > 0) shifted = true;
 
-        if (shifted) Gather();
+        // Budget left over means the loop ran out of chunks to sow, so the ring is complete and
+        // this is the gather that matters. While it is still filling, gather every so often
+        // instead of on every six chunks sown; nothing is lost but a few frames before a distant
+        // patch appears. The first one is never deferred, or Draw returns on its null check and
+        // the ground you are standing in is bare for the first eighth of a second.
+        if (shifted && (budget > 0 || gathered == null || ++sinceGather >= GatherEvery))
+        {
+            sinceGather = 0;
+            Gather();
+        }
 
         Draw();
     }
