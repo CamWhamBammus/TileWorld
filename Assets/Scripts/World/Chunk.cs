@@ -454,10 +454,13 @@ public class Chunk
             // reedbeds both stand on it.
             bool sodden = character == Regions.Character.Reed;   // the dead woods have a floor of their own now
 
-            // Which countries send their steep faces to scree: what is left after the branches
-            // above the scree test have taken theirs. The sand and the straw take an outcrop at
-            // DryOutcrop instead, the jungle and the two dark woods keep their own floor on any
-            // slope, a barrens is rock already, and a reedbed is not hillside.
+            // Which countries get the SCREE'S RIM -- the mixed ground where a patch of broken
+            // rock meets what grows round it. What is left after the branches above the scree
+            // test have taken theirs. The sand and the straw take an outcrop at DryOutcrop
+            // instead; the jungle and the mushroom wood keep their own floor on any slope, since
+            // loam and leaf litter do sit on a face; the dead wood and the barrens lay their own
+            // scree in their branches above and are named here only to keep the rim off two
+            // greys of one family; and a reedbed is not hillside.
             bool screes = !fungal && !desert && !stone && !sodden
                        && character != Regions.Character.Dead
                        && character != Regions.Character.Jungle
@@ -572,7 +575,13 @@ public class Chunk
             }
             else if (character == Regions.Character.Dead)
             {
-                category = DeadCategory;
+                // Its faces too, and for a better reason than the barrens': ash is the one
+                // ground in the game that visibly cannot stay on a slope, and a bluff in a dead
+                // wood was grey ash standing on end. This branch sat above the steep test as
+                // well. Free of every border consequence -- the ash is already filed with the
+                // rock, twelve apart from the barrens' stone off the sheet -- and the fill under
+                // a cliff now gets rock under it rather than the earth an ash tile was getting.
+                category = TooSteepToHold(steep, ripple) ? BareSteepCategory : DeadCategory;
             }
             else if (character == Regions.Character.Jungle)
             {
@@ -596,7 +605,15 @@ public class Chunk
             }
             else if (stone)
             {
-                category = StoneCategory;
+                // The barrens is the one country named for its scree -- Scree, Rubble, Grit,
+                // Shatter, Rake, and its own description answers "bare rock and scree" -- and it
+                // laid none: this branch sits two above the steep test, so every face in it was
+                // the same flat slab as the floor beside it. Nothing stood on them either, since
+                // the undergrowth asks the steep test and skips them, so they were bare slabs
+                // for no reason the ground ever gave. The same fault as the snowy branch above.
+                // Its own set already exists, ids 75 to 79, and the slabs and the scree are both
+                // the rock family, so no border moves and no tile is new.
+                category = TooSteepToHold(steep, ripple) ? BareSteepCategory : StoneCategory;
             }
             else if (sodden)
             {

@@ -45,7 +45,7 @@ public class _Probe : MonoBehaviour
         var chunks = (Dictionary<Vector2Int, Chunk>)typeof(ChunkManager).GetField("chunks", flags).GetValue(world);
         var body = FindFirstObjectByType<CharacterController>();
 
-        foreach (var want in new[] { Regions.Character.Hills, Regions.Character.Peaks })
+        foreach (var want in new[] { Regions.Character.Hills, Regions.Character.Peaks, Regions.Character.Stone, Regions.Character.Dead })
         {
             int standX = 0, standZ = 0; bool found = false;
             for (int r = 1; r < 400 && !found; r++)
