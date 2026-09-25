@@ -43,15 +43,25 @@ public static class Surf
     /// <summary>How far, in tiles, to the nearest lake or pond water, up to six; 99 with none that near.</summary>
     public static int PondNear(int tileX, int tileZ, int seed)
     {
+        // The four sides of each ring, each without its last corner, so the walk visits the 8r
+        // tiles of the ring and no others. Written as a square with the inside skipped, it was
+        // stepping four hundred and fifty-four times to look at a hundred and sixty-eight tiles,
+        // for every strand tile of every wash sheet in every chunk.
         for (int r = 1; r <= 6; r++)
-        for (int dx = -r; dx <= r; dx++)
-        for (int dz = -r; dz <= r; dz++)
+        for (int k = -r; k < r; k++)
         {
-            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
-            int tx = tileX + dx, tz = tileZ + dz;
-            if (WaterSurface.IsUnderwater(tx, tz, seed) && WaterSurface.BodyAt(tx, tz, seed) != WaterSurface.Body.Beach) return r;
+            if (Pond(tileX + k, tileZ - r, seed)) return r;
+            if (Pond(tileX + r, tileZ + k, seed)) return r;
+            if (Pond(tileX - k, tileZ + r, seed)) return r;
+            if (Pond(tileX - r, tileZ - k, seed)) return r;
         }
         return 99;
+    }
+
+    private static bool Pond(int tileX, int tileZ, int seed)
+    {
+        return WaterSurface.IsUnderwater(tileX, tileZ, seed)
+            && WaterSurface.BodyAt(tileX, tileZ, seed) != WaterSurface.Body.Beach;
     }
 
     /// <summary>
@@ -251,12 +261,16 @@ public static class Surf
     /// <summary>The nearest tile of the other kind, in tiles, or -1 past the reach.</summary>
     private static int Nearest(int tileX, int tileZ, int seed, bool wantWater, int most)
     {
+        // The ring itself, four sides at a time, rather than a square with its inside skipped:
+        // out to a reach of five that was two hundred and eighty-five steps to look at a hundred
+        // and twenty tiles, and this is asked of every strand and every shallows tile in a sheet.
         for (int r = 1; r <= most; r++)
-        for (int dx = -r; dx <= r; dx++)
-        for (int dz = -r; dz <= r; dz++)
+        for (int k = -r; k < r; k++)
         {
-            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
-            if (WaterSurface.IsUnderwater(tileX + dx, tileZ + dz, seed) == wantWater) return r;
+            if (WaterSurface.IsUnderwater(tileX + k, tileZ - r, seed) == wantWater) return r;
+            if (WaterSurface.IsUnderwater(tileX + r, tileZ + k, seed) == wantWater) return r;
+            if (WaterSurface.IsUnderwater(tileX - k, tileZ + r, seed) == wantWater) return r;
+            if (WaterSurface.IsUnderwater(tileX - r, tileZ - k, seed) == wantWater) return r;
         }
         return -1;
     }
