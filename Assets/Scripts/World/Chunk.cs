@@ -139,20 +139,29 @@ public class Chunk
     }
 
     /// <summary>
-    /// The same, for a bed under water. Nothing grassy, straw or snowy has a sea bed: what is
-    /// down there is sand on an open shore, rock in the deep and off a bare coast, and mud
-    /// everywhere else, whatever the country looks like above the waterline.
+    /// The same, for a bed under water -- and asked of the bed rule at THIS tile's depth, not of
+    /// the country alone. The bed is chosen per tile: stone under the ice, mud under any lake or
+    /// pond whatever grows above it, and on an open shore sand in the shallows giving way to rock
+    /// in the deep. Answered per country, four of the fourteen were handed a family their bed
+    /// never lays -- the desert and the plain were answered sand and the peaks and the barrens
+    /// rock, where all four lay mud -- and the two seas were answered sand at every depth,
+    /// although past DeepWater their bed is stone. The depth is the same on both sides of a
+    /// border line, so asking it here is what lets the two sides walk toward one middle.
     /// </summary>
-    private static int FamilyUnderWater(Regions.Character who)
+    private static int FamilyUnderWater(Regions.Character who, int gx, int gz, float underBy, float ripple, int seed)
     {
-        switch (who)
-        {
-            case Regions.Character.Water: case Regions.Character.Reef:
-            case Regions.Character.Desert: case Regions.Character.Savanna: return Sand;
-            case Regions.Character.Peaks: case Regions.Character.Stone:
-            case Regions.Character.Snow: return Rock;
-            default: return Dark;
-        }
+        if (who == Regions.Character.Snow) return Rock;      // stone under the ice
+        if (!Regions.Sea(who)) return Dark;                  // a lake or a pond: mud, whatever grows above it
+
+        // The reef draws its own edge against the sand that fringes it. Minus one makes the
+        // guard at the call site skip the tile, which is what CarriesOwnEdge does for its floor.
+        if (who == Regions.Character.Reef && underBy >= ReefLineAt(gx, gz, seed)) return -1;
+
+        // The sea bed's own line. SandOrRockBed grades across BedBand either side of this point
+        // and a graded tile has no family of its own, so the sea side never mixes inside that
+        // band anyway; splitting at the middle of the grade is the one threshold that agrees
+        // with the pure rock above it and the pure sand below it.
+        return underBy - (DeepWater + ripple * DeepWander) >= 0f ? Rock : Sand;
     }
 
     /// <summary>What the country over the border mostly lays, taken from its character alone.</summary>
@@ -680,7 +689,7 @@ public class Chunk
                     // sea bed rather than for what it lays in the air. A lake in a meadow is
                     // still mud at the bottom, and blending toward the meadow's own family put
                     // turf and flowers down there, a foot under the surface.
-                    if (submerged) theirs = FamilyUnderWater(handed ? standing : over);
+                    if (submerged) theirs = FamilyUnderWater(handed ? standing : over, gx, gz, underBy, ripple, worldSeed);
 
                     // And above the water a sea lays grass only above its own strand. Where the
                     // strand and the verge stop is a height over the waterline, and this tile's
