@@ -27,7 +27,7 @@ public static class Inscriptions
         "Scratched on the stern: a name, and under it, \"she was a good boat\".",
         "Marks up the mast, a foot apart: how high the water came, night by night.",
         "Someone has been back for the rope. The knots are recent.",
-        "Cut into a plank: \"we walked to {0} from here. Two days.\""
+        "Cut into a plank: \"we walked to {1} from here. Two days.\""
     };
 
     private static readonly string[] GateLines =
@@ -124,7 +124,7 @@ public static class Inscriptions
     {
         "Burned into the kiln door: \"{0}. Three days a burn. Do not open it.\"",
         "The wood is stacked by size. Whoever did it had done it a thousand times.",
-        "Chalked on the chest: \"charcoal to the smith at {0}, one cart\".",
+        "Chalked on the chest: \"charcoal to the smith at {1}, one cart\".",
         "Ash to the ankles round the kiln. It has burned here a long while.",
         "Notches on the fence, five and a stroke, five and a stroke.",
         "\"Went for water\" scratched on the door, and a date a long way back."
@@ -156,7 +156,7 @@ public static class Inscriptions
         "Coins in the chest, none of them worth anything. Something is.",
         "The stone has been touched smooth at one place, about hand height.",
         "Chalked on the fence: \"lamp lit, all well\". The lamp is lit.",
-        "Under the sign, in a child's hand: \"we passed here going to {0}\".",
+        "Under the sign, in a child's hand: \"we passed here going to {1}\".",
         "Flowers, dried, tied to the fence. Not old."
     };
 
@@ -212,7 +212,7 @@ public static class Inscriptions
 
     private static readonly string[] DeadFireLines =
     {
-        "A ring of stones and cold ash. Whoever it was sat on the log and looked toward {0}.",
+        "A ring of stones and cold ash. Whoever it was sat on the log and looked toward {1}.",
         "The ash is old, and there are small bones in it.",
         "Three fires' worth of ash in one ring. They came back here.",
         "The charred ends lie pointing in, the way you lay one to burn all night.",
@@ -240,7 +240,7 @@ public static class Inscriptions
     private static readonly string[] WaymarkLines =
     {
         "A cairn by the way, with a flat stone on top. Whoever passes adds one.",
-        "Stones stacked to the shoulder: the way to {0} runs on from here.",
+        "Stones stacked to the shoulder: the way to {1} runs on from here.",
         "A marker cairn, and one stone on it newer than the rest.",
         "Scratched on the top stone: an arrow, and the word \"water\".",
         "Someone knocked the top off it. Someone else put it back."
@@ -249,7 +249,7 @@ public static class Inscriptions
     private static readonly string[] BrokenCartLines =
     {
         "A cart with a wheel off, left where it broke. The load is gone.",
-        "Bound for {0}, by the way it was on. It got this far.",
+        "Bound for {1}, by the way it was on. It got this far.",
         "The axle went. They took the horse and what they could carry.",
         "Cart, wheel and a barrel too heavy to carry. The barrel is empty.",
         "Grass up through the boards. It has been here for years."
@@ -290,7 +290,47 @@ public static class Inscriptions
 
         int hash = Hash(chunk.x, chunk.y, worldSeed ^ 0x51F3);
 
-        return string.Format(lines[hash % lines.Length], region.Name);
+        string line = lines[hash % lines.Length];
+
+        // Most of these name where they are, and {0} is right for those. Six are about somewhere
+        // else -- a waymark the way runs on to, a cart that was bound for somewhere, two days'
+        // walk to get here, the country a man sat looking toward -- and they were all naming the
+        // ground under the reader's own feet: "the way to the Long Fells runs on from here",
+        // standing in the Long Fells. Those take a second country as {1}, and only those pay for
+        // working one out.
+        return line.IndexOf("{1}", System.StringComparison.Ordinal) < 0
+            ? string.Format(line, region.Name)
+            : string.Format(line, region.Name, Away(chunk, region.Name, worldSeed));
+    }
+
+    /// <summary>
+    /// A country that is not this one, for the lines that are about somewhere else.
+    ///
+    /// Its own hash: the low bits of the line's hash are spent choosing the line, and sharing
+    /// them would tie which way a waymark points to which words it carries.
+    ///
+    /// Two cells out, never one. A cell is a hundred and twenty tiles across and the border
+    /// wander moves each end by up to fourteen, so a single cell's step can floor back into the
+    /// cell it started in -- which is this bug written a second time. Stepped further out on the
+    /// rare occasion two regions come out with the same name.
+    /// </summary>
+    private static string Away(Vector2Int chunk, string here, int worldSeed)
+    {
+        int h = Hash(chunk.x, chunk.y, worldSeed ^ 0x2B9D);
+
+        int dx = (h >> 3) % 3 - 1;
+        int dz = (h >> 11) % 3 - 1;
+
+        if (dx == 0 && dz == 0) dx = 1;
+
+        var away = Regions.At(chunk + new Vector2Int(
+            Regions.ChunksAcross * dx * 2, Regions.ChunksAcross * dz * 2), worldSeed);
+
+        for (int step = 3; step <= 5 && away.Name == here; step++)
+            away = Regions.At(chunk + new Vector2Int(
+                Regions.ChunksAcross * dx * step, Regions.ChunksAcross * dz * step), worldSeed);
+
+        return away.Name;
     }
 
     private static int Hash(int x, int y, int seed)
