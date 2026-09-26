@@ -9,6 +9,15 @@ ft = {"__file__": os.path.join(HERE, "forest_tiles.py"), "__name__": "forest_til
 exec(compile(src, "forest_tiles.py", "exec"), ft)
 Build, prism, tube, blob = ft["Build"], ft["prism"], ft["tube"], ft["blob"]
 TOP, BOTTOM, HALF, INNER = ft["TOP"], ft["BOTTOM"], ft["HALF"], ft["INNER"]
+
+# Where the loose stuff beds into the rock. The body's top runs from TOP at the rim to about
+# TOP+0.105 in the middle, and the shards and the gravel were pinned at TOP+0.12 and TOP+0.13 --
+# above the highest point the ground ever reaches, so every chip and pebble on every scree tile
+# in the world hovered between four and sixteen centimetres clear of the rock, more than its own
+# height in the case of the gravel. This is the value the newer sets already use. The cracks and
+# the lichen stay at TOP+0.15 on purpose: they are one polygon thick and have to clear the
+# slabbed tiles' facets, which rise to TOP+0.14.
+GROUND = TOP + 0.04
 from mathutils import Vector
 
 def rock_body(b, rng, tones, band, slabs=False, tilt=0.0):
@@ -56,18 +65,22 @@ def shards(b, rng, count, keep, tones):
             x = rng.uniform(-INNER+0.12, INNER-0.12); z = rng.uniform(-INNER+0.12, INNER-0.12)
             if not any((x-kx)**2+(z-kz)**2 < kr*kr for (kx,kz,kr) in keep): break
         s = rng.uniform(0.1, 0.24); h = rng.uniform(0.08, 0.2); a = rng.uniform(0, math.tau)
-        base = [(x+math.cos(a+k/4*math.tau)*s*rng.uniform(0.6,1.0), TOP+0.12, z+math.sin(a+k/4*math.tau)*s*rng.uniform(0.6,1.0)) for k in range(4)]
-        peak = (x+rng.uniform(-0.05,0.05), TOP+0.12+h, z+rng.uniform(-0.05,0.05))
+        base = [(x+math.cos(a+k/4*math.tau)*s*rng.uniform(0.6,1.0), GROUND, z+math.sin(a+k/4*math.tau)*s*rng.uniform(0.6,1.0)) for k in range(4)]
+        peak = (x+rng.uniform(-0.05,0.05), GROUND+h, z+rng.uniform(-0.05,0.05))
         for k in range(4):
             mid = ((base[k][0]+base[(k+1)%4][0])*0.5 - x, 0.5, (base[k][2]+base[(k+1)%4][2])*0.5 - z)
             b.tri(base[k], base[(k+1)%4], peak, rng.choice(tones), out=mid)
+        # and a bottom, so a chip that lands on a high facet still reads as a solid thing rather
+        # than an open tent. tones[-1] rather than a choice, so the random stream does not move
+        # and every later shard, chip and boulder on the tile stays exactly where it was.
+        b.face(base, tones[-1], out=(0,-1,0))
         keep.append((x,z,s+0.05))
 
 def gravel(b, rng, count, keep):
     for _ in range(count):
         x = rng.uniform(-INNER+0.08, INNER-0.08); z = rng.uniform(-INNER+0.08, INNER-0.08)
         s = rng.uniform(0.035, 0.07)
-        blob(b, (x, TOP+0.13+s*0.3, z), (s, s*0.6, s*0.85), rng.choice(["gravel","gravel2","scree2"]), "gravel2", rng, sub=0, squash=0.3, moss_from=2.0)
+        blob(b, (x, GROUND+s*0.3, z), (s, s*0.6, s*0.85), rng.choice(["gravel","gravel2","scree2"]), "gravel2", rng, sub=0, squash=0.3, moss_from=2.0)
 
 def stone(index):
     rng = random.Random(7000+index); b = Build(); keep=[]
