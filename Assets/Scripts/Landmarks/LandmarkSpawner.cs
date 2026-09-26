@@ -11,6 +11,15 @@ public class LandmarkSpawner : MonoBehaviour
     [Tooltip("Chunks around the player that have their landmark built. Never less than the view radius, or you would see terrain with nothing standing on it.")]
     [SerializeField, Range(1, 8)] private int spawnRadius = 5;
 
+    /// <summary>
+    /// Whether to say so on every structure built. It said so on every one, and every one of
+    /// those lines costs a stack trace walked and written to disk. A sweep of the fourteen
+    /// countries wrote eight hundred and forty-seven of them into a log of twenty thousand
+    /// lines, and they are the loudest thing in it by a factor of four. Off by default, the way
+    /// the chunk manager's own per-frame log is.
+    /// </summary>
+    [SerializeField] private bool logEveryBuild = false;
+
     [Tooltip("How close you must get before it counts as discovered.")]
     [SerializeField] private float discoveryRange = 18f;
 
@@ -131,7 +140,8 @@ public class LandmarkSpawner : MonoBehaviour
             if (live.ContainsKey(placement.Chunk)) continue;
 
             live.Add(placement.Chunk, LandmarkBuilder.Build(placement, transform));
-            Debug.Log("[Landmarks] Built a " + Landmarks.NameOf(placement.Kind) + " at chunk " + placement.Chunk);
+            if (logEveryBuild)
+                Debug.Log("[Landmarks] Built a " + Landmarks.NameOf(placement.Kind) + " at chunk " + placement.Chunk);
             made++;
         }
     }
