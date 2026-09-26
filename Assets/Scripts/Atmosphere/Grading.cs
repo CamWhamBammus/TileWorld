@@ -139,7 +139,11 @@ public class Grading : MonoBehaviour
         int eyeZ = Mathf.RoundToInt(view.transform.position.z / WorldGrid.TileSize);
 
         var country = world != null
-            ? Regions.CharacterAtTile(eyeX, eyeZ, world.WorldSeed)
+            // The unfrayed border. The grade is eased toward what the country asks for, so a
+            // frayed lookup does not snap it -- it flips the target every step or two instead,
+            // and the colour pumps around half strength the whole way through the band rather
+            // than arriving at the border.
+            ? Regions.CharacterAtTile(eyeX, eyeZ, world.WorldSeed, false)
             : Regions.Character.Lowland;
 
         // Cold is not only a snowfield. The rain and the surveyor's breath were both put right

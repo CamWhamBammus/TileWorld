@@ -162,7 +162,13 @@ public class Rain : MonoBehaviour
         // round for the one place in the world that is white all year.
         int flakeX = Mathf.RoundToInt(view.position.x / WorldGrid.TileSize);
         int flakeZ = Mathf.RoundToInt(view.position.z / WorldGrid.TileSize);
-        Snowing = Regions.CharacterAtTile(flakeX, flakeZ, seed) == Regions.Character.Snow
+        // The unfrayed border, not the frayed one. A border is scattered thirteen tiles
+        // either side of its line, so on the way into a snowfield the country under the eye
+        // flickers between the two with every step -- and this swaps the mesh, the material and
+        // the fall speed on the frame it changes, with nothing to ease it. Rain turned to snow
+        // and back a dozen times over the last fifty metres. The ground is right to interlock;
+        // the weather over it is one thing or the other.
+        Snowing = Regions.CharacterAtTile(flakeX, flakeZ, seed, false) == Regions.Character.Snow
                || SnowCover.CoverAt(flakeX, flakeZ, seed) > 0.5f;
         float slow = Snowing ? 0.07f : 1f;
 

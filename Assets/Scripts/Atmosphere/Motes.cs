@@ -122,7 +122,10 @@ public class Motes : MonoBehaviour
         int seed = world.WorldSeed;
         Vector3 eye = view.transform.position;
         int eyeX = Mathf.RoundToInt(eye.x / WorldGrid.TileSize), eyeZ = Mathf.RoundToInt(eye.z / WorldGrid.TileSize);
-        Current = KindAt(Regions.CharacterAtTile(eyeX, eyeZ, seed), eyeX, eyeZ, seed);
+        // And the unfrayed one here too: what is in the air belongs to the country you are in,
+        // not to the tile you are standing on. Frayed, the leaves stopped and the seed heads
+        // started every few steps through a border.
+        Current = KindAt(Regions.CharacterAtTile(eyeX, eyeZ, seed, false), eyeX, eyeZ, seed);
 
         float dt = Time.deltaTime;
         float rain = Rain.Intensity;

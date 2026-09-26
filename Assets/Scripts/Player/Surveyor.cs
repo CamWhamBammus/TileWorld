@@ -275,7 +275,9 @@ public class Surveyor : MonoBehaviour
         // at three thousand feet with snow lying all round, which is the wrong way round.
         int coldX = Mathf.RoundToInt(body.x / WorldGrid.TileSize), coldZ = Mathf.RoundToInt(body.z / WorldGrid.TileSize);
         bool cold = world != null
-                 && (Regions.CharacterAtTile(coldX, coldZ, world.WorldSeed) == Regions.Character.Snow
+                 // The unfrayed border: the frayed one flickers all the way through the band,
+                 // so your breath dropped in and out at random for fifty metres.
+                 && (Regions.CharacterAtTile(coldX, coldZ, world.WorldSeed, false) == Regions.Character.Snow
                      || SnowCover.CoverAt(coldX, coldZ, world.WorldSeed) > 0.5f);
 
         if (cold && !wet && figure.Head != null && Time.time > nextBreath)
