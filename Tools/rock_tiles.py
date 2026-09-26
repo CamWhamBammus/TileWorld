@@ -47,6 +47,13 @@ def crack(b, rng, start, angle, length):
     """A crack across the rock: a thin dark strip that wanders."""
     x,z = start; w = 0.02
     pts=[(x+math.cos(angle)*length*t + math.sin(t*6)*0.05, TOP+0.15, z+math.sin(angle)*length*t + math.cos(t*5)*0.04) for t in (0, 0.33, 0.66, 1)]
+    # Kept inside the block. The start is anywhere within 0.7 of the middle and the crack runs
+    # another 0.6 to 1.0 with a wander on top, so it could finish at 1.25 while the block stops
+    # at 1.0: two of the barren tiles ran twenty-three centimetres off their own square and hung
+    # the strip over whatever was laid beside them. A crack now runs to the rim and stops there.
+    # The clamp draws no random numbers, so every other tile in the set rebuilds identical.
+    lim = HALF - 0.05                 # clears the strip's own half-width of 0.02
+    pts = [(min(lim, max(-lim, px)), py, min(lim, max(-lim, pz))) for (px, py, pz) in pts]
     for i in range(3):
         p0,p1 = pts[i],pts[i+1]; sx,sz = math.cos(angle+math.pi/2)*w, math.sin(angle+math.pi/2)*w
         b.quad((p0[0]-sx,p0[1],p0[2]-sz),(p0[0]+sx,p0[1],p0[2]+sz),(p1[0]+sx,p1[1],p1[2]+sz),(p1[0]-sx,p1[1],p1[2]-sz), "crack", out=(0,1,0))
