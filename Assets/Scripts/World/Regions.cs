@@ -452,12 +452,19 @@ public static class Regions
     {
         switch (character)
         {
-            case Character.Water: return "standing water";
+            // Not "standing water" -- that is the reedbeds, one case down, and the only country
+            // that really is standing water. Four fifths of a Water region is dry ground with a
+            // coast round it, which is what a fifth of the world under water actually looks like.
+            case Character.Water: return "open water and the shore along it";
             case Character.Reef: return "coral in warm shallows";
             case Character.Jungle: return "jungle under a closed canopy";
             case Character.Savanna: return "dry grassland under flat-topped trees";
             case Character.Peaks: return "snow and bare rock";
-            case Character.Hills: return "high ground";
+            // The downs took every snowy region that was not properly high, so most of them do
+            // carry snow on their tops. Not all: the ones that come off the coin with the woods
+            // failed the snow test by construction and can carry none, which is about a fifth of
+            // them, so the hedge is doing work.
+            case Character.Hills: return "open downs, often white on the tops";
             case Character.Forest: return "deep forest";
             case Character.Fungal: return "mushrooms under a dark wood";
             case Character.Desert: return "open sand";
