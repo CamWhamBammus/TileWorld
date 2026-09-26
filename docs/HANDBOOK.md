@@ -1106,6 +1106,88 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### A log line cost the sweep five minutes
+
+The sweep reported a worst frame of three hundred and twenty-four seconds in the dead woods, and a
+median of sixty milliseconds where every other country was under six. The probe's log was 1.7 MB
+and twenty thousand lines, and the loudest thing in it by a factor of four was `[Landmarks] Built
+a ...` -- eight hundred and forty-seven of them, one for every structure raised, each costing a
+stack trace walked and written to disk. Put behind a flag the way the chunk manager's own
+per-frame log is, the same sweep runs in three minutes seventeen with the dead woods at 4.9 ms,
+and every ground share and standing count identical to the run before. That is correlation, not
+proof, but it is the only thing that changed.
+
+### What is in the air belongs to the country, not the tile
+
+A border is frayed thirteen tiles either side of its line, and on the line it is about a coin a
+tile. The ground is meant to interlock like that. Four things that are not the ground were asking
+the same frayed question:
+
+- **The rain** swapped the mesh, the material and the fall speed on the frame the answer changed,
+  with nothing to ease it. Walking into a snowfield, it turned to snow and back a dozen times over
+  the last fifty metres.
+- **The colour grade** is eased toward what the country asks for, so it did not snap -- it flipped
+  its target every step or two instead and pumped around half strength all the way through the
+  band rather than arriving at the border.
+- **Your breath** dropped in and out at random for the same fifty metres.
+- **What blows about in the air** stopped being leaves and started being seed heads every few
+  steps.
+
+All four ask the unfrayed border now. `SnowCover.IsSnowy` keeps the frayed one: that is the ground
+under your feet, and it is meant to speckle.
+
+### Words that named the wrong place
+
+- **A find asked the one tile at a chunk's middle what country it was in.** The structures have
+  asked what the chunk *mostly* is for a while -- five samples rather than one -- and the small
+  finds did not, although they are set down anywhere in the window those five samples cover. A
+  chunk whose middle tile fell in a wood and whose ground was nearly all desert dropped a snare on
+  open sand.
+- **Seven regions in a world could be called the White White.** Six of the fourteen noun lists
+  carry a word that is also an adjective -- White and Cold in the snows, Green in the meadows and
+  in the jungle, Deep in the jungle, Wide on the plain, Hollow in the mushroom wood -- and the
+  adjective and the noun are drawn off independent bits on purpose, so nothing stopped the pair
+  landing together. About one region in eight hundred, and a region's name goes on the chart, in
+  the journal, in the world list and into every inscription inside it. The adjective steps one
+  along when it matches; none of the seven lands on a second collision.
+- **Six signs pointed the way to the ground you were standing on.** A waymark reading "the way to
+  the Long Fells runs on from here", in the Long Fells. A cart bound for the country it broke down
+  in. Two days' walk to reach the region the wreck is lying in. Those six lines take a second
+  country now, two cells out on a hash of their own -- two and not one, because a cell is a
+  hundred and twenty tiles across and the border wander moves each end by up to fourteen, so a
+  single cell's step can floor back into the cell it started in, which is this bug written twice.
+- **Two countries were described as something else.** A Water region was "standing water", which is
+  the reedbeds one case down and the only country that really is; four fifths of a Water is dry
+  ground with a coast round it. And the downs were "high ground" before they absorbed every snowy
+  region that was not properly high.
+
+### Three faults in the meshes themselves
+
+The tile sets are built by Blender scripts in `Tools/` and imported headless
+(`blender -b -P Tools/rock_tiles.py`, then `Tools/unity.sh -executeMethod RockSet.Batch`). Three
+things in them were wrong in ways no code could see.
+
+- **Every chip and pebble on the scree hovered above the rock.** A rock body's top runs from the
+  tile's rim up to about `TOP+0.105`, and the shards and the gravel were pinned at `TOP+0.12` and
+  `TOP+0.13` -- above the highest point the ground ever reaches. Every loose stone on every scree
+  tile in the world floated between four and sixteen centimetres clear, which for a gravel chip is
+  more than its own height. The chips were also open underneath, drawn as four sides and no
+  bottom. They bed in at `TOP+0.04` now, the value the newer sets already use, and they have a
+  bottom. The cracks and the lichen stay at `TOP+0.15`: they are one polygon thick and have to
+  clear the slabbed tiles' facets, which rise to `TOP+0.14`.
+- **A crack in the barren rock ran a hand's breadth off its own tile.** The start is anywhere
+  within 0.7 of the middle and the crack runs another 0.6 to 1.0 with a wander on top, so it could
+  finish at 1.25 while the block stops at 1.0. Worst reach over twenty thousand rolls was 1.68.
+  Clamped to the rim, it is 0.95. The clamp draws no random numbers, so every other tile in the
+  set rebuilt identical -- the vertex counts are unchanged and only two tiles moved.
+- **A beach graded up into forest floor and then met the meadow on a line.** The shore verge is a
+  five-step series whose stated job is to run from nearly all sand to nearly all turf, and three
+  of the four colours at its turf end were browns: humus, humus twice over, and the jungle floor.
+  The ground a shore hands to is the dark meadow nearly every time. So the one series in the game
+  built to stop a hard join was drawing one of its own, one tile further up the beach. The turf
+  end is the meadow's own dark green now, weighted the way the grass tiles weight it, with one
+  humus kept because the top of a beach is trodden and does have bare soil in it.
+
 ### Four grounds that could not be reached
 
 A tile chooser is a chain of `else if`, and a chain has an order. Four things in it were
