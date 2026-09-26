@@ -430,6 +430,17 @@ public static class Regions
         string adjective = Adjectives[hash % Adjectives.Length];
         string noun = nouns[(hash >> 8) % nouns.Length];
 
+        // Six of the noun lists carry a word that is also an adjective -- White and Cold in the
+        // snows, Green in the meadows and in the jungle, Deep in the jungle, Wide on the plain,
+        // Hollow in the mushroom wood -- and the two slices above come off independent bits on
+        // purpose, so nothing stopped "the White White" or "Coldcold". Seven pairs in all, about
+        // one region in eight hundred, and a region's name goes on the chart, in the journal, in
+        // the world list and into every inscription inside it.
+        // Stepped one along rather than rerolled: it takes no further bits, stays a function of
+        // the seed, and none of the seven lands on a second collision. Taken before the join
+        // below, which measures the adjective. Once per region, never per tile.
+        if (adjective == noun) adjective = Adjectives[(hash % Adjectives.Length + 1) % Adjectives.Length];
+
         // A few read better as one word, the way real place names do, but only
         // the short ones: "Wanderingheights" does not.
         bool joined = adjective.Length <= 5 && (hash >> 16) % 4 == 0;
