@@ -94,8 +94,12 @@ public static class Landmarks
     /// borrowing widens the list rather than replacing it -- which is what remapping the
     /// country did, and why a jungle could never have had a temple.
     /// </summary>
-    /// <summary>What a chunk mostly is, over five samples rather than the one at its middle.</summary>
-    private static Regions.Character Settled(Vector2Int chunk, int worldSeed)
+    /// <summary>
+    /// What a chunk mostly is, over five samples rather than the one at its middle. Internal
+    /// because the small finds want the same answer: they are placed anywhere in the same window
+    /// these five samples cover, so the tile at the middle is the wrong thing to ask.
+    /// </summary>
+    internal static Regions.Character Settled(Vector2Int chunk, int worldSeed)
     {
         int originX = chunk.x * WorldGrid.TilesPerChunk, originZ = chunk.y * WorldGrid.TilesPerChunk;
         int half = WorldGrid.TilesPerChunk / 2, edge = WorldGrid.TilesPerChunk / 4;

@@ -65,7 +65,11 @@ public static class Finds
 
         if (Landmarks.In(chunk, worldSeed).Exists) return result;
 
-        var kinds = In(Regions.CharacterAt(chunk, worldSeed));
+        // What the chunk mostly is, not the one tile at its middle -- the same question the
+        // structures ask. A find is set down anywhere from the margin to the far margin, on
+        // ground the frayed border decided, so a chunk whose middle tile happens to fall in a
+        // wood and whose ground is nearly all desert was dropping a snare on open sand.
+        var kinds = In(Landmarks.Settled(chunk, worldSeed));
         if (kinds.Length == 0) return result;
         if (Hash(chunk.x, chunk.y, worldSeed ^ 0x3D17) % (OneIn * 100) >= 100) return result;
 
