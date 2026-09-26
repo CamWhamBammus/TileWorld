@@ -13,10 +13,16 @@ from mathutils import Vector
 
 GROUND = TOP + 0.04
 SAND = ["sand1", "sand2", "sand3", "sand1"]
-EARTH = ["humus", "humus2", "jfloor", "turf_dark2"]
+# The turf end of the series is the meadow's own dark shade, weighted the way grass_tiles does
+# it, so the last verge tile and the tile above it are the same green. Three of these four used
+# to be browns -- humus, humus2 and the jungle floor -- against a shore that hands to the dark
+# grass every time, so a beach graded up into forest floor and then met the meadow on a line
+# after all, which is the one thing the series exists to stop. One humus stays: the top of a
+# beach is trodden and does have bare soil in it, but one entry in four and not three.
+TURF = ["turf_dark1", "turf_dark1", "turf_dark2", "humus"]
 
 def verge_body(b, rng, green):
-    """The block: sand and dark earth mixed on the top by a noise field rather than by the
+    """The block: sand and turf mixed on the top by a noise field rather than by the
     tile, so the patches run over the edge of one tile and into the next and the join does not
     show. Sand under the rim whatever the mix, since that is what the shore is made of."""
     n = 5; grid = {}
@@ -41,7 +47,7 @@ def verge_body(b, rng, green):
             a, bq, c, d = grid[(i,j)], grid[(i,j+1)], grid[(i+1,j+1)], grid[(i+1,j)]
             for tri in ((a,bq,c),(a,c,d)):
                 cx = sum(p[0] for p in tri)/3; cz = sum(p[2] for p in tri)/3
-                col = rng.choice(EARTH) if turfy(cx, cz) else rng.choice(SAND)
+                col = rng.choice(TURF) if turfy(cx, cz) else rng.choice(SAND)
                 b.tri(*tri, col, out=(0,1,0))
     bands = [(TOP, TOP-0.26, "sand2"), (TOP-0.26, 0.1, "sanddark"), (0.1, BOTTOM, "earth2")]
     corners = [(-HALF,-HALF),(HALF,-HALF),(HALF,HALF),(-HALF,HALF)]
