@@ -73,8 +73,13 @@ def crack(b, rng, at, length, angle):
     for si in range(segs):
         t0 = si/segs; t1 = (si+1)/segs
         wob = math.sin((si + 1)*2.1)*0.05
-        p0 = (x + math.cos(angle)*length*t0, GROUND + 0.004, z + math.sin(angle)*length*t0 + wob)
-        p1 = (x + math.cos(angle)*length*t1, GROUND + 0.004, z + math.sin(angle)*length*t1 + wob*0.5)
+        # Above the rock, not under it. GROUND is TOP+0.04, where the loose stuff beds in, but
+        # peak_body lifts its inner grid to TOP+0.10 -- so a crack and a lichen crust, both one
+        # polygon thick, were laid inside the summit rock over about a quarter of the tile and
+        # showed only where the facets happened to dip. A centimetre over the highest facet is
+        # the margin the wood's litter and the barren rock's own cracks keep.
+        p0 = (x + math.cos(angle)*length*t0, TOP + 0.11, z + math.sin(angle)*length*t0 + wob)
+        p1 = (x + math.cos(angle)*length*t1, TOP + 0.11, z + math.sin(angle)*length*t1 + wob*0.5)
         sx, sz = math.cos(angle+math.pi/2)*w, math.sin(angle+math.pi/2)*w
 
         # Held inside the block. A split starts anywhere within 0.8 of the middle and runs
@@ -94,7 +99,8 @@ def crack(b, rng, at, length, angle):
 def lichen_crust(b, rng, at, radius, colour=None):
     """Lichen on the rock: a flat ragged crust, pale green or a hot yellow."""
     n = 8
-    ring = [(at[0] + math.cos(k/n*math.tau)*radius*rng.uniform(0.45, 1.25), GROUND + 0.005,
+    # Half a centimetre above the cracks, so the two do not fight for the pixels where they meet.
+    ring = [(at[0] + math.cos(k/n*math.tau)*radius*rng.uniform(0.45, 1.25), TOP + 0.115,
              at[1] + math.sin(k/n*math.tau)*radius*rng.uniform(0.45, 1.25)) for k in range(n)]
     b.face(ring, colour or rng.choice(["alpinecrust", "goldlichen", "lichen", "lichen2"]), out=(0,1,0))
 
