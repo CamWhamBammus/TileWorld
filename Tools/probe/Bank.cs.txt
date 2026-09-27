@@ -1,0 +1,89 @@
+// A probe for the banks of standing water in the dry countries: how many tiles of a desert or a
+// plain sit next to water, and what the chunk actually lays on them. A waterhole's bed is mud and
+// the ground above it is straw or sand, and for a long time there was nothing between the two --
+// every other country gets a damp margin round its water and these two branch above that rule.
+// This counts the ring and reports it by id, so "there is a bank now" is a number and not a look.
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+public class _Probe : MonoBehaviour
+{
+    private const string Stages = "__STAGES__";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Boot()
+    {
+        Application.runInBackground = true;
+        AudioListener.volume = 0f; AudioListener.pause = true;   // a probe runs beside whatever else is going on and must not be heard
+        if (FindFirstObjectByType<_Probe>() != null) return;
+        var go = new GameObject("_Probe");
+        DontDestroyOnLoad(go);
+        go.AddComponent<_Probe>();
+    }
+
+    private static void Mark(string what)
+    {
+        try { File.AppendAllText(Stages, System.DateTime.Now.ToString("HH:mm:ss ") + what + "\n"); } catch { }
+    }
+
+    private IEnumerator Start()
+    {
+        yield return new WaitForSecondsRealtime(2f);
+
+        int[] seeds = { 5, 24, 1, 4, 7, 12 };
+        const int reach = 46;                       // in chunks, either side of the origin
+
+        long dry = 0, beside = 0;
+        var byId = new SortedDictionary<int, long>();
+
+        foreach (int seed in seeds)
+        {
+            for (int cx = -reach; cx <= reach; cx += 3)
+            {
+                for (int cz = -reach; cz <= reach; cz += 3)
+                {
+                    var index = new Vector2Int(cx, cz);
+                    var who = Regions.CharacterAt(index, seed);
+
+                    if (who != Regions.Character.Savanna && who != Regions.Character.Desert) continue;
+
+                    // Does this chunk have any water in it at all? Cheap test first: a chunk of
+                    // dry country with nothing under the waterline cannot have a bank.
+                    bool wet = false;
+                    for (int i = 0; i < WorldGrid.TilesPerChunk && !wet; i += 2)
+                    for (int j = 0; j < WorldGrid.TilesPerChunk && !wet; j += 2)
+                        wet = WaterSurface.IsUnderwater(cx * WorldGrid.TilesPerChunk + i,
+                                                        cz * WorldGrid.TilesPerChunk + j, seed);
+
+                    if (!wet) continue;
+
+                    var chunk = new Chunk(index, seed);
+
+                    foreach (var pair in chunk.idToTransforms)
+                    {
+                        dry += pair.Value.Length;
+
+                        // the mud-into-straw and sand-into-mud series, 180 to 184 and 120 to 124
+                        if ((pair.Key >= 180 && pair.Key <= 184) || (pair.Key >= 120 && pair.Key <= 124))
+                        {
+                            beside += pair.Value.Length;
+                            byId.TryGetValue(pair.Key, out long had);
+                            byId[pair.Key] = had + pair.Value.Length;
+                        }
+                    }
+                }
+
+                yield return null;
+            }
+        }
+
+        string said = "";
+        foreach (var pair in byId) said += " " + pair.Key + ":" + pair.Value;
+
+        Mark(string.Format("BANK {0} seeds: {1} tiles in the chunks of a dry country that hold water, {2} of them the graded bank ({3:F1}%) |{4}",
+            seeds.Length, dry, beside, 100.0 * beside / System.Math.Max(1, dry), said.Length > 0 ? said : " none"));
+        Mark("done");
+    }
+}

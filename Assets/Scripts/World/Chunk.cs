@@ -326,6 +326,24 @@ public class Chunk
     /// </summary>
     private const float ReefLive = ReefVergeBand + 2f * WorldHeight.StepHeight;
 
+    /// <summary>
+    /// How far up the bank of a waterhole the dry countries keep their mud. Three terraces.
+    /// Every other country round standing water gets a damp margin -- the low-flats rule catches
+    /// about half the ring and the mud runs out of the pool onto the bank -- and the desert and
+    /// the plain branch above that rule and got none, and get no strand or verge either, because
+    /// those are a sea's. So a waterhole's bed was mud and the next tile up was full straw, one
+    /// terrace apart, with nothing between: a step of about two hundred and thirty-four off the
+    /// sheet, where the scree's rim, which this file calls the largest of the four, is seventy.
+    /// </summary>
+    private const float WaterMargin = 3f * WorldHeight.StepHeight;
+
+    /// <summary>Whether any of the four neighbours is under water.</summary>
+    private static bool WaterBeside(int gx, int gz, int worldSeed)
+    {
+        return WaterSurface.IsUnderwater(gx + 1, gz, worldSeed) || WaterSurface.IsUnderwater(gx - 1, gz, worldSeed)
+            || WaterSurface.IsUnderwater(gx, gz + 1, worldSeed) || WaterSurface.IsUnderwater(gx, gz - 1, worldSeed);
+    }
+
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
     private const float DeepWater = 1.6f;
 
@@ -724,6 +742,24 @@ public class Chunk
                     ? StoneCategory
                     : (desert ? DesertCategory : SavannaCategory);
 
+                // The bank of a waterhole. Asked of the four neighbours rather than of the
+                // height alone: a height band on its own would lay mud along a contour right
+                // across a dry country with no water anywhere in sight, which is the fault the
+                // bare-strand rule had. No new tiles -- the series is the one that already runs
+                // along every border a plain has with a reedbed, or a desert with a wood.
+                if (-underBy < WaterMargin && WaterBeside(gx, gz, worldSeed))
+                {
+                    int theirs = FamilyOfCountry(character);
+                    int low = Mathf.Min(theirs, Dark), high = Mathf.Max(theirs, Dark);
+                    category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
+
+                    // Mud at the water, the country's own ground at the top of the bank --
+                    // which way along the series that is depends on which end the country sits.
+                    float up = Mathf.Clamp01(-underBy / WaterMargin);
+                    float toward = theirs == high ? up : 1f - up;
+                    forced = Mathf.Clamp(Mathf.FloorToInt(toward * VariantsPerCategory), 0, VariantsPerCategory - 1);
+                }
+
                 // And where the plain is worn through. Its five are a wear series and not five
                 // variants: the builder hands each a different share of bare earth showing
                 // through the straw, from a tenth on the path tile to nearly half on the worn
@@ -734,7 +770,7 @@ public class Chunk
                 // the jungle's pools were given. All five stay reachable.
                 if (category == SavannaCategory)
                 {
-                    int pick = PickVariant(SavannaCategory, gx, gz, worldSeed);
+                    int pick = PickVariant(SavannaCategory, gx, gz, worldSeed);   // a bank tile is not this, so it keeps what it was given
                     forced = pick == SavannaWorn && bare < SavannaDry
                         ? (Hash2D(gx, gz, worldSeed + 167) % 2 == 0 ? 3 : 0)
                         : pick;
