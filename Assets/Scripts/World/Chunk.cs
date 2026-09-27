@@ -312,6 +312,20 @@ public class Chunk
     /// </summary>
     private const float SavannaDry = 0.30f;
 
+    /// <summary>Which of the reef floor's five are the bare sand channel and the old dead coral.</summary>
+    private const int ReefChannel = 0, ReefDead = 4;
+
+    /// <summary>
+    /// How deep past the fringe a reef has to be before the sand channels and the old white
+    /// rubble stop falling on it. The reef's five are not five variants of one thing: one is a
+    /// channel blown between the heads and nearly bare, one is coral long dead and gone white,
+    /// and the other three are the garden, the shelf and the seagrass bed. Laid by a flat hash
+    /// they fell everywhere, so two tiles in five of every reef at every depth were bare or dead
+    /// however deep and sheltered the water. Bleaching and scouring belong to the shallow,
+    /// sun-struck edge of a reef, which is where they stay now.
+    /// </summary>
+    private const float ReefLive = ReefVergeBand + 2f * WorldHeight.StepHeight;
+
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
     private const float DeepWater = 1.6f;
 
@@ -427,9 +441,22 @@ public class Chunk
     /// variant runs 0 to 4 across the band, so the sand gives way to coral over about half a
     /// metre of depth instead of changing between one tile and the next.
     /// </summary>
-    private static int ReefOrVerge(float over, ref int forced)
+    private static int ReefOrVerge(float over, int gx, int gz, int worldSeed, ref int forced)
     {
-        if (over >= ReefVergeBand) return ReefCategory;
+        if (over >= ReefVergeBand)
+        {
+            // Past the fringe, the floor proper -- and in the deep of it the channels and the
+            // dead white rubble fold onto the garden and the shelf, the same fold the jungle's
+            // pools and the plain's worn ground were given. All five stay reachable.
+            int pick = PickVariant(ReefCategory, gx, gz, worldSeed);
+
+            forced = (pick == ReefChannel || pick == ReefDead) && over >= ReefLive
+                ? 1 + Hash2D(gx, gz, worldSeed + 157) % 2
+                : pick;
+
+            return ReefCategory;
+        }
+
 
         // Floored over five, not rounded over four, so the two ends of the series get the same
         // rung of depth as the middle three instead of half of one. The shore verge has done it
@@ -566,7 +593,7 @@ public class Chunk
                          : body != WaterSurface.Body.Beach ? MarshCategory
                          : character == Regions.Character.Reef
                            && underBy >= ReefLineAt(gx, gz, worldSeed) - ReefVergeBand
-                             ? ReefOrVerge(underBy - ReefLineAt(gx, gz, worldSeed), ref forced)
+                             ? ReefOrVerge(underBy - ReefLineAt(gx, gz, worldSeed), gx, gz, worldSeed, ref forced)
                          : SandOrRockBed(underBy - (DeepWater + ripple * DeepWander), ref forced);
             }
             // How far up the shore the sand goes, wandering rather than following the
