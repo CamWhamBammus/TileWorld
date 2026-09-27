@@ -420,7 +420,16 @@ public class WorldMap : MonoBehaviour
         // a jungle, a plain, a desert and a meadow all at the same altitude come out the same
         // colour and the chart cannot tell you where anything is. Height still reads through
         // it: the country is mixed in, not painted over.
-        ground = Color.Lerp(ground, CountryColour(Regions.CharacterAt(chunk, seed)), 0.45f);
+        //
+        // What the chunk mostly is, not the one tile at its middle -- the same question the
+        // structures and the small finds ask. A chunk is fifteen tiles across and the border
+        // wander moves the line by up to fourteen, so a chunk on an edge routinely has its
+        // centre in one country and nearly all its tiles in the other, and the chart was
+        // painting the whole square the colour of the side you had mostly not walked on. It
+        // disagreed with its own marks, too: a structure picked from the majority stood on a
+        // square coloured from the middle. Five samples with the border unfrayed, so the line
+        // on the chart stays a line and does not speckle.
+        ground = Color.Lerp(ground, CountryColour(Landmarks.Settled(chunk, seed)), 0.45f);
 
         float wetShare = wet / (float)Mathf.Max(1, samples);
         float snowShare = snowy / (float)Mathf.Max(1, samples);
