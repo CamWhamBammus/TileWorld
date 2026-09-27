@@ -297,6 +297,21 @@ public class Chunk
     /// </summary>
     private const float JungleWet = 0.20f;
 
+    /// <summary>Which of the plain's five is worn through to the earth under the straw.</summary>
+    private const int SavannaWorn = 1;
+
+    /// <summary>
+    /// How dry the ground has to read before the plain is worn through to the earth. The five
+    /// savanna tiles are a wear series, not five variants of one thing -- their own builder hands
+    /// each a different share of bare ground, from a tenth on the path tile to nearly half on the
+    /// worn one -- and they were laid a fifth each by a flat hash, so the baldest ground in the
+    /// country was as likely in a drainage hollow as on an exposed rise. Landed off the probe the
+    /// way the mushroom wood's and the jungle's lines were: over nine chunks of a plain the worn
+    /// tile was a flat fifth, at 0.26 it barely moved, and at 0.30 it is an eighth of the ground
+    /// and what it gave up went to the open grass and the path.
+    /// </summary>
+    private const float SavannaDry = 0.30f;
+
     /// <summary>Depth past which a lake bed is rock rather than sand.</summary>
     private const float DeepWater = 1.6f;
 
@@ -681,6 +696,22 @@ public class Chunk
                 category = steep > DryOutcrop + ripple * SteepWander
                     ? StoneCategory
                     : (desert ? DesertCategory : SavannaCategory);
+
+                // And where the plain is worn through. Its five are a wear series and not five
+                // variants: the builder hands each a different share of bare earth showing
+                // through the straw, from a tenth on the path tile to nearly half on the worn
+                // one, a step of about a hundred and sixteen off the sheet over a third of the
+                // tile. Laid by a flat hash they fell anywhere, so the baldest ground in the
+                // country was as likely in a hollow as on an exposed rise. The worn tile folds
+                // onto the two greenest wherever the ground reads low, which is the same fold
+                // the jungle's pools were given. All five stay reachable.
+                if (category == SavannaCategory)
+                {
+                    int pick = PickVariant(SavannaCategory, gx, gz, worldSeed);
+                    forced = pick == SavannaWorn && bare < SavannaDry
+                        ? (Hash2D(gx, gz, worldSeed + 167) % 2 == 0 ? 3 : 0)
+                        : pick;
+                }
             }
             else if (stone)
             {
