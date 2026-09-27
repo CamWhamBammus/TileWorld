@@ -79,15 +79,15 @@ public class Motes : MonoBehaviour
     /// </summary>
     private static Kind KindAt(Regions.Character c, int tileX, int tileZ, int seed)
     {
-        var kind = KindFor(c);
+        // The snowline decides for every country, not only for the two named after their white
+        // tops. Above half cover the chunk lays snow or scoured rock, it snows rather than rains,
+        // the grade goes cold and your breath shows -- all four of those ask the height and not
+        // the country -- so the uplands of a wood, a barrens or a dead wood were blowing leaves,
+        // sand-coloured dust and ash through a blizzard. Below the line the country is right
+        // again: the peaks are bare rock down there and dust belongs on them.
+        if (SnowCover.CoverAt(tileX, tileZ, seed) > 0.5f) return Kind.Spindrift;
 
-        // The downs get the same treatment for a smaller reason: seed heads are the right thing
-        // blowing over grass and the wrong thing blowing off a drift, and the snowy tops are
-        // what made those regions downs rather than meadow in the first place.
-        if ((c == Regions.Character.Peaks || c == Regions.Character.Hills)
-            && SnowCover.CoverAt(tileX, tileZ, seed) > 0.5f) return Kind.Spindrift;
-
-        return kind;
+        return KindFor(c);
     }
 
     private static Kind KindFor(Regions.Character c) => c switch
