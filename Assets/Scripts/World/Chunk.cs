@@ -54,9 +54,23 @@ public class Chunk
     /// inside a single country, and it was the last hard edge left in the ground anywhere.
     /// </summary>
     private const int ReefVergeCategory = 39;
-    // Wider than ReefWander, or the verge is narrower than the wander on the very edge it is
-    // there to soften and the two fight each other.
-    private const float ReefVergeBand = 0.75f;
+    /// <summary>
+    /// Half the depth the sand-into-coral series is spread over. Two and a half terraces, so the
+    /// whole fringe is five of them: one rung of depth for each step of the series, the same
+    /// arithmetic the shore verge and the sea bed were both put on. It was three rungs carrying
+    /// five steps, rounded over four, so two of the five could barely be laid at all.
+    ///
+    /// And the fringe straddles the reef line now rather than sitting on top of it. Sitting on
+    /// top it could only be widened by pushing the coral floor deeper, and the floor was already
+    /// the smaller half -- a hundred and forty-three tiles against three hundred and eighty-six
+    /// of fringe over nine chunks. Straddling, the sandy end of the series reaches down into
+    /// water a little shallower than the line and the coral floor starts a little sooner, which
+    /// is what a fringe is: the sand does not stop where the coral starts, they overlap.
+    /// Still wider than ReefWander, which is what stops the wander and the fringe fighting on
+    /// the very edge the fringe is there to soften. Nothing about the planting moves: coral is
+    /// keyed on ReefLineAt and still will not stand in less water than that.
+    /// </summary>
+    private const float ReefVergeBand = 2.5f * WorldHeight.StepHeight;
 
     /// <summary>
     /// Half the depth over which an open sea's bed turns from sand to rock. Two and a half
@@ -401,7 +415,13 @@ public class Chunk
     private static int ReefOrVerge(float over, ref int forced)
     {
         if (over >= ReefVergeBand) return ReefCategory;
-        forced = Mathf.Clamp(Mathf.RoundToInt(over / ReefVergeBand * (VariantsPerCategory - 1)), 0, VariantsPerCategory - 1);
+
+        // Floored over five, not rounded over four, so the two ends of the series get the same
+        // rung of depth as the middle three instead of half of one. The shore verge has done it
+        // this way since it was built and the sea bed was put on it too.
+        forced = Mathf.Clamp(Mathf.FloorToInt((over + ReefVergeBand) / (2f * ReefVergeBand) * VariantsPerCategory),
+                             0, VariantsPerCategory - 1);
+
         return ReefVergeCategory;
     }
 
@@ -529,7 +549,8 @@ public class Chunk
                 // and the sheet over it were being decided by two different questions.
                 category = standing == Regions.Character.Snow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
-                         : character == Regions.Character.Reef && underBy >= ReefLineAt(gx, gz, worldSeed)
+                         : character == Regions.Character.Reef
+                           && underBy >= ReefLineAt(gx, gz, worldSeed) - ReefVergeBand
                              ? ReefOrVerge(underBy - ReefLineAt(gx, gz, worldSeed), ref forced)
                          : SandOrRockBed(underBy - (DeepWater + ripple * DeepWander), ref forced);
             }
