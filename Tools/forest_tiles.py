@@ -96,6 +96,15 @@ def blob(b, centre, size, colour_top, colour_side, rng, sub=1, squash=0.55, moss
 # ---------------------------------------------------------------- the tile itself
 TOP = 1.05; BOTTOM = -1.0; HALF = 1.00; INNER = 0.90   # the body meets its neighbours edge to edge on the 2 m grid: an overlap of flat tops fights for the pixels
 
+# Where the loose stuff beds into the earth. A forest floor's top runs from TOP at its rim up to
+# TOP+0.09 in the middle, and the strew was pinned at TOP+0.10 and TOP+0.12 -- above the highest
+# point the ground ever reaches -- so every fern, mushroom, tuft and pebble on every wood floor in
+# the world stood one to twelve centimetres clear of it, the same fault the scree's gravel had.
+# This is the value the newer sets use, and the one `root` and `moss_patch` in this file already
+# use. `litter` stays at TOP+0.10 on purpose: a leaf is one polygon thick and has to clear the
+# humus facets rather than sink into them.
+GROUND = TOP + 0.04
+
 def body(b, rng, layer=0.22):
     """The block: earth sides in two bands, a dark humus top layer, the top itself a jittered grid."""
     n = 4
@@ -169,7 +178,7 @@ def moss_patch(b, rng, centre, radius, height=0.07):
     """A soft hump of moss: a lump, two greens across its facets, sunk into the ground."""
     blob(b, (centre[0], TOP+0.04, centre[1]), (radius, height*1.6, radius*rng.uniform(0.75,1.0)), "moss", "moss2", rng, sub=1, squash=0.15, moss_from=-0.2)
 
-def pebbles(b, rng, count, keep_out=(), base=TOP+0.10):
+def pebbles(b, rng, count, keep_out=(), base=GROUND):
     for _ in range(count):
         for _t in range(20):
             x = rng.uniform(-INNER+0.15, INNER-0.15); z = rng.uniform(-INNER+0.15, INNER-0.15)
@@ -179,12 +188,12 @@ def pebbles(b, rng, count, keep_out=(), base=TOP+0.10):
 
 def mushroom(b, rng, at, size=1.0):
     x,z = at; h = 0.16*size; r = 0.11*size
-    prism(b, (x, TOP+0.10, z), 0.035*size, h, 6, "stem", "stem", taper=0.9)
+    prism(b, (x, GROUND, z), 0.035*size, h, 6, "stem", "stem", taper=0.9)
     # the cap: a cone with a flat underside, red with a cream rim
     cap = []
     for i in range(7):
-        a = i/7*math.tau; cap.append((x+math.cos(a)*r, TOP+0.10+h, z+math.sin(a)*r))
-    peak = (x, TOP+0.10+h+0.09*size, z)
+        a = i/7*math.tau; cap.append((x+math.cos(a)*r, GROUND+h, z+math.sin(a)*r))
+    peak = (x, GROUND+h+0.09*size, z)
     for i in range(7):
         a0 = (i+0.5)/7*math.tau
         b.tri(cap[i], cap[(i+1)%7], peak, "capred" if i%3 else "capcream", out=(math.cos(a0), 0.7, math.sin(a0)))
@@ -196,10 +205,10 @@ def fern(b, rng, at, fronds=5, size=1.0):
         a = k/fronds*math.tau + rng.uniform(-0.3,0.3)
         length = rng.uniform(0.42, 0.58)*size; w = 0.11*size
         segs = 3
-        prev = (x, TOP+0.12, z)
+        prev = (x, GROUND, z)
         for s in range(segs):
             t0 = s/segs; t1 = (s+1)/segs
-            def at_t(t): return (x+math.cos(a)*length*t, TOP+0.12 + 0.55*length*math.sin(t*math.pi*0.9), z+math.sin(a)*length*t)
+            def at_t(t): return (x+math.cos(a)*length*t, GROUND + 0.55*length*math.sin(t*math.pi*0.9), z+math.sin(a)*length*t)
             p0 = at_t(t0); p1 = at_t(t1)
             side = (math.cos(a+math.pi/2)*w*(1-t0*0.7), 0, math.sin(a+math.pi/2)*w*(1-t0*0.7))
             side1 = (math.cos(a+math.pi/2)*w*(1-t1*0.7), 0, math.sin(a+math.pi/2)*w*(1-t1*0.7))
@@ -242,7 +251,7 @@ def root(b, rng, start, angle, length, radius):
         pts.append((px,py,pz)); radii.append(radius*(1.0-0.55*t))
     tube(b, pts, radii, 6, ["bark","bark","bark2"])
 
-def twig(b, rng, at, angle, length, base=TOP+0.10+0.02):
+def twig(b, rng, at, angle, length, base=GROUND+0.02):
     x,z = at
     pts=[(x+math.cos(angle)*length*t, base+0.03*math.sin(t*math.pi), z+math.sin(angle)*length*t) for t in (0, 0.5, 1)]
     tube(b, pts, [0.018, 0.016, 0.012], 4, ["twig","bark2"])
@@ -254,8 +263,8 @@ def tuft(b, rng, at, size=1.0):
         a = k/5*math.tau + rng.uniform(-0.4,0.4)
         h = rng.uniform(0.22, 0.34)*size; lean = rng.uniform(0.08, 0.16)
         w = 0.028*size
-        base = (x + math.cos(a)*0.03, TOP+0.10, z + math.sin(a)*0.03)
-        tip = (x + math.cos(a)*lean, TOP+0.10+h, z + math.sin(a)*lean)
+        base = (x + math.cos(a)*0.03, GROUND, z + math.sin(a)*0.03)
+        tip = (x + math.cos(a)*lean, GROUND+h, z + math.sin(a)*lean)
         sx, sz = math.cos(a+math.pi/2)*w, math.sin(a+math.pi/2)*w
         col = "grassdark" if k%2 else "fern2"
         b.quad((base[0]-sx,base[1],base[2]-sz),(base[0]+sx,base[1],base[2]+sz),(tip[0]+sx*0.3,tip[1],tip[2]+sz*0.3),(tip[0]-sx*0.3,tip[1],tip[2]-sz*0.3), col)
@@ -282,7 +291,7 @@ def tile(index):
         for at in [(-0.7,0.55),(0.65,-0.65)]: tuft(b, rng, at)
         litter(b, rng, 16)
     elif index == 2:
-        cylinder_along(b, (-0.75, TOP+0.10+0.2, -0.45), (0.7, TOP+0.10+0.2, 0.25), 0.21, 8, "bark", "woodring", rng=rng, jitter=0.12, taper=0.85)
+        cylinder_along(b, (-0.75, GROUND+0.2, -0.45), (0.7, GROUND+0.2, 0.25), 0.21, 8, "bark", "woodring", rng=rng, jitter=0.12, taper=0.85)
         keep.append((0,0,0.35))
         leaf_pile(b, rng, (-0.25, 0.45), 0.3); keep.append((-0.25,0.45,0.35))
         for k, at in enumerate([(0.45,-0.55),(0.62,-0.42),(-0.55,0.62)]): mushroom(b, rng, at, size=rng.uniform(0.8,1.25))
