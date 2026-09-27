@@ -72,7 +72,15 @@ FAMILY = {
                                  (tufts(b, rng, at, ["marram", "marram2"], size=0.9, blades=5) if rng.random() < 0.5
                                   else lump(b, rng, at, ["pebble", "stone2"]))),
     "grass": dict(
-        top=["turf_light1", "turf_light2", "turf_light3", "turf_dark1"], band="humus", low="earth2",
+        # The riser and the earth under it are the meadow's own, out of grass_tiles.turf_body:
+        # turf, then earth, then the darker earth below. It was humus over earth2 -- a brown
+        # where the meadow beside it shows green -- so a step in the ground at a grass border
+        # drew a brown lip along the whole of it, which is the one thing the sides of these
+        # tiles exist to prevent. `deep` matches turf_body's own 0.16, so at a one-terrace step
+        # the mixed tile shows the same band of turf over the same sliver of earth as the
+        # meadow next to it; the other five families keep the 0.26 they were built with.
+        top=["turf_light1", "turf_light2", "turf_light3", "turf_dark1"],
+        band="turf_light2", low="earth", deep=0.16,
         strew=lambda b, rng, at: tufts(b, rng, at, ["tuft_light", "turf_dark2"], size=1.0, blades=6) if rng.random() < 0.7
                                  else flat_bit(b, rng, at, ["petal_white", "petal_yellow", "flower_heart"], 0.05, 0.08)),
     "dark": dict(
@@ -125,7 +133,8 @@ def blend_body(b, rng, first, second, mix, bottom="earth2"):
                 use = B if theirs(cx, cz) else A
                 b.tri(*tri, rng.choice(use["top"]), out=(0,1,0))
     win = B if mix > 0.5 else A
-    bands = [(TOP, TOP-0.26, win["band"]), (TOP-0.26, 0.1, win["low"]), (0.1, BOTTOM, bottom)]
+    d = win.get("deep", 0.26)
+    bands = [(TOP, TOP-d, win["band"]), (TOP-d, 0.1, win["low"]), (0.1, BOTTOM, bottom)]
     corners = [(-HALF,-HALF),(HALF,-HALF),(HALF,HALF),(-HALF,HALF)]
     for k in range(4):
         (x0,z0),(x1,z1) = corners[k], corners[(k+1)%4]
@@ -136,7 +145,11 @@ def blend_body(b, rng, first, second, mix, bottom="earth2"):
 
 def tile(first, second, step):
     mix = [0.10, 0.30, 0.50, 0.70, 0.90][step]
-    rng = random.Random(hash((first, second, step)) & 0xffff)
+    # Pinned. This was seeded off Python's hash of a tuple of strings, which is salted per
+    # process, so every run of this script built seventy-five different tiles and none of them
+    # could ever be reproduced -- a one-line change to one family rerolled the strew on all of
+    # them. Nothing else in Tools/ uses the 13000 range.
+    rng = random.Random(13000 + PAIRS.index((first, second)) * 5 + step)
     b = Build(); blend_body(b, rng, first, second, mix)
     keep = []
     def spots(n, margin=0.18, room=0.26):
