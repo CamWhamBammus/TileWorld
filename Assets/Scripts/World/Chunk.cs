@@ -337,6 +337,26 @@ public class Chunk
     /// </summary>
     private const float WaterMargin = 3f * WorldHeight.StepHeight;
 
+    /// <summary>
+    /// How far above the waterline a reedbed is still mud, and how far up its bank the mud then
+    /// grades into what grows behind it. A reedbed is picked on nine samples in a hundred being
+    /// under water, with no ceiling on its relief at all, so most of one is rising ground well
+    /// clear of any water -- five to ten metres of it, twenty to forty terraces -- and every tile
+    /// of that was wet mud with standing pools sunk into it, and reeds two metres tall on two
+    /// tiles in five of it. Two terraces of mud, five of bank, the shore verge's own width.
+    /// </summary>
+    private const float ReedWet = 2f * WorldHeight.StepHeight;
+    private const float ReedBank = 5f * WorldHeight.StepHeight;
+
+    /// <summary>
+    /// Whether a reedbed is still mud here. The reeds ask this too, so they stop where the mud
+    /// does: the two used to be decided by different rules and reeds stood all the way up.
+    /// </summary>
+    public static bool SoddenHere(int gx, int gz, int worldSeed)
+    {
+        return WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, worldSeed) > -ReedWet;
+    }
+
     /// <summary>Whether any of the four neighbours is under water.</summary>
     private static bool WaterBeside(int gx, int gz, int worldSeed)
     {
@@ -790,7 +810,26 @@ public class Chunk
             }
             else if (sodden)
             {
-                category = MarshCategory;
+                // A reedbed climbs out of its own water. Mud at the bottom, then a bank grading
+                // up into whatever grows behind it, and above that the grass bands the chain
+                // already chose -- which is what `category` still holds if neither of these
+                // fires. No new tiles: the grass-into-dark series already runs along every
+                // border a reedbed has with a meadow.
+                float bank = -underBy;
+
+                if (bank < ReedWet)
+                {
+                    category = MarshCategory;
+                }
+                else if (bank < ReedWet + ReedBank)
+                {
+                    int low = Mathf.Min(Grass, Dark), high = Mathf.Max(Grass, Dark);
+                    category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
+
+                    // The mud end at the water, the grass end at the top of the bank.
+                    float toward = 1f - Mathf.Clamp01((bank - ReedWet) / ReedBank);
+                    forced = Mathf.Clamp(Mathf.FloorToInt(toward * VariantsPerCategory), 0, VariantsPerCategory - 1);
+                }
             }
             else if (TooSteepToHold(steep, ripple))
             {

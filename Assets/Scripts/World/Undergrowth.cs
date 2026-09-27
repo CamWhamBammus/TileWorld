@@ -411,7 +411,10 @@ public class Undergrowth : MonoBehaviour
                 Regions.Character.Desert => desert,
                 Regions.Character.Stone => stone,
                 Regions.Character.Dead => dead,
-                Regions.Character.Reed => reed,
+                // Reeds where the mud is, and what the open country grows above it: a reedbed's
+                // own high ground is five to ten metres clear of its pools, and reeds two metres
+                // tall were standing on every bit of it.
+                Regions.Character.Reed => Chunk.SoddenHere(gx, gz, seed) ? reed : ordinary,
                 Regions.Character.Snow => snow,
                 Regions.Character.Forest => forest,
                 Regions.Character.Water => shore,
