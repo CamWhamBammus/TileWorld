@@ -86,7 +86,7 @@ def tile(index):
         p = (rng.uniform(-0.3,0.3), rng.uniform(-0.3,0.3), 0.5)
         mud_body(b, rng, puddle=p); keep.append((p[0],p[1],0.6))
         for at in spots(3): sedge(b, rng, at)
-        pebbles(b, rng, 1, keep)
+        pebbles(b, rng, 1, keep, base=TOP+0.03)
     elif index == 1:
         mud_body(b, rng)
         for at in spots(5): sedge(b, rng, at, size=rng.uniform(0.9,1.3), blades=rng.choice([6,8]))
@@ -106,8 +106,8 @@ def tile(index):
         mud_body(b, rng)
         for at in spots(2, 0.3): hummock(b, rng, at, rng.uniform(0.22,0.3))
         for at in spots(2): sedge(b, rng, at, size=0.8, blades=5)
-        for k in range(2): twig(b, rng, spots(1)[0], rng.uniform(0,math.tau), 0.3)
-        pebbles(b, rng, 1, keep)
+        for k in range(2): twig(b, rng, spots(1)[0], rng.uniform(0,math.tau), 0.3, base=TOP+0.03)
+        pebbles(b, rng, 1, keep, base=TOP+0.03)
     return b.make("Marsh Tile %d" % index)
 
 def main():

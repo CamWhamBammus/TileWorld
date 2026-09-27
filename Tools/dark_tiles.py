@@ -66,7 +66,7 @@ def fungal(index):
         keep.append((x,z,r)); return (x,z)
     if index == 0:
         for _ in range(3): toadstool(b, rng, spot(), size=rng.uniform(0.8,1.4))
-        ft["litter"](b, rng, 6, keep)
+        ft["litter"](b, rng, 6, keep, base=TOP+0.06)
     elif index == 1:
         # a fairy ring
         n = 7; c = (rng.uniform(-0.15,0.15), rng.uniform(-0.15,0.15))
@@ -79,7 +79,7 @@ def fungal(index):
     elif index == 3:
         for _ in range(2): puffball(b, rng, spot(0.25, 0.3), size=rng.uniform(0.9,1.5))
         toadstool(b, rng, spot(), size=1.1, cap="darkcap", spots=False)
-        ft["litter"](b, rng, 6, keep)
+        ft["litter"](b, rng, 6, keep, base=TOP+0.06)
     else:
         cylinder_along(b, (-0.6, TOP+0.08+0.16, 0.3), (0.65, TOP+0.08+0.16, -0.35), 0.17, 7, "rot", "rot2", rng=rng, jitter=0.12, taper=0.9); keep.append((0,0,0.35))
         for _ in range(4): glowcap(b, rng, (rng.uniform(-0.5,0.5), rng.uniform(-0.05,0.05)+0.28), size=0.8)
@@ -111,23 +111,23 @@ def dead(index):
             if not any((x-kx)**2+(z-kz)**2 < kr*kr for (kx,kz,kr) in keep): break
         keep.append((x,z,r)); return (x,z)
     if index == 0:
-        for _ in range(3): twig(b, rng, spot(0.15, 0.2), rng.uniform(0, math.tau), rng.uniform(0.3,0.5))
-        ft["litter"](b, rng, 10, keep)
+        for _ in range(3): twig(b, rng, spot(0.15, 0.2), rng.uniform(0, math.tau), rng.uniform(0.3,0.5), base=TOP+0.06)
+        ft["litter"](b, rng, 10, keep, base=TOP+0.06)
     elif index == 1:
         c = spot(0.5, 0.6); bough(b, rng, (c[0]-0.5, c[1]), rng.uniform(-0.4,0.4), 1.1)
-        ft["litter"](b, rng, 6, keep)
+        ft["litter"](b, rng, 6, keep, base=TOP+0.06)
     elif index == 2:
         prism(b, (rng.uniform(-0.3,0.3), TOP+0.06, rng.uniform(-0.3,0.3)), 0.26, rng.uniform(0.3,0.55), 8, "char", "ash2", taper=0.8, rng=rng, jitter=0.2); keep.append((0,0,0.6))
-        ft["litter"](b, rng, 8, keep)
+        ft["litter"](b, rng, 8, keep, base=TOP+0.06)
     elif index == 3:
         bones(b, rng, spot(0.35, 0.4), rng.uniform(0, math.tau))
         blob(b, spot(0.25, 0.3) + (0,), (0.12, 0.09, 0.14), "bone", "bone", rng, sub=1, squash=0.4, moss_from=-1) if False else None
         s0 = spot(0.25, 0.3); blob(b, (s0[0], TOP+0.06+0.05, s0[1]), (0.12, 0.09, 0.14), "bone", "bone", rng, sub=1, squash=0.4, moss_from=-1)
-        pebbles(b, rng, 2, keep)
+        pebbles(b, rng, 2, keep, base=TOP+0.06)
     else:
         for _ in range(2): toadstool(b, rng, spot(), size=0.8, cap="darkcap", stem="darkcap", spots=False)
-        for _ in range(2): twig(b, rng, spot(0.15, 0.2), rng.uniform(0, math.tau), 0.35)
-        ft["litter"](b, rng, 8, keep)
+        for _ in range(2): twig(b, rng, spot(0.15, 0.2), rng.uniform(0, math.tau), 0.35, base=TOP+0.06)
+        ft["litter"](b, rng, 8, keep, base=TOP+0.06)
     return b.make("Dead Tile %d" % index)
 
 def main():

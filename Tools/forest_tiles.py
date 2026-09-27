@@ -126,7 +126,13 @@ def body(b, rng, layer=0.22):
     # the underside
     b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), "earth2", out=(0,-1,0))
 
-def litter(b, rng, count, keep_out=()):
+# These three are borrowed by the marsh, the meadows, the mushroom wood and the dead wood, and
+# they used to be pinned to this floor's own height. A forest floor lifts its inner grid to
+# TOP+0.09, so a pebble sitting at TOP+0.105 clears it by a centimetre and reads as lying on it;
+# mud stops at TOP+0.04, turf at TOP+0.06 and ash at TOP+0.07, so the same pebble hung three to
+# seven centimetres in the air over those -- a pale grey stone over near-black mud, lit right
+# through underneath, which is the fault the scree's gravel had. Each set passes its own bed now.
+def litter(b, rng, count, keep_out=(), base=TOP+0.10):
     """Fallen leaves: small raised facets scattered on the top, ochre, rust and pale."""
     placed = 0; tries = 0
     while placed < count and tries < count*20:
@@ -135,7 +141,7 @@ def litter(b, rng, count, keep_out=()):
         if any((x-kx)**2+(z-kz)**2 < kr*kr for (kx,kz,kr) in keep_out): continue
         s = rng.uniform(0.09, 0.16); a = rng.uniform(0, math.tau)
         col = rng.choice(["litter","litter","litter2","litter3"])
-        y = TOP + 0.10 + rng.uniform(0, 0.03)
+        y = base + rng.uniform(0, 0.03)
         if rng.random() < 0.6:
             # a leaf: a kite of two triangles, one tip lifted
             tip = (x+math.cos(a)*s*1.4, y+0.04, z+math.sin(a)*s*1.4)
@@ -163,13 +169,13 @@ def moss_patch(b, rng, centre, radius, height=0.07):
     """A soft hump of moss: a lump, two greens across its facets, sunk into the ground."""
     blob(b, (centre[0], TOP+0.04, centre[1]), (radius, height*1.6, radius*rng.uniform(0.75,1.0)), "moss", "moss2", rng, sub=1, squash=0.15, moss_from=-0.2)
 
-def pebbles(b, rng, count, keep_out=()):
+def pebbles(b, rng, count, keep_out=(), base=TOP+0.10):
     for _ in range(count):
         for _t in range(20):
             x = rng.uniform(-INNER+0.15, INNER-0.15); z = rng.uniform(-INNER+0.15, INNER-0.15)
             if not any((x-kx)**2+(z-kz)**2 < kr*kr for (kx,kz,kr) in keep_out): break
         s = rng.uniform(0.07, 0.13)
-        blob(b, (x, TOP+0.10+s*0.35, z), (s, s*0.7, s*0.85), "pebble", "stone2", rng, sub=0, squash=0.4, moss_from=2.0)
+        blob(b, (x, base+s*0.35, z), (s, s*0.7, s*0.85), "pebble", "stone2", rng, sub=0, squash=0.4, moss_from=2.0)
 
 def mushroom(b, rng, at, size=1.0):
     x,z = at; h = 0.16*size; r = 0.11*size
@@ -236,9 +242,9 @@ def root(b, rng, start, angle, length, radius):
         pts.append((px,py,pz)); radii.append(radius*(1.0-0.55*t))
     tube(b, pts, radii, 6, ["bark","bark","bark2"])
 
-def twig(b, rng, at, angle, length):
+def twig(b, rng, at, angle, length, base=TOP+0.10+0.02):
     x,z = at
-    pts=[(x+math.cos(angle)*length*t, TOP+0.10+0.02+0.03*math.sin(t*math.pi), z+math.sin(angle)*length*t) for t in (0, 0.5, 1)]
+    pts=[(x+math.cos(angle)*length*t, base+0.03*math.sin(t*math.pi), z+math.sin(angle)*length*t) for t in (0, 0.5, 1)]
     tube(b, pts, [0.018, 0.016, 0.012], 4, ["twig","bark2"])
 
 def tuft(b, rng, at, size=1.0):

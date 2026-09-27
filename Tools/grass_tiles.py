@@ -97,7 +97,7 @@ def tile(shade, index):
     if index == 0:
         for at in spots(4): grass_tuft(b, rng, at, shade, size=rng.uniform(0.9,1.2))
         c = spots(1, 0.3)[0]; flowers(b, rng, c, 0.28, ["petal_white","petal_yellow"], 5, shade)
-        pebbles(b, rng, 1, keep)
+        pebbles(b, rng, 1, keep, base=TOP+0.05)
     elif index == 1:
         c = spots(1, 0.35)[0]; clover(b, rng, c, 0.42, shade); keep.append((c[0],c[1],0.5))
         m = spots(1, 0.3)[0]; molehill(b, rng, m)
@@ -106,7 +106,7 @@ def tile(shade, index):
     elif index == 2:
         c = spots(1, 0.4)[0]; lichen_rock(b, rng, c, (rng.uniform(0.32,0.42), 0.26, rng.uniform(0.26,0.36))); keep.append((c[0],c[1],0.55))
         for at in spots(3): grass_tuft(b, rng, at, shade)
-        pebbles(b, rng, 2, keep)
+        pebbles(b, rng, 2, keep, base=TOP+0.05)
     elif index == 3:
         c = spots(1, 0.35)[0]; flowers(b, rng, c, 0.34, ["petal_red","petal_purple","petal_white"], 6, shade); keep.append((c[0],c[1],0.45))
         c2 = spots(1, 0.3)[0]; flowers(b, rng, c2, 0.26, ["petal_yellow","petal_white"], 5, shade)
@@ -114,7 +114,7 @@ def tile(shade, index):
     else:
         for at in spots(3): grass_tuft(b, rng, at, shade, size=rng.uniform(0.8,1.1))
         s0 = spots(1, 0.5)[0]; branch(b, rng, s0, rng.uniform(0, math.tau), rng.uniform(0.7, 0.9))
-        pebbles(b, rng, 1, keep)
+        pebbles(b, rng, 1, keep, base=TOP+0.05)
     return b.make("Grass %s %d" % (shade, index))
 
 def main():
