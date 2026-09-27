@@ -76,8 +76,19 @@ def crack(b, rng, at, length, angle):
         p0 = (x + math.cos(angle)*length*t0, GROUND + 0.004, z + math.sin(angle)*length*t0 + wob)
         p1 = (x + math.cos(angle)*length*t1, GROUND + 0.004, z + math.sin(angle)*length*t1 + wob*0.5)
         sx, sz = math.cos(angle+math.pi/2)*w, math.sin(angle+math.pi/2)*w
-        b.quad((p0[0]-sx,p0[1],p0[2]-sz), (p0[0]+sx,p0[1],p0[2]+sz),
-               (p1[0]+sx,p1[1],p1[2]+sz), (p1[0]-sx,p1[1],p1[2]-sz),
+
+        # Held inside the block. A split starts anywhere within 0.8 of the middle and runs
+        # another 0.4 to 0.9 with a wobble and its own width on top, so it could finish at 1.62
+        # while the block stops at 1.0 -- a strip of dark rock and ice lying over whatever was
+        # laid next to it, which on a summit is as likely to be snow as anything. The barren
+        # rock had the same fault and was clamped the same way. The corners are held rather
+        # than the centre line, so the width is accounted for, and no random number is drawn,
+        # so every other piece on the tile comes out exactly where it was.
+        def hold(px, py, pz):
+            return (min(HALF, max(-HALF, px)), py, min(HALF, max(-HALF, pz)))
+
+        b.quad(hold(p0[0]-sx,p0[1],p0[2]-sz), hold(p0[0]+sx,p0[1],p0[2]+sz),
+               hold(p1[0]+sx,p1[1],p1[2]+sz), hold(p1[0]-sx,p1[1],p1[2]-sz),
                "ice" if rng.random() < 0.35 else "alpine3", out=(0,1,0))
 
 def lichen_crust(b, rng, at, radius, colour=None):
