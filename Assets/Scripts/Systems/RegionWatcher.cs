@@ -50,6 +50,17 @@ public class RegionWatcher : MonoBehaviour
         }
 
         player = world.PlayerTransform;
+
+        // The countries you have been into come back with the save. Restored here rather than
+        // from the save coordinator's own pass: neither sets an execution order, so this
+        // component's first Update can win the frame, read the player's position before it has
+        // been put back, and announce a country you already know. Start always runs first.
+        var save = WorldLibrary.Current;
+
+        if (save != null)
+        {
+            foreach (var cell in save.regions) visited.Add(cell);
+        }
     }
 
     private void Update()

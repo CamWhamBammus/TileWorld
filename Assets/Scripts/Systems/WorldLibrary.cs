@@ -34,6 +34,15 @@ public class WorldSave
 
     public List<Vector2Int> visited = new List<Vector2Int>();
     public List<Vector2Int> surveyed = new List<Vector2Int>();
+
+    /// <summary>
+    /// The region cells you have been into. Which countries you have walked in is part of what
+    /// the player did, the same as which chunks you have crossed and which you have surveyed,
+    /// and it was the one of the three that was worked out afresh every load: the journal
+    /// counted every country as new again and the arrival card announced one you already knew.
+    /// An older save reads back with this empty and starts charting from the next load.
+    /// </summary>
+    public List<Vector2Int> regions = new List<Vector2Int>();
     public List<Vector2Int> landmarkChunks = new List<Vector2Int>();
     public List<int> landmarkKinds = new List<int>();
     public List<int> creaturesSeen = new List<int>();

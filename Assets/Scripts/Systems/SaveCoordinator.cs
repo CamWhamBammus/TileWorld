@@ -192,6 +192,7 @@ public class SaveCoordinator : MonoBehaviour
         // it is rewritten.
         data.visited.Clear();
         data.surveyed.Clear();
+        data.regions.Clear();
         data.landmarkChunks.Clear();
         data.landmarkKinds.Clear();
         data.creaturesSeen.Clear();
@@ -213,6 +214,7 @@ public class SaveCoordinator : MonoBehaviour
 
         foreach (var chunk in ExplorationLog.Visited) data.visited.Add(chunk);
         foreach (var chunk in ExplorationLog.Surveyed) data.surveyed.Add(chunk);
+        foreach (var cell in RegionWatcher.Visited) data.regions.Add(cell);
 
         foreach (var pair in LandmarkLog.Found)
         {
