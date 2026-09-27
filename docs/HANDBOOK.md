@@ -1106,6 +1106,127 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### The four countries that were one ground
+
+Six countries measured 100% own ground outside their border bands. Four of them are not flat by
+nature, they were flat by omission, and all four are fixed with tiles that already existed.
+
+- **A reedbed was wet mud with pools in it ten metres above its own water.** A reedbed is picked on
+  nine samples in a hundred being under water and has no ceiling on its relief at all, so most of
+  one is rising ground -- five to ten metres above its pools, twenty to forty terraces -- and every
+  tile of that was mud with standing water sunk into it, carrying two-metre reeds on two tiles in
+  five. It climbs out of its water now: two terraces of mud, five of bank grading up the
+  grass-into-dark series, and the grass bands above that. The reeds ask the same line, so they stop
+  where the mud does. Measured: 100% own ground to 55% own and 38% mixed, the most varied country
+  in the game after the downs and the peaks.
+- **A waterhole on a plain met the straw on a hard line.** Every other country gets a damp margin
+  round its standing water; the desert and the plain branch above that rule and got none, and get
+  no strand or verge either because those belong to a sea. So a waterhole's bed was mud and the
+  next tile up was full straw, one terrace apart, a step of about two hundred and thirty-four off
+  the sheet where the scree's rim -- which this repository calls the largest of the four -- is
+  seventy. Three terraces of graded bank now, and asked of the four neighbours rather than of the
+  height alone, because a height band on its own lays mud along a contour across a dry country with
+  no water in sight, which is the fault the bare-strand rule had. Counted over six seeds: the
+  plain's mud end went from nought tiles to a hundred and forty-nine, the desert's from a hundred
+  and fifty-seven to four hundred and fifteen.
+- **Two tiles in five of every reef were bare sand or coral long dead.** The reef's five are not
+  five variants of one thing -- one is a channel blown between the heads and nearly bare, one is
+  coral gone white, and the other three are the garden, the shelf and the seagrass bed -- and a
+  flat hash laid each of them a fifth of the time at every depth. Bleaching and scouring belong to
+  the shallow, sun-struck edge, which is where they stay now; in the deep they fold onto the garden
+  and the shelf. Over nine chunks the channel fell from 35 tiles to 24 and the dead coral from 40
+  to 28, and the garden and the shelf took the difference.
+- **The baldest ground on the plain fell as readily in a hollow as on a rise.** The savanna's five
+  are a wear series -- its builder hands each a different share of bare earth showing through the
+  straw, from a tenth to nearly half -- and they were laid a fifth each. The worn tile folds onto
+  the two greenest wherever the ground reads low: a flat fifth to an eighth, and what it gave up
+  went to the open grass and the path.
+
+### The reef's fringe, and why it was not simply widened
+
+The sand-into-coral fringe had the same rung arithmetic the shore verge and the sea bed were both
+put on: three terraces of depth carrying a five-step series, rounded over four. The obvious fix --
+widen it to five rungs -- would have pushed the coral floor half a metre deeper, and the floor was
+already the smaller half, a hundred and forty-three tiles against three hundred and eighty-six of
+fringe over nine chunks.
+
+So it straddles the reef line instead of sitting on top of it. The sandy end of the series reaches
+down into water a little shallower than the line and the coral floor starts a little sooner, which
+is what a fringe is: the sand does not stop where the coral starts, the two overlap. The floor grew
+to a hundred and seventy-nine tiles, all five fringe steps are used with a proper falloff where two
+of them could barely be laid before, and the coral planting did not move at all, because that is
+keyed on the reef line and not on the fringe.
+
+### Measuring the tiles instead of looking at them
+
+`Tools/overhang.py` runs a tile script under Blender and reports how far every piece of every tile
+reaches off its own block, and how high off the ground the lowest piece sits. A tile is two metres
+across and nothing on it should reach past a metre from its middle, because the next tile starts
+there -- and nothing in the game can see that, since a mesh is instanced and knows nothing about
+its neighbours.
+
+Its first run said every tile in every set overhung by half a metre, which was the tool and not the
+tiles: `Build.make` turns the mesh a quarter about X on the way in, so the game's up is Blender's z,
+and measuring x against z compares a horizontal axis with the vertical one. Measured on the game's
+axes, thirteen of the fifteen sets are clean to the millimetre. The two that are not are the
+forest's ferns and the jungle's leaves and fronds, three to sixteen centimetres, and those are left
+alone: soft plant scatter lapping over a seam reads correctly, and a jungle is supposed to be
+overgrown. What the tool is for is the next hard-geometry case, which is how the summit's splits
+were found -- they reached 1.62.
+
+### Things standing in the air
+
+The scree's chips were bedded into the rock last round. The same fault turned out to be in four
+more places, all of them the same shape: a piece pinned to a height that suits one ground and used
+on another.
+
+- **Pebbles, twigs and leaves borrowed from the forest floor** are shared helpers, and they were
+  pinned to a wood's own height. A forest floor lifts its inner grid to `TOP+0.09`, so a pebble at
+  `TOP+0.105` clears it by a centimetre and reads as lying on it. Mud stops at `TOP+0.04`, turf at
+  `TOP+0.06`, ash and loam at `TOP+0.07` -- so the same pebble hung three to seven centimetres in
+  the air over those: a pale grey stone over near-black mud, lit right through underneath. The
+  helpers take a bedding height now and each set passes its own.
+- **The forest floor's own ferns, mushrooms, tufts and pebbles** stood one to twelve centimetres
+  above the highest point their own block ever reaches, because they were pinned above the grid
+  rather than into it. They use the same `GROUND` the newer sets do. The litter stays where it is:
+  a leaf is one polygon thick and has to clear the humus facets rather than sink into them.
+- **The summit's cracks and lichen crusts** had the opposite fault. They sat at `TOP+0.04`, where
+  loose stuff beds in, while the summit rock lifts its inner grid to `TOP+0.10` -- so both, one
+  polygon thick, were laid *inside* the rock over about a quarter of the tile and showed only where
+  the facets happened to dip. A centimetre over the highest facet now.
+- **A split in the summit rock ran half a tile over its neighbour**, reaching 1.62 against a block
+  that stops at 1.00. The barren rock had the same fault and was clamped the same way the round
+  before.
+
+### Smaller ones
+
+- **A step in the ground at a grass border drew a brown lip along it.** The mixed tiles take the
+  winning family's own riser so a step does not show a stripe of the wrong country, and the band
+  taken for grass was humus -- a brown, where the meadow beside it shows green. The meadow's own
+  turf now, over its own earth, at its own depth. The seed was pinned in the same pass: these were
+  seeded off Python's hash of a tuple of strings, which is salted per process, so every run of the
+  script built seventy-five different tiles and none of them could ever be reproduced.
+- **A wooded ridge blew leaves through a blizzard.** The snowline override named only the two
+  countries called after their white tops, and a barrens, a wood or a dead wood can hold ground
+  above the snowline too. The snowline decides for every country now, which is what the ground, the
+  weather, the colour grade and your breath already do.
+- **The chart coloured a border square for the side you had not walked on.** It asked the one tile
+  at a chunk's middle; a chunk is fifteen tiles and the border wander moves the line by up to
+  fourteen. It asks what the chunk mostly is, the same question the structures and the small finds
+  now ask -- and it had been disagreeing with its own marks.
+- **Which countries you had walked in was worked out afresh every load.** The chunks you have
+  crossed and the ones you have surveyed come back with the save and the regions did not, so the
+  journal counted every country as new again. Restored in `Start` rather than from the save
+  coordinator's own pass, because neither sets an execution order and this component's first update
+  can otherwise win the frame and announce a country you already know.
+
+**A note on the sweep.** Taking the reeds off a reedbed's dry upland cut the things standing in
+sight of almost every country by seven to eighteen percent, which looked at first like a regression
+somewhere else. Two sweeps on the same build came back identical to the tile, and a bisect put the
+whole of it on that one change: reedbeds are four percent of the world and were carrying reeds at
+forty-two percent density on all of their ground, so they were visible from everywhere near them.
+The sweep is deterministic and worth bisecting against when a number moves that should not have.
+
 ### A log line cost the sweep five minutes
 
 The sweep reported a worst frame of three hundred and twenty-four seconds in the dead woods, and a
