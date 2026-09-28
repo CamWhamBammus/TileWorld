@@ -1106,6 +1106,96 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Things that had never been drawn at all
+
+- **Every crack in every frozen lake faced downwards and was culled away.** The quads were wound
+  the mirror of the way the water, the ice, the drifts and the wash are wound, so their normals
+  came out pointing at the lake bed, and a one-sided flat overlay facing down is not drawn. They
+  have existed since they were written and nobody has seen one. The third time a flat overlay in
+  this project has been caught facing the wrong way.
+- **A crack in the ice ran half a tile up the bank.** It tested the middle of each segment and a
+  segment runs up to 2.3 long, so a midpoint well inside a frozen tile could still finish more
+  than half a tile onto the shore -- and the strip sits twelve millimetres above the water line,
+  which is exactly where a flush shore tile's own top is. The far end is asked as well now; the
+  midpoint test stays, or a long segment could cut the corner of a bank tile lying between two
+  frozen ones.
+- **The raw world seed rode in the wave's own coordinate.** The phase was
+  `PerlinNoise(tileX * 0.018f + seed * 0.01f, ...)`, and a seed is drawn up to two billion, so the
+  argument reaches twenty-one million -- past two to the twenty-third, where a float's smallest
+  step is one and the 0.018 per tile is swallowed whole. On a big seed the argument took eight
+  distinct values over four hundred tiles: the wave stopped varying along its coast. Blocky from
+  about a fifth of the way up the seed range and flat past three fifths of it. Every other noise
+  field in the world already guarded this with a small offset taken modulo. The ice drifts had the
+  same fault. The phase was also written out five times -- the wash sheet, the wave front, the
+  cover test, the foam and the sea's own sound -- and is one function now, because those five have
+  to agree about where the wave is.
+
+### Two more countries that were a series laid by a coin
+
+The mushroom wood, the jungle, the plain and the reef have each had their five ordered by the
+ground they sit on. Two more had the same fault, and both are the same tile: a sheet of lying snow.
+
+- **A quarter of every peak floor was a metre-wide sheet of snow lying in the lee**, laid by a flat
+  hash -- and every tile that keeps the peaks' own ground has no snow cover at all, because above
+  the line it is taken seven branches up and inside the band the snowline turns it into the
+  rock-into-snow series. So the snow sheet fell as readily on a valley floor in the peaks as just
+  under the snowline. A quarter of the floor to an eighth. The threshold has to sit *below* the
+  snowline fraction or that tile would be laid nowhere in the world, which is what the spare check
+  in `Tools/ids.py` exists to catch.
+- **A snowfield's frozen puddle fell as readily on a crest as in the hollow beside it.** It is not
+  a subtle tile: it drops the top two centimetres below the block where the snow round it stands
+  two to twelve above, and recolours half the tile's width to ice. A flat fifth to one tile in
+  eleven, and none at all above the snowline, which was the worst of it.
+
+### What the last round left behind
+
+Five of the fifteen changes before this one had consequences.
+
+- **A reedbed's upland lays grass and was still answering dark.** Giving a reedbed a bank and grass
+  above it made it the one country whose family disagreed with what it lays. A meadow across the
+  line walked eight tiles of the mud series over ground that was grass on both sides; a wood found
+  dark on both sides and laid nothing while the reed side graded toward dark; a desert took
+  sand-into-dark against a reed side on sand-into-grass. It is the sea's own fault one country
+  over, and it takes the sea's own fix: the family is grass, and the border block asks the height
+  for the mud.
+- **Both new banks skipped the middle of their series and doubled an end.** Flooring a *descending*
+  fraction on terraced ground lands every rung on a bucket edge, so the rounding picks the step
+  instead of the rule: the five rungs came out 4, 4, 3, 1, 0. Counted up and then turned round,
+  they come out 4, 3, 2, 1, 0. Measured on the reedbed's bank: step 2 went from never laid to two
+  hundred and seventy-seven tiles in nine chunks, and step 4 from three hundred and fifteen to
+  seventy-eight. The waterhole's bank went to five terraces in the same pass, for the reason the
+  shore verge and the sea bed did.
+- **A whole sea country was planted from its own beach table.** The chunk was taught that a sea's
+  dry ground is grass and that only the strand and its verge are sand; the planting was not. Every
+  tile of a Water or a Reef drew palms four to seven metres tall, boulders and the plain's dry
+  straw -- two hundred metres inland of any water, with not one of the trees, pines or mushrooms
+  an open country carries. Split at the same line the ground changes at. The switch moved down
+  below the early-outs to pay for the height test, so the loop is cheaper than it was.
+- **A bank in a jungle kept its floor and lost everything standing on it.** The undergrowth's steep
+  bar was aligned to the chunk's so the two would agree -- and the chunk has since been taught that
+  the mushroom wood and the jungle keep their own floor on a slope, while the bar went on refusing
+  everything. The two densest tables in the game, and a bank in either was bare loam. The pair is
+  written once now and both callers ask it.
+- **The summit's cracks were lifted onto a flat plane above the rock.** Raising them to clear the
+  body's facets put them over the snow drift and the frost-split plates on the same tile.
+
+### Three more in the meshes
+
+- **Nothing on any of the ten sand tiles touched the sand.** `sand_tiles.py` was the one ground
+  script that never took up a bedding height; it still carried the literals the forest floor used
+  before it had one, and sand is far flatter than a wood -- its top runs to `TOP+0.035` where a
+  forest floor reaches `TOP+0.09`. Every shell, starfish, stone, plank, tuft and block on all ten
+  tiles sat above the highest facet its own ground ever reaches. Two constants now: one where the
+  loose stuff beds in, one a centimetre over the facets for the things that are a single polygon
+  and have to clear them rather than sink in.
+- **The frost-split plates on the summits were open shells.** A plate is tipped, so one rim edge
+  rides up, and with no underside the worst of the twelve read straight through to the sky. The
+  blend set's slab bits had the milder half of the same fault. Both closed.
+- **The one barrens tile without slabs floated its cracks above the rock.** The shared ceiling of
+  `TOP+0.15` is right for a slabbed body, whose facets reach `TOP+0.14`. Stone tile 1 is the only
+  one in the set built without slabs: its facets stop at `TOP+0.08`, so all three of its cracks
+  hung seven to fifteen centimetres above the rock they are cracks in.
+
 ### The four countries that were one ground
 
 Six countries measured 100% own ground outside their border bands. Four of them are not flat by
