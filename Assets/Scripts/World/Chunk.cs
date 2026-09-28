@@ -337,7 +337,11 @@ public class Chunk
     private const float ReefLive = ReefVergeBand + 2f * WorldHeight.StepHeight;
 
     /// <summary>
-    /// How far up the bank of a waterhole the dry countries keep their mud. Three terraces.
+    /// How far up the bank of a waterhole the dry countries keep their mud. Five terraces, one
+    /// for each step of the series: the ground is terraced, so a five-step series carried on
+    /// three rungs has to skip two of them -- the arithmetic the shore verge and the sea bed
+    /// were both taken off. The ring is one tile wide whatever the height, because the test is
+    /// of the four neighbours; the width only decides how far up a ring tile is still bank.
     /// Every other country round standing water gets a damp margin -- the low-flats rule catches
     /// about half the ring and the mud runs out of the pool onto the bank -- and the desert and
     /// the plain branch above that rule and got none, and get no strand or verge either, because
@@ -345,7 +349,7 @@ public class Chunk
     /// terrace apart, with nothing between: a step of about two hundred and thirty-four off the
     /// sheet, where the scree's rim, which this file calls the largest of the four, is seventy.
     /// </summary>
-    private const float WaterMargin = 3f * WorldHeight.StepHeight;
+    private const float WaterMargin = 5f * WorldHeight.StepHeight;
 
     /// <summary>
     /// How far above the waterline a reedbed is still mud, and how far up its bank the mud then
@@ -785,9 +789,13 @@ public class Chunk
 
                     // Mud at the water, the country's own ground at the top of the bank --
                     // which way along the series that is depends on which end the country sits.
+                    // Counted up and then turned round, never floored on a descending fraction:
+                    // `-underBy` is terraced, so flooring `1 - x` lands every rung on a bucket
+                    // edge and the rounding picks the step instead of the rule. It laid 4, 4, 3,
+                    // 1, 0 -- one step twice, one never, and a jump of two in the middle.
                     float up = Mathf.Clamp01(-underBy / WaterMargin);
-                    float toward = theirs == high ? up : 1f - up;
-                    forced = Mathf.Clamp(Mathf.FloorToInt(toward * VariantsPerCategory), 0, VariantsPerCategory - 1);
+                    int step = Mathf.Clamp(Mathf.FloorToInt(up * VariantsPerCategory), 0, VariantsPerCategory - 1);
+                    forced = theirs == high ? step : VariantsPerCategory - 1 - step;
                 }
 
                 // And where the plain is worn through. Its five are a wear series and not five
@@ -836,9 +844,14 @@ public class Chunk
                     int low = Mathf.Min(Grass, Dark), high = Mathf.Max(Grass, Dark);
                     category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
 
-                    // The mud end at the water, the grass end at the top of the bank.
-                    float toward = 1f - Mathf.Clamp01((bank - ReedWet) / ReedBank);
-                    forced = Mathf.Clamp(Mathf.FloorToInt(toward * VariantsPerCategory), 0, VariantsPerCategory - 1);
+                    // The mud end at the water, the grass end at the top of the bank. Counted
+                    // up and turned round, for the same reason the waterhole's bank is: flooring
+                    // a descending fraction on terraced ground laid 4, 4, 3, 1, 0 over the five
+                    // rungs, skipping the middle of the series and jumping two steps between two
+                    // neighbouring tiles.
+                    float up = Mathf.Clamp01((bank - ReedWet) / ReedBank);
+                    forced = VariantsPerCategory - 1
+                           - Mathf.Clamp(Mathf.FloorToInt(up * VariantsPerCategory), 0, VariantsPerCategory - 1);
                 }
             }
             else if (TooSteepToHold(steep, ripple))
