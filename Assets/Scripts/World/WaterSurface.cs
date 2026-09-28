@@ -173,9 +173,17 @@ public static class WaterSurface
                 float nx = x + Mathf.Cos(heading) * length, nz = z + Mathf.Sin(heading) * length;
 
                 // stays on the ice: a crack does not run up the bank
+                // Stays on the ice: the far end is asked as well as the middle. A segment runs
+                // up to 2.3 long, so a midpoint well inside a frozen tile can still finish more
+                // than half a tile onto the bank -- and the strip sits twelve millimetres above
+                // the water line, which is exactly where a flush shore tile's own top is, so it
+                // does not hide. The midpoint test stays: end-only would let a long segment cut
+                // the corner of a bank tile lying between two frozen ones.
                 int mx = Mathf.RoundToInt((originX * WorldGrid.TileSize + (x + nx) * 0.5f) / WorldGrid.TileSize);
                 int mz = Mathf.RoundToInt((originZ * WorldGrid.TileSize + (z + nz) * 0.5f) / WorldGrid.TileSize);
-                if (!IsFrozen(mx, mz, worldSeed)) break;
+                int ex = Mathf.RoundToInt((originX * WorldGrid.TileSize + nx) / WorldGrid.TileSize);
+                int ez = Mathf.RoundToInt((originZ * WorldGrid.TileSize + nz) / WorldGrid.TileSize);
+                if (!IsFrozen(mx, mz, worldSeed) || !IsFrozen(ex, ez, worldSeed)) break;
 
                 float width = 0.04f + (float)rng.NextDouble() * 0.03f;
                 float px = -Mathf.Sin(heading) * width, pz = Mathf.Cos(heading) * width;
