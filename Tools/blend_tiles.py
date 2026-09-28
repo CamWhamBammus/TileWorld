@@ -65,6 +65,14 @@ def slab_bit(b, rng, at, size=0.16):
         a = a0 + (k+0.5)/n*math.tau
         b.quad(rim[k], rim[(k+1)%n], low[(k+1)%n], low[k], "alpine2" if k % 2 else "alpine3", out=(math.cos(a), 0, math.sin(a)))
 
+    # And a bottom. A plate is tipped, so one rim edge rides up and the shell was open underneath:
+    # the milder half of the same fault the peak set had: twelve of the forty-four bits here
+    # stand clear, the worst by two and a half centimetres that reads straight through to the sky, because the tile
+    # material culls back faces. The scree's chips had this and were closed the same way.
+    # A fixed colour rather than a choice, so the random stream does not move and every later
+    # chip, tussock, cushion and crust on the tile comes out exactly where it was.
+    b.face(low, "alpine3", out=(0,-1,0))
+
 FAMILY = {
     "sand": dict(
         top=["sand1", "sand2", "sand3", "sand1"], band="sand2", low="sanddark",

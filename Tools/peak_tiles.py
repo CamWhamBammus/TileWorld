@@ -65,6 +65,14 @@ def slab(b, rng, at, size, lift, tilt=0.06):
         b.quad(rim[k], rim[(k+1)%n], low[(k+1)%n], low[k], "alpine2" if k % 2 else "alpine3",
                out=(math.cos(a), 0, math.sin(a)))
 
+    # And a bottom. A plate is tipped, so one rim edge rides up and the shell was open underneath:
+    # the worst of the twelve in the peak set has its underside seven centimetres up over rock at
+    # one, six centimetres of hole that reads straight through to the sky, because the tile
+    # material culls back faces. The scree's chips had this and were closed the same way.
+    # A fixed colour rather than a choice, so the random stream does not move and every later
+    # chip, tussock, cushion and crust on the tile comes out exactly where it was.
+    b.face(low, "alpine3", out=(0,-1,0))
+
 def crack(b, rng, at, length, angle):
     """A split in the rock, dark and thin, with ice down in it."""
     x, z = at
