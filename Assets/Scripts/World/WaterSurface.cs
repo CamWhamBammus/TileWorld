@@ -192,8 +192,13 @@ public static class WaterSurface
                 vertices.Add(new Vector3(x + px, y, z + pz));
                 vertices.Add(new Vector3(nx + px, y, nz + pz));
                 vertices.Add(new Vector3(nx - px, y, nz - pz));
-                triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 1);
-                triangles.Add(v); triangles.Add(v + 3); triangles.Add(v + 2);
+                // Wound the way the water, the ice, the drifts and the wash are wound. These
+                // were the mirror of it, so every crack in every frozen lake in the world faced
+                // downwards, and a one-sided flat overlay facing down is culled away entirely:
+                // they have never been drawn. The third time a flat overlay in this project has
+                // been caught facing the wrong way.
+                triangles.Add(v); triangles.Add(v + 1); triangles.Add(v + 2);
+                triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 3);
 
                 x = nx; z = nz;
                 heading += ((float)rng.NextDouble() - 0.5f) * 1.2f;
