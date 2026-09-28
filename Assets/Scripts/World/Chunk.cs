@@ -322,6 +322,43 @@ public class Chunk
     /// </summary>
     private const float SavannaDry = 0.30f;
 
+    /// <summary>Which of the peak floor's five is the sheet of snow lying in the lee.</summary>
+    private const int PeakSnowLie = 2;
+
+    /// <summary>
+    /// How high the ground in the peaks has to read before snow stays on it. The five peak tiles
+    /// are a series and not five variants of one thing -- 0 is bare frost-split bedrock, 2 lays a
+    /// snow sheet over a quarter of the block top, 3 is turf at 0.80 -- and they were laid a flat
+    /// quarter each, so lying snow fell as readily on a valley floor in the peaks as just under
+    /// the snowline. Read off `relief`, which is what the snow cover reads, so the snow on the
+    /// floor and the snow on the ground cannot answer differently.
+    ///
+    /// It has to sit BELOW the snowline fraction. Every tile that keeps the peaks' own ground has
+    /// no cover at all -- above full cover it is taken seven branches up, and inside the band the
+    /// snowline turns it into the rock-into-snow series -- so at 0.62 or above, peak tile 2 would
+    /// be laid nowhere in the world, which is what the spare check in Tools/ids.py exists to
+    /// catch. Measured over nine chunks of a peaks region: the snow sheet went from a quarter of
+    /// the peaks' own floor to an eighth, and what it gave up went to the bedrock and the turf.
+    /// </summary>
+    private const float PeakSnowFrom = 0.55f;
+
+    /// <summary>Which of the snowfield's five is the pan of ice sunk into the snow.</summary>
+    private const int SnowPuddle = 2;
+
+    /// <summary>
+    /// How high a snowfield reads before the meltwater stops standing on it. Its five are a
+    /// series too -- deep drifts, rock showing through, a frozen puddle a metre across on a
+    /// two-metre block, laden shrubs, tracks past a buried log -- and the puddle fell on a fifth
+    /// of every snowfield, as likely on a crest as in the hollow beside it. It is not a subtle
+    /// tile: it drops the top two centimetres below the block where the snow round it stands two
+    /// to twelve above, and recolours half the tile's width to ice. Landed off the probe over
+    /// nine chunks of a snowfield: a flat fifth to one tile in twenty-nine at 0.35, which is too
+    /// few to read, and one in eleven at 0.45. Above the snowline every tile clears the line, so
+    /// no summit anywhere keeps one, which is the worst instance of the fault and the one most
+    /// worth losing.
+    /// </summary>
+    private const float SnowDrifted = 0.45f;
+
     /// <summary>Which of the reef floor's five are the bare sand channel and the old dead coral.</summary>
     private const int ReefChannel = 0, ReefDead = 4;
 
@@ -697,7 +734,21 @@ public class Chunk
                     category = RockSnowCategory;
                     forced = Hash2D(gx, gz, worldSeed + 823) % 2;   // 0 or 1 -- the rock end of the five
                 }
-                else category = SnowCategory;       // the snowfields, and any summit above the snowline
+                else
+                {
+                    category = SnowCategory;        // the snowfields, and any summit above the snowline
+
+                    // And where the meltwater stands. The mushroom wood and the jungle both had
+                    // this exact fault, and a snowfield is the emptiest country in the sweep, so
+                    // its ground is most of what you look at there. Folded onto both plain
+                    // grounds rather than onto the drifts alone: all to one and that tile would
+                    // be three in ten of the country, which is what weighting the features was
+                    // done to get away from.
+                    int pick = PickVariant(SnowCategory, gx, gz, worldSeed);
+                    forced = pick == SnowPuddle && bare >= SnowDrifted
+                        ? (Hash2D(gx, gz, worldSeed + 379) % 2 == 0 ? 0 : 3)
+                        : pick;
+                }
             }
             else if (fungal)
             {
@@ -864,6 +915,16 @@ public class Chunk
                 // which is a meadow tile three thousand feet up. Its steep
                 // faces are still scree, asked for above this.
                 category = PeakCategory;
+
+                // And the snow in the lee only where the ground is high enough to keep it.
+                // Folded onto the two coldest floors -- bare bedrock and rock through thin turf
+                // -- rather than onto one, so the tile it gives up does not become half the
+                // country. Its own salt, so a tile that goes through this and the jitter below
+                // is not moved by the same hash twice.
+                int pick = PickVariant(PeakCategory, gx, gz, worldSeed);
+                forced = pick == PeakSnowLie && relief < PeakSnowFrom
+                    ? (Hash2D(gx, gz, worldSeed + 251) % 2 == 0 ? 0 : 1)
+                    : pick;
             }
             else if (bare < MarshFraction)
             {
