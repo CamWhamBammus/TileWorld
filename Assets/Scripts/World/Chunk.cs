@@ -408,6 +408,16 @@ public class Chunk
         return WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, worldSeed) > -ReedWet;
     }
 
+    /// <summary>
+    /// The two countries whose floor stays put on a slope. Loam and leaf litter do sit on a face,
+    /// so the chooser's branches for these two sit above the steep test and lay the country's own
+    /// ground on it -- and the undergrowth has to ask the same question, or the ground says "this
+    /// is still the country" and the planting says "this is scree". One function, two callers,
+    /// the way TooSteepToHold is.
+    /// </summary>
+    public static bool KeepsFloorOnSlope(Regions.Character who)
+        => who == Regions.Character.Fungal || who == Regions.Character.Jungle;
+
     /// <summary>Whether any of the four neighbours is under water.</summary>
     private static bool WaterBeside(int gx, int gz, int worldSeed)
     {
@@ -628,8 +638,8 @@ public class Chunk
             // scree in their branches above and are named here only to keep the rim off two
             // greys of one family; and a reedbed is not hillside.
             bool screes = !fungal && !desert && !stone && !sodden
+                       && !KeepsFloorOnSlope(character)
                        && character != Regions.Character.Dead
-                       && character != Regions.Character.Jungle
                        && character != Regions.Character.Savanna;
 
             // Height and steepness decide the ground; noise only softens the edge.

@@ -607,7 +607,13 @@ public class Undergrowth : MonoBehaviour
             // planting while the chunk under it was already laying broken rock -- and even once
             // that was fixed, its bar was nine tenths of a metre against the chunk's 0.744, so
             // on every rise between the two the ground was scree with a full-grown tree in it.
-            if (Chunk.TooSteepToHold(gx, gz, seed)) continue;
+            // Except where the ground stayed. This bar was aligned to the chunk's because the
+            // chunk was laying broken rock there -- but the chunk has since been taught that two
+            // countries keep their own floor on a slope, and this gate went on refusing
+            // everything on every steep tile, so a bank in a mushroom wood or a jungle was its
+            // proper loam with not one fern, toadstool or boulder on it, in the two densest
+            // tables in the game.
+            if (!Chunk.KeepsFloorOnSlope(character) && Chunk.TooSteepToHold(gx, gz, seed)) continue;
 
             var sprout = every[chosen];
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
