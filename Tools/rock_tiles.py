@@ -16,7 +16,9 @@ TOP, BOTTOM, HALF, INNER = ft["TOP"], ft["BOTTOM"], ft["HALF"], ft["INNER"]
 # in the world hovered between four and sixteen centimetres clear of the rock, more than its own
 # height in the case of the gravel. This is the value the newer sets already use. The cracks and
 # the lichen stay at TOP+0.15 on purpose: they are one polygon thick and have to clear the
-# slabbed tiles' facets, which rise to TOP+0.14.
+# slabbed tiles' facets, which rise to TOP+0.14. The one unslabbed body that takes a crack,
+# stone tile 1, stops at TOP+0.08 and is passed TOP+0.09 at its own call, so each crack clears
+# its own rock by a centimetre rather than the slabs' by seven.
 GROUND = TOP + 0.04
 from mathutils import Vector
 
@@ -43,10 +45,10 @@ def rock_body(b, rng, tones, band, slabs=False, tilt=0.0):
             b.quad((x0,y0,z0),(x1,y0,z1),(x1,y1,z1),(x0,y1,z0), col, out=outward)
     b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), band[2], out=(0,-1,0))
 
-def crack(b, rng, start, angle, length):
+def crack(b, rng, start, angle, length, y=TOP+0.15):
     """A crack across the rock: a thin dark strip that wanders."""
     x,z = start; w = 0.02
-    pts=[(x+math.cos(angle)*length*t + math.sin(t*6)*0.05, TOP+0.15, z+math.sin(angle)*length*t + math.cos(t*5)*0.04) for t in (0, 0.33, 0.66, 1)]
+    pts=[(x+math.cos(angle)*length*t + math.sin(t*6)*0.05, y, z+math.sin(angle)*length*t + math.cos(t*5)*0.04) for t in (0, 0.33, 0.66, 1)]
     # Kept inside the block. The start is anywhere within 0.7 of the middle and the crack runs
     # another 0.6 to 1.0 with a wander on top, so it could finish at 1.25 while the block stops
     # at 1.0: two of the barren tiles ran twenty-three centimetres off their own square and hung
@@ -101,7 +103,10 @@ def stone(index):
         rock_body(b, rng, tones, band, slabs=True, tilt=0.04)
     elif index == 1:
         rock_body(b, rng, tones, band)
-        for k in range(3): crack(b, rng, spot(0.2, 0.2), rng.uniform(0, math.tau), rng.uniform(0.6, 1.0))
+        # This is the one body in the set built without slabs: its facets stop at TOP+0.08
+        # where a slabbed one reaches TOP+0.14, so the shared TOP+0.15 left all three of its
+        # cracks floating seven to fifteen centimetres above the rock they are cracks in.
+        for k in range(3): crack(b, rng, spot(0.2, 0.2), rng.uniform(0, math.tau), rng.uniform(0.6, 1.0), y=TOP+0.09)
     elif index == 2:
         rock_body(b, rng, tones, band, slabs=True)
         for k in range(3): lichen_patch(b, rng, spot(0.25, 0.3), rng.uniform(0.16, 0.28))
