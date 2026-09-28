@@ -9,6 +9,17 @@ ft = {"__file__": os.path.join(HERE, "forest_tiles.py"), "__name__": "forest_til
 exec(compile(src, "forest_tiles.py", "exec"), ft)
 Build, prism, tube, blob, cylinder_along = ft["Build"], ft["prism"], ft["tube"], ft["blob"], ft["cylinder_along"]
 TOP, BOTTOM, HALF, INNER = ft["TOP"], ft["BOTTOM"], ft["HALF"], ft["INNER"]
+
+# Where the loose stuff beds into the sand, and where a face one polygon thick has to clear it.
+# The sand's top is far flatter than a wood's -- it runs TOP to TOP+0.035 where a forest floor
+# reaches TOP+0.09 -- and every piece here still carried the literals the forest floor used before
+# it had a GROUND of its own, so all ten tiles had every shell, stone, plank and tuft pinned above
+# the highest facet the sand ever reaches. GROUND is the same fraction of this band that the
+# wood's TOP+0.04 is of its own. DECAL is a centimetre over the highest facet, the rule the wood's
+# litter and the barren rock's lichen already follow: a decal clears the facets rather than
+# sinking into them.
+GROUND = TOP + 0.015
+DECAL  = TOP + 0.045
 from mathutils import Vector
 
 def sand_body(b, rng, tones, band, ripples=False):
@@ -18,7 +29,7 @@ def sand_body(b, rng, tones, band, ripples=False):
         for j in range(n+1):
             x = -HALF + 2*HALF*i/n; z = -HALF + 2*HALF*j/n
             edge = i==0 or j==0 or i==n or j==n
-            y = TOP if edge else TOP + (0.05 + 0.035*math.sin(i*2.2 + j*0.6) if ripples else rng.uniform(0.0, 0.035))
+            y = TOP if edge else TOP + (0.018 + 0.017*math.sin(i*2.2 + j*0.6) if ripples else rng.uniform(0.0, 0.035))
             if not edge: x += rng.uniform(-0.05,0.05); z += rng.uniform(-0.05,0.05)
             grid[(i,j)] = (x,y,z)
     for i in range(n):
@@ -38,25 +49,25 @@ def shell(b, rng, at):
     """A shell: a fan of five facets rising to a hinge, pale or pink."""
     x,z = at; a = rng.uniform(0, math.tau); s = rng.uniform(0.07, 0.11)
     col = rng.choice(["shell","shell","shellpink"])
-    hinge = (x - math.cos(a)*s*0.6, TOP+0.06+s*0.35, z - math.sin(a)*s*0.6)
-    rim = [(x + math.cos(a + (k-2)*0.5)*s, TOP+0.06, z + math.sin(a + (k-2)*0.5)*s) for k in range(5)]
+    hinge = (x - math.cos(a)*s*0.6, GROUND+s*0.35, z - math.sin(a)*s*0.6)
+    rim = [(x + math.cos(a + (k-2)*0.5)*s, GROUND, z + math.sin(a + (k-2)*0.5)*s) for k in range(5)]
     for k in range(4): b.tri(hinge, rim[k], rim[k+1], col, out=(0,1,0))
     b.face(list(reversed(rim)) + [hinge], "sanddark", out=(0,-1,0)) if False else None
     b.face([hinge] + rim, "shellpink" if col == "shell" else "shell", out=(0,-1,0))
 
 def starfish(b, rng, at):
     x,z = at; a0 = rng.uniform(0, math.tau); r = 0.13
-    centre = (x, TOP+0.075, z)
+    centre = (x, DECAL+0.013, z)
     for k in range(5):
         a = a0 + k/5*math.tau
-        tip = (x + math.cos(a)*r, TOP+0.062, z + math.sin(a)*r)
-        l = (x + math.cos(a-0.35)*r*0.35, TOP+0.07, z + math.sin(a-0.35)*r*0.35); rr = (x + math.cos(a+0.35)*r*0.35, TOP+0.07, z + math.sin(a+0.35)*r*0.35)
+        tip = (x + math.cos(a)*r, DECAL, z + math.sin(a)*r)
+        l = (x + math.cos(a-0.35)*r*0.35, DECAL+0.008, z + math.sin(a-0.35)*r*0.35); rr = (x + math.cos(a+0.35)*r*0.35, DECAL+0.008, z + math.sin(a+0.35)*r*0.35)
         b.tri(centre, l, tip, "starfish", out=(0,1,0)); b.tri(centre, tip, rr, "starfish", out=(0,1,0))
-        b.tri(centre, rr, (x + math.cos(a+0.63)*r*0.35, TOP+0.07, z + math.sin(a+0.63)*r*0.35), "starfish", out=(0,1,0))
+        b.tri(centre, rr, (x + math.cos(a+0.63)*r*0.35, DECAL+0.008, z + math.sin(a+0.63)*r*0.35), "starfish", out=(0,1,0))
 
 def driftwood(b, rng, at, angle, length):
     x,z = at
-    pts = [(x+math.cos(angle)*length*t + math.sin(t*5)*0.04, TOP+0.05+0.06+0.02*math.sin(t*math.pi), z+math.sin(angle)*length*t) for t in (0, 0.33, 0.66, 1)]
+    pts = [(x+math.cos(angle)*length*t + math.sin(t*5)*0.04, GROUND+0.06+0.02*math.sin(t*math.pi), z+math.sin(angle)*length*t) for t in (0, 0.33, 0.66, 1)]
     tube(b, pts, [0.06, 0.055, 0.045, 0.025], 6, ["driftwood","driftwood","driftwood2"])
 
 def marram(b, rng, at, size=1.0):
@@ -65,38 +76,38 @@ def marram(b, rng, at, size=1.0):
     for k in range(11):
         a = k/11*math.tau + rng.uniform(-0.25,0.25)
         h = rng.uniform(0.34, 0.56)*size; lean = rng.uniform(0.12, 0.28); w = 0.02*size
-        base = (x + math.cos(a)*0.05, TOP+0.05, z + math.sin(a)*0.05)
-        tip = (x + math.cos(a)*lean*0.5 + math.cos(lean_a)*lean*0.5, TOP+0.05+h, z + math.sin(a)*lean*0.5 + math.sin(lean_a)*lean*0.5)
+        base = (x + math.cos(a)*0.05, GROUND, z + math.sin(a)*0.05)
+        tip = (x + math.cos(a)*lean*0.5 + math.cos(lean_a)*lean*0.5, GROUND+h, z + math.sin(a)*lean*0.5 + math.sin(lean_a)*lean*0.5)
         sx, sz = math.cos(a+math.pi/2)*w, math.sin(a+math.pi/2)*w
         col = "marram" if k % 3 else "marram2"
         b.quad((base[0]-sx,base[1],base[2]-sz),(base[0]+sx,base[1],base[2]+sz),(tip[0]+sx*0.2,tip[1],tip[2]+sz*0.2),(tip[0]-sx*0.2,tip[1],tip[2]-sz*0.2), col)
         b.quad((tip[0]-sx*0.2,tip[1],tip[2]-sz*0.2),(tip[0]+sx*0.2,tip[1],tip[2]+sz*0.2),(base[0]+sx,base[1],base[2]+sz),(base[0]-sx,base[1],base[2]-sz), col)
 
 def wet_patch(b, rng, centre, radius):
-    ring = [(centre[0]+math.cos(k/8*math.tau)*radius*rng.uniform(0.75,1.05), TOP+0.056, centre[1]+math.sin(k/8*math.tau)*radius*rng.uniform(0.75,1.05)) for k in range(8)]
+    ring = [(centre[0]+math.cos(k/8*math.tau)*radius*rng.uniform(0.75,1.05), DECAL, centre[1]+math.sin(k/8*math.tau)*radius*rng.uniform(0.75,1.05)) for k in range(8)]
     b.face(ring, "sandwet", out=(0,1,0))
 
 def pan(b, rng, centre, radius):
     """A cracked pan: a pale plate with dark seams across it."""
-    ring = [(centre[0]+math.cos(k/8*math.tau)*radius*rng.uniform(0.8,1.05), TOP+0.056, centre[1]+math.sin(k/8*math.tau)*radius*rng.uniform(0.8,1.05)) for k in range(8)]
+    ring = [(centre[0]+math.cos(k/8*math.tau)*radius*rng.uniform(0.8,1.05), DECAL, centre[1]+math.sin(k/8*math.tau)*radius*rng.uniform(0.8,1.05)) for k in range(8)]
     b.face(ring, "pan", out=(0,1,0))
     for _ in range(5):
         a = rng.uniform(0, math.tau); l = radius*rng.uniform(0.5,0.9); w = 0.014
         x0 = centre[0] + math.cos(a+math.pi)*l*0.3; z0 = centre[1] + math.sin(a+math.pi)*l*0.3
-        pts = [(x0+math.cos(a)*l*t + math.sin(t*7)*0.02, TOP+0.06, z0+math.sin(a)*l*t) for t in (0, 0.5, 1)]
+        pts = [(x0+math.cos(a)*l*t + math.sin(t*7)*0.02, DECAL+0.004, z0+math.sin(a)*l*t) for t in (0, 0.5, 1)]
         for i in range(2):
             p0, p1 = pts[i], pts[i+1]; sx, sz = math.cos(a+math.pi/2)*w, math.sin(a+math.pi/2)*w
             b.quad((p0[0]-sx,p0[1],p0[2]-sz),(p0[0]+sx,p0[1],p0[2]+sz),(p1[0]+sx,p1[1],p1[2]+sz),(p1[0]-sx,p1[1],p1[2]-sz), "sanddark", out=(0,1,0))
 
 def sandstone(b, rng, centre, size):
-    blob(b, (centre[0], TOP+0.04+size[1]*0.5, centre[1]), size, "sandstone", "sandstone2", rng, sub=1, squash=0.35, moss_from=0.35)
+    blob(b, (centre[0], GROUND+size[1]*0.30, centre[1]), size, "sandstone", "sandstone2", rng, sub=1, squash=0.35, moss_from=0.35)
 
 def scrub(b, rng, at):
     """Dry scrub: a knot of bare twigs out of the sand."""
     x,z = at
     for k in range(6):
         a = k/6*math.tau + rng.uniform(-0.4,0.4); h = rng.uniform(0.18, 0.34); lean = rng.uniform(0.1, 0.22)
-        pts = [(x, TOP+0.05, z), (x+math.cos(a)*lean*0.5, TOP+0.05+h*0.55, z+math.sin(a)*lean*0.5), (x+math.cos(a)*lean, TOP+0.05+h, z+math.sin(a)*lean)]
+        pts = [(x, GROUND, z), (x+math.cos(a)*lean*0.5, GROUND+h*0.55, z+math.sin(a)*lean*0.5), (x+math.cos(a)*lean, GROUND+h, z+math.sin(a)*lean)]
         tube(b, pts, [0.016, 0.012, 0.007], 3, ["scrub","branch"], cap_start=False)
 
 def stones(b, rng, count, keep, col=("sandstone2","stone2")):
@@ -105,7 +116,7 @@ def stones(b, rng, count, keep, col=("sandstone2","stone2")):
             x = rng.uniform(-INNER+0.15, INNER-0.15); z = rng.uniform(-INNER+0.15, INNER-0.15)
             if not any((x-kx)**2+(z-kz)**2 < kr*kr for (kx,kz,kr) in keep): break
         s = rng.uniform(0.06, 0.12)
-        blob(b, (x, TOP+0.05+s*0.3, z), (s, s*0.6, s*0.85), col[0], col[1], rng, sub=0, squash=0.3, moss_from=2.0)
+        blob(b, (x, GROUND+s*0.3, z), (s, s*0.6, s*0.85), col[0], col[1], rng, sub=0, squash=0.3, moss_from=2.0)
         keep.append((x,z,0.2))
 
 def beach(index):
