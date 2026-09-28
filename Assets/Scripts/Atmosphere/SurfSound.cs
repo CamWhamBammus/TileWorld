@@ -24,7 +24,9 @@ public class SurfSound : MonoBehaviour
     // nearest strand reaches the sand about 2.06 s into its own 14 s cycle. Put the one on the other.
     private float Wanted()
     {
-        float phase = Mathf.PerlinNoise(strand.x * 0.018f + (world != null ? world.WorldSeed : 0) * 0.01f, strand.y * 0.018f);
+        // The same phase the wave itself is drawn on, asked of the one function that answers it:
+        // the sea you hear has to match the wave you see.
+        float phase = Surf.Phase(strand.x, strand.y, world != null ? world.WorldSeed : 0);
         return Mathf.Repeat(Surf.Now + phase * 14f - 2.06f + 4.2f, 28f);
     }
 

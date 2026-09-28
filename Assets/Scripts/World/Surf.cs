@@ -40,6 +40,26 @@ public static class Surf
         return Nearest(tileX, tileZ, seed, false, Out) > 0;
     }
 
+    /// <summary>
+    /// Where the wave is along its run at a tile. The seed picks where the noise is read from,
+    /// not how far along it: it used to be folded into the coordinate as `seed * 0.01f`, which
+    /// reaches twenty-one million on a real seed, and past two to the twenty-third a float's
+    /// smallest step is one -- so the 0.018 per tile was swallowed whole and the phase stopped
+    /// varying along x at all. Blocky from about a fifth of the way up the seed range and flat
+    /// past three fifths of it: on a big seed the argument took eight distinct values over four
+    /// hundred tiles. Every other noise field in the world already guards this the same way,
+    /// with a small offset taken modulo.
+    ///
+    /// Written once because it was written five times: the wash sheet, the wave front, the cover
+    /// test, the foam and the sea's own sound all have to agree about where the wave is.
+    /// </summary>
+    public static float Phase(int tileX, int tileZ, int seed)
+    {
+        float o = 2000f + (seed % 811) * 1.37f;
+
+        return Mathf.PerlinNoise(o + tileX * 0.018f, o + 137f + tileZ * 0.018f);
+    }
+
     /// <summary>How far, in tiles, to the nearest lake or pond water, up to six; 99 with none that near.</summary>
     public static int PondNear(int tileX, int tileZ, int seed)
     {
@@ -93,7 +113,7 @@ public static class Surf
     /// <summary>Sets the clock so the wave at a tile is just beginning to come in, so many seconds from now.</summary>
     public static void WaveDue(int tileX, int tileZ, int seed, float inSeconds)
     {
-        float phase = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
+        float phase = Phase(tileX, tileZ, seed);
         float then = Time.time + inSeconds;
         Offset = Mathf.Repeat((0.02f - phase) * Period - then, Period);
     }
@@ -126,11 +146,11 @@ public static class Surf
         else if (IsSurfShallows(tileX, tileZ, seed))
         {
             d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
-            float phaseHere = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
+            float phaseHere = Phase(tileX, tileZ, seed);
             return d < Mathf.Max(Front(phaseHere), Hold(d, PondNear(tileX, tileZ, seed))) - 0.3f;
         }
         else return WaterSurface.IsOpenWater(tileX, tileZ, seed);
-        float phase = Mathf.PerlinNoise(tileX * 0.018f + seed * 0.01f, tileZ * 0.018f);
+        float phase = Phase(tileX, tileZ, seed);
         return d < Front(phase) - 0.3f;
     }
 
@@ -229,7 +249,7 @@ public static class Surf
             if ((own >= 0f) != sand) continue;        // the sand sheet and the shallows sheet
 
             float y = height[i + 1, j + 1];
-            float phase = Mathf.PerlinNoise((originX + i) * 0.018f + worldSeed * 0.01f, (originZ + j) * 0.018f);
+            float phase = Phase(originX + i, originZ + j, worldSeed);
             float x = i * WorldGrid.TileSize, z = j * WorldGrid.TileSize;
 
             // the four corners' distances, and a grid of Cut x Cut quads between them

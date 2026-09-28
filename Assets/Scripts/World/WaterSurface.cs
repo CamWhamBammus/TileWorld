@@ -230,7 +230,11 @@ public static class WaterSurface
 
             bool edge = !IsUnderwater(tileX + 1, tileZ, worldSeed) || !IsUnderwater(tileX - 1, tileZ, worldSeed)
                      || !IsUnderwater(tileX, tileZ + 1, worldSeed) || !IsUnderwater(tileX, tileZ - 1, worldSeed);
-            float drift = Mathf.PerlinNoise(tileX * 0.21f + worldSeed * 0.013f, tileZ * 0.21f - worldSeed * 0.007f);
+            // The seed offsets the field rather than riding in the coordinate: folded in, they
+            // reached tens of millions on a real seed and the 0.21 per tile was swallowed, so on
+            // a big seed the drifts stopped varying across a lake altogether.
+            float o = 4000f + (worldSeed % 691) * 1.91f;
+            float drift = Mathf.PerlinNoise(o + tileX * 0.21f, o + 137f + tileZ * 0.21f);
             if (!edge && drift < 0.58f) continue;
 
             float spread = edge ? 0.98f : Mathf.Lerp(0.55f, 0.95f, Mathf.InverseLerp(0.58f, 0.8f, drift));
