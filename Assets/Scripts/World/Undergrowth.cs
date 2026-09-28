@@ -405,26 +405,6 @@ public class Undergrowth : MonoBehaviour
             // out into the sand rather than stopping on a line.
             var character = Regions.CharacterAtTile(gx, gz, seed);
 
-            Planting[] planting = character switch
-            {
-                Regions.Character.Fungal => fungal,
-                Regions.Character.Desert => desert,
-                Regions.Character.Stone => stone,
-                Regions.Character.Dead => dead,
-                // Reeds where the mud is, and what the open country grows above it: a reedbed's
-                // own high ground is five to ten metres clear of its pools, and reeds two metres
-                // tall were standing on every bit of it.
-                Regions.Character.Reed => Chunk.SoddenHere(gx, gz, seed) ? reed : ordinary,
-                Regions.Character.Snow => snow,
-                Regions.Character.Forest => forest,
-                Regions.Character.Water => shore,
-                Regions.Character.Reef => shore,
-                Regions.Character.Jungle => jungle,
-                Regions.Character.Peaks => peaks,
-                Regions.Character.Hills => hills,
-                Regions.Character.Savanna => savanna,
-                _ => ordinary
-            };
 
             // Standing water takes what is planted in it, except in the
             // shallows: reeds grow out of a lake edge, and nothing says a lake
@@ -554,9 +534,50 @@ public class Undergrowth : MonoBehaviour
             // always answers no; and it is asked of the unfrayed cell, the way the chunk asks
             // it, so the desert clause stays -- a tile the fray hands from a sea to a desert
             // should keep its palms.
-            bool beach = WorldHeight.SurfaceY(gx, gz, seed) - WaterSurface.Level < Chunk.SandLineAt(gx, gz, seed)
+            float above = WorldHeight.SurfaceY(gx, gz, seed) - WaterSurface.Level;
+            float sandLine = Chunk.SandLineAt(gx, gz, seed);
+
+            // The strand and the verge over it: as far up as the chunk is still laying the
+            // shore's own ground. The sea test is asked last, because the height test is already
+            // to hand and almost always answers no; the verge is the wider of the two bands, so
+            // it gates the lookup, and the strand is a narrowing of it.
+            bool coast = above < sandLine + Chunk.VergeHeight
                       && character != Regions.Character.Desert
                       && Regions.Sea(Regions.CharacterAtTile(gx, gz, seed, false));
+
+            bool beach = coast && above < sandLine;
+
+            // Asked here rather than above the water, the snow and the landmarks, because the
+            // sea's table needs the height and nothing that returns before this point reads it.
+            Planting[] planting = character switch
+            {
+                Regions.Character.Fungal => fungal,
+                Regions.Character.Desert => desert,
+                Regions.Character.Stone => stone,
+                Regions.Character.Dead => dead,
+                // Reeds where the mud is, and what the open country grows above it: a reedbed's
+                // own high ground is five to ten metres clear of its pools, and reeds two metres
+                // tall were standing on every bit of it.
+                Regions.Character.Reed => Chunk.SoddenHere(gx, gz, seed) ? reed : ordinary,
+                Regions.Character.Snow => snow,
+                Regions.Character.Forest => forest,
+                // A sea is named for its water at a fifth of it under water, so four fifths of
+                // one is dry land, and the chunk lays the grass bands on that like any meadow.
+                // The palms, the boulders and the plain's straw belong to the strand and the
+                // verge; above them it is a meadow and takes a meadow's table. The whole country
+                // was drawing from the coast's: seven-metre palms and dry savanna grass standing
+                // in green meadow two hundred metres inland of any water, with not one of the
+                // trees, pines or mushrooms an open country carries. Split at the same line the
+                // ground changes at, the way the reedbed two arms up is split.
+                Regions.Character.Water => coast ? shore : ordinary,
+                Regions.Character.Reef => coast ? shore : ordinary,
+                Regions.Character.Jungle => jungle,
+                Regions.Character.Peaks => peaks,
+                Regions.Character.Hills => hills,
+                Regions.Character.Savanna => savanna,
+                _ => ordinary
+            };
+
 
             uint roll = Hash(gx, gz, seed + 5153);
 

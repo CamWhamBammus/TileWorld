@@ -38,7 +38,7 @@ public class Chunk
     /// one rung of the grade had to be skipped. Walking up a shore, a fifth of every pair of
     /// neighbouring verge tiles a terrace apart jumped two steps of the series at once.
     /// </summary>
-    private const float VergeHeight = 5 * WorldHeight.StepHeight;
+    public const float VergeHeight = 5 * WorldHeight.StepHeight;
 
     /// <summary>
     /// The mixed ground where two countries meet. A tile for every pair of countries would be
