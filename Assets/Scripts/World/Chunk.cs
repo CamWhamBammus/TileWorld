@@ -206,7 +206,17 @@ public class Chunk
             case Regions.Character.Lowland: case Regions.Character.Hills: return Grass;
             case Regions.Character.Savanna: return Dry;
             case Regions.Character.Forest: case Regions.Character.Jungle:
-            case Regions.Character.Fungal: case Regions.Character.Reed: return Dark;
+            case Regions.Character.Fungal: return Dark;
+
+            // A reedbed climbs out of its own water now: two terraces of mud, five of graded
+            // bank, and the grass bands above that -- the same tiles a meadow lays. Answered
+            // Dark, a meadow across the line walked eight tiles of the mud series over ground
+            // that was grass on both sides, a wood found Dark on both sides and laid nothing
+            // while the reed side graded toward dark, and a desert took sand-into-dark against
+            // a reed side on sand-into-grass. It is the sea's own fault, one country over, and
+            // it takes the sea's own fix: the mud is a height over the waterline and not a
+            // country, so the border block asks the height.
+            case Regions.Character.Reed: return Grass;
             // The sea's countries lay grass, not sand. A region is named for its water at a
             // fifth of it under water, so four fifths of one is dry ground, and on that dry
             // ground a Water or a Reef matches no branch in the chooser and comes out as the
@@ -911,14 +921,16 @@ public class Chunk
 
                 if (near > 0f)
                 {
+                    var across = handed ? standing : over;
+
                     int mine = FamilyOfGround(category);
-                    int theirs = FamilyOfCountry(handed ? standing : over);
+                    int theirs = FamilyOfCountry(across);
 
                     // Under water, the country over the border is read for what it lays on its
                     // sea bed rather than for what it lays in the air. A lake in a meadow is
                     // still mud at the bottom, and blending toward the meadow's own family put
                     // turf and flowers down there, a foot under the surface.
-                    if (submerged) theirs = FamilyUnderWater(handed ? standing : over, gx, gz, underBy, ripple, worldSeed);
+                    if (submerged) theirs = FamilyUnderWater(across, gx, gz, underBy, ripple, worldSeed);
 
                     // And above the water a sea lays grass only above its own strand. Where the
                     // strand and the verge stop is a height over the waterline, and this tile's
@@ -929,7 +941,12 @@ public class Chunk
                     // one sea's cell met another's, and the last eight tiles of a desert before
                     // a beach graded into meadow.
                     // An else, not a second if: on a deep floor the sea bed's answer has to win.
-                    else if (Regions.Sea(handed ? standing : over) && -underBy < sandLine + VergeHeight) theirs = Sand;
+                    else if (Regions.Sea(across) && -underBy < sandLine + VergeHeight) theirs = Sand;
+
+                    // And a reedbed lays its mud by height, not by country: below its bank the
+                    // ground over the line is still marsh, above it the grass bands. The height
+                    // is the same on both sides of a line, which is why this works.
+                    else if (across == Regions.Character.Reed && -underBy < ReedWet + ReedBank) theirs = Dark;
 
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
