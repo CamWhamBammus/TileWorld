@@ -1106,6 +1106,46 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### Six that the last two rounds left behind
+
+Most of this round is the tail of the last two: fixes that were right about the thing they named
+and wrong about something next to it.
+
+- **The summit's cracks were drawn over the snow lying on the same tile.** Lifting them a
+  centimetre over the body's facets was the right margin against the rock -- but the drift on tile
+  2 is drawn *after* the body and stands proud of it, running from `TOP+0.14` at its hub down to
+  `TOP+0.07` at its rim, so the fix put the cracks on top of the snow instead of under it. A crack
+  is in the bedrock: it stops at the edge of anything lying on it now. Three of nine segments on
+  each of the two tiles that carry both.
+- **Nothing on four reef shelves in five touched the shelf.** The shelf's inside is nine draws of
+  `uniform(0, 0.05)`, so it never gets near its own ceiling -- measured, four of the five top out
+  between `TOP+0.041` and `TOP+0.048` -- and every piece was pinned at `TOP+0.05`, a height the
+  ground does not reach. Polyps, urchins, starfish and clams all standing two to nine millimetres
+  clear. The crust, which is one polygon thick, went the other way and is now a centimetre *over*
+  the facets, the rule the scree's lichen and the wood's litter follow.
+- **The reef fringe's coral went 0, 2, 2, 4, 4 across its five steps.** `mix` is 0.10, 0.30, 0.50,
+  0.70, 0.90, so `mix * 5` is exactly 0.5, 1.5, 2.5, 3.5, 4.5 -- every one a half-integer, and
+  Python rounds those to even. The shells beside them graded 4, 3, 2, 1, 0 properly because their
+  own denominator is four. Rounded on four the coral runs 0, 1, 2, 3, 4, and every tile in the set
+  carries exactly four pieces instead of wobbling four, five, four, five, four.
+- **A log fell in one hollow in six where the rule it cites gives one in seventeen.** The mushroom
+  wood's hollows pick between mud and a half-sunk log, and the comment says the log is kept to
+  about the share the feature weighting would give it -- which is one in seventeen for a set with
+  one feature, not one in six. Derived from the weights now rather than typed, so it cannot drift
+  if they are retuned.
+- **A reedbed's mud stopped on a ring drawn round its own pools.** Everything else in the world
+  that changes ground at a height or a depth breaks its line with a wander -- the sand up a shore,
+  the reef's line, the sea bed, the scree, the dry outcrop -- because the water plane is flat and a
+  line drawn at a height on it is a contour the eye finds at any distance. The reedbed's bank was
+  laid without one. It has `ReedLineAt` now, written once, because the reeds ask it too: the reeds
+  keeping a line of their own is how they came to be standing ten metres above the water.
+- **The snow test asked again for what the tile loop was already holding.** `IsSnowy` is three
+  questions -- is this under water, is this the snow country, is it high enough -- and at the point
+  the chooser asks it the loop already knows all three: it is an else-if under the submerged arm,
+  it has the region from the frayed call at the top, and it has the height fraction it worked out
+  for the grass bands. A region lookup and a height lookup saved in a loop that runs two hundred
+  and twenty-five times a chunk, and the census came back to the hundredth of a percent.
+
 ### Things that had never been drawn at all
 
 - **Every crack in every frozen lake faced downwards and was culled away.** The quads were wound
