@@ -779,12 +779,13 @@ public class Chunk
                     // a wood whose loam is (58,44,52). Variant 2 is the one that is mostly mud
                     // and wet stone -- two small clumps where the others carry three to five --
                     // so a hollow takes that. The half-sunk log of variant 3 is kept to about the
-                    // one tile in six the feature weighting would have given it: a log in a
+                    // one tile in seventeen the feature weighting would have given it: a log in a
                     // hollow is right, a floor of logs is the mistake the termite mound was taken
                     // off a savanna tile for. All five marsh variants stay reachable -- the
                     // reedbeds, the low flats and every lake and pond bed still pick theirs.
                     category = MarshCategory;
-                    forced = Hash2D(gx, gz, worldSeed + 457) % 6 == 0 ? 3 : 2;
+                    forced = Hash2D(gx, gz, worldSeed + 457)
+                             % (FeatureWeight + (VariantsPerCategory - 1) * PlainWeight) == 0 ? 3 : 2;
                 }
                 else category = FungalCategory;
             }
