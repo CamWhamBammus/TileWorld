@@ -73,8 +73,13 @@ def slab(b, rng, at, size, lift, tilt=0.06):
     # chip, tussock, cushion and crust on the tile comes out exactly where it was.
     b.face(low, "alpine3", out=(0,-1,0))
 
-def crack(b, rng, at, length, angle):
-    """A split in the rock, dark and thin, with ice down in it."""
+def crack(b, rng, at, length, angle, clear=()):
+    """A split in the rock, dark and thin, with ice down in it.
+
+    `clear` is what has already been laid on top of the rock -- a drift, a plate -- as
+    (x, z, radius). A crack is in the bedrock, so it stops at the edge of anything lying on it
+    rather than being drawn over it: pinned flat above the body's facets, it was running across
+    the snow sheet, which is drawn after the body and stands proud of it."""
     x, z = at
     w = 0.028
     segs = 3
@@ -100,9 +105,15 @@ def crack(b, rng, at, length, angle):
         def hold(px, py, pz):
             return (min(HALF, max(-HALF, px)), py, min(HALF, max(-HALF, pz)))
 
+        # The colour is rolled before the skip, so the random stream does not move and every
+        # other piece on the tile comes out exactly where it was.
+        col = "ice" if rng.random() < 0.35 else "alpine3"
+        mx, mz = (p0[0] + p1[0]) * 0.5, (p0[2] + p1[2]) * 0.5
+        if any((mx - kx)**2 + (mz - kz)**2 < kr*kr for (kx, kz, kr) in clear): continue
+
         b.quad(hold(p0[0]-sx,p0[1],p0[2]-sz), hold(p0[0]+sx,p0[1],p0[2]+sz),
                hold(p1[0]+sx,p1[1],p1[2]+sz), hold(p1[0]-sx,p1[1],p1[2]-sz),
-               "ice" if rng.random() < 0.35 else "alpine3", out=(0,1,0))
+               col, out=(0,1,0))
 
 def lichen_crust(b, rng, at, radius, colour=None):
     """Lichen on the rock: a flat ragged crust, pale green or a hot yellow."""
@@ -181,8 +192,11 @@ def tile(index):
     if index == 0:
         # bedrock split into plates by the frost
         peak_body(b, rng, STONE)
-        for at in spots(3, 0.32, 0.44): slab(b, rng, at, rng.uniform(0.28, 0.42), 0.02)
-        for k in range(3): crack(b, rng, (rng.uniform(-0.7, 0.7), rng.uniform(-0.7, 0.7)), rng.uniform(0.5, 0.9), rng.uniform(0, math.tau))
+        plates = []
+        for at in spots(3, 0.32, 0.44):
+            r = rng.uniform(0.28, 0.42)     # hoisted, the same draw in the same order
+            slab(b, rng, at, r, 0.02); plates.append((at[0], at[1], r*1.15))
+        for k in range(3): crack(b, rng, (rng.uniform(-0.7, 0.7), rng.uniform(-0.7, 0.7)), rng.uniform(0.5, 0.9), rng.uniform(0, math.tau), plates)
         for at in spots(3, 0.15, 0.2): lichen_crust(b, rng, at, rng.uniform(0.12, 0.22))
         shards(b, rng, 4, keep)
     elif index == 1:
@@ -198,7 +212,8 @@ def tile(index):
         s = (rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3), 0.58)
         peak_body(b, rng, STONE, snow=s)
         snow_lie(b, rng, (s[0], s[1]), 0.52); keep.append((s[0], s[1], 0.66))
-        for k in range(3): crack(b, rng, (rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8)), rng.uniform(0.4, 0.8), rng.uniform(0, math.tau))
+        drift = [(s[0], s[1], 0.52*1.15)]   # the sheet's own widest rim, not keep's spacing room
+        for k in range(3): crack(b, rng, (rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8)), rng.uniform(0.4, 0.8), rng.uniform(0, math.tau), drift)
         for at in spots(2, 0.2, 0.24): lichen_crust(b, rng, at, rng.uniform(0.10, 0.18))
         shards(b, rng, 4, keep)
     elif index == 3:
