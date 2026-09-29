@@ -716,8 +716,14 @@ public class Chunk
                 float up = (-underBy - sandLine) / VergeHeight;
                 forced = Mathf.Clamp(Mathf.FloorToInt(up * VariantsPerCategory), 0, VariantsPerCategory - 1);
             }
+            // `underSnow` and `SnowByHeight` rather than `IsSnowy`, which is those same three
+            // questions asked over again: this is an else-if under the submerged arm, so the
+            // underwater test cannot fire; `underSnow` IS the region test, off the same frayed
+            // call made at the top of the loop; and the loop already holds the fraction the
+            // height test would work out afresh. A region lookup and a height lookup saved in a
+            // loop that runs two hundred and twenty-five times a chunk, and not a tile moves.
             else if ((TooSteepToHold(steep, ripple) && relief > SnowCover.SnowlineFraction)
-                     || SnowCover.IsSnowy(gx, gz, worldSeed))
+                     || underSnow || SnowCover.SnowByHeight(gx, gz, worldSeed, relief))
             {
                 // Snow does not lie on a face too steep to hold it: the wind scours it and the
                 // rock under it shows through, which is most of what gives a summit a shape at

@@ -55,8 +55,21 @@ public static class SnowCover
     /// <summary>Snow that is there because of how high the ground is, and nothing else.</summary>
     public static bool SnowByHeight(int tileX, int tileZ, int worldSeed)
     {
-        float relief = WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief;
+        return SnowByHeight(tileX, tileZ, worldSeed,
+                            WorldHeight.HeightAt(tileX, tileZ, worldSeed) / WorldHeight.MaxRelief);
+    }
 
+    /// <summary>
+    /// The same, for a caller that already has the fraction -- the chunk's tile loop works it out
+    /// for the grass bands long before it gets here, and asking again is a height lookup for an
+    /// answer it is holding. Clamped or not makes no difference: below nought and above one both
+    /// forms agree, and the only band where the hash speaks at all is inside nought and one.
+    ///
+    /// Pass a fraction that came from the ground, never one that came from a region: the split
+    /// between this and IsSnowy exists so that working out what a region IS does not ask a region.
+    /// </summary>
+    public static bool SnowByHeight(int tileX, int tileZ, int worldSeed, float relief)
+    {
         if (relief < SnowlineFraction) return false;
         if (relief >= FullCoverFraction) return true;
 
