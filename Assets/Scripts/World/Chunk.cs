@@ -400,12 +400,34 @@ public class Chunk
     private const float ReedBank = 5f * WorldHeight.StepHeight;
 
     /// <summary>
+    /// How far the mud line wanders either side of that, so it is not a contour. Everything else
+    /// in the world that changes ground at a height or a depth -- the sand up a shore, the reef's
+    /// line, the sea bed, the scree, the dry outcrop -- breaks its line up this way, because the
+    /// water plane is flat and a line drawn at a height on it is a ring round the pool that the
+    /// eye finds at any distance. This one was laid without it.
+    /// </summary>
+    private const float ReedWander = 0.30f;
+
+    /// <summary>
+    /// Where a reedbed stops being mud HERE: the constant above plus the wander that breaks its
+    /// line. Written once because the ground and the reeds both have to ask it -- the reeds
+    /// asking a line of their own is how they came to be standing ten metres above the water.
+    /// </summary>
+    public static float ReedLineAt(int gx, int gz, int worldSeed)
+    {
+        float o = NoiseOrigin(worldSeed);
+
+        return ReedWet + (Mathf.PerlinNoise(o + 577f + gx * EdgeNoiseScale,
+                                            o + 577f + gz * EdgeNoiseScale) - 0.5f) * ReedWander;
+    }
+
+    /// <summary>
     /// Whether a reedbed is still mud here. The reeds ask this too, so they stop where the mud
     /// does: the two used to be decided by different rules and reeds stood all the way up.
     /// </summary>
     public static bool SoddenHere(int gx, int gz, int worldSeed)
     {
-        return WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, worldSeed) > -ReedWet;
+        return WaterSurface.Level - WorldHeight.SurfaceY(gx, gz, worldSeed) > -ReedLineAt(gx, gz, worldSeed);
     }
 
     /// <summary>
@@ -902,12 +924,13 @@ public class Chunk
                 // fires. No new tiles: the grass-into-dark series already runs along every
                 // border a reedbed has with a meadow.
                 float bank = -underBy;
+                float wet = ReedLineAt(gx, gz, worldSeed);
 
-                if (bank < ReedWet)
+                if (bank < wet)
                 {
                     category = MarshCategory;
                 }
-                else if (bank < ReedWet + ReedBank)
+                else if (bank < wet + ReedBank)
                 {
                     int low = Mathf.Min(Grass, Dark), high = Mathf.Max(Grass, Dark);
                     category = BlendCategory[low * (2 * Families - 1 - low) / 2 + (high - low - 1)];
@@ -917,7 +940,7 @@ public class Chunk
                     // a descending fraction on terraced ground laid 4, 4, 3, 1, 0 over the five
                     // rungs, skipping the middle of the series and jumping two steps between two
                     // neighbouring tiles.
-                    float up = Mathf.Clamp01((bank - ReedWet) / ReedBank);
+                    float up = Mathf.Clamp01((bank - wet) / ReedBank);
                     forced = VariantsPerCategory - 1
                            - Mathf.Clamp(Mathf.FloorToInt(up * VariantsPerCategory), 0, VariantsPerCategory - 1);
                 }
@@ -1037,7 +1060,7 @@ public class Chunk
                     // And a reedbed lays its mud by height, not by country: below its bank the
                     // ground over the line is still marsh, above it the grass bands. The height
                     // is the same on both sides of a line, which is why this works.
-                    else if (across == Regions.Character.Reed && -underBy < ReedWet + ReedBank) theirs = Dark;
+                    else if (across == Regions.Character.Reed && -underBy < ReedLineAt(gx, gz, worldSeed) + ReedBank) theirs = Dark;
 
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
