@@ -40,7 +40,12 @@ def reef_body(b, rng, tones, ripple=False):
             b.quad((x0,y0,z0),(x1,y0,z1),(x1,y1,z1),(x0,y1,z0), col, out=outward)
     b.quad((-HALF,BOTTOM,-HALF),(-HALF,BOTTOM,HALF),(HALF,BOTTOM,HALF),(HALF,BOTTOM,-HALF), "rockdark", out=(0,-1,0))
 
-GROUND = TOP + 0.05   # detail sits on the top, a little above the facets
+# Where the detail beds into the shelf. The body's top runs from TOP at the rim to at most
+# TOP+0.05 inside, and it is nine draws of uniform(0, 0.05) so it never gets near that ceiling --
+# measured, four of the five shelves top out between TOP+0.041 and TOP+0.048. Pinned at TOP+0.05
+# every piece sat on a height the ground does not reach, so on four tiles in five nothing touched
+# the floor: polyps, urchins, starfish and clams all standing two to nine millimetres clear.
+GROUND = TOP + 0.02
 
 # ---------------------------------------------------------------- the coral
 def brain(b, rng, at, radius, height, colour, groove):
@@ -217,7 +222,10 @@ def clam(b, rng, at, size=1.0):
 def crust_patch(b, rng, centre, radius):
     """Coralline crust: a flat pink stain over the rock, its edge ragged."""
     n = 7
-    rim = [(centre[0]+math.cos(k/n*math.tau)*radius*rng.uniform(0.5,1.2), GROUND + 0.004,
+    # One polygon thick, so it clears the shelf's facets rather than sinking into them -- the
+    # same rule the scree's lichen and the wood's litter follow. The shelf tops out at TOP+0.05,
+    # so this sits a centimetre over it rather than four millimetres over a bed it never meets.
+    rim = [(centre[0]+math.cos(k/n*math.tau)*radius*rng.uniform(0.5,1.2), GROUND + 0.04,
             centre[1]+math.sin(k/n*math.tau)*radius*rng.uniform(0.5,1.2)) for k in range(n)]
     b.face(rim, "crust", out=(0,1,0))
 def polyps(b, rng, count, keep, colours=("coralpink","coralorange","coralyellow","coralviolet","coralteal")):

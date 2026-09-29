@@ -56,7 +56,14 @@ def tile(step):
             out.append((x, z)); keep.append((x, z, room))
         return out
     for at in spots(max(0, round((1 - mix) * 4))): bt["shell_bit"](b, rng, at)
-    for at in spots(max(0, round(mix * 5))):
+    # Rounded on four, not five. `mix` is 0.10, 0.30, 0.50, 0.70, 0.90, so `mix * 5` is exactly
+    # 0.5, 1.5, 2.5, 3.5, 4.5 -- every one a half-integer, and Python rounds those to even, so
+    # the coral came out 0, 2, 2, 4, 4 across a series built as five rungs of depth. Two pairs
+    # of steps carried the same coral as each other and the sand end carried none at all, while
+    # the shells beside them graded 4, 3, 2, 1, 0 properly on their own denominator. On four it
+    # is 0, 1, 2, 3, 4, and every tile in the set then carries exactly four pieces instead of
+    # wobbling four, five, four, five, four.
+    for at in spots(max(0, round(mix * 4))):
         if rng.random() < 0.55: polyp(b, rng, at, size=rng.uniform(0.9, 1.4))
         else: weed(b, rng, at, size=rng.uniform(0.9, 1.3))
     return b.make("Reef Verge %d" % step)
