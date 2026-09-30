@@ -1062,6 +1062,19 @@ public class Chunk
                     // is the same on both sides of a line, which is why this works.
                     else if (across == Regions.Character.Reed && -underBy < ReedLineAt(gx, gz, worldSeed) + ReedBank) theirs = Dark;
 
+                    // And above the snowline every country lays snow, whatever it lays lower
+                    // down. The height is the same on both sides of a line, so the ground over
+                    // the line is snow here too -- the sea's own fix and the reedbed's, for the
+                    // third rule in the chooser that is a height and not a country.
+                    // Without it, a snow tile was told its neighbour lays rock, or forest litter,
+                    // or sand, and drew a band of it sixteen tiles wide and half bare ground at
+                    // its middle straight through snowfields that are white on both sides -- and
+                    // the two halves of the band picked different series, so they met each other
+                    // on a line at the border instead of meeting in the middle.
+                    // An else on this chain, not a second if: a tarn above the snowline has to
+                    // keep the answer its bed gave.
+                    else if (relief >= SnowCover.SnowlineFraction) theirs = White;
+
                     if (mine >= 0 && theirs >= 0 && mine != theirs)
                     {
                         int low = Mathf.Min(mine, theirs), high = Mathf.Max(mine, theirs);
