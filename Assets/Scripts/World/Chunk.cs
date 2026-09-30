@@ -488,6 +488,32 @@ public class Chunk
         return TooSteepToHold(Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / SlopeSpan), ripple);
     }
 
+    /// <summary>Where the dry countries' outcrop starts here: the threshold, with its wander.</summary>
+    private static float OutcropLine(float ripple) => DryOutcrop + ripple * SteepWander;
+
+    /// <summary>
+    /// Whether the dry countries lay their stone outcrop here instead of sand or straw. The
+    /// undergrowth has to ask the same question: it only ever had the scree's bar, which sits
+    /// well above this one, so between the two lines the chunk laid slabs, cracks and lichen and
+    /// the planting stood four-metre saguaros in them. One function, two callers, the way
+    /// TooSteepToHold and KeepsFloorOnSlope are.
+    ///
+    /// The waterhole's bank is not rock: the branch lays the outcrop and the bank then writes
+    /// over it, so the same order is kept here or every waterhole gets a bare ring. Asked second
+    /// and only once the slope has said yes, so the four neighbour lookups run on the small share
+    /// of a dry country that is rock rather than on all two hundred and twenty-five tiles.
+    /// </summary>
+    public static bool OutcropHere(int gx, int gz, int worldSeed)
+    {
+        float o = NoiseOrigin(worldSeed);
+        float ripple = Mathf.PerlinNoise(o + 311f + gx * EdgeNoiseScale, o + 311f + gz * EdgeNoiseScale) - 0.5f;
+
+        if (Mathf.Clamp01(SlopeAt(gx, gz, worldSeed) / SlopeSpan) <= OutcropLine(ripple)) return false;
+
+        return !(WorldHeight.SurfaceY(gx, gz, worldSeed) - WaterSurface.Level < WaterMargin
+                 && WaterBeside(gx, gz, worldSeed));
+    }
+
     /// <summary>Where the scree starts here: the threshold, with the wander that breaks its line up.</summary>
     private static float ScreeLine(float ripple) => SteepFraction + ripple * SteepWander;
 
@@ -887,7 +913,7 @@ public class Chunk
                 // A lower bar than the scree's, because these countries are flat: at the
                 // scree's threshold two deserts sampled at random had not one steep tile
                 // between them and the rule did nothing at all.
-                category = steep > DryOutcrop + ripple * SteepWander
+                category = steep > OutcropLine(ripple)
                     ? StoneCategory
                     : (desert ? DesertCategory : SavannaCategory);
 
@@ -1166,7 +1192,7 @@ public class Chunk
             // already runs along every border a plain has with a barrens.
             if ((desert || character == Regions.Character.Savanna) && !submerged
                 && category == StoneCategory
-                && steep <= DryOutcrop + ripple * SteepWander + ScreeBand
+                && steep <= OutcropLine(ripple) + ScreeBand
                 && Hash2D(gx, gz, worldSeed + 617) % 2 == 0)
             {
                 // What the country would have laid here if the slope had not taken it, asked of

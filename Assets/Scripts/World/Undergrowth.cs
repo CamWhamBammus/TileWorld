@@ -629,7 +629,14 @@ public class Undergrowth : MonoBehaviour
             // everything on every steep tile, so a bank in a mushroom wood or a jungle was its
             // proper loam with not one fern, toadstool or boulder on it, in the two densest
             // tables in the game.
-            if (!Chunk.KeepsFloorOnSlope(character) && Chunk.TooSteepToHold(gx, gz, seed)) continue;
+            // And the dry countries have their own bar, well below the scree's: between the two
+            // the chunk lays slabs, cracks and lichen and this gate said yes, so four-metre
+            // saguaros and the plain's straw were growing out of bare rock. Asked of the chunk,
+            // the way the scree's is.
+            bool dry = character == Regions.Character.Desert || character == Regions.Character.Savanna;
+
+            if (dry ? Chunk.OutcropHere(gx, gz, seed)
+                    : !Chunk.KeepsFloorOnSlope(character) && Chunk.TooSteepToHold(gx, gz, seed)) continue;
 
             var sprout = every[chosen];
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;
