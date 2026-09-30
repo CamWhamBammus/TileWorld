@@ -420,12 +420,17 @@ public class Undergrowth : MonoBehaviour
                 // a speckle. Asked of the frayed one, every tile the fray handed out of the snow
                 // grew a reed a metre and a half up through the ice, and every tile it handed in
                 // lost the reeds it should have had in open water.
-                if (Regions.CharacterAtTile(gx, gz, seed, false) == Regions.Character.Snow) continue;
+                var unfrayed = Regions.CharacterAtTile(gx, gz, seed, false);
+
+                if (unfrayed == Regions.Character.Snow) continue;
 
                 // A reef grows its coral out of the floor. It is planted by
                 // how deep the water is and never allowed to reach the top of
                 // it: coral standing proud of the sea would read as a rock.
-                if (character == Regions.Character.Reef && flora.Corals != null && flora.Corals.Length > 0
+                // The unfrayed border here too, and the one already taken above rather than a
+                // second lookup: the ground under the coral is decided on it, so a coral asking
+                // the frayed one planted itself on plain sea bed round the whole edge of a reef.
+                if (unfrayed == Regions.Character.Reef && flora.Corals != null && flora.Corals.Length > 0
                     && deep >= Chunk.ReefLineAt(gx, gz, seed) && WaterSurface.BodyAt(gx, gz, seed) == WaterSurface.Body.Beach)
                 {
                     if (Hash(gx, gz, seed + 7717) % 100 >= 22) continue;

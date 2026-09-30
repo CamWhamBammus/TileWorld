@@ -730,10 +730,14 @@ public class Chunk
                 // asked after the depth it would only be the sandy fringe, and
                 // coral in ankle-deep water reads as a flooded field.
                 // Stone under the ice, and the ice is the unfrayed border's business: the bed
-                // and the sheet over it were being decided by two different questions.
+                // and the sheet over it were being decided by two different questions. The reef
+                // is on it now for the same reason: a reef's neighbour is normally a plain sea,
+                // so the water's own body says Beach on both sides and the fray alone decided
+                // which of them a tile belonged to -- and the reef floor is the one ground
+                // forbidden to mix, so its edge frayed into patches nothing could soften.
                 category = standing == Regions.Character.Snow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
-                         : character == Regions.Character.Reef
+                         : standing == Regions.Character.Reef
                            && underBy >= ReefFringeAt(gx, gz, worldSeed) - ReefVergeBand
                              ? ReefOrVerge(underBy - ReefFringeAt(gx, gz, worldSeed), gx, gz, worldSeed, ref forced)
                          : SandOrRockBed(underBy - (DeepWater + ripple * DeepWander), ref forced);
