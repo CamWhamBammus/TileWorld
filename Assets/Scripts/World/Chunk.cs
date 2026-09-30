@@ -502,6 +502,27 @@ public class Chunk
                                               o + 311f + tileZ * EdgeNoiseScale) - 0.5f) * ReefWander;
     }
 
+    /// <summary>
+    /// Where the sand-into-coral fringe is centred here: half a terrace deeper than the reef
+    /// line, or its wander has nothing to move. Depths are exact multiples of StepHeight, and a
+    /// five-step band of one rung a step centred on a rung puts every boundary the fringe draws
+    /// -- its two edges, its four step boundaries and the live-coral line -- exactly midway
+    /// between two rungs, an eighth of a metre from either, where the wander's eleven
+    /// hundredths cannot reach even at the extreme of the noise. Not one tile in the world was
+    /// moved by it: the fringe began at half a metre of water and stepped 0.50, 0.75, 1.00,
+    /// 1.25, 1.50 everywhere, the floor began at 1.75 and the fold at 2.25, so the whole thing
+    /// came out as five concentric rings laid on the terrace edges. The same fault the dry
+    /// outcrop had. Half a rung over, the boundaries sit on a rung and the ripple splits each
+    /// about half and half.
+    ///
+    /// Deeper and not shallower, so the shallow edge stays at half a metre of water: that
+    /// clearance is what the small wander was chosen for. And the offset goes on the band, not
+    /// on the line itself -- the coral planting and the sea bed's family both compare the line
+    /// bare, where it already straddles a rung and the wander already works.
+    /// </summary>
+    private static float ReefFringeAt(int tileX, int tileZ, int seed)
+        => ReefLineAt(tileX, tileZ, seed) + 0.5f * WorldHeight.StepHeight;
+
     /// <summary>And how far above the water the sand carries on up the shore.</summary>
     private const float BeachHeight = 0.7f;
 
@@ -713,8 +734,8 @@ public class Chunk
                 category = standing == Regions.Character.Snow ? StoneCategory
                          : body != WaterSurface.Body.Beach ? MarshCategory
                          : character == Regions.Character.Reef
-                           && underBy >= ReefLineAt(gx, gz, worldSeed) - ReefVergeBand
-                             ? ReefOrVerge(underBy - ReefLineAt(gx, gz, worldSeed), gx, gz, worldSeed, ref forced)
+                           && underBy >= ReefFringeAt(gx, gz, worldSeed) - ReefVergeBand
+                             ? ReefOrVerge(underBy - ReefFringeAt(gx, gz, worldSeed), gx, gz, worldSeed, ref forced)
                          : SandOrRockBed(underBy - (DeepWater + ripple * DeepWander), ref forced);
             }
             // How far up the shore the sand goes, wandering rather than following the
