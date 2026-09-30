@@ -1106,6 +1106,74 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### The third rule that is a height and not a country
+
+The chooser has three rules that lay ground by height rather than by country: a sea's strand, a
+reedbed's mud, and the snowline. The border mixing was taught about the first two, one at a time,
+each after it had drawn something wrong. The third was never given its override.
+
+**A band of bare ground ran through unbroken snow along every high border.** Snow is laid wherever
+the height says so, whatever the country -- so a snow tile above the line entered the border block
+with its own family White, and was told the neighbour lays rock, or forest litter, or sand. The
+tile over the line is at the same height and is snow too. Sixteen tiles wide, half bare ground at
+its middle, drawn straight through snowfields that are white on both sides; and because the two
+sides read different countries they picked different series and met each other on a line at the
+border rather than meeting in the middle. One `else if` on the chain that already carries the sea's
+and the reedbed's.
+
+### The reef, three ways
+
+- **Its fringe was five rings laid on the terrace edges.** Depths are exact multiples of a quarter
+  metre, and a five-step band of one rung a step centred on a rung puts every boundary the fringe
+  draws exactly midway between two, an eighth of a metre from either -- where a wander of eleven
+  hundredths cannot reach even at the extreme of the noise. Not one tile in the world was moved by
+  it. The band is half a rung deeper now, so its boundaries sit on the lattice and the ripple
+  splits each about half and half. The cost is a fifth of the coral floor, which the fringe takes;
+  the alternative was to move it shallower, and the small wander exists precisely to keep coral out
+  of water the wash bares.
+- **Its floor and its coral were asking different borders.** The ground under a reef is decided on
+  the frayed border and the coral on it was too, but the reef floor is also the one ground
+  forbidden to mix -- so its edge frayed into patches nothing could soften. A reef's neighbour is
+  normally a plain sea, so the water's own body says Beach on both sides and the fray alone decided
+  which cell a tile belonged to. Both are on the unfrayed border now, the way the ice already was,
+  and the lookup is the one already taken at the top of the loop rather than a second one.
+- **Nothing on four reef shelves in five touched the shelf**, from the round before.
+
+### What grows where the ground is not what the country lays
+
+Three countries now lay a ground the planting did not know about.
+
+- **Cacti and straw grew out of the bare rock of a desert's outcrops.** The chunk lays three
+  grounds on a desert or a plain and the planting knew two: between the outcrop's bar and the
+  scree's -- which on terraced ground is the normal case, not an edge -- the chunk laid slabs,
+  cracks and lichen and the gate said yes. `Chunk.OutcropHere` is the chunk's own question, asked
+  by both, and it keeps the waterhole bank out because the bank writes over the outcrop.
+- **A reedbed's bank held nothing.** The reedbed was left out of the pair of countries whose floor
+  stays put on a slope, although its branch sits above the steep test like theirs: it lays mud, the
+  five-rung bank and the grass bands at any slope, and the gate refused every reed, boulder and
+  tuft on all three.
+- **A crag above the snowline grew toadstools.** The same pair, the other way: a country keeps its
+  floor only where the chunk actually kept it, and the snowy branch sits directly above the
+  country's own, so a steep tile above the line is the scoured rock-into-snow crag whatever the
+  country is.
+
+### Two in the planting loop
+
+- **A lake edge was a two-metre lattice of reeds.** The reed branch was the one placement in the
+  file with no offset from its tile's centre -- the dry path has one and so does the coral, both
+  under a note saying that without it they stand in rows -- so every clump standing in water sat
+  dead on the middle of its own tile.
+- **Every reed and every coral found its slot by reflection.** Both branches located their draw
+  slot with `Array.IndexOf` over an array of structs, which has no equality of its own, so the
+  framework falls back on reflection and boxes both sides once per element it walks -- for every
+  reed and every coral on every tile of every chunk. The list is laid out in order, so the slot is
+  the start plus the pick.
+
+**And one more bedding fault:** nothing on the five verge tiles touched the verge either, two to
+fifty-one millimetres clear. That is the fourth set found this way -- the scree, the sand, the reef
+and now the verge -- and all four had the same cause: a piece pinned to a height that suits the
+forest floor, used on a ground far flatter than a wood.
+
 ### Six that the last two rounds left behind
 
 Most of this round is the tail of the last two: fixes that were right about the thing they named
