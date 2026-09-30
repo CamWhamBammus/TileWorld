@@ -635,8 +635,14 @@ public class Undergrowth : MonoBehaviour
             // the way the scree's is.
             bool dry = character == Regions.Character.Desert || character == Regions.Character.Savanna;
 
+            // And a country only keeps its floor where the chunk actually kept it, which is below
+            // the snowline: the snowy branch sits directly above the country's own, so a steep
+            // tile above the line is the scoured rock-into-snow crag whatever the country is --
+            // and this was letting toadstools, mushrooms and dead trees stand on one.
+            bool holds = Chunk.KeepsFloorOnSlope(character) && SnowCover.CoverAt(gx, gz, seed) <= 0f;
+
             if (dry ? Chunk.OutcropHere(gx, gz, seed)
-                    : !Chunk.KeepsFloorOnSlope(character) && Chunk.TooSteepToHold(gx, gz, seed)) continue;
+                    : !holds && Chunk.TooSteepToHold(gx, gz, seed)) continue;
 
             var sprout = every[chosen];
             if (sprout.Mesh == null || sprout.Size < 0.0001f) continue;

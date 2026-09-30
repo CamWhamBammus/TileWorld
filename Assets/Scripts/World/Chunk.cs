@@ -431,14 +431,19 @@ public class Chunk
     }
 
     /// <summary>
-    /// The two countries whose floor stays put on a slope. Loam and leaf litter do sit on a face,
+    /// The three countries whose floor stays put on a slope. Loam, leaf litter and wet mud do sit
+    /// on a face,
     /// so the chooser's branches for these two sit above the steep test and lay the country's own
     /// ground on it -- and the undergrowth has to ask the same question, or the ground says "this
     /// is still the country" and the planting says "this is scree". One function, two callers,
     /// the way TooSteepToHold is.
+    /// The reedbed was left out when this was written, and its branch sits above the steep test
+    /// as well: it lays mud below its own line, the five-rung bank above that and the grass bands
+    /// above that, at any slope, while the gate refused every reed, boulder and tuft on all three.
     /// </summary>
     public static bool KeepsFloorOnSlope(Regions.Character who)
-        => who == Regions.Character.Fungal || who == Regions.Character.Jungle;
+        => who == Regions.Character.Fungal || who == Regions.Character.Jungle
+        || who == Regions.Character.Reed;
 
     /// <summary>Whether any of the four neighbours is under water.</summary>
     private static bool WaterBeside(int gx, int gz, int worldSeed)
