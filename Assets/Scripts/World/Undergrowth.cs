@@ -493,9 +493,20 @@ public class Undergrowth : MonoBehaviour
 
                 if (patch.ByKind[slot] == null) patch.ByKind[slot] = new List<Matrix4x4>();
 
+                // Off the middle of the tile. This was the one placement in the file without it
+                // -- the dry path has one and so does the coral three arms up, both under a note
+                // saying that without it they stand in rows -- so every reed clump standing in
+                // water sat dead on its tile's own centre, and the edge of a lake came out as a
+                // two-metre lattice of them. Its own salt, so a reed is not moved the same way
+                // as the coral or the dry plant on the same tile.
+                uint sway = Hash(gx, gz, seed + 3067);
+                float swayX = ((sway >> 2) % 1000) / 1000f - 0.5f;
+                float swayZ = ((sway >> 14) % 1000) / 1000f - 0.5f;
+
                 patch.ByKind[slot].Add(Matrix4x4.TRS(
-                    new Vector3(gx * WorldGrid.TileSize, WorldHeight.SurfaceY(gx, gz, seed),
-                                gz * WorldGrid.TileSize),
+                    new Vector3(gx * WorldGrid.TileSize + swayX * WorldGrid.TileSize * 0.7f,
+                                WorldHeight.SurfaceY(gx, gz, seed),
+                                gz * WorldGrid.TileSize + swayZ * WorldGrid.TileSize * 0.7f),
                     Quaternion.Euler(0f, (Hash(gx, gz, seed + 13) % 360), 0f),
                     Vector3.one * much));
 
