@@ -11,7 +11,17 @@ Build, prism, tube, blob = ft["Build"], ft["prism"], ft["tube"], ft["blob"]
 TOP, BOTTOM, HALF, INNER = ft["TOP"], ft["BOTTOM"], ft["HALF"], ft["INNER"]
 from mathutils import Vector
 
-GROUND = TOP + 0.04
+# Where the loose stuff beds into the verge, and where a face one polygon thick has to clear it.
+# The verge's top is far flatter than a wood's -- it runs TOP to TOP+0.05 where a forest floor
+# reaches TOP+0.09 -- and every piece here still carried the literal the forest floor uses, which
+# is four fifths of this band against four ninths of its own. So all five tiles had every tuft,
+# shell, patch and pebble standing two to fifty-one millimetres clear of the ground under it.
+# GROUND is the same fraction of this band that the wood's is of its own; DECAL is a centimetre
+# over the highest facet the tile reaches, for the leaf patches, which are one polygon thick and
+# have to clear the surface rather than sink into it -- two of the eight were already coplanar
+# with it or just inside, which on a single face is a fight for the pixels.
+GROUND = TOP + 0.022
+DECAL  = TOP + 0.06
 SAND = ["sand1", "sand2", "sand3", "sand1"]
 # The turf end of the series is the meadow's own dark shade, weighted the way grass_tiles does
 # it, so the last verge tile and the tile above it are the same green. Three of these four used
@@ -83,7 +93,7 @@ def shell_bit(b, rng, at):
 def leafy(b, rng, at):
     x, z = at; a = rng.uniform(0, math.tau); s = rng.uniform(0.09, 0.15)
     col = rng.choice(["litter2", "humus2", "leafyellow", "moss2"])
-    ring = [(x + math.cos(a + k/5*math.tau)*s*0.8, GROUND + (0.02 if k == 0 else 0.0), z + math.sin(a + k/5*math.tau)*s*0.8) for k in range(5)]
+    ring = [(x + math.cos(a + k/5*math.tau)*s*0.8, DECAL + (0.02 if k == 0 else 0.0), z + math.sin(a + k/5*math.tau)*s*0.8) for k in range(5)]
     b.face(ring, col, out=(0,1,0))
 
 def stone(b, rng, at, s):
