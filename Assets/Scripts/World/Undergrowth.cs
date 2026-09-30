@@ -26,6 +26,15 @@ public class Undergrowth : MonoBehaviour
     /// and everything standing on it stopped at a hundred and twenty. The landmarks already
     /// did this properly and are where the shape of it is taken from.
     /// </summary>
+    /// <summary>
+    /// Where the reeds and the corals start in the flattened list of everything that grows. Both
+    /// branches used to find their slot with Array.IndexOf over an array of structs, which has no
+    /// equality of its own -- so the framework falls back on reflection and boxes both sides once
+    /// per element it walks, for every reed and every coral on every tile of every chunk. The
+    /// list is laid out in order, so the slot is the start plus the pick.
+    /// </summary>
+    private int reedsFrom, coralsFrom;
+
     private int span;
 
     /// <summary>
@@ -170,6 +179,7 @@ public class Undergrowth : MonoBehaviour
         var firs = Take(narrow.ToArray(), 2.60f, 4.20f);
         var deadTrees = Take(Ours(flora.OurDeadTrees, flora.DeadTrees), 2.40f, 3.60f);
         var reeds = Take(flora.Reeds, 1.10f, 2.10f);
+        reedsFrom = reeds.From;
         // A jungle is layered, so it is planted in four bands rather than one:
         // the emergents stand clear of everything, the canopy fills in under
         // them, and the bamboo and the ferns hold the floor.
@@ -189,7 +199,8 @@ public class Undergrowth : MonoBehaviour
         // The coral is not planted from a country's table -- it is put down under
         // the water below -- but it goes through Take all the same, so it lands in
         // the one list of everything and gets drawn with the rest.
-        Take(flora.Corals ?? new Flora.Sprout[0], 0.60f, 2.00f);
+        var corals = Take(flora.Corals ?? new Flora.Sprout[0], 0.60f, 2.00f);
+        coralsFrom = corals.From;
 
         // and the same narrow trees again, under snow
         var whiteFirs = Take(
@@ -435,7 +446,8 @@ public class Undergrowth : MonoBehaviour
                 {
                     if (Hash(gx, gz, seed + 7717) % 100 >= 22) continue;
 
-                    var head = flora.Corals[(int)(Hash(gx, gz, seed + 53) % (uint)flora.Corals.Length)];
+                    int coralPick = (int)(Hash(gx, gz, seed + 53) % (uint)flora.Corals.Length);
+                    var head = flora.Corals[coralPick];
 
                     if (head.Mesh == null || head.Size < 0.0001f) continue;
 
@@ -445,9 +457,7 @@ public class Undergrowth : MonoBehaviour
 
                     if (stands < 0.45f) continue;
 
-                    int coralSlot = System.Array.IndexOf(every, head);
-
-                    if (coralSlot < 0) continue;
+                    int coralSlot = coralsFrom + coralPick;
 
                     if (patch.ByKind[coralSlot] == null) patch.ByKind[coralSlot] = new List<Matrix4x4>();
 
@@ -480,14 +490,15 @@ public class Undergrowth : MonoBehaviour
 
                 if (Hash(gx, gz, seed + 6791) % 100 >= thickness) continue;
 
-                var stalk = flora.Reeds[(int)(Hash(gx, gz, seed + 41) % (uint)flora.Reeds.Length)];
+                int reedPick = (int)(Hash(gx, gz, seed + 41) % (uint)flora.Reeds.Length);
+                var stalk = flora.Reeds[reedPick];
 
                 if (stalk.Mesh == null || stalk.Size < 0.0001f) continue;
 
                 float high = Mathf.Lerp(1.2f, 2.3f, ((Hash(gx, gz, seed + 97) >> 9) % 100) / 100f);
                 float much = high / stalk.Size;
 
-                int slot = System.Array.IndexOf(every, stalk);
+                int slot = reedsFrom + reedPick;
 
                 if (slot < 0) continue;
 
