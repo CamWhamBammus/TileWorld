@@ -1106,6 +1106,80 @@ name is a number rather than a system. Six of those, in one pass:
   about. The insects carry on.
 - **The chart's key** still listed what the colours meant before the countries had any.
 
+### A fifth set bedded in, and a tool that names the piece
+
+The scree, the sand, the reef and the verge were each found standing clear of their own ground.
+The plain is the fifth, and the cause was the same every time: a piece pinned to a height that
+suits a forest floor, used on a ground far flatter than a wood. A plain's top runs `TOP` to
+`TOP+0.05` where a wood reaches `TOP+0.09`, so the shared `TOP+0.04` was four fifths of the band
+rather than four ninths of it, and every stone, tuft, scrub and bone stood at or above the highest
+facet the ground ever reaches -- the stones a further one to two centimetres over that. Its hard
+pan and the cracks in it are single faces and go the other way, a centimetre *over* the facets.
+
+`Tools/overhang.py` now says which piece runs off a tile rather than only that one does: a face's
+palette colour is its UV, and the palette is a name-to-UV table, so inverting it names the piece.
+That turned "the jungle overhangs on all five tiles" into "`bark2`, `liana` and `moss2` reach 1.09
+on tile 1" -- a buttress root, a fin of wood standing across whatever was laid beside it, where
+everything else over the edge was leaves. The root is held inside its block now, the way the
+barren rock's cracks and the summit's splits are; the leaves are left to lap over, which is what a
+jungle should do.
+
+### A wander that cannot reach the ground it is drawn on
+
+The ground is terraced. Every height and depth is an exact multiple of a quarter metre, and the
+slope -- the rise to a neighbour over the span that counts as fully steep -- can only take six
+values: 0, 0.21, 0.42, 0.63, 0.83, 1. A rule written as `X + ripple * Y` is meant to break its own
+line so it does not follow a contour, and if the band it sweeps holds none of those values the
+noise cannot move one tile.
+
+**The desert's outcrop swept 0.23 to 0.37, which holds none of them.** Its edge was a contour ruled
+on "a half-metre step to a neighbour", and had been since it was written. The threshold is tied to
+two terraces over the slope span now, so it sits *on* the 0.42 class and the wander splits it about
+half and half -- a ragged edge, at the cost of about a third of the outcrop.
+
+**`Tools/lattice.py`** checks this on every build. Its first cut tested each band against both
+lattices at once and passed on the very rule it was written for: the depth lattice has a point
+every quarter metre and so forgives any band wider than that. Each wander is now checked against
+its own lattice, and the table saying which is which fails the build if a new wander appears that
+nothing classifies. A threshold it cannot work out from the source is reported rather than skipped.
+
+### Things scaled by the wrong handle
+
+A sprout is scaled to the height its table asks for. That is right for a tree and wrong twice over.
+
+- **A cushion plant was a three-metre dome on every summit.** It is twelve centimetres tall and
+  sixty-three across as modelled, so scaling it to the quarter metre to sixty the alpine table asks
+  for blew it out to between one and three metres wide -- a dome a tile and a half across. The
+  boulders are the same shape of model and reached two metres. `Wide` has been recorded for every
+  sprout since they were imported and nothing read it; it is capped now, and only for models more
+  than twice as wide as they are tall, so a krummholz stays the broad thing it is meant to be.
+- **No wood in the world had a young tree in it.** The forest table asks for 4.2 to 6.6 metres and
+  every model in it is scaled to that, which is right when they are all trees of a size and wrong
+  when one of them is a sapling: 2.4 metres as modelled, blown up to nearly three times itself and
+  come out another full-grown tree. A model is not stretched past one and a half times its own size
+  now. Every other tree in every table already sits inside that, so nothing else moved.
+
+### Smaller ones
+
+- **A snowfield was a two-metre lattice of darker seams.** The snow's facets are coloured bright or
+  shaded by how high the triangle's middle is, and the grid's rim is pinned at `TOP` so neighbouring
+  tiles meet flush -- so a triangle touching the rim was dragged down by those pinned corners and
+  could never reach the bright white. Every tile in the country is ringed that way. It is measured
+  over the vertices that are actually lifted now, which are exactly the ones off the rim.
+- **A jungle's moss was drawn through its own pools and roots.** `moss_bed` is handed the list of
+  what has already been laid on the floor and never read it. A patch that lands on something is
+  dropped rather than moved, so every random number is still drawn in the same order and nothing
+  else on the tile comes out anywhere different.
+- **The fireflies were the last thing in the air asking the frayed border**, after the rain, the
+  colour grade, your breath and what blows about were all moved off it.
+- **The surf's search for a shore walked a square to look at a ring** -- five thousand four hundred
+  and fifty-six steps to visit nine hundred and sixty tiles, twice a second, for ever, because
+  inland nothing is ever found and the whole square is walked. The wash's own two ring searches were
+  taken off this shape a week ago; this one was left behind.
+- **The wash walked its ring twice for every tile of shallows**: every caller that asked whether a
+  tile was shallows then asked the same ring search again for the distance. One function answers
+  both, and folding the open-water test into it drops a second region lookup as well.
+
 ### The third rule that is a height and not a country
 
 The chooser has three rules that lay ground by height rather than by country: a sea's strand, a
