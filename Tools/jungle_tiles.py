@@ -92,6 +92,14 @@ def buttress(b, rng, at, angle, length, height):
         cx, cz = x + ax*length*t, z + az*length*t
         ring = [(cx + px*w, GROUND - 0.05, cz + pz*w), (cx - px*w, GROUND - 0.05, cz - pz*w),
                 (cx - px*w*0.5, GROUND + h, cz - pz*w*0.5), (cx + px*w*0.5, GROUND + h, cz + pz*w*0.5)]
+
+        # Held inside the block. A root starts anywhere within 0.40 of the middle and runs
+        # another 0.65 to 0.95 with its own thickness on top, so a fin of wood could finish at
+        # 1.43 while the block stops at 1.00 -- standing across whatever was laid beside it, and
+        # a buttress root is about as plainly a part of one tile as anything in the game. The
+        # barren rock's cracks and the summit's splits were held the same way. No random number
+        # is drawn, so every other piece on the tile comes out where it was.
+        ring = [(min(HALF, max(-HALF, rx)), ry, min(HALF, max(-HALF, rz))) for (rx, ry, rz) in ring]
         if prev is not None:
             for k in range(4):
                 a0, b0 = prev[k], prev[(k+1)%4]
