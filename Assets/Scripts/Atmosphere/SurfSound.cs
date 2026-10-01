@@ -59,12 +59,30 @@ public class SurfSound : MonoBehaviour
             next = Time.time + 0.5f;
             int px = Mathf.RoundToInt(player.position.x / WorldGrid.TileSize), pz = Mathf.RoundToInt(player.position.z / WorldGrid.TileSize);
             nearest = 999f;
-            for (int r = 0; r <= 30 && nearest > 900f; r += 2)
-            for (int dx = -r; dx <= r && nearest > 900f; dx += 2)
-            for (int dz = -r; dz <= r; dz += 2)
+
+            // The ring itself, four sides at a time, each without its last corner. Written as a
+            // square with the inside skipped it stepped five thousand four hundred and fifty-six
+            // times to look at nine hundred and sixty tiles -- and inland nothing is ever found,
+            // so the whole square is walked, twice a second, for ever. The wash's own two ring
+            // searches were taken off this shape for the same reason; this one was left behind.
+            bool Look(int tx, int tz, int ring)
             {
-                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != r) continue;
-                if (Surf.IsStrand(px + dx, pz + dz, world.WorldSeed)) { nearest = r * WorldGrid.TileSize; strand = new Vector2Int(px + dx, pz + dz); break; }
+                if (!Surf.IsStrand(tx, tz, world.WorldSeed)) return false;
+                nearest = ring * WorldGrid.TileSize;
+                strand = new Vector2Int(tx, tz);
+                return true;
+            }
+
+            if (Look(px, pz, 0)) { }
+
+
+            for (int r = 2; r <= 30 && nearest > 900f; r += 2)
+            for (int k = -r; k < r && nearest > 900f; k += 2)
+            {
+                if (Look(px + k, pz - r, r)) break;
+                if (Look(px + r, pz + k, r)) break;
+                if (Look(px - k, pz + r, r)) break;
+                if (Look(px - r, pz - k, r)) break;
             }
         }
 
