@@ -59,6 +59,12 @@ public class Undergrowth : MonoBehaviour
     /// </summary>
     private const int SowPerFrame = 6;
 
+    /// <summary>
+    /// How wide a thing that lies flat may come out, in metres. A tile is two across, so this
+    /// leaves a hand's breadth either side -- enough that two neighbours do not read as one mat.
+    /// </summary>
+    private const float MostWide = 1.6f;
+
     /// <summary>One sort of thing, and how much of it a region carries.</summary>
     private struct Planting
     {
@@ -691,6 +697,19 @@ public class Undergrowth : MonoBehaviour
 
             float tall = Mathf.Lerp(sort.Low, sort.High, ((roll >> 17) % 100) / 100f);
             float size = tall / sprout.Size;
+
+            // And never so wide it covers its own tile. A sprout is scaled by the height it is
+            // wanted at, which is right for a tree and wrong for anything that lies flat: a
+            // cushion plant is twelve centimetres tall and sixty-three across, so scaling it to
+            // the quarter metre to sixty the alpine table asks for blew it out to between one
+            // and three metres wide -- a dome a tile and a half across on every summit. The
+            // boulders are the same shape of model, two metres across at the top of their band.
+            // `Wide` has been recorded for every sprout since they were imported and nothing
+            // until now read it.
+            // Only for the models where height is plainly the wrong handle -- the ones more than
+            // twice as wide as they are tall. A krummholz is a broad thing and meant to be; a
+            // cushion plant at five times its own height across is a dome being used as a mat.
+            if (sprout.Wide > 2f * sprout.Size) size = Mathf.Min(size, MostWide / sprout.Wide);
 
             // Off the middle of the tile, or they stand in rows like a crop -- which is what
             // they were doing. Both offsets came out of the top of the same number the size,
