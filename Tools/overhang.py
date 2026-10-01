@@ -37,13 +37,37 @@ SLACK = 0.005          # a millimetre or two of float noise is not an overhang
 # -- so the game's two horizontal axes are Blender's x and y, and the game's up is Blender's z.
 # Measured the other way round, every tile in the game reads as overhanging by its own height,
 # which is how this tool read on its first run.
+# Which colour a face is painted, so the report can say what the overhanging piece is rather than
+# only that something on the tile is. A face's palette colour is its UV, and the palette is a
+# name-to-UV table, so inverting it names the piece: "frond", "buttressbark", "jfloor".
+import json
+PAL = json.load(open(os.path.join(HERE, "palette.json")))
+BY_UV = {(round(u, 5), round(v, 5)): name for name, (u, v) in PAL.items()}
+
+def painted(ob, poly):
+    uv = ob.data.uv_layers.active
+    if uv is None: return "?"
+    u, v = uv.data[poly.loop_indices[0]].uv
+    return BY_UV.get((round(u, 5), round(v, 5)), "?")
+
 worst = []
 for ob in bpy.data.objects:
     if ob.type != "MESH" or not ob.data.vertices: continue
     out = max(max(abs(v.co.x), abs(v.co.y)) for v in ob.data.vertices)
     low = min(v.co.z for v in ob.data.vertices)
     high = max(v.co.z for v in ob.data.vertices)
-    worst.append((out, low, high, ob.name))
+
+    # and the colours of the faces that reach furthest, worst first
+    over = {}
+    for poly in ob.data.polygons:
+        reach = max(max(abs(ob.data.vertices[i].co.x), abs(ob.data.vertices[i].co.y))
+                    for i in poly.vertices)
+        if reach > HALF + SLACK:
+            # not `name`, which is the script this run is measuring
+            col = painted(ob, poly)
+            over[col] = max(over.get(col, 0.0), reach)
+
+    worst.append((out, low, high, ob.name, over))
 
 # A couple of these scripts build trees beside their tiles. A tree is planted on a tile rather
 # than laid as one, and a canopy is meant to reach over its neighbours, so it is not measured.
@@ -55,11 +79,13 @@ worst.sort(reverse=True)
 bad = 0
 laid = 0
 
-for out, low, high, obname in worst:
+for out, low, high, obname, over in worst:
     if high >= PLANTED: continue
     laid += 1
     if out > HALF + SLACK:
-        print("OVERHANG   %-22s reaches %.3f, and the block stops at %.2f" % (obname, out, HALF))
+        said = ", ".join("%s %.3f" % (n, r) for n, r in sorted(over.items(), key=lambda kv: -kv[1]))
+        print("OVERHANG   %-22s reaches %.3f, and the block stops at %.2f | %s"
+              % (obname, out, HALF, said))
         bad += 1
 
 tiles = [w for w in worst if w[2] < PLANTED]
