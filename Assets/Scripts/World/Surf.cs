@@ -32,13 +32,29 @@ public static class Surf
     /// water, and it stops at the wave's front, so the foam line is always
     /// the water's farthest point and the sand shows behind it going out.
     /// </summary>
-    public static bool IsSurfShallows(int tileX, int tileZ, int seed)
+    /// <summary>
+    /// How far to the nearest sand from a tile of surf shallows, or -1 where these are not the
+    /// shallows. The answer, not just the yes or no: every caller that asked the question then
+    /// asked the same ring search again for the distance, which is a hundred and twenty tiles of
+    /// IsUnderwater walked twice for every shallows tile of every wash sheet in every chunk.
+    ///
+    /// The open-water test is folded in as well. `Regions.Sea` is Water or Reef, so it already
+    /// rules out the snow country that IsOpenWater was there to exclude -- and Regions memoises
+    /// the cell, not the tile, so asking it twice is two fresh cell searches and six Perlin
+    /// samples rather than a dictionary hit.
+    /// </summary>
+    private static int Shallows(int tileX, int tileZ, int seed)
     {
-        if (!WaterSurface.IsOpenWater(tileX, tileZ, seed)) return false;
-        if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 0.6f) return false;
-        if (!Regions.Sea(Regions.CharacterAtTile(tileX, tileZ, seed, false))) return false;
-        return Nearest(tileX, tileZ, seed, false, Out) > 0;
+        if (!WaterSurface.IsUnderwater(tileX, tileZ, seed)) return -1;
+        if (WaterSurface.Level - WorldHeight.SurfaceY(tileX, tileZ, seed) > 0.6f) return -1;
+        if (!Regions.Sea(Regions.CharacterAtTile(tileX, tileZ, seed, false))) return -1;
+
+        return Nearest(tileX, tileZ, seed, false, Out);
     }
+
+    /// <summary>Whether a tile is surf shallows. Nearest returns -1 or one upward, never nought,
+    /// so this is the same predicate it always was.</summary>
+    public static bool IsSurfShallows(int tileX, int tileZ, int seed) => Shallows(tileX, tileZ, seed) > 0;
 
     /// <summary>
     /// Where the wave is along its run at a tile. The seed picks where the noise is read from,
@@ -100,7 +116,6 @@ public static class Surf
     /// <summary>Whether a lake or a pond lies within two tiles.</summary>
     public static bool ByAnotherWater(int tileX, int tileZ, int seed) => PondNear(tileX, tileZ, seed) <= 2;
 
-    private static bool IsShallows(int tileX, int tileZ, int seed) => IsSurfShallows(tileX, tileZ, seed);
 
     // the wave's timing, the same numbers the water shader uses in wash mode; the clock is handed
     // to the shader every frame, so the game and the picture agree about where the wave is
@@ -143,9 +158,9 @@ public static class Surf
             if (toWater < 0) return false;
             d = (toWater - 0.5f) * WorldGrid.TileSize;
         }
-        else if (IsSurfShallows(tileX, tileZ, seed))
+        else if (Shallows(tileX, tileZ, seed) is int toSand && toSand > 0)
         {
-            d = -(Nearest(tileX, tileZ, seed, false, Out) - 0.5f) * WorldGrid.TileSize;
+            d = -(toSand - 0.5f) * WorldGrid.TileSize;
             float phaseHere = Phase(tileX, tileZ, seed);
             return d < Mathf.Max(Front(phaseHere), Hold(d, PondNear(tileX, tileZ, seed))) - 0.3f;
         }
@@ -210,9 +225,8 @@ public static class Surf
                 int toWater = Nearest(tileX, tileZ, worldSeed, true, Reach);
                 if (toWater > 0) { d = (toWater - 0.5f) * WorldGrid.TileSize; y = WorldHeight.SurfaceY(tileX, tileZ, worldSeed) + 0.06f; }
             }
-            else if (IsShallows(tileX, tileZ, worldSeed))
+            else if (Shallows(tileX, tileZ, worldSeed) is int toSand && toSand > 0)
             {
-                int toSand = Nearest(tileX, tileZ, worldSeed, false, Out);
                 if (toSand > 0) { d = -(toSand - 0.5f) * WorldGrid.TileSize; y = WaterSurface.Level + 0.012f; h = Hold(d, PondNear(tileX, tileZ, worldSeed)); }
             }
 
