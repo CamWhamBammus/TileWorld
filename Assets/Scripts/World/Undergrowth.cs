@@ -65,6 +65,16 @@ public class Undergrowth : MonoBehaviour
     /// </summary>
     private const float MostWide = 1.6f;
 
+    /// <summary>
+    /// How far past its own natural size a model may be stretched. A table asks for a height and
+    /// every model in it is scaled to that height, which is right when they are all trees of a
+    /// size and wrong when one of them is not: the wood's sapling is 2.4 m as modelled and the
+    /// table asks for 4.2 to 6.6, so it was blown up to between one and three quarters and nearly
+    /// three times itself and came out another full-grown tree. No wood in the world had a young
+    /// tree in it. Every other tree in every table sits inside this, so nothing else moves.
+    /// </summary>
+    private const float MostStretch = 1.5f;
+
     /// <summary>One sort of thing, and how much of it a region carries.</summary>
     private struct Planting
     {
@@ -710,6 +720,9 @@ public class Undergrowth : MonoBehaviour
             // twice as wide as they are tall. A krummholz is a broad thing and meant to be; a
             // cushion plant at five times its own height across is a dome being used as a mat.
             if (sprout.Wide > 2f * sprout.Size) size = Mathf.Min(size, MostWide / sprout.Wide);
+
+            // And not stretched far past what it was modelled at, whatever the table asks.
+            size = Mathf.Min(size, MostStretch);
 
             // Off the middle of the tile, or they stand in rows like a crop -- which is what
             // they were doing. Both offsets came out of the top of the same number the size,
