@@ -25,7 +25,19 @@ def snow_body(b, rng, puddle=None, rock=None):
         for j in range(n):
             a,bq,c,d = grid[(i,j)], grid[(i,j+1)], grid[(i+1,j+1)], grid[(i+1,j)]
             for tri in ((a,bq,c),(a,c,d)):
-                cx = sum(p[0] for p in tri)/3; cz = sum(p[2] for p in tri)/3; cy = sum(p[1] for p in tri)/3
+                cx = sum(p[0] for p in tri)/3; cz = sum(p[2] for p in tri)/3
+
+                # How high the SNOW is here, not how high the triangle's middle is. The grid's
+                # rim is pinned at TOP so neighbouring tiles meet flush, and a triangle touching
+                # it was dragged down by those pinned corners -- with two of them its middle can
+                # never pass TOP+0.04, so it could never reach the bright white at TOP+0.05 and
+                # came out in the shaded set every time. Every tile in a snowfield is ringed that
+                # way, so the country was a two-metre lattice of darker seams.
+                # Measured over the vertices that are actually lifted, which are exactly the ones
+                # off the rim -- a rim vertex is exactly TOP and no other ever is. Both arms below
+                # draw one choice either way, so the random stream does not move.
+                lifted = [p[1] for p in tri if p[1] != TOP]
+                cy = sum(lifted)/len(lifted) if lifted else TOP
                 if puddle is not None and (cx-puddle[0])**2 + (cz-puddle[1])**2 < (puddle[2]*0.85)**2: col = rng.choice(["ice","ice","ice2"])
                 elif rock is not None and (cx-rock[0])**2 + (cz-rock[1])**2 < rock[2]**2: col = rng.choice(["frostrock","frostrock2"])
                 else: col = rng.choice(["snow1","snow1","snow2","snow3"]) if cy > TOP + 0.05 else rng.choice(["snow2","snow3","snowshade"])
