@@ -170,7 +170,16 @@ def moss_bed(b, rng, count, keep):
         n = 7; r = rng.uniform(0.22, 0.40)
         ring = [(x + math.cos(k/n*math.tau)*r*rng.uniform(0.6,1.2), GROUND + 0.006,
                  z + math.sin(k/n*math.tau)*r*rng.uniform(0.6,1.2)) for k in range(n)]
-        b.face(ring, rng.choice(["moss", "moss2", "jungle3"]), out=(0,1,0))
+        col = rng.choice(["moss", "moss2", "jungle3"])
+
+        # `keep` is what has already been laid on this floor -- the standing water, the rotten
+        # log, the buttress roots, the ferns -- and it was handed in and never read, so a moss
+        # patch was drawn straight through all of them. A patch that lands on one is dropped
+        # rather than moved: every random number above is drawn either way, so nothing else on
+        # the tile comes out anywhere different.
+        if any((x - kx)**2 + (z - kz)**2 < kr*kr for (kx, kz, kr) in keep): continue
+
+        b.face(ring, col, out=(0,1,0))
 
 def litter(b, rng, count, keep):
     for _ in range(count):
