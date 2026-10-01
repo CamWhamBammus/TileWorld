@@ -11,7 +11,16 @@ Build, prism, tube, blob, cylinder_along = ft["Build"], ft["prism"], ft["tube"],
 TOP, BOTTOM, HALF, INNER = ft["TOP"], ft["BOTTOM"], ft["HALF"], ft["INNER"]
 from mathutils import Vector
 
-GROUND = TOP + 0.04
+# Where the loose stuff beds into the straw, and where a face one polygon thick has to clear it.
+# A plain's top is flatter than a wood's: it runs TOP to TOP+0.05 where a forest floor reaches
+# TOP+0.09, and this carried the literal the forest floor uses -- four fifths of this band against
+# four ninths of its own -- so every stone, tuft, scrub and bone stood at or above the highest
+# facet the ground ever reaches, and the stones a further one to two centimetres over that. The
+# fourth set found this way after the scree, the sand, the reef and the verge, and the same cause
+# each time. DECAL is a centimetre over the highest facet, for the hard pan and its cracks, which
+# are single faces and have to clear the ground rather than sink into it.
+GROUND = TOP + 0.022
+DECAL  = TOP + 0.06
 TONES = ["savgrass", "savgrass2", "savgrass", "savgrass3", "savgrass2"]
 
 def savanna_body(b, rng, bare=0.0, path=None):
@@ -83,13 +92,13 @@ def mound(b, rng, at, size=1.0):
 def crack_pan(b, rng, centre, radius):
     """Bare ground gone hard and split, which is what the dry season leaves."""
     n = 8
-    ring = [(centre[0]+math.cos(k/n*math.tau)*radius*rng.uniform(0.75,1.1), GROUND + 0.005,
+    ring = [(centre[0]+math.cos(k/n*math.tau)*radius*rng.uniform(0.75,1.1), DECAL,
              centre[1]+math.sin(k/n*math.tau)*radius*rng.uniform(0.75,1.1)) for k in range(n)]
     b.face(ring, "drysand", out=(0,1,0))
     for _ in range(4):
         a = rng.uniform(0, math.tau); l = radius*rng.uniform(0.5, 0.95); w = 0.013
         x0 = centre[0] + math.cos(a+math.pi)*l*0.3; z0 = centre[1] + math.sin(a+math.pi)*l*0.3
-        pts = [(x0+math.cos(a)*l*t + math.sin(t*7)*0.02, GROUND + 0.010, z0+math.sin(a)*l*t) for t in (0, 0.5, 1)]
+        pts = [(x0+math.cos(a)*l*t + math.sin(t*7)*0.02, DECAL + 0.005, z0+math.sin(a)*l*t) for t in (0, 0.5, 1)]
         for i in range(2):
             p0, p1 = pts[i], pts[i+1]; sx, sz = math.cos(a+math.pi/2)*w, math.sin(a+math.pi/2)*w
             b.quad((p0[0]-sx,p0[1],p0[2]-sz), (p0[0]+sx,p0[1],p0[2]+sz),
