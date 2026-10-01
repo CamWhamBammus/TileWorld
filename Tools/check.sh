@@ -54,6 +54,12 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/ids.py" ]; then
   CHECKS="$CHECKS$(python3 "$HERE/ids.py" | grep -Ev "^([0-9]+ definitions|spare |[0-9]+ problems)")"
 fi
 
+# And whether a threshold with a wander on it can move a tile at all. The ground is terraced, so
+# a band that falls between two rungs catches nothing and the rule comes out as a ruled contour.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/lattice.py" ]; then
+  CHECKS="$CHECKS$(python3 "$HERE/lattice.py" | grep -Ev "^[0-9]+ wanders")"
+fi
+
 # And whether a hash still has bits where the code reaches for them. Two places took a slice
 # from too far up one and could only ever reach half its range: every plant in the world stood
 # on one side of its tile, in rows.
