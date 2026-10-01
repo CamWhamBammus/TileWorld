@@ -278,8 +278,17 @@ public class Chunk
     /// </summary>
     private const float ScreeBand = WorldHeight.StepHeight / SlopeSpan;
 
-    /// <summary>How steep the sand and the straw have to get before rock shows through.</summary>
-    private const float DryOutcrop = 0.30f;
+    /// <summary>
+    /// How steep the sand and the straw have to get before rock shows through. Two terraces of
+    /// rise over the span that counts as fully steep, and it has to land ON one of the values
+    /// the slope can take: the ground is terraced, so the slope only ever reads 0, 0.21, 0.42,
+    /// 0.63, 0.83 or 1, and at 0.30 the wander's band of 0.23 to 0.37 held none of them. The
+    /// ripple could not move one tile in the world, and the outcrop's edge was a contour ruled
+    /// on "a half-metre step to a neighbour" -- the same iso-slope line the scree would draw if
+    /// its own band did not happen to straddle 0.63. Sitting on 0.42, the wander splits that
+    /// class about half and half and the edge is ragged, which costs about half the outcrop.
+    /// </summary>
+    private const float DryOutcrop = 2f * WorldHeight.StepHeight / SlopeSpan;
     private const float MarshFraction = 0.10f;
 
     /// <summary>
